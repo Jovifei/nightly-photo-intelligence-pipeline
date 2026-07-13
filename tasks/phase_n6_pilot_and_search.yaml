@@ -1,0 +1,31 @@
+contract_version: "1.0"
+phase:
+  id: "N6"
+  title: "100 张 Pilot、稳定性与检索评估"
+  status: "LOCKED"
+data_gate:
+  id: "G2_PILOT_100"
+  status: "LOCKED_OR_SEPARATELY_CONTROLLED"
+objective: >
+  运行经批准的 100 张 manifest，验证端到端稳定性、恢复、资源、人工质量；仅在有评测集时研究 Embedding/检索。
+authorization_rule: >
+  本文件仅用于规划。只有 Owner 更新 PROJECT_STATE.json 并提供范围明确的批准记录后才可执行。
+prerequisites:
+  - "N5 owner approval"
+  - "G2 owner approval"
+  - "all model approvals"
+  - "recovery drill plan"
+forbidden_while_locked:
+  - "full_library"
+  - "openclaw_activation"
+  - "cloud_ai"
+  - "unapproved_models"
+  - "automatic_gate_promotion"
+completion_does_not:
+  - "authorize_next_phase"
+  - "authorize_larger_data_gate"
+  - "authorize_model_download"
+  - "authorize_openclaw"
+mandatory_stop:
+  value: true
+  rule: "完成本阶段后停止并等待 Owner；不得自动推进。"

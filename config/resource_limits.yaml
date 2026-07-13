@@ -1,0 +1,17 @@
+schema_version: "1.0"
+gpu:
+  target_vram_mb: 12288
+  concurrent_heavy_models: 1
+  production_value_source: "runtime benchmark, not documentation"
+  oom_requires_process_release: true
+cpu:
+  max_workers_initial: 1
+image:
+  max_pixels: null
+  note: "Set only after N2/N3 benchmark; no guessed production value."
+disk:
+  stop_free_bytes: null
+  note: "Owner must set after N0 environment report."
+runtime:
+  temporary_files_under_runtime_root_only: true
+  atomic_output_write: true

@@ -1,0 +1,25 @@
+schema_version: "1.0"
+status: "DESIGN_ONLY_NOT_AUTHORIZED"
+activation_requires:
+  - "N8_APPROVED_AND_COMPLETE"
+  - "G2_PILOT_100_ACCEPTED"
+  - "SIGNED_OPENCLAW_ACTIVATION"
+  - "LEAST_PRIVILEGE_NEGATIVE_TESTS_PASS"
+command:
+  wrapper_path: null
+  arguments_allowed: false
+  environment_overrides_allowed: false
+inputs:
+  source_path_visible: false
+  docker_socket_visible: false
+outputs:
+  readable:
+    - "redacted_status_json"
+    - "public_nightly_summary"
+permissions:
+  git_write: false
+  ssh: false
+  admin: false
+  model_tokens: false
+  raw_photos: false
+  runtime_database: false

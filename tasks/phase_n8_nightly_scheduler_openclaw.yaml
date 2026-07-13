@@ -1,0 +1,31 @@
+contract_version: "1.0"
+phase:
+  id: "N8"
+  title: "夜间调度、全量准备与受限 OpenClaw"
+  status: "LOCKED"
+data_gate:
+  id: "G2_PILOT_100"
+  status: "LOCKED_OR_SEPARATELY_CONTROLLED"
+objective: >
+  先实现固定 CLI/Windows Task Scheduler 路线，完成全量 readiness；OpenClaw 仅可设计窄 wrapper， 激活还需独立签署。G3 全量另行批准。
+authorization_rule: >
+  本文件仅用于规划。只有 Owner 更新 PROJECT_STATE.json 并提供范围明确的批准记录后才可执行。
+prerequisites:
+  - "N7 owner approval"
+  - "100 pilot accepted"
+  - "N8 task authorization"
+  - "least privilege negative test plan"
+forbidden_while_locked:
+  - "automatic_openclaw_activation"
+  - "docker_socket_to_openclaw"
+  - "raw_photos_to_openclaw"
+  - "full_run_without_G3"
+  - "admin_rights"
+completion_does_not:
+  - "authorize_next_phase"
+  - "authorize_larger_data_gate"
+  - "authorize_model_download"
+  - "authorize_openclaw"
+mandatory_stop:
+  value: true
+  rule: "完成本阶段后停止并等待 Owner；不得自动推进。"

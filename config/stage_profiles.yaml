@@ -1,0 +1,23 @@
+schema_version: "1.0"
+profiles:
+  fixture:
+    data_gate: "G0_THREE_SYNTHETIC_FIXTURES"
+    max_assets: 3
+    gpu_models: []
+    authorized_in_phase: ["N0", "N1"]
+  calibration:
+    data_gate: "G1_CALIBRATION_20"
+    max_assets: 20
+    status: "LOCKED"
+  pilot:
+    data_gate: "G2_PILOT_100"
+    max_assets: 100
+    status: "LOCKED"
+  nightly:
+    data_gate: "G3_FULL_LIBRARY"
+    max_assets: null
+    status: "LOCKED"
+rules:
+  - "Profile max is not a data manifest."
+  - "Every asset must appear in the authorized manifest."
+  - "No profile automatically becomes authorized after tests."

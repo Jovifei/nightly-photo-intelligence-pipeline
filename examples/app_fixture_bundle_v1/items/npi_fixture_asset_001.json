@@ -1,0 +1,225 @@
+{
+  "schema_version": "1.0",
+  "asset_id": "npi_fixture_asset_001",
+  "source_reference": {
+    "source_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "perceptual_hash": "0123456789abcdef",
+    "perceptual_hash_algorithm": "fixture-phash-v0",
+    "sanitized_name": "fixture_reference.png",
+    "media_type": "image/png",
+    "width": 640,
+    "height": 480,
+    "exif_present": false
+  },
+  "observed_facts": {
+    "person_count": 1,
+    "processability": "SUPPORTED_SINGLE_PERSON",
+    "facts": [
+      {
+        "fact_id": "fact:subject_position",
+        "kind": "subject_horizontal_region",
+        "value": "RIGHT_THIRD",
+        "confidence": 0.92,
+        "producer": "DETERMINISTIC",
+        "evidence": [
+          "normalized bounding box center x=0.67 in fixture"
+        ]
+      },
+      {
+        "fact_id": "fact:leading_lines",
+        "kind": "dominant_structure",
+        "value": "LEADING_LINES",
+        "confidence": 0.84,
+        "producer": "HUMAN",
+        "evidence": [
+          "fixture geometry converges toward center-left"
+        ]
+      }
+    ]
+  },
+  "photographic_interpretation": {
+    "insights": [
+      {
+        "interpretation_id": "interp:depth",
+        "category": "COMPOSITION_RESOURCE",
+        "text": "可利用画面中的引导线保留纵深，并让人物位于右侧三分区域。",
+        "confidence": 0.82,
+        "evidence_refs": [
+          "fact:leading_lines",
+          "fact:subject_position"
+        ]
+      }
+    ],
+    "constraints": [
+      "该条目是合同 fixture，不代表真实模型分析质量。"
+    ]
+  },
+  "story_candidates": {
+    "safe": {
+      "title": "稳定站姿",
+      "scenario": "在背景结构旁保持轻松站姿，先完成一张稳妥画面。",
+      "feasibility": 0.95,
+      "constraints": [
+        "动作幅度小"
+      ],
+      "evidence_refs": [
+        "fact:subject_position"
+      ],
+      "fictional_candidate": true
+    },
+    "narrative": {
+      "title": "短暂停留",
+      "scenario": "把画面设定为经过空间时短暂停留的瞬间。",
+      "feasibility": 0.82,
+      "constraints": [
+        "故事仅是拍摄设定，不是原图真实意图"
+      ],
+      "evidence_refs": [
+        "fact:leading_lines"
+      ],
+      "fictional_candidate": true
+    },
+    "dynamic": {
+      "title": "回身一步",
+      "scenario": "沿引导线方向迈出一步，再轻微回身。",
+      "feasibility": 0.72,
+      "constraints": [
+        "需确认现场空间"
+      ],
+      "evidence_refs": [
+        "fact:leading_lines"
+      ],
+      "fictional_candidate": true
+    }
+  },
+  "pose_template": {
+    "schema_version": "1.0",
+    "producer": {
+      "producer_type": "DETERMINISTIC_GEOMETRY",
+      "model_id": "fixture-only-no-production-model",
+      "revision": "fixture-v1",
+      "weights_sha256": null
+    },
+    "coordinate_system": {
+      "space": "SOURCE_IMAGE",
+      "origin": "TOP_LEFT",
+      "x_axis": "RIGHT",
+      "y_axis": "DOWN",
+      "normalized": true,
+      "image_width": 640,
+      "image_height": 480
+    },
+    "keypoints": [],
+    "joint_angles": {},
+    "body_orientation": "UNKNOWN",
+    "mirror_strategy": {
+      "source_is_mirrored": "UNKNOWN",
+      "allowed_for_guidance": false,
+      "left_right_semantics": "SUBJECT_ANATOMICAL_LEFT_RIGHT"
+    },
+    "difficulty": "UNKNOWN",
+    "constraints": [
+      "无生产 Pose；仅验证合同结构。"
+    ]
+  },
+  "director_prompts": {
+    "schema_version": "1.0",
+    "language": "zh-CN",
+    "standard_guidance": {
+      "lines": [
+        "身体保持放松，先站到画面右侧位置。"
+      ],
+      "evidence_refs": [
+        "fact:subject_position"
+      ]
+    },
+    "dramatic_guidance": {
+      "lines": [
+        "把它当成经过这里时短暂停下的一秒。"
+      ],
+      "evidence_refs": [
+        "fact:leading_lines"
+      ],
+      "fictional_frame": true
+    },
+    "plan_b": {
+      "lines": [
+        "动作不自然时就保持站立，只轻轻转头。"
+      ],
+      "simplification_reason": "减少迈步和回身两个同时发生的动作。",
+      "evidence_refs": [
+        "fact:subject_position"
+      ]
+    },
+    "photographer_technical": {
+      "lines": [
+        "保留引导线和人物右侧位置；现场确认高光与空间。"
+      ],
+      "evidence_refs": [
+        "fact:leading_lines",
+        "fact:subject_position"
+      ]
+    }
+  },
+  "uncertainties": [
+    {
+      "uncertainty_id": "unc:fixture",
+      "category": "UNOBSERVABLE",
+      "description": "这是结构合同 fixture，不可用于判断模型精度。",
+      "severity": "HIGH",
+      "related_refs": [
+        "pose:fixture"
+      ]
+    }
+  ],
+  "review": {
+    "schema_version": "1.0",
+    "status": "APPROVED",
+    "approved_by_human": true,
+    "current_reviewer": "fixture-owner",
+    "reviewed_at": "2026-07-12T00:00:00Z",
+    "history": [
+      {
+        "event_id": "review-fixture-001",
+        "actor_type": "HUMAN",
+        "actor_id": "fixture-owner",
+        "action": "APPROVED",
+        "at": "2026-07-12T00:00:00Z",
+        "reason": "仅批准作为跨仓库 Schema fixture。",
+        "patch_path": null
+      }
+    ]
+  },
+  "provenance": {
+    "schema_version": "1.0",
+    "code": {
+      "repository": "nightly-photo-intelligence-pipeline",
+      "commit": "0000000",
+      "dirty": false
+    },
+    "schemas": {
+      "photo_intelligence_item": "1.0",
+      "pose_template": "1.0",
+      "director_prompts": "1.0",
+      "review_record": "1.0",
+      "provenance": "1.0"
+    },
+    "models": [],
+    "algorithms": [
+      {
+        "id": "fixture-generator",
+        "version": "1.0",
+        "purpose": "Contract example only"
+      }
+    ],
+    "prompts": {
+      "fixture": "1.0"
+    },
+    "licenses": [],
+    "effective_config_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "output_hashes": {
+    "item_json_sha256": null,
+    "artifacts": {}
+  }
+}

@@ -1,0 +1,99 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nightly-photo-intelligence-pipeline"
+version = "0.1.0"
+description = "Local-first, offline, auditable photo intelligence pipeline - N0 safe scaffold"
+readme = "README_FIRST.md"
+requires-python = ">=3.11,<3.13"
+license = { text = "Proprietary - Owner decision pending (see LICENSE_STATUS.md)" }
+authors = [{ name = "nightly-photo-intelligence-pipeline owner" }]
+keywords = ["photography", "pipeline", "local-first", "offline", "n0"]
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Private :: Do Not Upload",
+]
+# Runtime deps are intentionally narrow CLI/config/framework libraries only.
+# No model, vision, or heavy ML dependencies are introduced in N0.
+# Versions pinned exactly to the 3.12 venv used for N0 verification.
+dependencies = [
+    "typer==0.26.8",
+    "pydantic==2.13.4",
+    "pyyaml==6.0.3",
+    "pillow==12.3.0",
+]
+
+[project.optional-dependencies]
+# Dev tooling pinned exactly to the verified 3.12 venv.
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.15.21",
+    "mypy==2.3.0",
+    "jsonschema==4.26.0",
+    "referencing==0.37.0",
+]
+
+[project.scripts]
+npi = "nightly_photo_intelligence_pipeline.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"nightly_photo_intelligence_pipeline" = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+# Delivered contract tools are not N0 implementation code; exclude from lint.
+extend-exclude = [
+    "fixtures",
+    "examples",
+    "reports",
+    "research",
+    "openclaw",
+    "tools/verify_handoff.py",
+    "tools/print_authorization.py",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4", "PL"]
+# B008: Typer requires typer.Option() in argument defaults (framework pattern).
+# UP042: keep the proven `str, Enum` pattern; StrEnum refactor risks subtle behavior changes.
+# PLC0415: intentional local imports for soft deps (PIL) and lazy loading.
+ignore = ["PLR0913", "PLR2004", "PLR0912", "PLR0915", "PLC0415", "B008", "UP042"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["E501", "PLR2004", "S101"]
+"tools/run_quality.py" = ["PLR2004"]
+"tools/sensitive_file_scan.py" = ["PLR2004"]
+
+[tool.ruff.format]
+line-ending = "lf"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+no_implicit_optional = true
+files = ["src/nightly_photo_intelligence_pipeline"]
+exclude = "fixtures/|examples/|reports/|research/"
+
+[[tool.mypy.overrides]]
+module = ["PIL.*", "yaml.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra --strict-markers --strict-config"
+markers = [
+    "acceptance: N0 acceptance test mapped to an AT-N0-* id",
+    "negative: negative / security test expected to fail or refuse",
+]

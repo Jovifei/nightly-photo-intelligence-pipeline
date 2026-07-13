@@ -1,0 +1,29 @@
+contract_version: "1.0"
+phase:
+  id: "N4"
+  title: "三类故事与导演提示"
+  status: "LOCKED"
+data_gate:
+  id: "G1_CALIBRATION_20"
+  status: "LOCKED_OR_SEPARATELY_CONTROLLED"
+objective: >
+  基于已验证事实生成 safe/narrative/dynamic，以及 standard/dramatic/plan_b/technical， 评测可执行性、Plan B 简化和受限断言。
+authorization_rule: >
+  本文件仅用于规划。只有 Owner 更新 PROJECT_STATE.json 并提供范围明确的批准记录后才可执行。
+prerequisites:
+  - "N3 owner approval"
+  - "G1 remains valid"
+  - "prompt versions approved"
+forbidden_while_locked:
+  - "advance_to_100_without_gate"
+  - "invent_real_intent_or_psychology"
+  - "auto_approve"
+  - "cloud_ai"
+completion_does_not:
+  - "authorize_next_phase"
+  - "authorize_larger_data_gate"
+  - "authorize_model_download"
+  - "authorize_openclaw"
+mandatory_stop:
+  value: true
+  rule: "完成本阶段后停止并等待 Owner；不得自动推进。"

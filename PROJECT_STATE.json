@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0",
+  "project": {
+    "slug": "nightly-photo-intelligence-pipeline",
+    "name_zh": "夜间摄影灵感分析流水线",
+    "repository_relationship": "INDEPENDENT_FROM_ai-photography-director-app"
+  },
+  "handoff": {
+    "version": "1.0.0",
+    "generated_on": "2026-07-12",
+    "integrity_manifest": "MANIFEST.sha256"
+  },
+  "authorization": {
+    "phase": {
+      "id": "N0",
+      "status": "AUTHORIZED"
+    },
+    "data_gate": {
+      "id": "G0_THREE_SYNTHETIC_FIXTURES",
+      "status": "AUTHORIZED"
+    },
+    "real_photo_access": "NOT_AUTHORIZED",
+    "network_access": "DENY_BY_DEFAULT",
+    "large_model_downloads": "NOT_AUTHORIZED",
+    "cloud_image_processing": "FORBIDDEN",
+    "openclaw_activation": "NOT_AUTHORIZED",
+    "git_remote_write": "NOT_AUTHORIZED",
+    "system_configuration_changes": "NOT_AUTHORIZED"
+  },
+  "locked": {
+    "phases": [
+      "N1",
+      "N2",
+      "N3",
+      "N4",
+      "N5",
+      "N6",
+      "N7",
+      "N8"
+    ],
+    "data_gates": [
+      "G1_CALIBRATION_20",
+      "G2_PILOT_100",
+      "G3_FULL_LIBRARY"
+    ]
+  },
+  "required_stop_after": {
+    "phase": "N0",
+    "condition": "ONE_ISOLATED_COMMIT_AND_REQUIRED_EVIDENCE_COMPLETE",
+    "next_action": "WAIT_FOR_OWNER_APPROVAL"
+  }
+}

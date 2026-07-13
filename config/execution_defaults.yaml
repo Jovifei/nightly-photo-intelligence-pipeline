@@ -1,0 +1,30 @@
+schema_version: "1.0"
+local_first: true
+network:
+  default: "DENY"
+  cloud_image_processing: false
+paths:
+  source_root: null
+  runtime_root: null
+  allow_source_symlink: false
+  allow_file_symlink: false
+  redact_absolute_paths: true
+database:
+  engine: "sqlite"
+  foreign_keys: true
+  busy_timeout_ms: 5000
+  journal_mode_candidate: "WAL"
+  note: "N0 must verify filesystem suitability before adopting WAL."
+ingest:
+  allowed_extensions_candidate: [".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff", ".heic"]
+  sniff_media_type: true
+  hash_chunk_bytes: 1048576
+  dry_run_mutates_database: false
+telemetry:
+  enabled: false
+review:
+  automatic_approval: false
+export:
+  include_original_image: false
+  approved_only: true
+  absolute_paths_forbidden: true

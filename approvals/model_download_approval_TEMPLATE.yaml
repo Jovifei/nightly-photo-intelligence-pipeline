@@ -1,0 +1,24 @@
+schema_version: "1.0"
+approval_type: "MODEL_DOWNLOAD"
+status: "NOT_APPROVED"
+candidate_id: null
+purpose: null
+owner_id: null
+approved_at_utc: null
+source:
+  official_url: null
+  exact_revision: null
+files:
+  - relative_target_path: null
+    expected_sha256: null
+    expected_size_bytes: null
+licenses:
+  code: null
+  weights: null
+  training_data_notes: null
+network_allowlist: []
+download_target: "<RUNTIME_ROOT>/models"
+allowed_data_gate: null
+benchmark_only: true
+expires_at_utc: null
+owner_statement: null

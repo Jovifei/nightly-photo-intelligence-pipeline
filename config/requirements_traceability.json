@@ -1,0 +1,147 @@
+{
+  "schema_version": "1.0",
+  "requirements": [
+    {
+      "id": "FR-ING-001",
+      "phase": "N0",
+      "tests": [
+        "AT-N0-CLI-01",
+        "AT-N0-IDEM-01"
+      ],
+      "design": [
+        "docs/11_cli_contract.md",
+        "docs/13_read_only_source_protection.md"
+      ]
+    },
+    {
+      "id": "FR-ING-002",
+      "phase": "N0",
+      "tests": [
+        "AT-N0-HASH-01"
+      ],
+      "design": [
+        "docs/08_pipeline_stage_design.md"
+      ]
+    },
+    {
+      "id": "FR-ING-003",
+      "phase": "N0",
+      "tests": [
+        "AT-N0-HASH-02"
+      ],
+      "design": [
+        "research/technology_decision_matrix.md"
+      ]
+    },
+    {
+      "id": "FR-ING-005",
+      "phase": "N0",
+      "tests": [
+        "AT-N0-SEC-02"
+      ],
+      "design": [
+        "docs/13_read_only_source_protection.md"
+      ]
+    },
+    {
+      "id": "FR-ING-006",
+      "phase": "N0",
+      "tests": [
+        "AT-N0-SEC-01"
+      ],
+      "design": [
+        "docs/13_read_only_source_protection.md"
+      ]
+    },
+    {
+      "id": "FR-ING-007",
+      "phase": "N0",
+      "tests": [
+        "AT-N0-IDEM-01"
+      ],
+      "design": [
+        "docs/08_pipeline_stage_design.md"
+      ]
+    },
+    {
+      "id": "FR-STA-001",
+      "phase": "N0",
+      "tests": [
+        "AT-N0-STATE-01"
+      ],
+      "design": [
+        "docs/09_data_model_and_state_machine.md"
+      ]
+    },
+    {
+      "id": "FR-STA-004",
+      "phase": "N0",
+      "tests": [
+        "AT-N0-REC-01"
+      ],
+      "design": [
+        "docs/21_observability_resume_and_failure_policy.md"
+      ]
+    },
+    {
+      "id": "FR-ANA-002",
+      "phase": "N2",
+      "tests": [
+        "AT-N2-POSE-SOURCE"
+      ],
+      "design": [
+        "docs/17_pose_segmentation_vlm_strategy.md"
+      ]
+    },
+    {
+      "id": "FR-ANA-006",
+      "phase": "N4",
+      "tests": [
+        "AT-N4-STORY-TRIPLE"
+      ],
+      "design": [
+        "docs/10_photo_intelligence_schema.md"
+      ]
+    },
+    {
+      "id": "FR-REV-001",
+      "phase": "N5",
+      "tests": [
+        "AT-N5-REVIEW-CARD"
+      ],
+      "design": [
+        "docs/19_human_review_workflow.md"
+      ]
+    },
+    {
+      "id": "FR-EXP-001",
+      "phase": "N5",
+      "tests": [
+        "AT-N5-APPROVED-ONLY"
+      ],
+      "design": [
+        "docs/04_export_contract.md"
+      ]
+    },
+    {
+      "id": "NFR-SEC-001",
+      "phase": "ALL",
+      "tests": [
+        "SEC-NETWORK-DENY"
+      ],
+      "design": [
+        "docs/14_privacy_security_threat_model.md"
+      ]
+    },
+    {
+      "id": "NFR-INT-001",
+      "phase": "N7",
+      "tests": [
+        "AT-N7-BUNDLE-CONTRACT"
+      ],
+      "design": [
+        "docs/22_app_integration_boundary.md"
+      ]
+    }
+  ]
+}

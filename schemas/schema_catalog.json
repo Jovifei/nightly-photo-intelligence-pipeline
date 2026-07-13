@@ -1,0 +1,46 @@
+{
+  "schema_set": "npi-handoff-v1.0",
+  "draft": "https://json-schema.org/draft/2020-12/schema",
+  "schemas": [
+    {
+      "file": "common_v1.schema.json",
+      "purpose": "shared definitions"
+    },
+    {
+      "file": "pose_template_v1.schema.json",
+      "purpose": "pose data from professional/deterministic producer"
+    },
+    {
+      "file": "director_prompts_v1.schema.json",
+      "purpose": "four director prompt channels"
+    },
+    {
+      "file": "review_record_v1.schema.json",
+      "purpose": "human review and history"
+    },
+    {
+      "file": "provenance_v1.schema.json",
+      "purpose": "code/model/prompt/license provenance"
+    },
+    {
+      "file": "photo_intelligence_item_v1.schema.json",
+      "purpose": "per-image knowledge item"
+    },
+    {
+      "file": "photo_intelligence_bundle_v1.schema.json",
+      "purpose": "App release manifest"
+    },
+    {
+      "file": "run_report_v1.schema.json",
+      "purpose": "run summary"
+    },
+    {
+      "file": "task_contract_v1.schema.json",
+      "purpose": "phase task core fields"
+    },
+    {
+      "file": "data_gate_manifest_v1.schema.json",
+      "purpose": "authorized asset manifest"
+    }
+  ]
+}

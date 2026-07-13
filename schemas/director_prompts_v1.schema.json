@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/director_prompts_v1.schema.json",
+  "title": "NPI Director Prompts v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "language",
+    "standard_guidance",
+    "dramatic_guidance",
+    "plan_b",
+    "photographer_technical"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "language": {
+      "const": "zh-CN"
+    },
+    "standard_guidance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lines",
+        "evidence_refs"
+      ],
+      "properties": {
+        "lines": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common_v1.schema.json#/$defs/evidence_ref"
+          }
+        }
+      }
+    },
+    "dramatic_guidance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lines",
+        "evidence_refs",
+        "fictional_frame"
+      ],
+      "properties": {
+        "lines": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common_v1.schema.json#/$defs/evidence_ref"
+          }
+        },
+        "fictional_frame": {
+          "const": true
+        }
+      }
+    },
+    "plan_b": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lines",
+        "simplification_reason",
+        "evidence_refs"
+      ],
+      "properties": {
+        "lines": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          }
+        },
+        "simplification_reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common_v1.schema.json#/$defs/evidence_ref"
+          }
+        }
+      }
+    },
+    "photographer_technical": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lines",
+        "evidence_refs"
+      ],
+      "properties": {
+        "lines": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common_v1.schema.json#/$defs/evidence_ref"
+          }
+        }
+      }
+    }
+  }
+}

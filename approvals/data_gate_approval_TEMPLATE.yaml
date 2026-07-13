@@ -1,0 +1,14 @@
+schema_version: "1.0"
+approval_type: "DATA_GATE"
+status: "NOT_APPROVED"
+data_gate_id: "G1_CALIBRATION_20"
+owner_id: null
+approved_at_utc: null
+manifest:
+  path: null
+  sha256: null
+  asset_count: null
+  source_root_fingerprint: null
+allowed_phases: []
+expires_at_utc: null
+owner_statement: null

@@ -1,0 +1,184 @@
+contract_version: "1.0"
+phase:
+  id: "N0"
+  title: "环境核验与安全工程脚手架"
+  status: "AUTHORIZED"
+data_gate:
+  id: "G0_THREE_SYNTHETIC_FIXTURES"
+  status: "AUTHORIZED"
+objective: >
+  在不访问真实收藏、不下载模型、不修改系统环境的前提下，建立安全、typed、
+  可测试、可恢复的本地工程底座，并用三张合成 fixture 提供可审计证据。
+
+mandatory_reading:
+  - "AGENTS.md"
+  - "CLAUDE.md"
+  - "MASTER_EXECUTION_CONTRACT.md"
+  - "PROJECT_CHARTER.md"
+  - "docs/01_two_project_relationship.md"
+  - "docs/02_timeline_and_gates.md"
+  - "docs/03_architecture_and_pipeline.md"
+  - "docs/04_export_contract.md"
+  - "OWNER_INPUTS_REQUIRED.md"
+  - "docs/13_read_only_source_protection.md"
+  - "docs/20_testing_and_quality_strategy.md"
+  - "docs/24_definition_of_done.md"
+
+allowed_actions:
+  - "run_offline_handoff_integrity_checks"
+  - "inspect_os_wsl_python_git_docker_nvidia_read_only"
+  - "initialize_local_git_repository"
+  - "create_recommended_directories"
+  - "create_minimal_typed_python_package"
+  - "implement_npi_preflight"
+  - "implement_npi_status"
+  - "implement_npi_ingest_dry_run_only"
+  - "create_sqlite_state_skeleton"
+  - "implement_streaming_sha256_interface"
+  - "implement_versioned_perceptual_hash_interface"
+  - "implement_source_read_only_guard"
+  - "use_only_three_packaged_synthetic_fixtures"
+  - "add_pytest_lint_typecheck_and_one_quality_command"
+  - "write_required_reports"
+  - "create_one_local_git_commit"
+
+forbidden_actions:
+  - "access_or_scan_real_photo_library"
+  - "process_any_owner_photo"
+  - "download_mmpose_rtmpose_rtmw"
+  - "download_sam_or_sam2"
+  - "download_any_vlm_or_embedding_model"
+  - "download_large_docker_images"
+  - "connect_to_cloud_ai_or_upload_images"
+  - "modify_nvidia_driver"
+  - "modify_system_wsl_configuration"
+  - "modify_system_docker_configuration"
+  - "grant_or_use_docker_socket_for_openclaw"
+  - "integrate_or_activate_openclaw"
+  - "modify_ai_photography_director_app"
+  - "create_shared_database_or_import_app_business_source"
+  - "run_20_100_or_full_library"
+  - "create_remote_repository_push_merge_or_pull_request"
+  - "train_or_finetune_models"
+  - "expand_scope_without_owner_approval"
+
+environment_inspection:
+  rules:
+    - "Commands must be observational and listed in the report."
+    - "Do not install or upgrade system components."
+    - "Do not pull a container image."
+    - "Docker GPU execution may be reported SKIPPED if no approved local image exists."
+    - "Redact usernames, hostnames, home paths, serials, and tokens."
+  suggested_checks:
+    - "uname / os-release / WSL indicators"
+    - "python --version and executable provenance"
+    - "git --version"
+    - "docker version and docker compose version if already available"
+    - "nvidia-smi if already available"
+    - "disk free space"
+    - "project root location and repository independence"
+    - "source/runtime overlap guard using fixtures"
+    - "handoff manifest integrity"
+
+implementation_requirements:
+  package:
+    python: "3.11 or 3.12"
+    layout: "src"
+    typing: "strict enough that public N0 interfaces are typed"
+    cli_framework: "Typer preferred; if unavailable offline, record blocker rather than silently replace contract"
+  cli:
+    - command: "npi preflight"
+      behavior: "read-only checks; no remediation"
+    - command: "npi status"
+      behavior: "safe empty/nonempty SQLite summary without absolute paths"
+    - command: "npi ingest --input <DIR> --dry-run"
+      behavior: "read-only fingerprint/duplicate preview; no DB asset mutation"
+    - command: "npi ingest --input <DIR>"
+      behavior: "exit code 8; N1 gate not authorized"
+  persistence:
+    engine: "SQLite"
+    minimum_tables:
+      - "metadata"
+      - "assets"
+      - "asset_sources"
+      - "stage_runs"
+      - "state_transitions"
+      - "outputs"
+    requirements:
+      - "schema version"
+      - "foreign keys enabled"
+      - "transactions"
+      - "append-only transition history"
+      - "reopen/recovery test"
+  hashing:
+    source_sha256: "streaming, exact bytes"
+    perceptual_hash: "interface includes algorithm name and implementation version"
+    note: "N0 may use a lightweight implementation but must not freeze production algorithm without N1 decision"
+  source_protection:
+    - "source and runtime cannot overlap"
+    - "deny root symlink and escaping file symlink"
+    - "binary read-only open"
+    - "no chmod/move/delete/write-back"
+    - "pre/post size mtime_ns and sha256 fixture evidence"
+    - "logs redact source absolute path"
+
+fixtures:
+  root: "fixtures/three_image_smoke_set"
+  manifest: "fixtures/fixture_manifest.json"
+  maximum_files: 3
+  real_photos_allowed: false
+
+required_tests:
+  - id: "AT-N0-HO-01"
+  - id: "AT-N0-ENV-01"
+  - id: "AT-N0-CLI-01"
+  - id: "AT-N0-HASH-01"
+  - id: "AT-N0-HASH-02"
+  - id: "AT-N0-IDEM-01"
+  - id: "AT-N0-DB-01"
+  - id: "AT-N0-STATE-01"
+  - id: "AT-N0-REC-01"
+  - id: "AT-N0-SCHEMA-01"
+  - id: "AT-N0-SCHEMA-02"
+  - id: "AT-N0-SEC-01"
+  - id: "AT-N0-SEC-02"
+  - id: "AT-N0-SEC-03"
+  - id: "AT-N0-SEC-04"
+  - id: "AT-N0-LOG-01"
+  - id: "AT-N0-GATE-01"
+  - id: "AT-N0-GATE-02"
+  - id: "AT-N0-GIT-01"
+
+required_deliverables:
+  - "reports/N0_environment_report.md"
+  - "reports/N0_test_evidence.md"
+  - "reports/N0_unresolved_issues.md"
+  - "reports/N1_detailed_plan.md"
+  - "pyproject.toml"
+  - "src/nightly_photo_intelligence_pipeline/"
+  - "tests/"
+  - "one unified quality command"
+  - "one isolated local commit"
+
+acceptance:
+  - "All required tests have truthful PASS/FAIL/SKIPPED/NOT_AVAILABLE evidence."
+  - "No source fixture content, size, or mtime changes."
+  - "Dry-run does not create asset rows."
+  - "Repeated dry-run is deterministic."
+  - "Valid schema example passes; invalid examples fail for expected reasons."
+  - "SQLite reopens and recognizes interrupted work."
+  - "No absolute personal paths, databases, logs, weights, tokens, or generated images are tracked."
+  - "PROJECT_STATE remains N0 authorized and N1-N8 locked."
+  - "No real photo access, model download, cloud use, OpenClaw integration, or main App modification occurred."
+
+commit:
+  count: 1
+  suggested_message: "chore(n0): scaffold safe local pipeline foundation"
+  push_allowed: false
+  merge_allowed: false
+
+stop_condition:
+  mandatory: true
+  after: "required deliverables, tests, evidence, and one commit"
+  message: "N0_COMPLETE_AWAITING_OWNER_APPROVAL"
+  next_phase_action: "DO_NOT_START_N1"

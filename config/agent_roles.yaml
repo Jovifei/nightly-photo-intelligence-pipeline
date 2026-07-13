@@ -1,0 +1,46 @@
+schema_version: "1.0"
+single_source_of_truth: "MASTER_EXECUTION_CONTRACT.md"
+roles:
+  owner:
+    actor: "Jovi"
+    may:
+      - "authorize_phase"
+      - "authorize_data_gate"
+      - "approve_model_download"
+      - "approve_human_review"
+      - "activate_openclaw"
+      - "approve_git_remote_actions"
+  implementation_agent:
+    examples: ["Codex", "Claude Code when explicitly assigned"]
+    may:
+      - "execute_current_authorized_task"
+      - "write_tests_and_evidence"
+      - "create_one_local_commit_when_task_allows"
+    may_not:
+      - "authorize_itself"
+      - "expand_scope"
+      - "auto_approve_content"
+      - "access_locked_data"
+  reviewer_agent:
+    default: "Claude Code"
+    may:
+      - "review_diff_and_evidence"
+      - "report_findings"
+    may_not:
+      - "change_gates"
+      - "mark_unverified_as_pass"
+      - "replace_human_photography_review"
+  scheduler:
+    actor: "OpenClaw"
+    current_status: "NOT_AUTHORIZED"
+    future_scope:
+      - "one_allowlisted_fixed_wrapper"
+      - "read_redacted_status"
+      - "send_alerts_and_morning_summary"
+    never:
+      - "docker_socket"
+      - "raw_photo_access"
+      - "model_tokens"
+      - "ssh_keys"
+      - "git_merge"
+      - "administrator_rights"

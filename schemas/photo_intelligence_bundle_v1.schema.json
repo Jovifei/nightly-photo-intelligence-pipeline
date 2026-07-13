@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/photo_intelligence_bundle_v1.schema.json",
+  "title": "Photo Intelligence Bundle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bundle_schema_version",
+    "release_id",
+    "generated_at",
+    "producer",
+    "target",
+    "item_count",
+    "items",
+    "review_summary",
+    "integrity",
+    "provenance"
+  ],
+  "properties": {
+    "bundle_schema_version": {
+      "const": "1.0"
+    },
+    "release_id": {
+      "type": "string",
+      "pattern": "^npi-[0-9]{8}-[a-z0-9-]{3,64}$"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project",
+        "code_commit"
+      ],
+      "properties": {
+        "project": {
+          "const": "nightly-photo-intelligence-pipeline"
+        },
+        "code_commit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{7,40}$"
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "consumer",
+        "contract"
+      ],
+      "properties": {
+        "consumer": {
+          "const": "ai-photography-director-app"
+        },
+        "contract": {
+          "const": "PHOTO_INTELLIGENCE_BUNDLE_V1"
+        }
+      }
+    },
+    "item_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "items": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "asset_id",
+          "item_path",
+          "sha256",
+          "review_status"
+        ],
+        "properties": {
+          "asset_id": {
+            "$ref": "common_v1.schema.json#/$defs/asset_id"
+          },
+          "item_path": {
+            "$ref": "common_v1.schema.json#/$defs/relative_path"
+          },
+          "sha256": {
+            "$ref": "common_v1.schema.json#/$defs/sha256"
+          },
+          "review_status": {
+            "const": "APPROVED"
+          }
+        }
+      }
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "asset_id",
+          "role",
+          "path",
+          "media_type",
+          "sha256",
+          "size_bytes"
+        ],
+        "properties": {
+          "asset_id": {
+            "$ref": "common_v1.schema.json#/$defs/asset_id"
+          },
+          "role": {
+            "enum": [
+              "THUMBNAIL",
+              "SKELETON_OVERLAY",
+              "CONTOUR_OVERLAY",
+              "PERSON_MASK",
+              "PERSON_CUTOUT",
+              "BACKGROUND_ONLY"
+            ]
+          },
+          "path": {
+            "$ref": "common_v1.schema.json#/$defs/relative_path"
+          },
+          "media_type": {
+            "type": "string",
+            "pattern": "^image/"
+          },
+          "sha256": {
+            "$ref": "common_v1.schema.json#/$defs/sha256"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "review_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approved",
+        "rejected",
+        "excluded_not_approved"
+      ],
+      "properties": {
+        "approved": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rejected": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "excluded_not_approved": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "checksums_file",
+        "algorithm",
+        "scope"
+      ],
+      "properties": {
+        "checksums_file": {
+          "const": "CHECKSUMS.sha256"
+        },
+        "algorithm": {
+          "const": "SHA-256"
+        },
+        "scope": {
+          "const": "ALL_RELEASE_FILES_EXCEPT_CHECKSUMS_FILE"
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_set",
+        "release_config_sha256"
+      ],
+      "properties": {
+        "schema_set": {
+          "type": "string",
+          "minLength": 1
+        },
+        "release_config_sha256": {
+          "$ref": "common_v1.schema.json#/$defs/sha256"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "item_count": {
+            "minimum": 0
+          }
+        }
+      },
+      "then": {}
+    }
+  ]
+}

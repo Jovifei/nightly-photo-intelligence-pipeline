@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/task_contract_v1.schema.json",
+  "title": "NPI Task Contract v1 (core fields)",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "phase",
+    "data_gate",
+    "objective"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "1.0"
+    },
+    "phase": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "pattern": "^N[0-8]$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "AUTHORIZED",
+            "LOCKED"
+          ]
+        }
+      }
+    },
+    "data_gate": {
+      "type": "object",
+      "required": [
+        "id",
+        "status"
+      ]
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

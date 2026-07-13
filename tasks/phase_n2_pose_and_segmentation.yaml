@@ -1,0 +1,30 @@
+contract_version: "1.0"
+phase:
+  id: "N2"
+  title: "Pose 与人物分割候选 Benchmark"
+  status: "LOCKED"
+data_gate:
+  id: "G1_CALIBRATION_20"
+  status: "LOCKED_OR_SEPARATELY_CONTROLLED"
+objective: >
+  在 exact revision、许可、下载和数据批准后，对专业 Pose 与分割候选进行 20 张校准 Benchmark， 选择生产 adapter 或记录拒绝。
+authorization_rule: >
+  本文件仅用于规划。只有 Owner 更新 PROJECT_STATE.json 并提供范围明确的批准记录后才可执行。
+prerequisites:
+  - "N1 owner approval"
+  - "G1 manifest approval"
+  - "model download approvals"
+forbidden_while_locked:
+  - "unapproved_downloads"
+  - "vlm_story_generation"
+  - "100_or_full_run"
+  - "openclaw"
+  - "app_changes"
+completion_does_not:
+  - "authorize_next_phase"
+  - "authorize_larger_data_gate"
+  - "authorize_model_download"
+  - "authorize_openclaw"
+mandatory_stop:
+  value: true
+  rule: "完成本阶段后停止并等待 Owner；不得自动推进。"

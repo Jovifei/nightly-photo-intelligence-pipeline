@@ -1,0 +1,11 @@
+schema_version: "1.0"
+approval_type: "GIT_REMOTE_ACTION"
+status: "NOT_APPROVED"
+owner_id: null
+approved_at_utc: null
+repository: "nightly-photo-intelligence-pipeline"
+allowed_action: null
+allowed_branch: null
+allowed_commit: null
+expires_at_utc: null
+owner_statement: null

@@ -1,0 +1,45 @@
+schema_version: "1.0"
+global_authorization:
+  downloads: "NOT_AUTHORIZED"
+  production_use: "NOT_AUTHORIZED"
+  rule: "Candidate listing is not approval."
+candidates:
+  - id: "pose-mmpose-rtmpose-family"
+    purpose: "POSE"
+    official_source: "https://github.com/open-mmlab/mmpose"
+    exact_revision: null
+    code_license: "VERIFY_AT_ADOPTION"
+    weight_license: "VERIFY_PER_CHECKPOINT"
+    status: "RESEARCH_ONLY"
+  - id: "pose-mmpose-rtmw-family"
+    purpose: "WHOLE_BODY_POSE"
+    official_source: "https://github.com/open-mmlab/mmpose"
+    exact_revision: null
+    code_license: "VERIFY_AT_ADOPTION"
+    weight_license: "VERIFY_PER_CHECKPOINT"
+    status: "RESEARCH_ONLY"
+  - id: "segmentation-lightweight-tbd"
+    purpose: "PERSON_SEGMENTATION"
+    official_source: null
+    exact_revision: null
+    status: "RESEARCH_REQUIRED"
+  - id: "segmentation-sam2"
+    purpose: "FINE_SEGMENTATION"
+    official_source: "https://github.com/facebookresearch/sam2"
+    exact_revision: null
+    code_license: "VERIFY_AT_ADOPTION"
+    weight_license: "VERIFY_PER_CHECKPOINT"
+    status: "RESEARCH_ONLY"
+  - id: "vlm-qwen3-vl-2b-class"
+    purpose: "VISIBLE_FACTS_AND_LANGUAGE"
+    official_source: "https://github.com/QwenLM/Qwen3-VL"
+    model_card: "https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct"
+    exact_revision: null
+    code_license: "VERIFY_AT_ADOPTION"
+    weight_license: "VERIFY_MODEL_CARD_AT_EXACT_REVISION"
+    status: "RESEARCH_ONLY"
+  - id: "embedding-tbd"
+    purpose: "RETRIEVAL"
+    official_source: null
+    exact_revision: null
+    status: "DEFERRED_TO_N6"

@@ -1,0 +1,30 @@
+contract_version: "1.0"
+phase:
+  id: "N3"
+  title: "可见事实、构图光线影调与摄影解释"
+  status: "LOCKED"
+data_gate:
+  id: "G1_CALIBRATION_20"
+  status: "LOCKED_OR_SEPARATELY_CONTROLLED"
+objective: >
+  组合确定性计算与经批准的小型本地 VLM，生成 observed_facts、冲突与 photographic_interpretation， 完成 20 张事实准确性和越界评测。
+authorization_rule: >
+  本文件仅用于规划。只有 Owner 更新 PROJECT_STATE.json 并提供范围明确的批准记录后才可执行。
+prerequisites:
+  - "N2 owner approval"
+  - "G1 remains valid"
+  - "VLM approval if used"
+forbidden_while_locked:
+  - "unapproved_vlm"
+  - "pose_coordinates_from_vlm"
+  - "story_as_fact"
+  - "100_or_full_run"
+  - "cloud_ai"
+completion_does_not:
+  - "authorize_next_phase"
+  - "authorize_larger_data_gate"
+  - "authorize_model_download"
+  - "authorize_openclaw"
+mandatory_stop:
+  value: true
+  rule: "完成本阶段后停止并等待 Owner；不得自动推进。"

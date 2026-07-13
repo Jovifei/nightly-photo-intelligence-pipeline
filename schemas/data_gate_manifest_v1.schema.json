@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/data_gate_manifest_v1.schema.json",
+  "title": "NPI Data Gate Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "manifest_id",
+    "data_gate",
+    "created_at",
+    "source_root_fingerprint",
+    "max_assets",
+    "assets",
+    "approval_reference"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "manifest_id": {
+      "type": "string",
+      "pattern": "^npi-manifest-[A-Za-z0-9._-]+$"
+    },
+    "data_gate": {
+      "enum": [
+        "G0_THREE_SYNTHETIC_FIXTURES",
+        "G1_CALIBRATION_20",
+        "G2_PILOT_100",
+        "G3_FULL_LIBRARY"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_root_fingerprint": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 256
+    },
+    "max_assets": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "assets": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "asset_ref",
+          "source_relative_path",
+          "expected_sha256",
+          "size_bytes",
+          "media_type"
+        ],
+        "properties": {
+          "asset_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "source_relative_path": {
+            "$ref": "common_v1.schema.json#/$defs/relative_path"
+          },
+          "expected_sha256": {
+            "$ref": "common_v1.schema.json#/$defs/sha256"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "media_type": {
+            "type": "string",
+            "pattern": "^image/"
+          }
+        }
+      }
+    },
+    "approval_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "allowed_phases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "pattern": "^N[0-8]$"
+      }
+    },
+    "expires_at": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

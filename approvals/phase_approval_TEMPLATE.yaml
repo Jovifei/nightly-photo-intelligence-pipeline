@@ -1,0 +1,13 @@
+schema_version: "1.0"
+approval_type: "PHASE"
+status: "NOT_APPROVED"
+phase_id: "N1"
+owner_id: null
+approved_at_utc: null
+scope:
+  task_file: "tasks/phase_n1_ingest_state_machine.yaml"
+  allowed_actions: []
+  explicit_exclusions: []
+preconditions_evidence: []
+expires_at_utc: null
+owner_statement: null

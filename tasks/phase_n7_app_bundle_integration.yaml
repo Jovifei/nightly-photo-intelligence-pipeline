@@ -1,0 +1,29 @@
+contract_version: "1.0"
+phase:
+  id: "N7"
+  title: "App Bundle 合同集成"
+  status: "LOCKED"
+data_gate:
+  id: "G2_PILOT_100"
+  status: "LOCKED_OR_SEPARATELY_CONTROLLED"
+objective: >
+  以 fixture 和已审核 Bundle 实现跨仓库契约测试、App 原子导入和回滚；保持数据库和源码隔离。
+authorization_rule: >
+  本文件仅用于规划。只有 Owner 更新 PROJECT_STATE.json 并提供范围明确的批准记录后才可执行。
+prerequisites:
+  - "N6 owner approval"
+  - "app repository separately authorized"
+  - "bundle contract accepted"
+forbidden_while_locked:
+  - "shared_database"
+  - "business_source_imports"
+  - "pipeline_access_to_app_signing"
+  - "feedback_loop_v1"
+completion_does_not:
+  - "authorize_next_phase"
+  - "authorize_larger_data_gate"
+  - "authorize_model_download"
+  - "authorize_openclaw"
+mandatory_stop:
+  value: true
+  rule: "完成本阶段后停止并等待 Owner；不得自动推进。"

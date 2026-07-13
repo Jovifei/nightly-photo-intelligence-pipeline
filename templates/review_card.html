@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NPI Review Card — {{ asset_id }}</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:1200px;margin:2rem auto;padding:0 1rem;line-height:1.5}
+header{border-bottom:1px solid #bbb;margin-bottom:1rem}
+.grid{display:grid;grid-template-columns:minmax(280px,1fr) minmax(320px,1.4fr);gap:1.5rem}
+section{border:1px solid #ccc;border-radius:.5rem;padding:1rem;margin-bottom:1rem}
+img{max-width:100%;height:auto}
+.warning{font-weight:700}
+code{word-break:break-all}
+@media(max-width:800px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+<h1>Photo Intelligence Review</h1>
+<p>Asset: <code>{{ asset_id }}</code> · Schema: {{ schema_version }} · Review: {{ review_status }}</p>
+<p class="warning">候选故事和情绪是拍摄设定，不是原图真实意图或人物心理。</p>
+</header>
+<div class="grid">
+<div>
+<section><h2>本地缩略图</h2>{{ thumbnail_html }}</section>
+<section><h2>骨架 / 轮廓</h2>{{ overlays_html }}</section>
+<section><h2>来源与版本</h2>{{ provenance_html }}</section>
+</div>
+<div>
+<section><h2>Observed facts</h2>{{ observed_facts_html }}</section>
+<section><h2>Photographic interpretation</h2>{{ interpretation_html }}</section>
+<section><h2>三类故事</h2>{{ stories_html }}</section>
+<section><h2>导演提示</h2>{{ prompts_html }}</section>
+<section><h2>Uncertainties</h2>{{ uncertainties_html }}</section>
+<section><h2>审核记录</h2>{{ review_html }}</section>
+</div>
+</div>
+</body>
+</html>

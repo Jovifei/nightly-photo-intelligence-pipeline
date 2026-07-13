@@ -1,0 +1,23 @@
+schema_version: "1.0"
+approval_type: "OPENCLAW_ACTIVATION"
+status: "NOT_APPROVED"
+owner_id: null
+approved_at_utc: null
+required_evidence:
+  n8_completion_report: null
+  pilot_100_approval: null
+  least_privilege_negative_test_report: null
+wrapper:
+  exact_path: null
+  sha256: null
+allowed_read_paths: []
+allowed_command: null
+denied_capabilities:
+  - "docker_socket"
+  - "raw_photo_directory"
+  - "model_tokens"
+  - "ssh_private_keys"
+  - "git_write_or_merge"
+  - "administrator_or_sudo"
+expires_at_utc: null
+owner_statement: null

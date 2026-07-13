@@ -1,0 +1,14 @@
+{
+  "package_name": "nightly-photo-intelligence-pipeline-agent-handoff",
+  "project_name": "nightly-photo-intelligence-pipeline",
+  "project_name_zh": "夜间摄影灵感分析流水线",
+  "version": "1.0.0",
+  "generated_on": "2026-07-12",
+  "document_language": "zh-CN",
+  "contract_language": "English identifiers with Chinese normative text",
+  "authorized_phase": "N0",
+  "authorized_data_gate": "G0_THREE_SYNTHETIC_FIXTURES",
+  "network_default": "DENY",
+  "cloud_image_upload": "FORBIDDEN",
+  "large_model_downloads": "NOT_AUTHORIZED"
+}

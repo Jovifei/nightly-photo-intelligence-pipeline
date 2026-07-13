@@ -1,0 +1,32 @@
+schema_version: "1.0"
+gates:
+  G0_THREE_SYNTHETIC_FIXTURES:
+    status: "AUTHORIZED"
+    manifest: "fixtures/fixture_manifest.json"
+    max_assets: 3
+    owner_photos: false
+  G1_CALIBRATION_20:
+    status: "LOCKED"
+    max_assets: 20
+    requires:
+      - "owner_signed_manifest"
+      - "N1_acceptance"
+      - "source_read_only_evidence"
+  G2_PILOT_100:
+    status: "LOCKED"
+    max_assets: 100
+    requires:
+      - "G1_acceptance"
+      - "owner_signed_manifest"
+      - "model_and_prompt_versions_pinned"
+      - "recovery_drill"
+  G3_FULL_LIBRARY:
+    status: "LOCKED"
+    max_assets: 600
+    note: "Actual count comes from owner-approved manifest; 600 is not permission to enumerate a directory."
+    requires:
+      - "G2_acceptance"
+      - "N8_full_run_readiness"
+      - "owner_signed_manifest"
+      - "overnight_stop_thresholds"
+      - "disk_and_backup_confirmation"

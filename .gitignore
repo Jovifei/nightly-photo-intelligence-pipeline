@@ -1,0 +1,95 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*token*
+*secret*
+credentials*.json
+
+# Absolute-path/local configuration
+config/local*.yaml
+config/local*.json
+.local/
+.private/
+
+# Raw and derived photos: never commit
+data/
+raw/
+photos/
+photo_library/
+library/
+artifacts/
+outputs/
+thumbnails/
+masks/
+cutouts/
+embeddings/
+review_cards_generated/
+*.jpg
+*.jpeg
+*.heic
+*.webp
+*.tif
+*.tiff
+*.bmp
+*.avif
+*.npy
+*.npz
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.engine
+
+# Explicitly allow the three synthetic fixture PNG files
+!fixtures/
+!fixtures/**/*.png
+!examples/**/*.json
+!examples/**/*.md
+!templates/**/*.html
+
+# Models and caches
+models/
+weights/
+checkpoints/
+.cache/
+huggingface/
+torch_cache/
+triton_cache/
+
+# Runtime state
+runtime/
+state/
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+*.log
+reports/generated/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+
+# IDE/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

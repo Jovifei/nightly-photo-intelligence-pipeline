@@ -1,0 +1,30 @@
+contract_version: "1.0"
+phase:
+  id: "N5"
+  title: "人工审核、静态卡片与 Bundle 导出"
+  status: "LOCKED"
+data_gate:
+  id: "G1_CALIBRATION_20"
+  status: "LOCKED_OR_SEPARATELY_CONTROLLED"
+objective: >
+  实现 HTML Review Card、人工修改历史、APPROVED-only exporter、Bundle v1 完整性与 release 回滚。 不自动进入 100 张。
+authorization_rule: >
+  本文件仅用于规划。只有 Owner 更新 PROJECT_STATE.json 并提供范围明确的批准记录后才可执行。
+prerequisites:
+  - "N4 owner approval"
+  - "review policy approved"
+  - "bundle schema accepted"
+forbidden_while_locked:
+  - "auto_approval"
+  - "export_unapproved_items"
+  - "share_pipeline_database"
+  - "modify_app"
+  - "openclaw"
+completion_does_not:
+  - "authorize_next_phase"
+  - "authorize_larger_data_gate"
+  - "authorize_model_download"
+  - "authorize_openclaw"
+mandatory_stop:
+  value: true
+  rule: "完成本阶段后停止并等待 Owner；不得自动推进。"

@@ -1,0 +1,31 @@
+contract_version: "1.0"
+phase:
+  id: "N1"
+  title: "导入、去重、任务引擎与恢复"
+  status: "LOCKED"
+data_gate:
+  id: "G0_THREE_SYNTHETIC_FIXTURES"
+  status: "LOCKED_OR_SEPARATELY_CONTROLLED"
+objective: >
+  正式非 dry-run ingest、manifest 授权、SQLite 任务领取/lease、精确与感知重复、 错误分类、resume、报告、备份与恢复。模型下载仍禁止。
+authorization_rule: >
+  本文件仅用于规划。只有 Owner 更新 PROJECT_STATE.json 并提供范围明确的批准记录后才可执行。
+prerequisites:
+  - "N0 owner approval"
+  - "source/runtime protection decision"
+  - "N1 task status changed to AUTHORIZED"
+forbidden_while_locked:
+  - "model_downloads"
+  - "pose_inference"
+  - "vlm_inference"
+  - "openclaw"
+  - "app_changes"
+  - "pilot_or_full_run"
+completion_does_not:
+  - "authorize_next_phase"
+  - "authorize_larger_data_gate"
+  - "authorize_model_download"
+  - "authorize_openclaw"
+mandatory_stop:
+  value: true
+  rule: "完成本阶段后停止并等待 Owner；不得自动推进。"

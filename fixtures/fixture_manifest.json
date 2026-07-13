@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "fixture_set": "G0_THREE_SYNTHETIC_FIXTURES",
+  "generated_on": "2026-07-12",
+  "purpose": "N0 ingest/hash/idempotency/state/recovery tests only",
+  "third_party_source": false,
+  "model_benchmark_use": false,
+  "files": [
+    {
+      "name": "fixture_a_corridor_abstract.png",
+      "sha256": "ff0ec4d4baeb0a83495afaa62b65dc58110d83f9e2da14fd19e4d50959430157",
+      "size_bytes": 2702,
+      "media_type": "image/png",
+      "width": 320,
+      "height": 240,
+      "synthetic": true,
+      "contains_personal_data": false,
+      "expected_exact_duplicate_group": "dup-a"
+    },
+    {
+      "name": "fixture_a_exact_copy.png",
+      "sha256": "ff0ec4d4baeb0a83495afaa62b65dc58110d83f9e2da14fd19e4d50959430157",
+      "size_bytes": 2702,
+      "media_type": "image/png",
+      "width": 320,
+      "height": 240,
+      "synthetic": true,
+      "contains_personal_data": false,
+      "expected_exact_duplicate_group": "dup-a"
+    },
+    {
+      "name": "fixture_b_tonal_abstract.png",
+      "sha256": "9544c610264418316c22143442e8a3e308e076eca2f19d0e51cf67baa3489097",
+      "size_bytes": 2439,
+      "media_type": "image/png",
+      "width": 240,
+      "height": 320,
+      "synthetic": true,
+      "contains_personal_data": false,
+      "expected_exact_duplicate_group": null
+    }
+  ]
+}

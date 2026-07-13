@@ -1,0 +1,477 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/photo_intelligence_item_v1.schema.json",
+  "title": "Photo Intelligence Item v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "asset_id",
+    "source_reference",
+    "observed_facts",
+    "photographic_interpretation",
+    "story_candidates",
+    "pose_template",
+    "director_prompts",
+    "uncertainties",
+    "review",
+    "provenance",
+    "output_hashes"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "asset_id": {
+      "$ref": "common_v1.schema.json#/$defs/asset_id"
+    },
+    "source_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_sha256",
+        "perceptual_hash",
+        "perceptual_hash_algorithm",
+        "sanitized_name",
+        "media_type",
+        "width",
+        "height",
+        "exif_present"
+      ],
+      "properties": {
+        "source_sha256": {
+          "$ref": "common_v1.schema.json#/$defs/sha256"
+        },
+        "perceptual_hash": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256,
+          "pattern": "^[a-fA-F0-9]+$"
+        },
+        "perceptual_hash_algorithm": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sanitized_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180,
+          "pattern": "^[^/\\\\]+$"
+        },
+        "media_type": {
+          "enum": [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/heic",
+            "image/tiff"
+          ]
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "exif_present": {
+          "type": "boolean"
+        },
+        "exif_observed": {
+          "type": "object",
+          "description": "Only values actually present in source EXIF; never inferred.",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "integer",
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "observed_facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "person_count",
+        "processability",
+        "facts"
+      ],
+      "properties": {
+        "person_count": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 50
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "processability": {
+          "enum": [
+            "SUPPORTED_SINGLE_PERSON",
+            "SUPPORTED_MULTI_PERSON",
+            "NO_PERSON",
+            "SCREENSHOT",
+            "COLLAGE",
+            "SEVERE_OCCLUSION",
+            "LOW_RESOLUTION",
+            "DUPLICATE",
+            "MANUAL_REVIEW",
+            "UNSUPPORTED_FORMAT"
+          ]
+        },
+        "facts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "fact_id",
+              "kind",
+              "value",
+              "confidence",
+              "producer",
+              "evidence"
+            ],
+            "properties": {
+              "fact_id": {
+                "type": "string",
+                "pattern": "^fact:[A-Za-z0-9._:-]+$"
+              },
+              "kind": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "value": {},
+              "confidence": {
+                "$ref": "common_v1.schema.json#/$defs/confidence"
+              },
+              "producer": {
+                "enum": [
+                  "DETERMINISTIC",
+                  "POSE_MODEL",
+                  "SEGMENTATION_MODEL",
+                  "VLM_VISIBLE_FACTS",
+                  "HUMAN"
+                ]
+              },
+              "evidence": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "photographic_interpretation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "insights",
+        "constraints"
+      ],
+      "properties": {
+        "insights": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "interpretation_id",
+              "category",
+              "text",
+              "confidence",
+              "evidence_refs"
+            ],
+            "properties": {
+              "interpretation_id": {
+                "type": "string",
+                "pattern": "^interp:[A-Za-z0-9._:-]+$"
+              },
+              "category": {
+                "enum": [
+                  "BACKGROUND_VALUE",
+                  "COMPOSITION_RESOURCE",
+                  "LIGHTING_USE",
+                  "TONAL_DIRECTION",
+                  "SPATIAL_LIMITATION"
+                ]
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "confidence": {
+                "$ref": "common_v1.schema.json#/$defs/confidence"
+              },
+              "evidence_refs": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "common_v1.schema.json#/$defs/evidence_ref"
+                }
+              }
+            }
+          }
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        }
+      }
+    },
+    "story_candidates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "safe",
+        "narrative",
+        "dynamic"
+      ],
+      "properties": {
+        "safe": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "title",
+            "scenario",
+            "feasibility",
+            "constraints",
+            "evidence_refs",
+            "fictional_candidate"
+          ],
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "scenario": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "feasibility": {
+              "$ref": "common_v1.schema.json#/$defs/confidence"
+            },
+            "constraints": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 200
+              }
+            },
+            "evidence_refs": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "common_v1.schema.json#/$defs/evidence_ref"
+              }
+            },
+            "fictional_candidate": {
+              "const": true
+            }
+          }
+        },
+        "narrative": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "title",
+            "scenario",
+            "feasibility",
+            "constraints",
+            "evidence_refs",
+            "fictional_candidate"
+          ],
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "scenario": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "feasibility": {
+              "$ref": "common_v1.schema.json#/$defs/confidence"
+            },
+            "constraints": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 200
+              }
+            },
+            "evidence_refs": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "common_v1.schema.json#/$defs/evidence_ref"
+              }
+            },
+            "fictional_candidate": {
+              "const": true
+            }
+          }
+        },
+        "dynamic": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "title",
+            "scenario",
+            "feasibility",
+            "constraints",
+            "evidence_refs",
+            "fictional_candidate"
+          ],
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "scenario": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "feasibility": {
+              "$ref": "common_v1.schema.json#/$defs/confidence"
+            },
+            "constraints": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 200
+              }
+            },
+            "evidence_refs": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "common_v1.schema.json#/$defs/evidence_ref"
+              }
+            },
+            "fictional_candidate": {
+              "const": true
+            }
+          }
+        }
+      }
+    },
+    "pose_template": {
+      "$ref": "pose_template_v1.schema.json"
+    },
+    "director_prompts": {
+      "$ref": "director_prompts_v1.schema.json"
+    },
+    "uncertainties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "uncertainty_id",
+          "category",
+          "description",
+          "severity",
+          "related_refs"
+        ],
+        "properties": {
+          "uncertainty_id": {
+            "type": "string",
+            "pattern": "^unc:[A-Za-z0-9._:-]+$"
+          },
+          "category": {
+            "enum": [
+              "LOW_CONFIDENCE",
+              "MODEL_CONFLICT",
+              "OCCLUSION",
+              "UNOBSERVABLE",
+              "LICENSE_UNKNOWN",
+              "OTHER"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "severity": {
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ]
+          },
+          "related_refs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "$ref": "review_record_v1.schema.json"
+    },
+    "provenance": {
+      "$ref": "provenance_v1.schema.json"
+    },
+    "output_hashes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_json_sha256"
+      ],
+      "properties": {
+        "item_json_sha256": {
+          "anyOf": [
+            {
+              "$ref": "common_v1.schema.json#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "artifacts": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "common_v1.schema.json#/$defs/sha256"
+          }
+        }
+      }
+    }
+  }
+}

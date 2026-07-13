@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/review_record_v1.schema.json",
+  "title": "NPI Review Record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "approved_by_human",
+    "history"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "status": {
+      "enum": [
+        "NEEDS_REVIEW",
+        "APPROVED",
+        "REJECTED"
+      ]
+    },
+    "approved_by_human": {
+      "type": "boolean"
+    },
+    "current_reviewer": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "reviewed_at": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "event_id",
+          "actor_type",
+          "actor_id",
+          "action",
+          "at",
+          "reason"
+        ],
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "actor_type": {
+            "enum": [
+              "HUMAN",
+              "SYSTEM"
+            ]
+          },
+          "actor_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "action": {
+            "enum": [
+              "CREATED",
+              "REQUESTED_REVIEW",
+              "APPROVED",
+              "REJECTED",
+              "EDITED",
+              "REVALIDATED"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "patch_path": {
+            "anyOf": [
+              {
+                "$ref": "common_v1.schema.json#/$defs/relative_path"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "APPROVED"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "approved_by_human": {
+            "const": true
+          }
+        },
+        "required": [
+          "current_reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "approved_by_human": {
+            "const": true
+          }
+        },
+        "required": [
+          "approved_by_human"
+        ]
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "const": "APPROVED"
+          }
+        }
+      }
+    }
+  ]
+}

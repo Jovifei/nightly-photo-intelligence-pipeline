@@ -1,0 +1,35 @@
+schema_version: "1.0"
+defaults:
+  max_attempts: 2
+  exponential_backoff: false
+  note: "Local batch jobs use explicit bounded retries, not unbounded daemon retries."
+errors:
+  DECODE_ERROR:
+    retry: false
+    terminal: "UNSUPPORTED_OR_NEEDS_REVIEW"
+  TIMEOUT:
+    retry: true
+    max_attempts: 2
+  CUDA_OOM:
+    retry: true
+    max_attempts: 2
+    approved_adjustment: "reduce_pixel_budget_or_batch_once"
+  INVALID_JSON:
+    retry: true
+    max_attempts: 2
+    approved_adjustment: "one_schema_repair_without_new_facts"
+  MODEL_CONFLICT:
+    retry: false
+    terminal: "NEEDS_REVIEW"
+  DISK_LOW:
+    retry: false
+    batch_action: "STOP_NEW_WORK"
+  SOURCE_INTEGRITY_CHANGED:
+    retry: false
+    batch_action: "SECURITY_STOP"
+  DATABASE_INTEGRITY_ERROR:
+    retry: false
+    batch_action: "STOP_AND_REPORT"
+  NETWORK_POLICY_VIOLATION:
+    retry: false
+    batch_action: "SECURITY_STOP"
