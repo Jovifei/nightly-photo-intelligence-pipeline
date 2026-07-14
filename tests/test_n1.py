@@ -225,7 +225,7 @@ def test_at_n1_heartbeat_extends_lease(db_path: Path) -> None:
     rid = store.claim_stage_run(
         asset_id=res.asset_id, stage_name="pose", lease_owner="w1", lease_seconds=60
     )
-    store.heartbeat(rid, lease_seconds=3600)
+    store.heartbeat(rid, lease_owner="w1", lease_seconds=3600)
     interrupted = store.identify_interrupted_runs()
     assert len(interrupted) == 0, "heartbeat should keep the lease valid"
     store.close()
@@ -248,19 +248,27 @@ def test_at_n1_retry_and_error_audit(db_path: Path) -> None:
         asset_id=res.asset_id, stage_name="pose", lease_owner="w1", lease_seconds=60
     )
     store.release_run(
-        rid, "FAILED", error_code="NPI_MODEL_TIMEOUT", error_redacted="pose model timeout"
+        rid,
+        "FAILED",
+        lease_owner="w1",
+        error_code="NPI_MODEL_TIMEOUT",
+        error_redacted="pose model timeout",
     )
     n = store.record_retry(
-        res.asset_id, error_code="NPI_MODEL_TIMEOUT", error_redacted="pose model timeout"
+        res.asset_id,
+        error_code="NPI_MODEL_TIMEOUT",
+        error_redacted="pose model timeout",
     )
     assert n == 1
     n2 = store.record_retry(
-        res.asset_id, error_code="NPI_MODEL_TIMEOUT", error_redacted="pose model timeout"
+        res.asset_id,
+        error_code="NPI_MODEL_TIMEOUT",
+        error_redacted="pose model timeout",
     )
     assert n2 == 2
     asset = store.get_asset(res.asset_id)
     assert asset["retry_count"] == 2
-    assert asset["last_error_code"] == "NPI_MODEL_TIMEOUT"
+    assert asset["last_error_code"] == "NPI_RETRY_EXHAUSTED"
     # Stage run timing audit.
     row = store.connection.execute(
         "SELECT finished_at, error_code FROM stage_runs WHERE stage_run_id = ?", (rid,)
@@ -276,12 +284,12 @@ def test_at_n1_retry_and_error_audit(db_path: Path) -> None:
 def test_at_n1_migration_repeatable(db_path: Path) -> None:
     """Running migrations twice is a no-op (idempotent)."""
     store = StateStore.open(db_path)
-    assert store.schema_version() == "1"
+    assert store.schema_version() == "3"
     applied = store.applied_migrations()
-    assert "v0" in applied and "v1" in applied
+    assert {"v0", "v1", "v2"}.issubset(set(applied))
     # Re-run initialize (calls run_migrations again).
     store.initialize()
-    assert store.schema_version() == "1"
+    assert store.schema_version() == "3"
     applied2 = store.applied_migrations()
     assert applied2 == applied
     store.close()
@@ -428,8 +436,8 @@ def test_at_n1_n0_baseline_immutable(project_root: Path) -> None:
 def test_at_n1_authorization_n1_g0_no_real_photos() -> None:
     auth = load_authorization()
     assert auth.phase_id == "N1" and auth.phase_authorized
-    assert auth.data_gate_id == "G0_THREE_SYNTHETIC_FIXTURES"
-    assert auth.max_assets == 3
-    assert auth.real_photo_access == "NOT_AUTHORIZED"
-    assert auth.exif_real_data_read == "NOT_AUTHORIZED"
+    assert auth.data_gate_id == "G1_CALIBRATION_20"
+    assert auth.max_assets == 20
+    assert auth.real_photo_access == "AUTHORIZED"
+    assert auth.exif_real_data_read == "AUTHORIZED_NON_SENSITIVE_ONLY"
     assert auth.large_model_downloads == "NOT_AUTHORIZED"

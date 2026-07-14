@@ -84,7 +84,7 @@ def is_reparse_point(path: Path) -> bool:
         try:
             attr = getattr(path.lstat(), "st_file_attributes", 0) or 0
         except OSError:
-            return False
+            return True
         return bool(attr & _REPARSE_POINT_ATTR)
     return False
 
@@ -123,7 +123,7 @@ def validate_roots(
     if not allow_source_symlink and is_reparse_point(src):
         raise SourceSymlinkEscapeError("source root is a symlink or reparse point")
     if not src.is_dir():
-        raise SourceRuntimeOverlapError(f"source root is not a directory: {src}")
+        raise SourceRuntimeOverlapError("source root is not a directory")
 
     rt = Path(runtime_root)
     sr = strict_realpath(src)
@@ -254,13 +254,9 @@ def open_source_file(
     cand = Path(candidate)
     ext = cand.suffix.lower()
     if allowed_extensions and ext not in allowed_extensions:
-        raise UnsupportedMediaError(
-            f"disallowed extension {ext!r} for {cand.name}",
-        )
+        raise UnsupportedMediaError("source extension is not allowed")
     if not allow_file_symlink and is_reparse_point(cand):
-        raise SourceSymlinkEscapeError(
-            f"source file is a symlink or reparse point: {cand.name}",
-        )
+        raise SourceSymlinkEscapeError("source entry is a symlink or reparse point")
     sr = strict_realpath(Path(source_root))
     cr = strict_realpath(cand)
     if not _is_descendant(cr, sr):
@@ -268,8 +264,11 @@ def open_source_file(
             "candidate path escapes the source root after resolution",
         )
     # Pre-stat on the path (follows to the real file; symlinks already rejected).
-    pre = FileIdentity.from_stat(os.stat(cand))
-    fd = open(cand, "rb")  # noqa: SIM115 - binary read-only; closed via handle
+    try:
+        pre = FileIdentity.from_stat(os.stat(cand))
+        fd = open(cand, "rb")  # noqa: SIM115 - binary read-only; closed via handle
+    except OSError:
+        raise SourceSymlinkEscapeError("source entry metadata or open failed") from None
     handle = SourceHandle(cand, sr, fd, pre)
     handle.capture_fd_identity()  # raises on TOCTOU swap
     return handle

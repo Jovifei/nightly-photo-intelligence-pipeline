@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/task_contract_v1_1.schema.json",
+  "title": "NPI current N1 phase and G1 data-gate contracts v1.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "contract_kind", "phase", "data_gate", "objective"],
+  "properties": {
+    "contract_version": {"const": "1.1"},
+    "contract_kind": {"enum": ["ENGINEERING_PHASE", "DATA_GATE"]},
+    "phase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "status"],
+      "properties": {
+        "id": {"const": "N1"},
+        "title": {"type": "string", "minLength": 1},
+        "status": {"const": "APPROVED_COMPLETE"}
+      }
+    },
+    "data_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "max_assets", "allowed_assets"],
+      "properties": {
+        "id": {"enum": ["G0_THREE_SYNTHETIC_FIXTURES", "G1_CALIBRATION_20"]},
+        "status": {"enum": ["APPROVED_COMPLETE", "AUTHORIZED"]},
+        "max_assets": {"enum": [3, 20]},
+        "allowed_assets": {"type": "string", "minLength": 1}
+      }
+    },
+    "objective": {"type": "string", "minLength": 1},
+    "baseline": {"$ref": "#/$defs/n1Baseline"},
+    "completion_approval": {"const": "approvals/phase_completion_N1.yaml"},
+    "completion_does_not": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string"}},
+    "approval_record": {"const": "approvals/data_gate_approval_G1.yaml"},
+    "dependencies": {"$ref": "#/$defs/g1Dependencies"},
+    "pre_content_read_requirements": {"$ref": "#/$defs/preContentRequirements"},
+    "mandatory_stop": {"$ref": "#/$defs/mandatoryStop"},
+    "explicit_exclusions": {"type": "array", "minItems": 9, "uniqueItems": true, "items": {"type": "string"}}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"contract_kind": {"const": "ENGINEERING_PHASE"}}, "required": ["contract_kind"]},
+      "then": {
+        "required": ["baseline", "completion_approval", "explicit_exclusions", "completion_does_not"],
+        "properties": {
+          "data_gate": {"const": {"id": "G0_THREE_SYNTHETIC_FIXTURES", "status": "APPROVED_COMPLETE", "max_assets": 3, "allowed_assets": "repo-internal three synthetic fixtures only"}},
+          "explicit_exclusions": {"const": ["real_photo_access", "g1_g2_g3_data_access", "n2_through_n8", "model_downloads", "cloud_processing", "openclaw", "system_configuration_changes", "main_app_changes", "git_push_merge_release"]},
+          "completion_does_not": {"const": ["authorize_g1_without_a_separate_data_gate_contract_and_owner_approval", "authorize_n2_or_any_larger_data_gate"]}
+        },
+        "not": {"anyOf": [{"required": ["approval_record"]}, {"required": ["dependencies"]}, {"required": ["pre_content_read_requirements"]}, {"required": ["mandatory_stop"]}]}
+      }
+    },
+    {
+      "if": {"properties": {"contract_kind": {"const": "DATA_GATE"}}, "required": ["contract_kind"]},
+      "then": {
+        "required": ["approval_record", "dependencies", "pre_content_read_requirements", "mandatory_stop", "explicit_exclusions"],
+        "properties": {
+          "data_gate": {"const": {"id": "G1_CALIBRATION_20", "status": "AUTHORIZED", "max_assets": 20, "allowed_assets": "owner-frozen manifest entries only"}},
+          "explicit_exclusions": {"const": ["21st_or_off_manifest_asset", "n2_through_n8", "g2_or_g3", "pose_segmentation_vlm_embedding", "model_downloads", "cloud_processing", "openclaw", "system_configuration_changes", "main_app_changes", "git_push_merge_release"]}
+        },
+        "not": {"anyOf": [{"required": ["baseline"]}, {"required": ["completion_approval"]}, {"required": ["completion_does_not"]}]}
+      }
+    }
+  ],
+  "$defs": {
+    "n1Baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["n0_commit", "n1_commit", "n0_tag", "n1_tag"],
+      "properties": {
+        "n0_commit": {"const": "72a81f5984838b74304d23263ac450ea4b5a3a9a"},
+        "n1_commit": {"const": "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"},
+        "n0_tag": {"const": "n0-approved-2026-07-14"},
+        "n1_tag": {"const": "n1-approved-2026-07-14"}
+      }
+    },
+    "g1Dependencies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["n0_baseline", "n1_baseline", "n1_completion_approval", "manifest_sha256", "required_capability"],
+      "properties": {
+        "n0_baseline": {"const": "72a81f5984838b74304d23263ac450ea4b5a3a9a"},
+        "n1_baseline": {"const": "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"},
+        "n1_completion_approval": {"const": "approvals/phase_completion_N1.yaml"},
+        "manifest_sha256": {"const": "29eee5fdb8e16c85649752501c4b722d2b4d071950c8a989add040e895a75c47"},
+        "required_capability": {"const": "OS_ENFORCED_READ_ONLY_VERIFIED"}
+      }
+    },
+    "preContentRequirements": {
+      "type": "array",
+      "uniqueItems": true,
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {"enum": ["valid_unexpired_owner_approval", "manifest_sha256_count_20_and_unique", "source_runtime_separation", "runtime_child_inside_approved_parent_without_reparse_escape", "source_root_and_all_20_entries_deny_mutating_capabilities", "current_stage_preflight_exit_0"]}
+    },
+    "mandatoryStop": {
+      "const": {"condition": "G1_CALIBRATION_AWAITING_OWNER_APPROVAL", "next_action": "STOP_AND_WAIT_FOR_OWNER"}
+    }
+  }
+}

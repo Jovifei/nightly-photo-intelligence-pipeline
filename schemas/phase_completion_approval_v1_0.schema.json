@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/phase_completion_approval_v1_0.schema.json",
+  "title": "Immutable N1 phase-completion approval",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "approval_type", "status", "phase_id", "owner_id", "approved_at_utc", "baseline", "pre_g1_project_state_sha256", "independent_reviewer", "quality_at_approval", "owner_statement"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "approval_type": {"const": "PHASE_COMPLETION"},
+    "status": {"const": "APPROVED"},
+    "phase_id": {"const": "N1"},
+    "owner_id": {"const": "Jovi"},
+    "approved_at_utc": {"const": "2026-07-14"},
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["n1_commit", "n1_tag", "n0_commit", "n0_tag", "immutable"],
+      "properties": {
+        "n1_commit": {"const": "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"},
+        "n1_tag": {"const": "n1-approved-2026-07-14"},
+        "n0_commit": {"const": "72a81f5984838b74304d23263ac450ea4b5a3a9a"},
+        "n0_tag": {"const": "n0-approved-2026-07-14"},
+        "immutable": {"const": true}
+      }
+    },
+    "pre_g1_project_state_sha256": {"pattern": "^[0-9a-f]{64}$"},
+    "independent_reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["conclusion", "reviewed_commit", "confirmed"],
+      "properties": {
+        "conclusion": {"const": "PASS_FOR_OWNER_REVIEW"},
+        "reviewed_commit": {"const": "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"},
+        "confirmed": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}}
+      }
+    },
+    "quality_at_approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["interpreter", "pytest", "ruff", "mypy", "run_quality", "sensitive_scan"],
+      "properties": {
+        "interpreter": {"type": "string", "minLength": 1},
+        "pytest": {"type": "string", "minLength": 1},
+        "ruff": {"type": "string", "minLength": 1},
+        "mypy": {"type": "string", "minLength": 1},
+        "run_quality": {"type": "string", "minLength": 1},
+        "sensitive_scan": {"type": "string", "minLength": 1}
+      }
+    },
+    "owner_statement": {"type": "string", "minLength": 1}
+  }
+}

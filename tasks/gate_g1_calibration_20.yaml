@@ -1,0 +1,42 @@
+contract_version: "1.1"
+contract_kind: "DATA_GATE"
+phase:
+  id: "N1"
+  title: "已批准的 N1 导入与恢复能力"
+  status: "APPROVED_COMPLETE"
+data_gate:
+  id: "G1_CALIBRATION_20"
+  status: "AUTHORIZED"
+  max_assets: 20
+  allowed_assets: "owner-frozen manifest entries only"
+objective: >
+  在不扩展 N1 工程能力的前提下，整改并验证冻结的 20 资产 G1 校准 Gate。
+  任何清单外资产必须在打开内容前拒绝；完成后停止等待 Owner 最终批准。
+approval_record: "approvals/data_gate_approval_G1.yaml"
+dependencies:
+  n0_baseline: "72a81f5984838b74304d23263ac450ea4b5a3a9a"
+  n1_baseline: "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"
+  n1_completion_approval: "approvals/phase_completion_N1.yaml"
+  manifest_sha256: "29eee5fdb8e16c85649752501c4b722d2b4d071950c8a989add040e895a75c47"
+  required_capability: "OS_ENFORCED_READ_ONLY_VERIFIED"
+pre_content_read_requirements:
+  - "valid_unexpired_owner_approval"
+  - "manifest_sha256_count_20_and_unique"
+  - "source_runtime_separation"
+  - "runtime_child_inside_approved_parent_without_reparse_escape"
+  - "source_root_and_all_20_entries_deny_mutating_capabilities"
+  - "current_stage_preflight_exit_0"
+mandatory_stop:
+  condition: "G1_CALIBRATION_AWAITING_OWNER_APPROVAL"
+  next_action: "STOP_AND_WAIT_FOR_OWNER"
+explicit_exclusions:
+  - "21st_or_off_manifest_asset"
+  - "n2_through_n8"
+  - "g2_or_g3"
+  - "pose_segmentation_vlm_embedding"
+  - "model_downloads"
+  - "cloud_processing"
+  - "openclaw"
+  - "system_configuration_changes"
+  - "main_app_changes"
+  - "git_push_merge_release"

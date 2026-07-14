@@ -1,0 +1,51 @@
+schema_version: "1.1"
+approval_type: "DATA_GATE_REMEDIATION"
+status: "APPROVED"
+owner: "Jovi"
+scope: "G1_CALIBRATION_20_REMEDIATION"
+max_assets: 20
+manifest_sha256: "29eee5fdb8e16c85649752501c4b722d2b4d071950c8a989add040e895a75c47"
+manifest_count: 20
+baselines:
+  N0: "72a81f5984838b74304d23263ac450ea4b5a3a9a"
+  N1: "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"
+runtime_policy:
+  parent_fingerprint_sha256: "4fff1e32b19b8b0eca0d509d1a83a6e402600986fd7db90620c8086d6c014cf0"
+  child_must_be_distinct: true
+  child_must_remain_within_parent: true
+  reject_reparse_escape: true
+  reject_source_overlap: true
+source_policy:
+  root_fingerprint_sha256: "a80ad1f4c5c193211c80fa2b765ec7108a865da22a145bb9238183a617ef4d0a"
+  required_capability_result: "OS_ENFORCED_READ_ONLY_VERIFIED"
+  content_integrity_result: "SOURCE_CONTENT_UNCHANGED_PRE_POST"
+  permission_changes_authorized: false
+approved_at: "2026-07-14T16:00:00Z"
+expires_at: "2026-07-31T23:59:59+08:00"
+automatic_invalidation:
+  - "owner_final_g1_approval"
+  - "expiry"
+  - "manifest_change"
+  - "baseline_change"
+  - "owner_revocation"
+explicit_exclusions:
+  - "21st_or_off_manifest_asset"
+  - "n2_through_n8"
+  - "pose"
+  - "segmentation"
+  - "vlm"
+  - "embedding"
+  - "model_downloads"
+  - "cloud_processing"
+  - "openclaw"
+  - "system_configuration_changes"
+  - "main_app_changes"
+  - "git_push_merge_release"
+bindings:
+  project_state_sha256: "d6a70d095141e75a8848e7d68f4cc93285a86fb4866bc6c361ab597fdcb82762"
+  n1_task_sha256: "17c8fba29d229c2507f3fb2eacb01d1c22ee0bf930250754fb213d15f94a8c61"
+  g1_task_sha256: "e173ab85c68f72c0c8c801a1c1f2e8274b9a0a9454011aa90b3dd58bef5df7dc"
+  task_index_sha256: "67db817def7f9471aa45e5a8915cb0a52dfd25b346ec88037b66e3936772eb1c"
+  retry_policy_sha256: "316df5c98fa81a0ae2facf8bcb3ac4914e363eedf219ee2a48f547830b2afafe"
+  error_taxonomy_sha256: "a3003f71fd7b43d3169ceb983fe4ce27feef7a1b971cffa4309251f6fb24ac65"
+stop_condition: "G1_CALIBRATION_AWAITING_OWNER_APPROVAL"

@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/approval_record_v1_1.schema.json",
+  "title": "NPI G1 remediation approval v1.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "approval_type", "status", "owner", "scope", "max_assets", "manifest_sha256", "manifest_count", "baselines", "runtime_policy", "source_policy", "approved_at", "expires_at", "automatic_invalidation", "explicit_exclusions", "bindings", "stop_condition"],
+  "properties": {
+    "schema_version": {"const": "1.1"},
+    "approval_type": {"const": "DATA_GATE_REMEDIATION"},
+    "status": {"const": "APPROVED"},
+    "owner": {"const": "Jovi"},
+    "scope": {"const": "G1_CALIBRATION_20_REMEDIATION"},
+    "max_assets": {"const": 20},
+    "manifest_sha256": {"const": "29eee5fdb8e16c85649752501c4b722d2b4d071950c8a989add040e895a75c47"},
+    "manifest_count": {"const": 20},
+    "baselines": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["N0", "N1"],
+      "properties": {
+        "N0": {"const": "72a81f5984838b74304d23263ac450ea4b5a3a9a"},
+        "N1": {"const": "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"}
+      }
+    },
+    "runtime_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["parent_fingerprint_sha256", "child_must_be_distinct", "child_must_remain_within_parent", "reject_reparse_escape", "reject_source_overlap"],
+      "properties": {
+        "parent_fingerprint_sha256": {"const": "4fff1e32b19b8b0eca0d509d1a83a6e402600986fd7db90620c8086d6c014cf0"},
+        "child_must_be_distinct": {"const": true},
+        "child_must_remain_within_parent": {"const": true},
+        "reject_reparse_escape": {"const": true},
+        "reject_source_overlap": {"const": true}
+      }
+    },
+    "source_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root_fingerprint_sha256", "required_capability_result", "content_integrity_result", "permission_changes_authorized"],
+      "properties": {
+        "root_fingerprint_sha256": {"const": "a80ad1f4c5c193211c80fa2b765ec7108a865da22a145bb9238183a617ef4d0a"},
+        "required_capability_result": {"const": "OS_ENFORCED_READ_ONLY_VERIFIED"},
+        "content_integrity_result": {"const": "SOURCE_CONTENT_UNCHANGED_PRE_POST"},
+        "permission_changes_authorized": {"const": false}
+      }
+    },
+    "approved_at": {"const": "2026-07-14T16:00:00Z", "format": "date-time"},
+    "expires_at": {"const": "2026-07-31T23:59:59+08:00"},
+    "automatic_invalidation": {
+      "const": ["owner_final_g1_approval", "expiry", "manifest_change", "baseline_change", "owner_revocation"]
+    },
+    "explicit_exclusions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"enum": ["21st_or_off_manifest_asset", "n2_through_n8", "pose", "segmentation", "vlm", "embedding", "model_downloads", "cloud_processing", "openclaw", "system_configuration_changes", "main_app_changes", "git_push_merge_release"]},
+      "allOf": [
+        {"contains": {"const": "21st_or_off_manifest_asset"}},
+        {"contains": {"const": "n2_through_n8"}},
+        {"contains": {"const": "pose"}},
+        {"contains": {"const": "segmentation"}},
+        {"contains": {"const": "vlm"}},
+        {"contains": {"const": "embedding"}},
+        {"contains": {"const": "model_downloads"}},
+        {"contains": {"const": "cloud_processing"}},
+        {"contains": {"const": "openclaw"}},
+        {"contains": {"const": "system_configuration_changes"}},
+        {"contains": {"const": "main_app_changes"}},
+        {"contains": {"const": "git_push_merge_release"}}
+      ],
+      "minItems": 12,
+      "maxItems": 12
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_state_sha256", "n1_task_sha256", "g1_task_sha256", "task_index_sha256", "retry_policy_sha256", "error_taxonomy_sha256"],
+      "properties": {
+        "project_state_sha256": {"pattern": "^[0-9a-f]{64}$"},
+        "n1_task_sha256": {"pattern": "^[0-9a-f]{64}$"},
+        "g1_task_sha256": {"pattern": "^[0-9a-f]{64}$"},
+        "task_index_sha256": {"pattern": "^[0-9a-f]{64}$"},
+        "retry_policy_sha256": {"const": "316df5c98fa81a0ae2facf8bcb3ac4914e363eedf219ee2a48f547830b2afafe"},
+        "error_taxonomy_sha256": {"const": "a3003f71fd7b43d3169ceb983fe4ce27feef7a1b971cffa4309251f6fb24ac65"}
+      }
+    },
+    "stop_condition": {"const": "G1_CALIBRATION_AWAITING_OWNER_APPROVAL"}
+  }
+}

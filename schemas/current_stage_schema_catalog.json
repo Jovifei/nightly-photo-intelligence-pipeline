@@ -1,0 +1,11 @@
+{
+  "schema_set": "npi-current-stage-v1.1",
+  "draft": "https://json-schema.org/draft/2020-12/schema",
+  "schemas": [
+    {"file": "task_contract_v1_1.schema.json", "purpose": "completed phase and authorized data-gate contracts"},
+    {"file": "task_index_v1_1.schema.json", "purpose": "current task index and approval-chain references"},
+    {"file": "approval_record_v1_1.schema.json", "purpose": "G1 remediation Owner approval"},
+    {"file": "phase_completion_approval_v1_0.schema.json", "purpose": "immutable N1 completion approval"},
+    {"file": "project_state_v1_1.schema.json", "purpose": "mutable current project authorization state"}
+  ]
+}

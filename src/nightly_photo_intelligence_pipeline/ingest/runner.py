@@ -11,13 +11,20 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..domain.authorization import AuthorizationSnapshot
-from ..domain.errors import GateNotAuthorizedError
+from ..domain.errors import NPI_INTERNAL_ERROR, GateNotAuthorizedError, NpiError
 from ..domain.models import PipelineConfig
 from ..persistence.sqlite import StateStore
 from ..redaction import REDACT_RUNTIME_ROOT, redact_path
+from .exif import ExifSnapshot, read_exif
+from .g1_contract import G1ExecutionPermit, path_fingerprint
 from .hashing import stream_sha256_from_handle
-from .manifest import Manifest
-from .perceptual_hash import analyze_image_from_handle
+from .manifest import G1FrozenManifest, Manifest, require_g1_manifest_member
+from .perceptual_hash import (
+    HASH_SIZE_BITS,
+    PerceptualHashResult,
+    analyze_image_from_handle,
+    hamming_distance,
+)
 from .source_guard import open_source_file, validate_roots
 
 _EXT_TO_MEDIA = {
@@ -88,7 +95,8 @@ def run_dry_run_ingest(
     files = _enumerate_source_files(source_root, config.allowed_extensions)
 
     scanned: list[ScannedFile] = []
-    for path in files:
+    for index, path in enumerate(files, start=1):
+        asset_ref = f"scan-asset-{index:04d}"
         with open_source_file(
             path, source_root, allowed_extensions=config.allowed_extensions
         ) as handle:
@@ -98,7 +106,7 @@ def run_dry_run_ingest(
             pre = handle.pre_fingerprint(sha)
         scanned.append(
             ScannedFile(
-                sanitized_name=path.name,
+                sanitized_name=asset_ref,
                 source_sha256=sha,
                 perceptual_hash=facts.perceptual_hash.value,
                 perceptual_hash_algorithm=facts.perceptual_hash.algorithm,
@@ -194,6 +202,49 @@ class RealIngestResult:
     database_mutated: bool = True
 
 
+@dataclass(frozen=True)
+class G1IngestedAsset:
+    asset_ref: str
+    source_sha256_before: str
+    source_sha256_after: str
+    asset_id: str
+    created: bool
+    duplicate: bool
+    perceptual_hash: str
+    perceptual_hash_algorithm: str
+    media_type: str
+    width: int
+    height: int
+    size_bytes: int
+    exif: ExifSnapshot
+
+    @property
+    def integrity_unchanged(self) -> bool:
+        return self.source_sha256_before == self.source_sha256_after
+
+
+@dataclass(frozen=True)
+class NearDuplicateCandidate:
+    asset_ref: str
+    candidate_asset_ref: str
+    hamming_distance: int
+    algorithm_id: str
+
+
+@dataclass(frozen=True)
+class G1CalibrationResult:
+    source_root_redacted: str
+    runtime_root_redacted: str
+    frozen_manifest_sha256: str
+    files_scanned: int
+    assets_created: int
+    duplicates_seen: int
+    exact_duplicate_groups: list[list[str]] = field(default_factory=list)
+    near_duplicate_candidates: list[NearDuplicateCandidate] = field(default_factory=list)
+    assets: list[G1IngestedAsset] = field(default_factory=list)
+    database_mutated: bool = True
+
+
 def run_real_ingest(
     source_root: Path,
     runtime_root: Path,
@@ -218,6 +269,9 @@ def run_real_ingest(
     validate_roots(source_root, runtime_root)
     redact_src = source_root_for_redaction or source_root
     allowed = manifest.allowed_names
+    asset_refs = {
+        entry.name: f"g0-asset-{index:02d}" for index, entry in enumerate(manifest.files, 1)
+    }
     files = _enumerate_source_files(source_root, config.allowed_extensions)
 
     ingested: list[IngestedAsset] = []
@@ -225,9 +279,8 @@ def run_real_ingest(
     dups = 0
     for path in files:
         if path.name not in allowed:
-            raise GateNotAuthorizedError(
-                f"asset not authorized by G0 manifest: {path.name}",
-            )
+            raise GateNotAuthorizedError("asset is not authorized by the G0 manifest")
+        asset_ref = asset_refs[path.name]
         with open_source_file(
             path, source_root, allowed_extensions=config.allowed_extensions
         ) as handle:
@@ -241,8 +294,8 @@ def run_real_ingest(
             auth.require_asset_within_cap(store.asset_count(), added=1)
         res = store.ingest_asset(
             source_sha256=sha,
-            sanitized_source_name=path.name,
-            local_path_protected=redact_path(path, source_root=redact_src),
+            sanitized_source_name=asset_ref,
+            local_path_protected=f"<SOURCE_ROOT>/{asset_ref}",
             observed_size_bytes=pre.size_bytes,
             observed_mtime_ns=pre.mtime_ns,
             perceptual_hash=facts.perceptual_hash.value,
@@ -257,7 +310,7 @@ def run_real_ingest(
             dups += 1
         ingested.append(
             IngestedAsset(
-                sanitized_name=path.name,
+                sanitized_name=asset_ref,
                 source_sha256=sha,
                 asset_id=res.asset_id,
                 created=res.created,
@@ -278,6 +331,164 @@ def run_real_ingest(
         files_scanned=len(ingested),
         assets_created=created,
         duplicates_seen=dups,
+        assets=ingested,
+        database_mutated=True,
+    )
+
+
+def _require_g1_authorized(auth: AuthorizationSnapshot) -> None:
+    auth.require_ingest_authorized(dry_run=False)
+    if auth.data_gate_id != "G1_CALIBRATION_20":
+        raise GateNotAuthorizedError("G1 ingest requires data gate G1_CALIBRATION_20")
+    if auth.real_photo_access != "AUTHORIZED":
+        raise GateNotAuthorizedError("G1 ingest requires real_photo_access AUTHORIZED")
+    if auth.exif_real_data_read not in {"AUTHORIZED", "AUTHORIZED_NON_SENSITIVE_ONLY"}:
+        raise GateNotAuthorizedError("G1 ingest requires non-sensitive EXIF authorization")
+    if auth.max_assets != 20:
+        raise GateNotAuthorizedError("G1 ingest requires max_assets=20")
+
+
+def _append_near_duplicate_candidates(
+    store: StateStore,
+    assets: list[G1IngestedAsset],
+    phashes: dict[str, PerceptualHashResult],
+) -> list[NearDuplicateCandidate]:
+    out: list[NearDuplicateCandidate] = []
+    for i, left in enumerate(assets):
+        for right in assets[i + 1 :]:
+            distance = hamming_distance(phashes[left.asset_ref], phashes[right.asset_ref])
+            if distance > 5:
+                continue
+            if left.asset_id == right.asset_id:
+                continue
+            store.insert_duplicate_candidate(
+                asset_id=left.asset_id,
+                candidate_asset_id=right.asset_id,
+                distance=float(distance),
+                algorithm_id=phashes[left.asset_ref].algorithm_id,
+                algorithm_version=phashes[left.asset_ref].algorithm_version,
+                hash_size=HASH_SIZE_BITS,
+            )
+            out.append(
+                NearDuplicateCandidate(
+                    asset_ref=left.asset_ref,
+                    candidate_asset_ref=right.asset_ref,
+                    hamming_distance=distance,
+                    algorithm_id=phashes[left.asset_ref].algorithm_id,
+                )
+            )
+    return out
+
+
+def run_g1_calibration_ingest(
+    source_root: Path,
+    runtime_root: Path,
+    config: PipelineConfig,
+    auth: AuthorizationSnapshot,
+    store: StateStore,
+    frozen_manifest: G1FrozenManifest,
+    *,
+    permit: G1ExecutionPermit,
+    source_root_for_redaction: Path | None = None,
+) -> G1CalibrationResult:
+    """Run G1 over exactly the owner-frozen 20-entry manifest.
+
+    No directory enumeration is performed. Each manifest entry is resolved under
+    ``source_root`` and opened once via ``source_guard``. Reports and DB rows use
+    opaque asset refs, not real filenames or absolute paths.
+    """
+    _require_g1_authorized(auth)
+    permit.require_valid(frozen_manifest)
+    if permit.source_root_fingerprint_sha256 != path_fingerprint(source_root):
+        raise GateNotAuthorizedError("G1 execution permit source mismatch")
+    if permit.runtime_child_fingerprint_sha256 != path_fingerprint(runtime_root):
+        raise GateNotAuthorizedError("G1 execution permit runtime mismatch")
+    if frozen_manifest.count != 20:
+        raise GateNotAuthorizedError("G1 frozen manifest must contain exactly 20 assets")
+    validate_roots(source_root, runtime_root)
+    redact_src = source_root_for_redaction or source_root
+
+    ingested: list[G1IngestedAsset] = []
+    phashes: dict[str, PerceptualHashResult] = {}
+    created = 0
+    dups = 0
+    for entry in frozen_manifest.entries:
+        require_g1_manifest_member(entry.relative_path, frozen_manifest)
+        path = source_root / entry.relative_path
+        with open_source_file(
+            path, source_root, allowed_extensions=config.allowed_extensions
+        ) as handle:
+            sha_before = stream_sha256_from_handle(
+                handle, chunk_bytes=config.ingest.hash_chunk_bytes
+            )
+            handle.seek(0)
+            facts = analyze_image_from_handle(handle)
+            phashes[entry.asset_ref] = facts.perceptual_hash
+            handle.seek(0)
+            exif = read_exif(handle)
+            pre = handle.pre_fingerprint(sha_before)
+            handle.seek(0)
+            sha_after = stream_sha256_from_handle(
+                handle, chunk_bytes=config.ingest.hash_chunk_bytes
+            )
+            handle.post_fingerprint(sha_after)
+        if sha_before != sha_after:
+            raise NpiError(
+                "source SHA-256 changed during G1 ingest",
+                error_code=NPI_INTERNAL_ERROR,
+            )
+        existing = store.get_asset_by_sha(sha_before)
+        if existing is None:
+            auth.require_asset_within_cap(store.asset_count(), added=1)
+        res = store.ingest_asset(
+            source_sha256=sha_before,
+            sanitized_source_name=entry.asset_ref,
+            local_path_protected=f"<SOURCE_ROOT>/{entry.asset_ref}",
+            observed_size_bytes=pre.size_bytes,
+            observed_mtime_ns=pre.mtime_ns,
+            perceptual_hash=facts.perceptual_hash.value,
+            perceptual_hash_algorithm=facts.perceptual_hash.algorithm_id,
+            media_type=_EXT_TO_MEDIA.get(path.suffix.lower(), "application/octet-stream"),
+            width=facts.width,
+            height=facts.height,
+        )
+        if res.created:
+            created += 1
+        if res.duplicate:
+            dups += 1
+        ingested.append(
+            G1IngestedAsset(
+                asset_ref=entry.asset_ref,
+                source_sha256_before=sha_before,
+                source_sha256_after=sha_after,
+                asset_id=res.asset_id,
+                created=res.created,
+                duplicate=res.duplicate,
+                perceptual_hash=facts.perceptual_hash.value,
+                perceptual_hash_algorithm=facts.perceptual_hash.algorithm_id,
+                media_type=_EXT_TO_MEDIA.get(path.suffix.lower(), "application/octet-stream"),
+                width=facts.width,
+                height=facts.height,
+                size_bytes=pre.size_bytes,
+                exif=exif,
+            )
+        )
+
+    by_sha: dict[str, list[str]] = {}
+    for asset in ingested:
+        by_sha.setdefault(asset.source_sha256_before, []).append(asset.asset_ref)
+    exact_groups = [refs for refs in by_sha.values() if len(refs) > 1]
+    exact_groups.sort()
+    near = _append_near_duplicate_candidates(store, ingested, phashes)
+    return G1CalibrationResult(
+        source_root_redacted=redact_path(source_root, source_root=redact_src),
+        runtime_root_redacted=REDACT_RUNTIME_ROOT,
+        frozen_manifest_sha256=frozen_manifest.sha256,
+        files_scanned=len(ingested),
+        assets_created=created,
+        duplicates_seen=dups,
+        exact_duplicate_groups=exact_groups,
+        near_duplicate_candidates=near,
         assets=ingested,
         database_mutated=True,
     )

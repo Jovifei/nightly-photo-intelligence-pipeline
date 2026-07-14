@@ -1,0 +1,24 @@
+schema_version: "1.1"
+errors:
+  NPI_CLI_USAGE_ERROR: {exit_code: 2, severity: "ERROR"}
+  NPI_PREFLIGHT_UNSATISFIED: {exit_code: 3, severity: "ERROR"}
+  NPI_GATE_NOT_AUTHORIZED: {exit_code: 8, severity: "INFO"}
+  NPI_SOURCE_RUNTIME_OVERLAP: {exit_code: 4, severity: "CRITICAL"}
+  NPI_SOURCE_SYMLINK_ESCAPE: {exit_code: 4, severity: "CRITICAL"}
+  NPI_SOURCE_CHANGED_DURING_READ: {exit_code: 4, severity: "CRITICAL"}
+  NPI_SOURCE_READ_ONLY_NOT_VERIFIED: {exit_code: 4, severity: "CRITICAL"}
+  NPI_RUNTIME_POLICY_INVALID: {exit_code: 4, severity: "CRITICAL"}
+  NPI_UNSUPPORTED_MEDIA: {exit_code: 7, severity: "WARNING"}
+  NPI_DATABASE_ERROR: {exit_code: 6, severity: "ERROR"}
+  NPI_STAGE_CLAIM_CONFLICT: {exit_code: 6, severity: "WARNING"}
+  NPI_LEASE_LOST: {exit_code: 6, severity: "WARNING"}
+  NPI_RETRY_EXHAUSTED: {exit_code: 6, severity: "ERROR"}
+  NPI_RUN_INTERRUPTED: {exit_code: 6, severity: "WARNING"}
+  NPI_SCHEMA_INVALID: {exit_code: 5, severity: "ERROR"}
+  NPI_HANDOFF_INTEGRITY_FAILED: {exit_code: 9, severity: "CRITICAL"}
+  NPI_INTERNAL_ERROR: {exit_code: 10, severity: "ERROR"}
+redaction:
+  path: "<SOURCE_ROOT>/<RELATIVE_OR_HASHED_NAME>"
+  hostname: "<HOST_REDACTED>"
+  username: "<USER_REDACTED>"
+  token: "<SECRET_REDACTED>"

@@ -77,14 +77,17 @@ def _dhash_from_bytes(data: bytes) -> tuple[str, int, int]:
     """Compute dHash-8x8 hex and image dimensions from raw image bytes."""
     try:
         from PIL import Image  # local import: PIL is a soft runtime dep.
-    except ImportError as exc:  # pragma: no cover - exercised only without PIL
+    except ImportError:  # pragma: no cover - exercised only without PIL
         raise PerceptualHashUnavailableError(
             "Pillow is required for perceptual hashing but is not installed",
-        ) from exc
-    with Image.open(io.BytesIO(data)) as img:
-        width, height = img.size
-        gray = img.convert("L").resize((9, 8))
-        pixels = list(gray.tobytes())
+        ) from None
+    try:
+        with Image.open(io.BytesIO(data)) as img:
+            width, height = img.size
+            gray = img.convert("L").resize((9, 8))
+            pixels = list(gray.tobytes())
+    except Exception:  # noqa: BLE001 - Pillow exceptions may contain decoder details
+        raise PerceptualHashUnavailableError("image metadata analysis failed") from None
     bits = 0
     for row in range(8):
         for col in range(8):
@@ -105,7 +108,10 @@ def _make_result(value: str) -> PerceptualHashResult:
 
 def compute_perceptual_hash(path: Path) -> PerceptualHashResult:
     """Compute the N1 perceptual hash of an image file."""
-    data = Path(path).read_bytes()
+    try:
+        data = Path(path).read_bytes()
+    except OSError:
+        raise PerceptualHashUnavailableError("image source read failed") from None
     return compute_perceptual_hash_from_bytes(data)
 
 

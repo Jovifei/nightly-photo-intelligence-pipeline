@@ -32,7 +32,7 @@ def test_at_n0_db_01_schema_created_and_reopens(db_path: Path) -> None:
     version, FK, reopen, transaction rollback).
     """
     store = StateStore.open(db_path, journal_mode_candidate="WAL")
-    assert store.schema_version() == "1"
+    assert store.schema_version() == "3"
     assert store.journal_mode == "DELETE", "N0 must not adopt WAL; DELETE is the safe baseline"
     for table in (
         "metadata",
@@ -54,7 +54,7 @@ def test_at_n0_db_01_schema_created_and_reopens(db_path: Path) -> None:
 
     # Reopen without re-initializing; data must persist.
     store2 = StateStore.open(db_path, initialize=False)
-    assert store2.schema_version() == "1"
+    assert store2.schema_version() == "3"
     assert store2.asset_count() == 1
     assert store2.get_asset(aid)["current_state"] == "NEW"
     store2.close()
@@ -161,13 +161,12 @@ def test_at_n0_rec_01_interrupted_run_recoverable(db_path: Path) -> None:
     """AT-N0-REC-01: a RUNNING run with an expired lease is recognized on reopen."""
     store = StateStore.open(db_path)
     aid = store.insert_asset(source_sha256="d" * 64, sanitized_source_name="r.png")
-    rid = store.insert_stage_run(
-        asset_id=aid,
-        stage_name="pose",
-        status=STAGE_RUNNING,
-        started_at=_utc_past(2),
-        lease_owner="worker-1",
-        lease_expires_at=_utc_past(1),
+    rid = store.claim_stage_run(
+        asset_id=aid, stage_name="pose", lease_owner="worker-1", lease_seconds=60
+    )
+    store.connection.execute(
+        "UPDATE stage_runs SET started_at=?, lease_expires_at=? WHERE stage_run_id=?",
+        (_utc_past(2), _utc_past(1), rid),
     )
     # While open, the interrupted run is already identifiable.
     assert len(store.identify_interrupted_runs()) == 1

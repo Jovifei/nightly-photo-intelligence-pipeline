@@ -1,5 +1,4 @@
-"""AT-N0-HO-01: handoff manifest integrity (N1 phase-boundary adjusted).
-AT-N0-GATE-02: phase/data-gate lock state (N1 authorized, N2-N8 locked)."""
+"""Archival handoff integrity and current N1/G1 authorization boundaries."""
 
 from __future__ import annotations
 
@@ -15,14 +14,16 @@ pytestmark = pytest.mark.acceptance
 
 # Authorization-state files legitimately change with Owner-approved phase
 # transitions; excluded from the "immutable contract files intact" check.
-_AUTH_STATE_FILES = {"PROJECT_STATE.json", "tasks/index.json"}
-_AUTH_STATE_PREFIXES = ("tasks/phase_n",)
+_AUTH_STATE_FILES = {
+    "PROJECT_STATE.json",
+    "tasks/index.json",
+    "tasks/README.md",
+    "tasks/phase_n1_ingest_state_machine.yaml",
+}
 
 
 def _is_auth_state_file(rel: str) -> bool:
-    if rel in _AUTH_STATE_FILES:
-        return True
-    return any(rel.startswith(prefix) for prefix in _AUTH_STATE_PREFIXES)
+    return rel in _AUTH_STATE_FILES
 
 
 def _read_manifest(root: Path) -> dict[str, str]:
@@ -69,38 +70,44 @@ def test_at_n0_ho_01_fixtures_match_fixture_manifest(
 
 
 def test_at_n0_gate_02_n2_through_n8_locked(project_root: Path) -> None:
-    """AT-N0-GATE-02 (N1 phase-boundary): PROJECT_STATE locks N2-N8 and G1-G3;
-    N0 is APPROVED/COMPLETE, N1 is AUTHORIZED."""
+    """AT-N0-GATE-02 (G1 phase-boundary): PROJECT_STATE locks N2-N8 and G2-G3;
+    N0/N1 are immutable and G1 is authorized for local execution."""
     state = json.loads((project_root / "PROJECT_STATE.json").read_text(encoding="utf-8"))
-    assert state["authorization"]["phase"] == {"id": "N1", "status": "AUTHORIZED"}
+    assert state["authorization"]["phase"] == {
+        "id": "N1",
+        "status": "APPROVED_COMPLETE",
+    }
     assert state["authorization"]["data_gate"] == {
-        "id": "G0_THREE_SYNTHETIC_FIXTURES",
+        "id": "G1_CALIBRATION_20",
         "status": "AUTHORIZED",
     }
-    # N2-N8 locked (N1 is now authorized, so not in the locked list).
-    assert state["locked"]["phases"] == [f"N{i}" for i in range(2, 9)]
-    assert state["locked"]["data_gates"] == [
-        "G1_CALIBRATION_20",
-        "G2_PILOT_100",
-        "G3_FULL_LIBRARY",
-    ]
-    assert state["required_stop_after"]["phase"] == "N1"
-    # N0 baseline is approved and immutable.
-    n0 = state["n0_baseline"]
+    # N2-N8 locked (N1 remains the engineering phase; G1 is a data gate).
+    assert [state["phase_status"][f"N{i}"] for i in range(2, 9)] == ["LOCKED"] * 7
+    assert state["data_scope"]["G2_PILOT_100"] == "LOCKED"
+    assert state["data_scope"]["G3_FULL_LIBRARY"] == "LOCKED"
+    assert state["required_stop_after"]["condition"] == ("G1_CALIBRATION_AWAITING_OWNER_APPROVAL")
+    # N0 and N1 baselines are approved and immutable.
+    n0 = state["baselines"]["N0"]
     assert n0["status"] == "APPROVED_COMPLETE"
     assert n0["commit"] == "72a81f5984838b74304d23263ac450ea4b5a3a9a"
     assert n0["immutable"] is True
-    # Data scope: only 3 synthetic fixtures, no real photos.
-    assert state["data_scope"]["max_assets"] == 3
-    assert state["authorization"]["real_photo_access"] == "NOT_AUTHORIZED"
+    n1 = state["baselines"]["N1"]
+    assert n1["status"] == "APPROVED_COMPLETE"
+    assert n1["commit"] == "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"
+    assert n1["immutable"] is True
+    # Data scope: exactly the owner-frozen G1 20-photo manifest.
+    assert state["data_scope"]["max_assets"] == 20
+    assert state["authorization"]["real_photo_access"] == "AUTHORIZED"
     assert state["authorization"]["large_model_downloads"] == "NOT_AUTHORIZED"
-    assert state["authorization"]["exif_real_data_read"] == "NOT_AUTHORIZED"
+    assert state["authorization"]["exif_real_data_read"] == "AUTHORIZED_NON_SENSITIVE_ONLY"
 
 
 def test_at_n0_gate_02_n2_n8_task_files_locked(project_root: Path) -> None:
-    """AT-N0-GATE-02 (N1 phase-boundary): N2-N8 task files are LOCKED; N1 is AUTHORIZED."""
+    """N1 is complete, G1 is independently authorized, and N2-N8 stay locked."""
     n1_task = project_root / "tasks" / "phase_n1_ingest_state_machine.yaml"
-    assert 'status: "AUTHORIZED"' in n1_task.read_text(encoding="utf-8")
+    assert 'status: "APPROVED_COMPLETE"' in n1_task.read_text(encoding="utf-8")
+    g1_task = project_root / "tasks" / "gate_g1_calibration_20.yaml"
+    assert 'status: "AUTHORIZED"' in g1_task.read_text(encoding="utf-8")
     task_files = sorted((project_root / "tasks").glob("phase_n[2-8]_*.yaml"))
     assert len(task_files) == 7, f"expected 7 locked task files (N2-N8), found {len(task_files)}"
     for path in task_files:
@@ -108,17 +115,17 @@ def test_at_n0_gate_02_n2_n8_task_files_locked(project_root: Path) -> None:
         assert 'status: "LOCKED"' in text, f"{path.name} is not locked"
 
 
-def test_at_n0_gate_02_authorization_snapshot_n1_authorized() -> None:
-    """AT-N0-GATE-02 (N1 phase-boundary): the authorization reader confirms
-    N1 AUTHORIZED on G0; both dry-run and real ingest are authorized; N0 baseline present."""
+def test_at_n0_gate_02_authorization_snapshot_n1_complete_g1_authorized() -> None:
+    """The reader accepts completed N1 plus the independent G1 authorization."""
     auth = load_authorization()
     assert auth.phase_id == "N1"
     assert auth.phase_authorized
-    assert auth.data_gate_id == "G0_THREE_SYNTHETIC_FIXTURES"
+    assert auth.data_gate_id == "G1_CALIBRATION_20"
     assert auth.data_gate_authorized
     assert auth.is_ingest_authorized(dry_run=True)
-    assert auth.is_ingest_authorized(dry_run=False), "N1 authorizes real ingest on G0"
-    assert auth.max_assets == 3
+    assert auth.is_ingest_authorized(dry_run=False), "N1 authorizes real ingest on G1"
+    assert auth.max_assets == 20
     assert auth.n0_baseline_commit == "72a81f5984838b74304d23263ac450ea4b5a3a9a"
-    assert auth.real_photo_access == "NOT_AUTHORIZED"
-    assert auth.exif_real_data_read == "NOT_AUTHORIZED"
+    assert auth.n1_baseline_commit == "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"
+    assert auth.real_photo_access == "AUTHORIZED"
+    assert auth.exif_real_data_read == "AUTHORIZED_NON_SENSITIVE_ONLY"

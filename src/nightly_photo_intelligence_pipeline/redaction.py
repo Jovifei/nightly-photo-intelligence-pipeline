@@ -23,6 +23,14 @@ _WINDOWS_HOME_RE: Final = re.compile(
 _UNIX_HOME_RE: Final = re.compile(r"(/home/)(?!<)[A-Za-z0-9._-]+")
 # Common token patterns.
 _TOKEN_RE: Final = re.compile(r"(?i)(api[_-]?key|token|secret|password|bearer)\s*[:=]\s*\S+")
+_WINDOWS_ABSOLUTE_RE: Final = re.compile(r"(?i)(?:\\\\\?\\)?[a-z]:[\\/][^\r\n\"'<>|]+")
+_UNC_RE: Final = re.compile(r"(?i)(?:\\\\|//)[^\r\n\"'<>|]+")
+_WSL_MOUNT_RE: Final = re.compile(r"(?i)/mnt/[a-z]/[^\r\n\"'<>|]+")
+_IMAGE_FILENAME_RE: Final = re.compile(
+    r"(?i)(?<![A-Za-z0-9_.-])[^\\/\r\n\"'<>|]*?"
+    r"\.(?:jpe?g|png|heic|webp|tiff?|bmp|avif)\b"
+)
+REDACT_SOURCE_FILE: Final = "<SOURCE_FILE>"
 
 
 def redact_text(text: str, source_root: Path | None = None) -> str:
@@ -38,15 +46,19 @@ def redact_text(text: str, source_root: Path | None = None) -> str:
     out = _WINDOWS_HOME_RE.sub(lambda m: m.group(1) + REDACT_USERNAME, out)
     out = _UNIX_HOME_RE.sub(lambda m: m.group(1) + REDACT_USERNAME, out)
     out = _TOKEN_RE.sub(lambda m: m.group(1) + "=<" + REDACT_TOKEN + ">", out)
+    out = _WINDOWS_ABSOLUTE_RE.sub(REDACT_PATH, out)
+    out = _UNC_RE.sub(REDACT_PATH, out)
+    out = _WSL_MOUNT_RE.sub(REDACT_PATH, out)
+    out = _IMAGE_FILENAME_RE.sub(REDACT_SOURCE_FILE, out)
     return out
 
 
 def redact_path(path: Path | str, source_root: Path | None = None) -> str:
     """Return a redacted, display-safe representation of *path*.
 
-    If *path* is under *source_root*, only the relative tail is shown prefixed
-    with the redaction token. Otherwise the raw path is passed through
-    :func:`redact_text` to scrub home/username segments.
+    If *path* is under *source_root*, the real relative tail is discarded.
+    Otherwise the raw path is passed through :func:`redact_text` to scrub
+    absolute paths, image filenames, home directories, and usernames.
     """
     p = Path(path)
     if source_root is not None:
@@ -54,9 +66,11 @@ def redact_path(path: Path | str, source_root: Path | None = None) -> str:
             rel = p.resolve().relative_to(Path(source_root).resolve())
             if rel == Path("."):
                 return REDACT_PATH.rsplit("/", 1)[0]
-            return f"{REDACT_PATH.rsplit('/', 1)[0]}/{rel.as_posix()}"
+            return f"{REDACT_PATH.rsplit('/', 1)[0]}/{REDACT_SOURCE_FILE}"
         except ValueError:
             pass
+    if p.is_absolute():
+        return REDACT_PATH
     return redact_text(str(p), source_root=source_root)
 
 

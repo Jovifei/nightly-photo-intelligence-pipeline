@@ -17,6 +17,9 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
+
+import yaml
 
 from ._paths import find_project_root
 from .domain.authorization import load_authorization
@@ -27,6 +30,7 @@ PASS = "PASS"
 NOT_AVAILABLE = "NOT_AVAILABLE"
 SKIPPED = "SKIPPED"
 FAIL = "FAIL"
+_MIN_FREE_DISK_BYTES = 1024**3
 
 _TIMEOUT = 10  # seconds per observational command
 
@@ -128,13 +132,19 @@ def _check_disk() -> CheckResult:
     try:
         usage = shutil.disk_usage(str(root))
         free_gb = usage.free / (1024**3)
+        if usage.free < _MIN_FREE_DISK_BYTES:
+            return CheckResult(
+                name="disk_free",
+                status=FAIL,
+                notes="available disk is below the 1 GiB safety floor",
+            )
         return CheckResult(
             name="disk_free",
             status=PASS,
             evidence=f"project drive free: {free_gb:.1f} GiB",
         )
-    except OSError as exc:
-        return CheckResult(name="disk_free", status=FAIL, notes=str(exc))
+    except OSError:
+        return CheckResult(name="disk_free", status=FAIL, notes="disk query failed")
 
 
 def _check_fixture_integrity() -> CheckResult:
@@ -196,6 +206,14 @@ def _check_repo_independence() -> CheckResult:
     )
 
 
+_OWNER_MUTABLE_ARCHIVE_FILES = {
+    "PROJECT_STATE.json",
+    "tasks/index.json",
+    "tasks/README.md",
+    "tasks/phase_n1_ingest_state_machine.yaml",
+}
+
+
 def _check_handoff() -> CheckResult:
     """Verify the delivered contract files (listed in MANIFEST.sha256) are intact.
 
@@ -208,7 +226,11 @@ def _check_handoff() -> CheckResult:
     root = find_project_root()
     manifest_path = root / "MANIFEST.sha256"
     if not manifest_path.is_file():
-        return CheckResult(name="handoff_integrity", status=FAIL, notes="MANIFEST.sha256 missing")
+        return CheckResult(
+            name="ARCHIVAL_HANDOFF_BASELINE_CHECK",
+            status=FAIL,
+            notes="MANIFEST.sha256 missing",
+        )
     listed: dict[str, str] = {}
     for line in manifest_path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
@@ -217,12 +239,16 @@ def _check_handoff() -> CheckResult:
             digest, rel = line.split("  ", 1)
         except ValueError:
             return CheckResult(
-                name="handoff_integrity", status=FAIL, notes=f"bad manifest line: {line[:40]}"
+                name="ARCHIVAL_HANDOFF_BASELINE_CHECK",
+                status=FAIL,
+                notes="invalid manifest record",
             )
         listed[rel] = digest
     missing: list[str] = []
     mismatched: list[str] = []
     for rel, digest in listed.items():
+        if rel in _OWNER_MUTABLE_ARCHIVE_FILES:
+            continue
         p = root / rel
         if not p.is_file():
             missing.append(rel)
@@ -232,14 +258,17 @@ def _check_handoff() -> CheckResult:
             mismatched.append(rel)
     if missing or mismatched:
         return CheckResult(
-            name="handoff_integrity",
+            name="ARCHIVAL_HANDOFF_BASELINE_CHECK",
             status=FAIL,
             notes=f"missing={len(missing)} mismatched={len(mismatched)}",
         )
     return CheckResult(
-        name="handoff_integrity",
+        name="ARCHIVAL_HANDOFF_BASELINE_CHECK",
         status=PASS,
-        evidence=f"{len(listed)} contract files intact (new N0 files allowed)",
+        evidence=(
+            f"{len(listed) - len(_OWNER_MUTABLE_ARCHIVE_FILES)} immutable delivery files intact; "
+            "Owner-authorized current state validated separately"
+        ),
     )
 
 
@@ -250,13 +279,13 @@ def _check_schema_version() -> CheckResult:
     (or the catalog's own constant if present), not a runtime/random value.
     """
     root = find_project_root()
-    catalog = root / "schemas" / "schema_catalog.json"
+    catalog = root / "schemas" / "current_stage_schema_catalog.json"
     if not catalog.is_file():
         return CheckResult(name="schema_version", status=NOT_AVAILABLE, notes="catalog missing")
     try:
         data = json.loads(catalog.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        return CheckResult(name="schema_version", status=FAIL, notes=str(exc))
+    except json.JSONDecodeError:
+        return CheckResult(name="schema_version", status=FAIL, notes="catalog JSON invalid")
     from . import __version__ as pkg_version
     from .persistence.migrations import SCHEMA_VERSION as db_schema_version
 
@@ -271,43 +300,216 @@ def _check_schema_version() -> CheckResult:
     )
 
 
-def _check_authorization() -> CheckResult:
+def _validate_schema(schema: dict[str, Any], instance: Any) -> list[str]:
     try:
-        auth = load_authorization()
+        from jsonschema import Draft202012Validator, FormatChecker  # type: ignore
+    except ImportError:
+        return ["jsonschema unavailable"]
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+    return [error.message for error in validator.iter_errors(instance)]
+
+
+def _n1_approval_chain_is_consistent(
+    *,
+    state: dict[str, Any],
+    approval: dict[str, Any],
+    n1_completion: dict[str, Any],
+    n1_task: dict[str, Any],
+    g1_task: dict[str, Any],
+    task_index: dict[str, Any],
+) -> bool:
+    """Validate the immutable N1 approval link into the current G1 gate."""
+    n0 = "72a81f5984838b74304d23263ac450ea4b5a3a9a"
+    n1 = "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"
+    completion_path = "approvals/phase_completion_N1.yaml"
+    completed_n1 = next(
+        (item for item in task_index.get("completed", []) if item.get("phase") == "N1"),
+        None,
+    )
+    return all(
+        (
+            n1_completion.get("status") == "APPROVED",
+            n1_completion.get("owner_id") == "Jovi",
+            n1_completion.get("phase_id") == "N1",
+            n1_completion.get("baseline", {}).get("n0_commit") == n0,
+            n1_completion.get("baseline", {}).get("n1_commit") == n1,
+            n1_completion.get("independent_reviewer", {}).get("reviewed_commit") == n1,
+            state.get("baselines", {}).get("N0", {}).get("commit") == n0,
+            state.get("baselines", {}).get("N1", {}).get("commit") == n1,
+            approval.get("baselines") == {"N0": n0, "N1": n1},
+            n1_task.get("completion_approval") == completion_path,
+            g1_task.get("dependencies", {}).get("n1_completion_approval") == completion_path,
+            isinstance(completed_n1, dict),
+            (completed_n1 or {}).get("baseline_commit") == n1,
+            (completed_n1 or {}).get("completion_approval") == completion_path,
+            state.get("authorization", {}).get("task_contract")
+            == "tasks/gate_g1_calibration_20.yaml",
+            state.get("authorization", {}).get("approval_record")
+            == "approvals/data_gate_approval_G1.yaml",
+        )
+    )
+
+
+def _check_authorization() -> CheckResult:
+    root = find_project_root()
+    try:
+        state = json.loads((root / "PROJECT_STATE.json").read_text(encoding="utf-8"))
+        approval = yaml.safe_load(
+            (root / "approvals" / "data_gate_approval_G1.yaml").read_text(encoding="utf-8")
+        )
+        n1_completion = yaml.safe_load(
+            (root / "approvals" / "phase_completion_N1.yaml").read_text(encoding="utf-8")
+        )
+        n1_task = yaml.safe_load(
+            (root / "tasks" / "phase_n1_ingest_state_machine.yaml").read_text(encoding="utf-8")
+        )
+        g1_task = yaml.safe_load(
+            (root / "tasks" / "gate_g1_calibration_20.yaml").read_text(encoding="utf-8")
+        )
+        task_index = json.loads((root / "tasks" / "index.json").read_text(encoding="utf-8"))
+        schemas = root / "schemas"
+        checks = [
+            (
+                json.loads((schemas / "project_state_v1_1.schema.json").read_text("utf-8")),
+                state,
+            ),
+            (
+                json.loads((schemas / "approval_record_v1_1.schema.json").read_text("utf-8")),
+                approval,
+            ),
+            (
+                json.loads(
+                    (schemas / "phase_completion_approval_v1_0.schema.json").read_text("utf-8")
+                ),
+                n1_completion,
+            ),
+            (
+                json.loads((schemas / "task_contract_v1_1.schema.json").read_text("utf-8")),
+                n1_task,
+            ),
+            (
+                json.loads((schemas / "task_contract_v1_1.schema.json").read_text("utf-8")),
+                g1_task,
+            ),
+            (
+                json.loads((schemas / "task_index_v1_1.schema.json").read_text("utf-8")),
+                task_index,
+            ),
+        ]
+        if any(_validate_schema(schema, value) for schema, value in checks):
+            return CheckResult(
+                name="current_authorization_contracts",
+                status=FAIL,
+                notes="current contract schema validation failed",
+            )
+        if not _n1_approval_chain_is_consistent(
+            state=state,
+            approval=approval,
+            n1_completion=n1_completion,
+            n1_task=n1_task,
+            g1_task=g1_task,
+            task_index=task_index,
+        ):
+            return CheckResult(
+                name="current_authorization_contracts",
+                status=FAIL,
+                notes="N1 completion approval chain validation failed",
+            )
+        from .ingest.g1_contract import load_g1_approval
+
+        load_g1_approval(root)
+        auth = load_authorization(root)
+        if not auth.phase_authorized or not auth.data_gate_authorized:
+            raise ValueError("authorization inactive")
         return CheckResult(
-            name="authorization",
+            name="current_authorization_contracts",
             status=PASS,
             evidence=(
                 f"phase={auth.phase_id}/{auth.phase_status} "
-                f"gate={auth.data_gate_id}/{auth.data_gate_status}"
+                f"gate={auth.data_gate_id}/{auth.data_gate_status}; "
+                "schema+N1-approval-chain+bindings+expiry valid"
             ),
         )
-    except Exception as exc:  # noqa: BLE001
-        return CheckResult(name="authorization", status=FAIL, notes=str(exc))
+    except Exception:  # noqa: BLE001
+        return CheckResult(
+            name="current_authorization_contracts",
+            status=FAIL,
+            notes="current authorization contract validation failed",
+        )
+
+
+def _check_git_baselines() -> CheckResult:
+    root = find_project_root()
+    n0 = "72a81f5984838b74304d23263ac450ea4b5a3a9a"
+    n1 = "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"
+
+    def git(*args: str) -> tuple[int, str]:
+        return _run(["git", "-C", str(root), *args])
+
+    checks = [
+        git("rev-parse", "n0-approved-2026-07-14") == (0, n0),
+        git("rev-parse", "n1-approved-2026-07-14") == (0, n1),
+        git("merge-base", "--is-ancestor", n0, n1)[0] == 0,
+        git("merge-base", "--is-ancestor", n1, "HEAD")[0] == 0,
+        git("rev-list", "--count", f"{n1}..HEAD") == (0, "1"),
+        git("rev-list", "--merges", "HEAD") == (0, ""),
+        git("status", "--porcelain", "--untracked-files=all") == (0, ""),
+    ]
+    if not all(checks):
+        return CheckResult(name="git_stage_baselines", status=FAIL, notes="Git baseline mismatch")
+    return CheckResult(
+        name="git_stage_baselines",
+        status=PASS,
+        evidence="N0/N1 tags and ancestry intact; N1..HEAD=1; no merge commit; worktree clean",
+    )
 
 
 def _check_source_runtime_separation() -> CheckResult:
     src = os.environ.get("NPI_SOURCE_ROOT")
+    parent = os.environ.get("NPI_RUNTIME_PARENT")
     rt = os.environ.get("NPI_RUNTIME_ROOT")
-    if not src or not rt:
+    manifest_path = os.environ.get("NPI_G1_MANIFEST")
+    if not src or not parent or not rt or not manifest_path:
         return CheckResult(
-            name="source_runtime_separation",
-            status=SKIPPED,
-            notes="NPI_SOURCE_ROOT / NPI_RUNTIME_ROOT not set (configure before N1)",
+            name="g1_execution_environment",
+            status=FAIL,
+            notes="required G1 source/runtime/manifest environment is not configured",
         )
-    from .domain.errors import NpiError
-    from .ingest.source_guard import validate_roots
 
     try:
-        validate_roots(Path(src), Path(rt))
-        return CheckResult(
-            name="source_runtime_separation", status=PASS, evidence="roots separated"
+        from .ingest.g1_contract import load_g1_approval, prepare_g1_execution
+        from .ingest.manifest import G1FrozenManifest
+
+        root = find_project_root()
+        auth = load_authorization(root)
+        approval = load_g1_approval(root)
+        manifest = G1FrozenManifest.load(
+            Path(manifest_path),
+            expected_sha256=approval.manifest_sha256,
+            expected_count=approval.manifest_count,
         )
-    except NpiError as exc:
-        return CheckResult(name="source_runtime_separation", status=FAIL, notes=exc.error_code)
+        permit = prepare_g1_execution(
+            source_root=Path(src),
+            runtime_parent=Path(parent),
+            runtime_child=Path(rt),
+            auth=auth,
+            manifest=manifest,
+            approval=approval,
+        )
+        return CheckResult(
+            name="g1_execution_environment",
+            status=PASS,
+            evidence=(
+                f"manifest_count={manifest.count}; runtime policy valid; "
+                f"read_only={permit.read_only.status}"
+            ),
+        )
+    except Exception as exc:  # noqa: BLE001
+        error_code = getattr(exc, "error_code", "NPI_PREFLIGHT_UNSATISFIED")
+        return CheckResult(name="g1_execution_environment", status=FAIL, notes=str(error_code))
 
 
-_CHECKS: list[Callable[[], CheckResult]] = [
+_BASE_CHECKS: tuple[Callable[[], CheckResult], ...] = (
     _check_python,
     _check_os,
     _check_wsl,
@@ -321,13 +523,21 @@ _CHECKS: list[Callable[[], CheckResult]] = [
     _check_handoff,
     _check_schema_version,
     _check_authorization,
-    _check_source_runtime_separation,
-]
+    _check_git_baselines,
+)
 
 
-def run_preflight() -> list[CheckResult]:
-    """Run all preflight checks and return their results."""
-    return [check() for check in _CHECKS]
+def run_preflight(
+    *,
+    execution_environment_check: Callable[[], CheckResult] = _check_source_runtime_separation,
+) -> list[CheckResult]:
+    """Run current-stage checks, ending with the pre-content execution gate.
+
+    The injected callable exists for synthetic tests only. The CLI uses the
+    default, which always validates the configured real manifest, runtime
+    policy, and OS-enforced source read-only capability.
+    """
+    return [check() for check in (*_BASE_CHECKS, execution_environment_check)]
 
 
 def format_preflight_text(results: list[CheckResult]) -> str:

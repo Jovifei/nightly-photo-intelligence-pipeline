@@ -127,6 +127,49 @@ _POSIX_HOME_RE: re.Pattern[str] = re.compile(
     r"/home/(?!<USER_REDACTED>|<HOST_REDACTED>|owner(?:/|$))"
     r"[A-Za-z0-9._-]+/"
 )
+_WINDOWS_ABSOLUTE_RE: re.Pattern[str] = re.compile(
+    r"(?i)(?<![A-Za-z0-9])(?:\\\\\?\\)?[A-Za-z]:[\\/](?:[^\s\"'<>|]+[\\/]?)+"
+)
+_UNC_RE: re.Pattern[str] = re.compile(
+    r"(?i)(?<!:)(?:\\\\|//)[^\\/\s\"'<>|]+[\\/][^\\/\s\"'<>|]+"
+    r"(?:[\\/][^\s\"'<>|]+)*"
+)
+_WSL_MOUNT_RE: re.Pattern[str] = re.compile(r"(?i)/mnt/[A-Za-z](?:/[^\s\"'<>|]+)+")
+_SENSITIVE_EXIF_RE: re.Pattern[str] = re.compile(
+    r"(?i)\b(?:GPSInfo|GPSLatitude(?:Ref)?|GPSLongitude(?:Ref)?|GPSAltitude(?:Ref)?|"
+    r"GPSTimeStamp|GPSDateStamp|GPSAreaInformation|GPSDest(?:Latitude|Longitude)(?:Ref)?|"
+    r"CameraOwnerName|BodySerialNumber|LensSerialNumber|ImageUniqueID|UserComment|"
+    r"DateTimeOriginal|DateTimeDigitized|LensMake|LensModel|LensSpecification|CameraMake|"
+    r"CameraModel|ExifArtist|ExifCopyright|ExifSoftware|ExifDateTime)\b|"
+    r"[\"'](?:Artist|Copyright|Make|Model|Software|DateTime)[\"']"
+)
+
+# Narrow file+rule exemptions for defensive code and explicit synthetic examples.
+CONTENT_RULE_ALLOWLIST: frozenset[tuple[str, str]] = frozenset(
+    {
+        ("examples/invalid/item_absolute_path.json", "windows_absolute_path"),
+        ("docs/12_directory_and_repository_layout.md", "wsl_mount_path"),
+        ("reports/N0_environment_report.md", "windows_absolute_path"),
+        ("src/nightly_photo_intelligence_pipeline/redaction.py", "windows_absolute_path"),
+        ("src/nightly_photo_intelligence_pipeline/redaction.py", "unc_path"),
+        ("src/nightly_photo_intelligence_pipeline/redaction.py", "wsl_mount_path"),
+        ("src/nightly_photo_intelligence_pipeline/ingest/exif.py", "sensitive_exif_field"),
+        ("tools/sensitive_file_scan.py", "windows_absolute_path"),
+        ("tools/sensitive_file_scan.py", "unc_path"),
+        ("tools/sensitive_file_scan.py", "wsl_mount_path"),
+        ("tools/sensitive_file_scan.py", "sensitive_exif_field"),
+        ("tools/verify_handoff.py", "windows_absolute_path"),
+        ("tests/test_path_confidentiality.py", "windows_absolute_path"),
+        ("tests/test_path_confidentiality.py", "unc_path"),
+        ("tests/test_path_confidentiality.py", "wsl_mount_path"),
+        ("tests/test_g1.py", "sensitive_exif_field"),
+        ("tests/test_security.py", "sensitive_exif_field"),
+        ("tests/test_state_concurrency.py", "windows_absolute_path"),
+        ("tests/test_state_concurrency.py", "unc_path"),
+        ("tests/test_state_concurrency.py", "wsl_mount_path"),
+        ("tests/test_windows_readonly.py", "windows_absolute_path"),
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -260,7 +303,7 @@ def _size_violation(rel: str, size: int) -> str | None:
     return f"file size {size} bytes exceeds 5 MiB threshold"
 
 
-def _content_violations(path: Path) -> list[str]:
+def _content_violations(path: Path, rel: str) -> list[str]:
     """Return reasons discovered by scanning the file's text content.
 
     Binary files (files that cannot be decoded as UTF-8) are skipped and
@@ -282,6 +325,22 @@ def _content_violations(path: Path) -> list[str]:
     if _POSIX_HOME_RE.search(text):
         reasons.append("personal POSIX home path (/home/<name>/)")
 
+    rules = {
+        "windows_absolute_path": _WINDOWS_ABSOLUTE_RE,
+        "unc_path": _UNC_RE,
+        "wsl_mount_path": _WSL_MOUNT_RE,
+        "sensitive_exif_field": _SENSITIVE_EXIF_RE,
+    }
+    labels = {
+        "windows_absolute_path": "Windows absolute path",
+        "unc_path": "UNC path",
+        "wsl_mount_path": "WSL mount path",
+        "sensitive_exif_field": "sensitive EXIF field",
+    }
+    for rule, pattern in rules.items():
+        if pattern.search(text) and (rel, rule) not in CONTENT_RULE_ALLOWLIST:
+            reasons.append(labels[rule])
+
     return reasons
 
 
@@ -301,7 +360,7 @@ def scan_file(path: Path, root: Path) -> list[tuple[str, str]]:
     if size_reason is not None:
         findings.append((rel, size_reason))
 
-    for reason in _content_violations(path):
+    for reason in _content_violations(path, rel):
         findings.append((rel, reason))
 
     return findings

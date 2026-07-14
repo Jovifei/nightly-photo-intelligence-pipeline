@@ -1,0 +1,37 @@
+schema_version: "1.0"
+approval_type: "PHASE_COMPLETION"
+status: "APPROVED"
+phase_id: "N1"
+owner_id: "Jovi"
+approved_at_utc: "2026-07-14"
+baseline:
+  n1_commit: "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"
+  n1_tag: "n1-approved-2026-07-14"
+  n0_commit: "72a81f5984838b74304d23263ac450ea4b5a3a9a"
+  n0_tag: "n0-approved-2026-07-14"
+  immutable: true
+pre_g1_project_state_sha256: "43ac2b7e45b4d440df179ea836161530d451a3c6087ee21607563e81615652c0"
+independent_reviewer:
+  conclusion: "PASS_FOR_OWNER_REVIEW"
+  reviewed_commit: "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"
+  confirmed:
+    - "N0 baseline 72a81f5 not rewritten"
+    - "exactly one N1 commit beyond N0"
+    - "pytest 56/56 PASS"
+    - "ruff/format/mypy PASS"
+    - "run_quality.py 7/7 QUALITY_GATE_PASSED"
+    - "sensitive_file_scan.py 0 violations"
+    - "no authorization expansion; G0 not violated"
+    - "no blocking finding"
+quality_at_approval:
+  interpreter: "CPython 3.12.10"
+  pytest: "56 passed, 0 failed"
+  ruff: "All checks passed!"
+  mypy: "Success: no issues found in 23 source files"
+  run_quality: "7 pass, 0 fail, QUALITY_GATE_PASSED"
+  sensitive_scan: "0 violations"
+owner_statement: >
+  N1 is approved and complete. Commit ca812cb71c4a09d273f64d9a6f2747ac3facf4cc
+  is the immutable N1 baseline. N0 (72a81f5) and N1 (ca812cb) history must not
+  be amended, reset, rebased, or squashed. The n1-approved-2026-07-14 tag is
+  local-only, must not be pushed, and must not be moved.

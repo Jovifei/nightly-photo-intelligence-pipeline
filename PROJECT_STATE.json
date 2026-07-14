@@ -2,52 +2,47 @@
   "schema_version": "1.1",
   "project": {
     "slug": "nightly-photo-intelligence-pipeline",
-    "name_zh": "夜间摄影灵感分析流水线",
     "repository_relationship": "INDEPENDENT_FROM_ai-photography-director-app"
   },
-  "handoff": {
-    "version": "1.0.0",
-    "generated_on": "2026-07-12",
-    "integrity_manifest": "MANIFEST.sha256"
-  },
-  "n0_baseline": {
-    "commit": "72a81f5984838b74304d23263ac450ea4b5a3a9a",
-    "tag": "n0-approved-2026-07-14",
-    "status": "APPROVED_COMPLETE",
-    "approved_by": "Jovi (Owner)",
-    "approved_at_utc": "2026-07-14",
-    "approval_record": "approvals/phase_approval_N1.yaml",
-    "immutable": true
+  "baselines": {
+    "N0": {
+      "commit": "72a81f5984838b74304d23263ac450ea4b5a3a9a",
+      "tag": "n0-approved-2026-07-14",
+      "status": "APPROVED_COMPLETE",
+      "immutable": true
+    },
+    "N1": {
+      "commit": "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc",
+      "tag": "n1-approved-2026-07-14",
+      "status": "APPROVED_COMPLETE",
+      "immutable": true
+    }
   },
   "authorization": {
-    "phase": {
-      "id": "N1",
-      "status": "AUTHORIZED"
-    },
-    "data_gate": {
-      "id": "G0_THREE_SYNTHETIC_FIXTURES",
-      "status": "AUTHORIZED"
-    },
-    "real_photo_access": "NOT_AUTHORIZED",
+    "phase": {"id": "N1", "status": "APPROVED_COMPLETE"},
+    "data_gate": {"id": "G1_CALIBRATION_20", "status": "AUTHORIZED"},
+    "approval_record": "approvals/data_gate_approval_G1.yaml",
+    "task_contract": "tasks/gate_g1_calibration_20.yaml",
+    "real_photo_access": "AUTHORIZED",
+    "exif_real_data_read": "AUTHORIZED_NON_SENSITIVE_ONLY",
     "network_access": "DENY_BY_DEFAULT",
     "large_model_downloads": "NOT_AUTHORIZED",
-    "cloud_image_processing": "FORBIDDEN",
+    "cloud_image_processing": "NOT_AUTHORIZED",
     "openclaw_activation": "NOT_AUTHORIZED",
     "git_remote_write": "NOT_AUTHORIZED",
     "system_configuration_changes": "NOT_AUTHORIZED",
-    "exif_real_data_read": "NOT_AUTHORIZED",
     "ai_photography_director_app_changes": "NOT_AUTHORIZED"
   },
   "data_scope": {
-    "max_assets": 3,
-    "allowed_assets": "repo-internal three non-sensitive synthetic fixtures only",
-    "calibration_20": "NOT_AUTHORIZED",
-    "pilot_100": "NOT_AUTHORIZED",
-    "full_library": "NOT_AUTHORIZED"
+    "max_assets": 20,
+    "allowed_assets": "owner-frozen manifest entries only",
+    "G1_CALIBRATION_20": "AUTHORIZED",
+    "G2_PILOT_100": "LOCKED",
+    "G3_FULL_LIBRARY": "LOCKED"
   },
   "phase_status": {
     "N0": "APPROVED_COMPLETE",
-    "N1": "AUTHORIZED",
+    "N1": "APPROVED_COMPLETE",
     "N2": "LOCKED",
     "N3": "LOCKED",
     "N4": "LOCKED",
@@ -56,25 +51,8 @@
     "N7": "LOCKED",
     "N8": "LOCKED"
   },
-  "locked": {
-    "phases": [
-      "N2",
-      "N3",
-      "N4",
-      "N5",
-      "N6",
-      "N7",
-      "N8"
-    ],
-    "data_gates": [
-      "G1_CALIBRATION_20",
-      "G2_PILOT_100",
-      "G3_FULL_LIBRARY"
-    ]
-  },
   "required_stop_after": {
-    "phase": "N1",
-    "condition": "ONE_ISOLATED_N1_COMMIT_AND_REQUIRED_EVIDENCE_COMPLETE",
+    "condition": "G1_CALIBRATION_AWAITING_OWNER_APPROVAL",
     "next_action": "WAIT_FOR_OWNER_APPROVAL"
   }
 }

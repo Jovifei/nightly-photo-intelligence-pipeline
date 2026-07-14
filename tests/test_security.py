@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import runpy
 import shutil
 import subprocess
 import sys
@@ -141,6 +142,28 @@ def test_at_n0_sec_04_sensitive_file_scan_clean(project_root: Path) -> None:
     )
     assert proc.returncode == 0, f"scanner found violations:\n{proc.stdout}\n{proc.stderr}"
     assert "0 violation" in proc.stdout
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "GPSAltitude",
+        "GPSDateStamp",
+        "UserComment",
+        "CameraOwnerName",
+        "BodySerialNumber",
+        "LensSpecification",
+        "ImageUniqueID",
+    ],
+)
+def test_sensitive_scan_detects_project_sensitive_exif_fields(
+    project_root: Path, tmp_path: Path, field: str
+) -> None:
+    scanner = runpy.run_path(str(project_root / "tools" / "sensitive_file_scan.py"))
+    sample = tmp_path / "synthetic.txt"
+    sample.write_text(f"metadata_field={field}", encoding="utf-8")
+    violations = scanner["_content_violations"](sample, "synthetic/privacy-example.txt")
+    assert "sensitive EXIF field" in violations
 
 
 # ---------------- AT-N0-LOG-01: log path redaction ----------------

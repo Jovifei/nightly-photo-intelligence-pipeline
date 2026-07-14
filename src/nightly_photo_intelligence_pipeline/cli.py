@@ -24,13 +24,19 @@ import typer
 
 from ._paths import find_project_root
 from .domain.authorization import load_authorization
-from .domain.errors import ExitCode, NpiError
+from .domain.errors import ExitCode, GateNotAuthorizedError, NpiError, PreflightUnsatisfiedError
 from .domain.models import load_config
-from .ingest.manifest import load_manifest
+from .ingest.g1_contract import (
+    load_g1_approval,
+    prepare_g1_execution,
+    validate_runtime_child,
+)
+from .ingest.manifest import G1FrozenManifest, load_manifest
 from .ingest.runner import (
     format_dry_run_text,
     format_real_ingest_text,
     run_dry_run_ingest,
+    run_g1_calibration_ingest,
     run_real_ingest,
 )
 from .ingest.source_guard import validate_roots
@@ -54,8 +60,18 @@ def _resolve_runtime_root() -> Path:
     return (find_project_root() / ".npi_runtime").resolve()
 
 
-def _resolve_db_path() -> Path:
-    return _resolve_runtime_root() / "state" / "npi_state.sqlite"
+def _resolve_runtime_parent() -> Path:
+    env = os.environ.get("NPI_RUNTIME_PARENT")
+    if not env:
+        from .domain.errors import RuntimePolicyError
+
+        raise RuntimePolicyError("approved runtime parent is not configured")
+    return Path(env)
+
+
+def _resolve_db_path(runtime_root: Path | None = None) -> Path:
+    captured_runtime_root = runtime_root if runtime_root is not None else _resolve_runtime_root()
+    return captured_runtime_root / "state" / "npi_state.sqlite"
 
 
 def _default_manifest() -> Path:
@@ -86,8 +102,8 @@ def _run_safely(func: F) -> F:
         except Exception as exc:  # noqa: BLE001 - last-resort guard
             typer.echo("error_code: NPI_INTERNAL_ERROR", err=True)
             typer.echo(f"exit_code: {int(ExitCode.INTERNAL_ERROR)}", err=True)
-            typer.echo(f"message: {redact_text(type(exc).__name__ + ': ' + str(exc))}", err=True)
-            raise typer.Exit(code=int(ExitCode.INTERNAL_ERROR)) from exc
+            typer.echo(f"message: internal error ({type(exc).__name__})", err=True)
+            raise typer.Exit(code=int(ExitCode.INTERNAL_ERROR)) from None
 
     return cast(F, wrapper)
 
@@ -127,6 +143,11 @@ def ingest(
     manifest: Path = typer.Option(
         None, "--manifest", help="G0 data manifest (default: fixtures/fixture_manifest.json)"
     ),
+    g1_frozen_manifest: Path = typer.Option(
+        None,
+        "--g1-frozen-manifest",
+        help="Owner-frozen G1 manifest kept outside Git",
+    ),
 ) -> None:
     """Ingest source files.
 
@@ -134,6 +155,13 @@ def ingest(
     N1 capability bounded by the G0 manifest and the asset cap.
     """
     auth = load_authorization()
+    if auth.data_gate_id == "G1_CALIBRATION_20":
+        if dry_run or g1_frozen_manifest is None:
+            raise GateNotAuthorizedError(
+                "G1 requires the frozen-manifest path and forbids directory-wide ingest"
+            )
+    elif g1_frozen_manifest is not None:
+        raise GateNotAuthorizedError("G1 frozen-manifest ingest is not authorized by this gate")
     # Gate check FIRST, before any source access.
     auth.require_ingest_authorized(dry_run=dry_run)
     config = load_config()
@@ -150,6 +178,58 @@ def ingest(
             input_dir, runtime_root, config, source_root_for_redaction=input_dir
         )
         typer.echo(format_dry_run_text(dry_result))
+        return
+    if g1_frozen_manifest is not None:
+        preflight_results = run_preflight()
+        if any(result.status == FAIL for result in preflight_results):
+            raise PreflightUnsatisfiedError("G1 current-stage preflight failed")
+        approval = load_g1_approval(find_project_root())
+        runtime_parent = _resolve_runtime_parent()
+        man = G1FrozenManifest.load(
+            g1_frozen_manifest,
+            expected_sha256=approval.manifest_sha256,
+            expected_count=20,
+        )
+        permit = prepare_g1_execution(
+            source_root=input_dir,
+            runtime_parent=runtime_parent,
+            runtime_child=runtime_root,
+            auth=auth,
+            manifest=man,
+            approval=approval,
+        )
+        # Close the preflight-to-open race: a removed or redirected child must
+        # fail before StateStore.open can recreate or follow the path.
+        validate_runtime_child(
+            source_root=input_dir,
+            runtime_parent=runtime_parent,
+            runtime_child=runtime_root,
+            approval=approval,
+        )
+        store = StateStore.open(_resolve_db_path(runtime_root))
+        try:
+            result = run_g1_calibration_ingest(
+                input_dir,
+                runtime_root,
+                config,
+                auth,
+                store,
+                man,
+                permit=permit,
+                source_root_for_redaction=input_dir,
+            )
+            typer.echo("NPI G1 calibration ingest summary")
+            typer.echo("=" * 40)
+            typer.echo(f"source: {result.source_root_redacted}")
+            typer.echo(f"runtime: {result.runtime_root_redacted}")
+            typer.echo(f"frozen_manifest_sha256: {result.frozen_manifest_sha256}")
+            typer.echo(f"files_scanned: {result.files_scanned}")
+            typer.echo(f"assets_created: {result.assets_created}")
+            typer.echo(f"duplicates_seen: {result.duplicates_seen}")
+            typer.echo(f"near_duplicate_candidates: {len(result.near_duplicate_candidates)}")
+            typer.echo(f"database_mutated: {result.database_mutated}")
+        finally:
+            store.close()
         return
     # Real ingest (N1/G0): manifest-gated, idempotent, mutating.
     manifest_path = manifest or _default_manifest()
@@ -182,7 +262,7 @@ def resume() -> None:
     if not db_path.is_file():
         typer.echo("no state database; nothing to resume")
         return
-    store = StateStore.open(db_path, initialize=False)
+    store = StateStore.open(db_path, initialize=True)
     try:
         n = store.recover_interrupted_runs()
         typer.echo(f"reclaimed {n} interrupted stage run(s)")

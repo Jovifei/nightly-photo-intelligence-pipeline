@@ -45,10 +45,11 @@ class AuthorizationSnapshot:
     project_root: Path
     max_assets: int | None
     n0_baseline_commit: str | None
+    n1_baseline_commit: str | None = None
 
     @property
     def phase_authorized(self) -> bool:
-        return self.phase_status == "AUTHORIZED"
+        return self.phase_status in {"AUTHORIZED", "APPROVED_COMPLETE"}
 
     @property
     def data_gate_authorized(self) -> bool:
@@ -125,7 +126,9 @@ def load_authorization(project_root: Path | None = None) -> AuthorizationSnapsho
     phase = auth.get("phase", {})
     gate = auth.get("data_gate", {})
     data_scope = data.get("data_scope", {}) or {}
-    n0_baseline = data.get("n0_baseline", {}) or {}
+    baselines = data.get("baselines", {}) or {}
+    n0_baseline = baselines.get("N0", data.get("n0_baseline", {})) or {}
+    n1_baseline = baselines.get("N1", {}) or {}
     return AuthorizationSnapshot(
         phase_id=phase.get("id", "UNKNOWN"),
         phase_status=phase.get("status", "UNKNOWN"),
@@ -138,4 +141,5 @@ def load_authorization(project_root: Path | None = None) -> AuthorizationSnapsho
         project_root=root,
         max_assets=data_scope.get("max_assets"),
         n0_baseline_commit=n0_baseline.get("commit"),
+        n1_baseline_commit=n1_baseline.get("commit"),
     )

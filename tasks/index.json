@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.0",
+  "contract_version": "1.1",
   "completed": [
     {
       "phase": "N0",
@@ -7,46 +7,34 @@
       "data_gate": "G0_THREE_SYNTHETIC_FIXTURES",
       "baseline_commit": "72a81f5984838b74304d23263ac450ea4b5a3a9a",
       "approved_at_utc": "2026-07-14"
-    }
-  ],
-  "authorized": [
+    },
     {
       "phase": "N1",
       "file": "phase_n1_ingest_state_machine.yaml",
       "data_gate": "G0_THREE_SYNTHETIC_FIXTURES",
-      "max_assets": 3,
-      "approval_record": "approvals/phase_approval_N1.yaml"
+      "baseline_commit": "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc",
+      "completion_approval": "approvals/phase_completion_N1.yaml",
+      "approved_at_utc": "2026-07-14"
+    }
+  ],
+  "authorized": [
+    {
+      "kind": "DATA_GATE",
+      "phase": "N1",
+      "file": "gate_g1_calibration_20.yaml",
+      "data_gate": "G1_CALIBRATION_20",
+      "max_assets": 20,
+      "approval_record": "approvals/data_gate_approval_G1.yaml"
     }
   ],
   "locked": [
-    {
-      "phase": "N2",
-      "file": "phase_n2_pose_and_segmentation.yaml"
-    },
-    {
-      "phase": "N3",
-      "file": "phase_n3_facts_and_interpretation.yaml"
-    },
-    {
-      "phase": "N4",
-      "file": "phase_n4_director_prompts.yaml"
-    },
-    {
-      "phase": "N5",
-      "file": "phase_n5_review_and_export.yaml"
-    },
-    {
-      "phase": "N6",
-      "file": "phase_n6_pilot_and_search.yaml"
-    },
-    {
-      "phase": "N7",
-      "file": "phase_n7_app_bundle_integration.yaml"
-    },
-    {
-      "phase": "N8",
-      "file": "phase_n8_nightly_scheduler_openclaw.yaml"
-    }
+    {"phase": "N2", "file": "phase_n2_pose_and_segmentation.yaml"},
+    {"phase": "N3", "file": "phase_n3_facts_and_interpretation.yaml"},
+    {"phase": "N4", "file": "phase_n4_director_prompts.yaml"},
+    {"phase": "N5", "file": "phase_n5_review_and_export.yaml"},
+    {"phase": "N6", "file": "phase_n6_pilot_and_search.yaml"},
+    {"phase": "N7", "file": "phase_n7_app_bundle_integration.yaml"},
+    {"phase": "N8", "file": "phase_n8_nightly_scheduler_openclaw.yaml"}
   ],
-  "rule": "Exactly one phase is actively authorized at a time. N0 is completed/approved (immutable baseline 72a81f5). N1 is the active authorized phase on G0 (3 synthetic fixtures). N2-N8 and G1-G3 remain locked."
+  "rule": "N0 and N1 are immutable approved baselines. Only G1 remediation is authorized. N2-N8 and G2-G3 remain locked."
 }

@@ -1,0 +1,44 @@
+schema_version: "1.1"
+defaults:
+  max_attempts: 2
+  exponential_backoff: false
+  note: "Local batch jobs use explicit bounded retries, not unbounded daemon retries."
+errors:
+  DECODE_ERROR:
+    retry: false
+    error_codes: ["NPI_UNSUPPORTED_MEDIA"]
+    terminal: "UNSUPPORTED_OR_NEEDS_REVIEW"
+  TIMEOUT:
+    retry: true
+    max_attempts: 2
+    error_codes: ["NPI_MODEL_TIMEOUT"]
+  CUDA_OOM:
+    retry: true
+    max_attempts: 2
+    error_codes: ["NPI_CUDA_OOM"]
+    approved_adjustment: "reduce_pixel_budget_or_batch_once"
+  INVALID_JSON:
+    retry: true
+    max_attempts: 2
+    error_codes: ["NPI_INVALID_JSON"]
+    approved_adjustment: "one_schema_repair_without_new_facts"
+  MODEL_CONFLICT:
+    retry: false
+    error_codes: ["NPI_MODEL_CONFLICT"]
+    terminal: "NEEDS_REVIEW"
+  DISK_LOW:
+    retry: false
+    error_codes: ["NPI_DISK_LOW"]
+    batch_action: "STOP_NEW_WORK"
+  SOURCE_INTEGRITY_CHANGED:
+    retry: false
+    error_codes: ["NPI_SOURCE_CHANGED_DURING_READ"]
+    batch_action: "SECURITY_STOP"
+  DATABASE_INTEGRITY_ERROR:
+    retry: false
+    error_codes: ["NPI_DATABASE_ERROR"]
+    batch_action: "STOP_AND_REPORT"
+  NETWORK_POLICY_VIOLATION:
+    retry: false
+    error_codes: ["NPI_NETWORK_POLICY_VIOLATION"]
+    batch_action: "SECURITY_STOP"

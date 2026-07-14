@@ -2,8 +2,9 @@
 
 v0 = N0 baseline schema (metadata, assets, asset_sources, stage_runs,
 state_transitions, outputs).
-v1 = N1 additions (migration_history, duplicate_candidates) and idempotent
-re-application of v0.
+v1 = N1 additions (migration_history, duplicate_candidates).
+v2 = exclusive RUNNING claims and mandatory lease fields.
+v3 = immutable stable-error-code catalog and database enforcement triggers.
 
 The runner is idempotent: re-running ``run_migrations`` is a no-op once all
 migrations are recorded in ``migration_history``. Each migration step uses
@@ -17,8 +18,36 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-SCHEMA_VERSION = "1"
+SCHEMA_VERSION = "3"
 SCHEMA_VERSION_KEY = "schema_version"
+
+# This is deliberately frozen in the migration instead of loaded from mutable
+# runtime configuration.  A future catalog expansion must be a new migration.
+_STABLE_ERROR_CODES_V3 = (
+    "NPI_CLI_USAGE_ERROR",
+    "NPI_CUDA_OOM",
+    "NPI_DATABASE_ERROR",
+    "NPI_DISK_LOW",
+    "NPI_GATE_NOT_AUTHORIZED",
+    "NPI_HANDOFF_INTEGRITY_FAILED",
+    "NPI_INTERNAL_ERROR",
+    "NPI_INVALID_JSON",
+    "NPI_LEASE_LOST",
+    "NPI_MODEL_CONFLICT",
+    "NPI_MODEL_TIMEOUT",
+    "NPI_NETWORK_POLICY_VIOLATION",
+    "NPI_PREFLIGHT_UNSATISFIED",
+    "NPI_RETRY_EXHAUSTED",
+    "NPI_RUN_INTERRUPTED",
+    "NPI_RUNTIME_POLICY_INVALID",
+    "NPI_SCHEMA_INVALID",
+    "NPI_SOURCE_CHANGED_DURING_READ",
+    "NPI_SOURCE_READ_ONLY_NOT_VERIFIED",
+    "NPI_SOURCE_RUNTIME_OVERLAP",
+    "NPI_SOURCE_SYMLINK_ESCAPE",
+    "NPI_STAGE_CLAIM_CONFLICT",
+    "NPI_UNSUPPORTED_MEDIA",
+)
 
 _SCHEMA_V0 = """
 PRAGMA foreign_keys = ON;
@@ -137,6 +166,120 @@ CREATE TABLE IF NOT EXISTS duplicate_candidates (
 CREATE INDEX IF NOT EXISTS idx_dup_candidates_asset ON duplicate_candidates(asset_id);
 """
 
+_SCHEMA_V2_INDEX = """
+CREATE UNIQUE INDEX IF NOT EXISTS uq_stage_runs_one_running
+ON stage_runs(asset_id, stage_name) WHERE status = 'RUNNING'
+"""
+
+_SCHEMA_V2_INSERT_TRIGGER = """
+CREATE TRIGGER IF NOT EXISTS trg_stage_runs_running_insert_requires_lease
+BEFORE INSERT ON stage_runs
+WHEN NEW.status = 'RUNNING' AND (
+    NEW.started_at IS NULL OR NEW.started_at = '' OR
+    NEW.lease_owner IS NULL OR NEW.lease_owner = '' OR
+    NEW.lease_expires_at IS NULL OR NEW.lease_expires_at = '' OR
+    NEW.heartbeat_at IS NULL OR NEW.heartbeat_at = ''
+)
+BEGIN
+    SELECT RAISE(ABORT, 'NPI_LEASE_REQUIRED');
+END;
+"""
+
+_SCHEMA_V2_UPDATE_TRIGGER = """
+CREATE TRIGGER IF NOT EXISTS trg_stage_runs_running_update_requires_lease
+BEFORE UPDATE OF status, started_at, lease_owner, lease_expires_at, heartbeat_at ON stage_runs
+WHEN NEW.status = 'RUNNING' AND (
+    NEW.started_at IS NULL OR NEW.started_at = '' OR
+    NEW.lease_owner IS NULL OR NEW.lease_owner = '' OR
+    NEW.lease_expires_at IS NULL OR NEW.lease_expires_at = '' OR
+    NEW.heartbeat_at IS NULL OR NEW.heartbeat_at = ''
+)
+BEGIN
+    SELECT RAISE(ABORT, 'NPI_LEASE_REQUIRED');
+END;
+"""
+
+_SCHEMA_V3_CATALOG = """
+CREATE TABLE IF NOT EXISTS error_code_catalog (
+    error_code TEXT PRIMARY KEY,
+    catalog_version TEXT NOT NULL CHECK (catalog_version = 'v3')
+)
+"""
+
+_SCHEMA_V3_GUARDS = (
+    """
+    CREATE TRIGGER IF NOT EXISTS trg_assets_error_code_insert_cataloged
+    BEFORE INSERT ON assets
+    WHEN NEW.last_error_code IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM error_code_catalog WHERE error_code = NEW.last_error_code
+    )
+    BEGIN
+        SELECT RAISE(ABORT, 'NPI_ERROR_CODE_NOT_CATALOGED');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS trg_assets_error_code_update_cataloged
+    BEFORE UPDATE OF last_error_code ON assets
+    WHEN NEW.last_error_code IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM error_code_catalog WHERE error_code = NEW.last_error_code
+    )
+    BEGIN
+        SELECT RAISE(ABORT, 'NPI_ERROR_CODE_NOT_CATALOGED');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS trg_stage_runs_error_code_insert_cataloged
+    BEFORE INSERT ON stage_runs
+    WHEN NEW.error_code IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM error_code_catalog WHERE error_code = NEW.error_code
+    )
+    BEGIN
+        SELECT RAISE(ABORT, 'NPI_ERROR_CODE_NOT_CATALOGED');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS trg_stage_runs_error_code_update_cataloged
+    BEFORE UPDATE OF error_code ON stage_runs
+    WHEN NEW.error_code IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM error_code_catalog WHERE error_code = NEW.error_code
+    )
+    BEGIN
+        SELECT RAISE(ABORT, 'NPI_ERROR_CODE_NOT_CATALOGED');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS trg_error_code_catalog_insert_immutable
+    BEFORE INSERT ON error_code_catalog
+    BEGIN
+        SELECT RAISE(ABORT, 'NPI_ERROR_CODE_CATALOG_IMMUTABLE');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS trg_error_code_catalog_update_immutable
+    BEFORE UPDATE ON error_code_catalog
+    BEGIN
+        SELECT RAISE(ABORT, 'NPI_ERROR_CODE_CATALOG_IMMUTABLE');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS trg_error_code_catalog_delete_immutable
+    BEFORE DELETE ON error_code_catalog
+    BEGIN
+        SELECT RAISE(ABORT, 'NPI_ERROR_CODE_CATALOG_IMMUTABLE');
+    END
+    """,
+)
+
+_SCHEMA_V3_GUARD_NAMES = (
+    "trg_assets_error_code_insert_cataloged",
+    "trg_assets_error_code_update_cataloged",
+    "trg_stage_runs_error_code_insert_cataloged",
+    "trg_stage_runs_error_code_update_cataloged",
+    "trg_error_code_catalog_insert_immutable",
+    "trg_error_code_catalog_update_immutable",
+    "trg_error_code_catalog_delete_immutable",
+)
+
 
 def _utc_now_iso() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
@@ -157,6 +300,135 @@ def apply_schema_v0(conn: sqlite3.Connection) -> None:
 def apply_schema_v1(conn: sqlite3.Connection) -> None:
     """Apply schema v1 additions (idempotent)."""
     conn.executescript(_SCHEMA_V1)
+
+
+def apply_schema_v2(conn: sqlite3.Connection) -> None:
+    """Recover invalid expired leases, then install exclusive-claim constraints."""
+    now = _utc_now_iso()
+    conn.execute(
+        "UPDATE stage_runs SET status='INTERRUPTED', finished_at=?, "
+        "duration_ms=CASE WHEN started_at IS NULL THEN 0 ELSE "
+        "MAX(0, CAST((julianday(?) - julianday(started_at)) * 86400000 AS INTEGER)) END, "
+        "error_code='NPI_RUN_INTERRUPTED', error_redacted='lease expired during migration', "
+        "lease_owner=NULL, lease_expires_at=NULL "
+        "WHERE status='RUNNING' AND ("
+        "started_at IS NULL OR started_at='' OR lease_owner IS NULL OR lease_owner='' OR "
+        "lease_expires_at IS NULL OR lease_expires_at='' OR heartbeat_at IS NULL OR "
+        "heartbeat_at='' OR lease_expires_at <= ?)",
+        (now, now, now),
+    )
+    duplicate = conn.execute(
+        "SELECT 1 FROM stage_runs WHERE status='RUNNING' "
+        "GROUP BY asset_id, stage_name HAVING COUNT(*) > 1 LIMIT 1"
+    ).fetchone()
+    if duplicate is not None:
+        raise sqlite3.IntegrityError("NPI_DUPLICATE_RUNNING_CLAIM")
+    conn.execute(_SCHEMA_V2_INDEX)
+    conn.execute(_SCHEMA_V2_INSERT_TRIGGER)
+    conn.execute(_SCHEMA_V2_UPDATE_TRIGGER)
+
+
+def apply_schema_v3(conn: sqlite3.Connection) -> None:
+    """Install the frozen stable-error-code catalog and write guards."""
+    conn.execute(_SCHEMA_V3_CATALOG)
+    existing_rows = conn.execute(
+        "SELECT error_code, catalog_version FROM error_code_catalog"
+    ).fetchall()
+    existing = {(str(row[0]), str(row[1])) for row in existing_rows}
+    expected = {(code, "v3") for code in _STABLE_ERROR_CODES_V3}
+    unexpected = existing - expected
+    if unexpected:
+        raise sqlite3.IntegrityError("NPI_ERROR_CODE_CATALOG_INVALID")
+    missing = sorted(expected - existing)
+    conn.executemany(
+        "INSERT INTO error_code_catalog(error_code, catalog_version) VALUES(?, ?)",
+        missing,
+    )
+
+    invalid_asset = conn.execute(
+        "SELECT 1 FROM assets AS a WHERE a.last_error_code IS NOT NULL "
+        "AND NOT EXISTS (SELECT 1 FROM error_code_catalog AS c "
+        "WHERE c.error_code = a.last_error_code) LIMIT 1"
+    ).fetchone()
+    invalid_run = conn.execute(
+        "SELECT 1 FROM stage_runs AS r WHERE r.error_code IS NOT NULL "
+        "AND NOT EXISTS (SELECT 1 FROM error_code_catalog AS c "
+        "WHERE c.error_code = r.error_code) LIMIT 1"
+    ).fetchone()
+    if invalid_asset is not None or invalid_run is not None:
+        raise sqlite3.IntegrityError("NPI_ERROR_CODE_NOT_CATALOGED")
+
+    for statement in _SCHEMA_V3_GUARDS:
+        conn.execute(statement)
+
+
+def _normalized_ddl(sql: str) -> str:
+    normalized = " ".join(sql.strip().rstrip(";").split()).casefold()
+    return normalized.replace(" if not exists ", " ")
+
+
+def _require_schema_object(
+    conn: sqlite3.Connection,
+    *,
+    object_type: str,
+    name: str,
+    expected_sql: str,
+) -> None:
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type=? AND name=?", (object_type, name)
+    ).fetchone()
+    if row is None or row[0] is None:
+        raise sqlite3.IntegrityError("NPI_MIGRATION_INTEGRITY_FAILED")
+    if _normalized_ddl(str(row[0])) != _normalized_ddl(expected_sql):
+        raise sqlite3.IntegrityError("NPI_MIGRATION_INTEGRITY_FAILED")
+
+
+def verify_schema_v2(conn: sqlite3.Connection) -> None:
+    """Fail closed unless every v2 index/trigger matches its frozen DDL."""
+    _require_schema_object(
+        conn,
+        object_type="index",
+        name="uq_stage_runs_one_running",
+        expected_sql=_SCHEMA_V2_INDEX,
+    )
+    _require_schema_object(
+        conn,
+        object_type="trigger",
+        name="trg_stage_runs_running_insert_requires_lease",
+        expected_sql=_SCHEMA_V2_INSERT_TRIGGER,
+    )
+    _require_schema_object(
+        conn,
+        object_type="trigger",
+        name="trg_stage_runs_running_update_requires_lease",
+        expected_sql=_SCHEMA_V2_UPDATE_TRIGGER,
+    )
+
+
+def verify_schema_v3(conn: sqlite3.Connection) -> None:
+    """Fail closed unless the v3 catalog and all guards match exactly."""
+    _require_schema_object(
+        conn,
+        object_type="table",
+        name="error_code_catalog",
+        expected_sql=_SCHEMA_V3_CATALOG,
+    )
+    for name, expected_sql in zip(_SCHEMA_V3_GUARD_NAMES, _SCHEMA_V3_GUARDS, strict=True):
+        _require_schema_object(
+            conn,
+            object_type="trigger",
+            name=name,
+            expected_sql=expected_sql,
+        )
+    actual = {
+        (str(row[0]), str(row[1]))
+        for row in conn.execute(
+            "SELECT error_code, catalog_version FROM error_code_catalog"
+        ).fetchall()
+    }
+    expected = {(code, "v3") for code in _STABLE_ERROR_CODES_V3}
+    if actual != expected:
+        raise sqlite3.IntegrityError("NPI_MIGRATION_INTEGRITY_FAILED")
 
 
 def _migration_history_exists(conn: sqlite3.Connection) -> bool:
@@ -190,7 +462,17 @@ MIGRATIONS: list[Migration] = [
         apply_schema_v0,
     ),
     Migration("v1", "N1 migration_history + duplicate_candidates", apply_schema_v1),
+    Migration("v2", "exclusive RUNNING claims and complete leases", apply_schema_v2),
+    Migration("v3", "stable error-code catalog and database write guards", apply_schema_v3),
 ]
+
+
+def _reject_unknown_migrations(conn: sqlite3.Connection) -> None:
+    """Fail closed when a database was created by an unknown future runner."""
+    known_ids = {migration.migration_id for migration in MIGRATIONS}
+    rows = conn.execute("SELECT migration_id FROM migration_history").fetchall()
+    if any(str(row[0]) not in known_ids for row in rows):
+        raise sqlite3.IntegrityError("NPI_MIGRATION_INTEGRITY_FAILED")
 
 
 def run_migrations(conn: sqlite3.Connection) -> str:
@@ -204,6 +486,7 @@ def run_migrations(conn: sqlite3.Connection) -> str:
     apply_schema_v0(conn)
     # Apply v1 (creates migration_history) so we can record history.
     apply_schema_v1(conn)
+    _reject_unknown_migrations(conn)
 
     # If v0 was applied before migration_history existed, record it now.
     _record(conn, "v0", "N0 baseline schema (pre-history, backfilled)")
@@ -213,6 +496,32 @@ def run_migrations(conn: sqlite3.Connection) -> str:
         _record(conn, "v1", "N1 migration_history + duplicate_candidates")
     else:
         _record(conn, "v1", "N1 migration_history + duplicate_candidates")
+
+    if not _is_applied(conn, "v2"):
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            apply_schema_v2(conn)
+            verify_schema_v2(conn)
+            _record(conn, "v2", "exclusive RUNNING claims and complete leases")
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    else:
+        verify_schema_v2(conn)
+
+    if not _is_applied(conn, "v3"):
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            apply_schema_v3(conn)
+            verify_schema_v3(conn)
+            _record(conn, "v3", "stable error-code catalog and database write guards")
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    else:
+        verify_schema_v3(conn)
 
     # Stamp the latest schema version in metadata.
     conn.execute(

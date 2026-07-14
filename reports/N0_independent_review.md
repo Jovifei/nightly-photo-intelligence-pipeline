@@ -188,7 +188,7 @@ the cloud.
 
 ### 9. No real absolute paths / tokens / weights / private keys / running DB in logs/db/reports/git — PASS
 
-- `grep` for `C:\Users\` / `E:\project\` / `C:\Users\<A-Z>` across
+- `grep` for representative Windows user/project path patterns across
   `reports/`, `src/`, `tests/`, `tools/` → 0 matches.
 - `git ls-files` scanned for `.db/.sqlite*/.log/.pem/.key/.p12/.pfx/.pt/.pth/
   .ckpt/.safetensors/.onnx/.engine/.npy/.npz/.env` and `token/secret/password/

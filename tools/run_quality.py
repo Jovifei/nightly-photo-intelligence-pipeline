@@ -1,14 +1,8 @@
 #!/usr/bin/env python3
-"""Unified N0 quality command.
+"""Unified current-stage quality command.
 
-Runs every N0 quality gate and reports truthful PASS / FAIL / NOT_AVAILABLE /
-SKIPPED evidence. Hard gates (must pass): pytest, contract-integrity, schema
-validation, sensitive-file scan. Soft gates (reported, not blocking when the
-tool is absent): ruff check, ruff format --check, mypy.
-
-Exit 0 only if every hard gate passes. Missing optional tools are reported as
-NOT_AVAILABLE and do NOT cause a failure (the contract forbids faking a pass,
-not forbidding an absent offline tool).
+All listed checks are hard gates for G1 remediation. Missing tools are reported
+truthfully and make the gate fail; NOT_AVAILABLE is never treated as PASS.
 
 Usage:
     python tools/run_quality.py
@@ -16,7 +10,6 @@ Usage:
 
 from __future__ import annotations
 
-import hashlib
 import json
 import subprocess
 import sys
@@ -31,7 +24,15 @@ FAIL = "FAIL"
 NOT_AVAILABLE = "NOT_AVAILABLE"
 SKIPPED = "SKIPPED"
 
-HARD_GATES = {"pytest", "contract_integrity", "schema_validation", "sensitive_scan"}
+HARD_GATES = {
+    "pytest",
+    "contract_integrity",
+    "schema_validation",
+    "sensitive_scan",
+    "ruff_check",
+    "ruff_format",
+    "mypy",
+}
 
 
 def _run(cmd: list[str], *, timeout: int = 300, cwd: Path | None = None) -> tuple[int, str, str]:
@@ -59,59 +60,23 @@ def check_pytest() -> tuple[str, str]:
     return FAIL, f"exit={rc}\n{evidence}"
 
 
-# Authorization-state files legitimately change with phase transitions (Owner
-# authorization updates PROJECT_STATE.json, tasks/index.json, and task-file
-# statuses). They are excluded from the "contract files unchanged" check; the
-# immutable contract files (docs, schemas, blueprints, config, MANIFEST, etc.)
-# are still verified.
-_AUTH_STATE_FILES = {"PROJECT_STATE.json", "tasks/index.json"}
-_AUTH_STATE_PREFIXES = ("tasks/phase_n",)
-
-
-def _is_auth_state_file(rel: str) -> bool:
-    if rel in _AUTH_STATE_FILES:
-        return True
-    return any(rel.startswith(prefix) for prefix in _AUTH_STATE_PREFIXES)
-
-
 def check_contract_integrity() -> tuple[str, str]:
-    """Verify immutable contract files listed in MANIFEST.sha256 are intact.
-
-    Authorization-state files (PROJECT_STATE.json, tasks/index.json, task-file
-    statuses) are excluded - they change with Owner-approved phase transitions.
-    """
-    manifest = ROOT / "MANIFEST.sha256"
-    if not manifest.is_file():
-        return FAIL, "MANIFEST.sha256 missing"
-    listed: dict[str, str] = {}
-    for line in manifest.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
-        try:
-            digest, rel = line.split("  ", 1)
-        except ValueError:
-            return FAIL, f"bad manifest line: {line[:40]}"
-        listed[rel] = digest
-    missing: list[str] = []
-    mismatched: list[str] = []
-    skipped_auth_state = 0
-    for rel, digest in listed.items():
-        if _is_auth_state_file(rel):
-            skipped_auth_state += 1
-            continue
-        p = ROOT / rel
-        if not p.is_file():
-            missing.append(rel)
-            continue
-        actual = hashlib.sha256(p.read_bytes()).hexdigest()
-        if actual != digest:
-            mismatched.append(rel)
-    if missing or mismatched:
-        return FAIL, f"missing={len(missing)} mismatched={len(mismatched)}"
-    return PASS, (
-        f"{len(listed) - skipped_auth_state} immutable contract files intact "
-        f"({skipped_auth_state} auth-state files excluded)"
+    """Validate archival immutable files and current mutable authorization state."""
+    from nightly_photo_intelligence_pipeline.preflight import (
+        PASS as PREFLIGHT_PASS,
     )
+    from nightly_photo_intelligence_pipeline.preflight import (
+        _check_authorization,
+        _check_git_baselines,
+        _check_handoff,
+    )
+
+    results = [_check_handoff(), _check_authorization(), _check_git_baselines()]
+    failed = [result.name for result in results if result.status != PREFLIGHT_PASS]
+    evidence = "; ".join(f"{result.name}={result.status}" for result in results)
+    if failed:
+        return FAIL, f"{evidence}; failed={','.join(failed)}"
+    return PASS, evidence
 
 
 def check_schema_validation() -> tuple[str, str]:
@@ -154,7 +119,9 @@ def check_schema_validation() -> tuple[str, str]:
         item = json.loads(path.read_text("utf-8"))
         if list(validator.iter_errors(item)):
             rejected += 1
-    return PASS, f"valid item passes Draft 2020-12; {rejected}/3 invalid items rejected by schema"
+    if rejected != len(invalid_expected):
+        return FAIL, f"only {rejected}/{len(invalid_expected)} invalid items rejected"
+    return PASS, "valid item passes Draft 2020-12; 3/3 invalid items rejected"
 
 
 def check_sensitive_scan() -> tuple[str, str]:
@@ -166,11 +133,11 @@ def check_sensitive_scan() -> tuple[str, str]:
 
 
 def _ruff_or_mypy(module: str, args: list[str]) -> tuple[str, str]:
-    """Run a ruff/mypy subcommand, classifying missing-module as NOT_AVAILABLE."""
+    """Run a required Ruff or mypy command."""
     rc, out, err = _run([sys.executable, "-m", module, *args], cwd=ROOT)
     combined = out + err
     if rc == -1 or "No module named" in combined:
-        return NOT_AVAILABLE, f"{module} not installed (offline)"
+        return FAIL, f"{module} not installed"
     evidence = _tail(combined, 10)
     if rc == 0:
         return PASS, evidence
@@ -201,7 +168,7 @@ CHECKS = [
 
 
 def main() -> int:
-    print("NPI N0 quality gate")
+    print("NPI current-stage quality gate")
     print("=" * 60)
     results: list[tuple[str, str, str, str]] = []
     for name, label, func in CHECKS:
@@ -216,12 +183,12 @@ def main() -> int:
         f"Summary: {counts[PASS]} pass, {counts[FAIL]} fail, "
         f"{counts[NOT_AVAILABLE]} not_available, {counts[SKIPPED]} skipped"
     )
-    hard_fail = [r[0] for r in results if r[2] == FAIL and r[0] in HARD_GATES]
+    hard_fail = [r[0] for r in results if r[0] in HARD_GATES and r[2] != PASS]
     if hard_fail:
         print(f"HARD GATE FAILURES: {', '.join(hard_fail)}")
         print("QUALITY_GATE_FAILED")
         return 1
-    print("QUALITY_GATE_PASSED (hard gates green; soft tools reported above)")
+    print("QUALITY_GATE_PASSED")
     return 0
 
 
