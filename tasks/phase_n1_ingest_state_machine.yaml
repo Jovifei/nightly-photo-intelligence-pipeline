@@ -2,25 +2,38 @@ contract_version: "1.0"
 phase:
   id: "N1"
   title: "导入、去重、任务引擎与恢复"
-  status: "LOCKED"
+  status: "AUTHORIZED"
 data_gate:
   id: "G0_THREE_SYNTHETIC_FIXTURES"
-  status: "LOCKED_OR_SEPARATELY_CONTROLLED"
+  status: "AUTHORIZED"
+  max_assets: 3
+  allowed_assets: "repo-internal three synthetic fixtures only"
+baseline:
+  n0_commit: "72a81f5984838b74304d23263ac450ea4b5a3a9a"
+  n0_tag: "n0-approved-2026-07-14"
+  approval_record: "approvals/phase_approval_N1.yaml"
 objective: >
-  正式非 dry-run ingest、manifest 授权、SQLite 任务领取/lease、精确与感知重复、 错误分类、resume、报告、备份与恢复。模型下载仍禁止。
+  正式非 dry-run ingest、manifest 授权、SQLite 任务领取/lease、精确与感知重复、
+  错误分类、resume、报告、备份与恢复。模型下载仍禁止。仅使用三张合成 fixture。
 authorization_rule: >
-  本文件仅用于规划。只有 Owner 更新 PROJECT_STATE.json 并提供范围明确的批准记录后才可执行。
+  Owner 已批准 N0（基线 72a81f5 不可变）并授权 N1 工程能力阶段，G0 三张 fixture，
+  G1 未开放，无真实照片访问。详见 approvals/phase_approval_N1.yaml。
 prerequisites:
-  - "N0 owner approval"
-  - "source/runtime protection decision"
-  - "N1 task status changed to AUTHORIZED"
-forbidden_while_locked:
+  - "N0 owner approval (done: 72a81f5)"
+  - "source/runtime protection decision (N0 guard carried into N1)"
+  - "N1 task status changed to AUTHORIZED (done)"
+forbidden_while_authorized:
   - "model_downloads"
   - "pose_inference"
   - "vlm_inference"
+  - "embedding_inference"
   - "openclaw"
   - "app_changes"
   - "pilot_or_full_run"
+  - "real_photo_access"
+  - "exif_real_data_read"
+  - "g1_data_gate"
+  - "git_push_merge_release"
 completion_does_not:
   - "authorize_next_phase"
   - "authorize_larger_data_gate"
@@ -28,4 +41,5 @@ completion_does_not:
   - "authorize_openclaw"
 mandatory_stop:
   value: true
-  rule: "完成本阶段后停止并等待 Owner；不得自动推进。"
+  rule: "完成本阶段后停止并等待 Owner；不得自动推进 N2 或开放 G1。"
+

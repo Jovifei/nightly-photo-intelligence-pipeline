@@ -1,0 +1,57 @@
+schema_version: "1.0"
+approval_type: "PHASE"
+status: "APPROVED"
+phase_id: "N1"
+owner_id: "Jovi"
+approved_at_utc: "2026-07-14"
+scope:
+  task_file: "tasks/phase_n1_ingest_state_machine.yaml"
+  baseline:
+    n0_commit: "72a81f5984838b74304d23263ac450ea4b5a3a9a"
+    n0_tag: "n0-approved-2026-07-14"
+    n0_status: "APPROVED / COMPLETE (immutable baseline)"
+  data_gate: "G0_THREE_SYNTHETIC_FIXTURES"
+  max_assets: 3
+  allowed_assets: "repo-internal three synthetic fixtures only"
+  allowed_actions:
+    - "create_owner_approval_record"
+    - "update_project_state_to_n1_authorized"
+    - "execute_n1_task_contract"
+    - "modify_n1_source_tests_schema_migrations_cli_reports_docs"
+    - "use_only_three_synthetic_fixtures_and_pytest_temp_dirs"
+    - "create_one_local_n1_commit"
+    - "prepare_stable_n1_review_target"
+    - "create_local_n0_approval_tag"
+  explicit_exclusions:
+    - "g1_data_gate_not_opened"
+    - "real_photo_library_access"
+    - "calibration_20_access"
+    - "pilot_100_access"
+    - "full_library_access"
+    - "exif_real_data_read"
+    - "model_and_weight_downloads"
+    - "cloud_ai_or_image_upload"
+    - "openclaw_activation"
+    - "system_config_changes_windows_wsl_docker_gpu_driver"
+    - "ai_photography_director_app_changes"
+    - "git_push_merge_release"
+    - "n2_pose_segmentation_vlm_embedding_image_understanding"
+    - "self_modify_data_gate"
+preconditions_evidence:
+  - "N0 owner approved; baseline commit 72a81f5984838b74304d23263ac450ea4b5a3a9a (immutable)"
+  - "Independent Reviewer PASS_FOR_OWNER_REVIEW on 72a81f5"
+  - "G0_THREE_SYNTHETIC_FIXTURES authorized; max_assets=3; only synthetic fixtures"
+  - "N0 quality gate green on CPython 3.12.10 (pytest 33/33, ruff/mypy/format PASS)"
+expires_at_utc: null
+owner_statement: >
+  N0 is approved and complete; commit 72a81f5 is the immutable N0 baseline.
+  N1 engineering-capability phase is authorized. G1 is NOT opened. No real photo
+  access, no EXIF real-data read, no model downloads, no cloud, no OpenClaw, no
+  system-config changes, no main-App changes, no push/merge. Only the three
+  repo-internal synthetic fixtures may be used. N1 must not expand to N2 scope.
+  The implementer may NOT self-modify the data gate and may NOT self-serve as
+  the independent Reviewer.
+reviewer_statement: >
+  This approval does NOT constitute N1 completion. N1 completion requires a
+  fresh independent Reviewer PASS_FOR_OWNER_REVIEW on the N1 commit SHA, then
+  Owner approval. The implementer must stop after the single N1 commit.

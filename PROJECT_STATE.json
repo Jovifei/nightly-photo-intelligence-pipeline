@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "project": {
     "slug": "nightly-photo-intelligence-pipeline",
     "name_zh": "夜间摄影灵感分析流水线",
@@ -10,9 +10,18 @@
     "generated_on": "2026-07-12",
     "integrity_manifest": "MANIFEST.sha256"
   },
+  "n0_baseline": {
+    "commit": "72a81f5984838b74304d23263ac450ea4b5a3a9a",
+    "tag": "n0-approved-2026-07-14",
+    "status": "APPROVED_COMPLETE",
+    "approved_by": "Jovi (Owner)",
+    "approved_at_utc": "2026-07-14",
+    "approval_record": "approvals/phase_approval_N1.yaml",
+    "immutable": true
+  },
   "authorization": {
     "phase": {
-      "id": "N0",
+      "id": "N1",
       "status": "AUTHORIZED"
     },
     "data_gate": {
@@ -25,11 +34,30 @@
     "cloud_image_processing": "FORBIDDEN",
     "openclaw_activation": "NOT_AUTHORIZED",
     "git_remote_write": "NOT_AUTHORIZED",
-    "system_configuration_changes": "NOT_AUTHORIZED"
+    "system_configuration_changes": "NOT_AUTHORIZED",
+    "exif_real_data_read": "NOT_AUTHORIZED",
+    "ai_photography_director_app_changes": "NOT_AUTHORIZED"
+  },
+  "data_scope": {
+    "max_assets": 3,
+    "allowed_assets": "repo-internal three non-sensitive synthetic fixtures only",
+    "calibration_20": "NOT_AUTHORIZED",
+    "pilot_100": "NOT_AUTHORIZED",
+    "full_library": "NOT_AUTHORIZED"
+  },
+  "phase_status": {
+    "N0": "APPROVED_COMPLETE",
+    "N1": "AUTHORIZED",
+    "N2": "LOCKED",
+    "N3": "LOCKED",
+    "N4": "LOCKED",
+    "N5": "LOCKED",
+    "N6": "LOCKED",
+    "N7": "LOCKED",
+    "N8": "LOCKED"
   },
   "locked": {
     "phases": [
-      "N1",
       "N2",
       "N3",
       "N4",
@@ -45,8 +73,8 @@
     ]
   },
   "required_stop_after": {
-    "phase": "N0",
-    "condition": "ONE_ISOLATED_COMMIT_AND_REQUIRED_EVIDENCE_COMPLETE",
+    "phase": "N1",
+    "condition": "ONE_ISOLATED_N1_COMMIT_AND_REQUIRED_EVIDENCE_COMPLETE",
     "next_action": "WAIT_FOR_OWNER_APPROVAL"
   }
 }

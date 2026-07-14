@@ -1,15 +1,23 @@
-"""Schema v0 migration for the NPI SQLite state store.
+"""Versioned SQLite migrations for the NPI state store.
 
-The SQL is based on blueprints/sqlite_schema_v0.sql, refined with a unique
-constraint on assets.source_sha256 (duplicate sources are recorded in
-asset_sources) and an index on stage_runs status for recovery scans.
+v0 = N0 baseline schema (metadata, assets, asset_sources, stage_runs,
+state_transitions, outputs).
+v1 = N1 additions (migration_history, duplicate_candidates) and idempotent
+re-application of v0.
+
+The runner is idempotent: re-running ``run_migrations`` is a no-op once all
+migrations are recorded in ``migration_history``. Each migration step uses
+``CREATE TABLE IF NOT EXISTS`` so partial application is safe to retry.
 """
 
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
-SCHEMA_VERSION = "0"
+SCHEMA_VERSION = "1"
 SCHEMA_VERSION_KEY = "schema_version"
 
 _SCHEMA_V0 = """
@@ -105,13 +113,122 @@ CREATE TABLE IF NOT EXISTS outputs (
 );
 """
 
+_SCHEMA_V1 = """
+-- Migration history (self-describing; created in v1 but records v0 too).
+CREATE TABLE IF NOT EXISTS migration_history (
+    migration_id TEXT PRIMARY KEY,
+    description TEXT NOT NULL,
+    applied_at TEXT NOT NULL
+);
+
+-- Near-duplicate (perceptual) candidates. Not auto-deleted; for human review.
+CREATE TABLE IF NOT EXISTS duplicate_candidates (
+    candidate_id TEXT PRIMARY KEY,
+    asset_id TEXT NOT NULL REFERENCES assets(asset_id),
+    candidate_asset_id TEXT NOT NULL REFERENCES assets(asset_id),
+    distance REAL NOT NULL,
+    algorithm_id TEXT NOT NULL,
+    algorithm_version TEXT NOT NULL,
+    hash_size INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(asset_id, candidate_asset_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_dup_candidates_asset ON duplicate_candidates(asset_id);
+"""
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+@dataclass(frozen=True)
+class Migration:
+    migration_id: str
+    description: str
+    apply: Callable[[sqlite3.Connection], None]
+
 
 def apply_schema_v0(conn: sqlite3.Connection) -> None:
     """Apply schema v0 to *conn* (idempotent via IF NOT EXISTS)."""
     conn.executescript(_SCHEMA_V0)
+
+
+def apply_schema_v1(conn: sqlite3.Connection) -> None:
+    """Apply schema v1 additions (idempotent)."""
+    conn.executescript(_SCHEMA_V1)
+
+
+def _migration_history_exists(conn: sqlite3.Connection) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='migration_history'"
+    ).fetchone()
+    return row is not None
+
+
+def _is_applied(conn: sqlite3.Connection, migration_id: str) -> bool:
+    if not _migration_history_exists(conn):
+        return False
+    row = conn.execute(
+        "SELECT 1 FROM migration_history WHERE migration_id = ?", (migration_id,)
+    ).fetchone()
+    return row is not None
+
+
+def _record(conn: sqlite3.Connection, migration_id: str, description: str) -> None:
+    conn.execute(
+        "INSERT OR IGNORE INTO migration_history (migration_id, description, applied_at) "
+        "VALUES (?,?,?)",
+        (migration_id, description, _utc_now_iso()),
+    )
+
+
+MIGRATIONS: list[Migration] = [
+    Migration(
+        "v0",
+        "N0 baseline schema (assets, stage_runs, transitions, outputs)",
+        apply_schema_v0,
+    ),
+    Migration("v1", "N1 migration_history + duplicate_candidates", apply_schema_v1),
+]
+
+
+def run_migrations(conn: sqlite3.Connection) -> str:
+    """Apply all pending migrations idempotently; return the latest schema version.
+
+    Safe to call repeatedly. ``migration_history`` is created by v1; before v1 is
+    applied, the runner treats already-existing v0 tables as v0-applied so a N0
+    database upgrades cleanly.
+    """
+    # Ensure v0 tables exist (idempotent) so the DB is never left empty.
+    apply_schema_v0(conn)
+    # Apply v1 (creates migration_history) so we can record history.
+    apply_schema_v1(conn)
+
+    # If v0 was applied before migration_history existed, record it now.
+    _record(conn, "v0", "N0 baseline schema (pre-history, backfilled)")
+    # Record/apply v1.
+    if not _is_applied(conn, "v1"):
+        apply_schema_v1(conn)
+        _record(conn, "v1", "N1 migration_history + duplicate_candidates")
+    else:
+        _record(conn, "v1", "N1 migration_history + duplicate_candidates")
+
+    # Stamp the latest schema version in metadata.
     conn.execute(
         "INSERT INTO metadata(key, value) VALUES(?, ?) "
         "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
         (SCHEMA_VERSION_KEY, SCHEMA_VERSION),
     )
     conn.commit()
+    return SCHEMA_VERSION
+
+
+def applied_migrations(conn: sqlite3.Connection) -> list[str]:
+    """Return the list of applied migration ids (empty if history absent)."""
+    if not _migration_history_exists(conn):
+        return []
+    rows = conn.execute(
+        "SELECT migration_id FROM migration_history ORDER BY migration_id"
+    ).fetchall()
+    return [str(r[0]) for r in rows]

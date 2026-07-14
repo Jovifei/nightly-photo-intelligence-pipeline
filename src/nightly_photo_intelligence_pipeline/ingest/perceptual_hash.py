@@ -1,10 +1,13 @@
-"""Versioned perceptual hash interface.
+"""Versioned perceptual hash interface (N1 v2).
 
-N0 uses a lightweight dHash (8x8 -> 64-bit) implementation. The result always
-carries the algorithm name and implementation version so downstream consumers
-never confuse it with a frozen production algorithm. Per docs/03 and the N0
-task contract, the production perceptual hash must not be frozen without an N1
-decision.
+N0 introduced a lightweight dHash (8x8 -> 64-bit). N1 v2 enriches the result
+with ``algorithm_id``, ``algorithm_version``, ``hash_size_bits``, a hamming
+distance function, and a near-duplicate threshold constant. The result is its
+own provenance record.
+
+IMPORTANT: the production perceptual-hash threshold must NOT be frozen without
+20 calibration images (G1). The default threshold here is a N1 fixture-level
+convenience, not a production-claimed value.
 """
 
 from __future__ import annotations
@@ -16,17 +19,45 @@ from pathlib import Path
 from ..domain.errors import NPI_INTERNAL_ERROR, NPI_UNSUPPORTED_MEDIA, NpiError
 from .hashing import SupportsReadBytes
 
-ALGORITHM = "dhash-8x8"
-IMPLEMENTATION_VERSION = "npi-0.1.0"
+ALGORITHM_ID = "dhash-8x8"
+ALGORITHM_VERSION = "npi-0.2.0"
+HASH_SIZE_BITS = 64
+HASH_HEX_LEN = 16  # 64 bits -> 16 hex chars
+
+# Back-compat aliases (N0 names).
+ALGORITHM = ALGORITHM_ID
+IMPLEMENTATION_VERSION = ALGORITHM_VERSION
+
+# N1 fixture-level near-duplicate threshold (hamming bits). NOT a production
+# threshold: production requires G1 (20 calibration images) + a benchmark.
+NEAR_DUPLICATE_THRESHOLD_HAMMING = 5
 
 
 @dataclass(frozen=True)
 class PerceptualHashResult:
-    """Immutable perceptual-hash result with full provenance."""
+    """Immutable perceptual-hash result carrying full provenance."""
 
-    algorithm: str
-    implementation_version: str
+    algorithm_id: str
+    algorithm_version: str
+    hash_size_bits: int
     value: str  # 16-char lowercase hex (64 bits) for dHash-8x8.
+
+    @property
+    def algorithm(self) -> str:
+        """Back-compat alias for the schema's perceptual_hash_algorithm field."""
+        return self.algorithm_id
+
+    @property
+    def implementation_version(self) -> str:
+        """Back-compat alias for the N0 field name."""
+        return self.algorithm_version
+
+    def provenance(self) -> dict[str, str | int]:
+        return {
+            "algorithm_id": self.algorithm_id,
+            "algorithm_version": self.algorithm_version,
+            "hash_size_bits": self.hash_size_bits,
+        }
 
 
 @dataclass(frozen=True)
@@ -53,8 +84,6 @@ def _dhash_from_bytes(data: bytes) -> tuple[str, int, int]:
     with Image.open(io.BytesIO(data)) as img:
         width, height = img.size
         gray = img.convert("L").resize((9, 8))
-        # tobytes() is the stable, non-deprecated way to read 8-bit grayscale
-        # pixels (getdata() is deprecated in newer Pillow).
         pixels = list(gray.tobytes())
     bits = 0
     for row in range(8):
@@ -65,8 +94,17 @@ def _dhash_from_bytes(data: bytes) -> tuple[str, int, int]:
     return f"{bits:016x}", width, height
 
 
+def _make_result(value: str) -> PerceptualHashResult:
+    return PerceptualHashResult(
+        algorithm_id=ALGORITHM_ID,
+        algorithm_version=ALGORITHM_VERSION,
+        hash_size_bits=HASH_SIZE_BITS,
+        value=value,
+    )
+
+
 def compute_perceptual_hash(path: Path) -> PerceptualHashResult:
-    """Compute the N0 perceptual hash of an image file."""
+    """Compute the N1 perceptual hash of an image file."""
     data = Path(path).read_bytes()
     return compute_perceptual_hash_from_bytes(data)
 
@@ -74,19 +112,11 @@ def compute_perceptual_hash(path: Path) -> PerceptualHashResult:
 def analyze_image_bytes(data: bytes) -> ImageFacts:
     """Return perceptual hash plus width/height from a single PIL open."""
     value, width, height = _dhash_from_bytes(data)
-    return ImageFacts(
-        perceptual_hash=PerceptualHashResult(
-            algorithm=ALGORITHM,
-            implementation_version=IMPLEMENTATION_VERSION,
-            value=value,
-        ),
-        width=width,
-        height=height,
-    )
+    return ImageFacts(perceptual_hash=_make_result(value), width=width, height=height)
 
 
 def compute_perceptual_hash_from_bytes(data: bytes) -> PerceptualHashResult:
-    """Compute the N0 perceptual hash from in-memory image bytes."""
+    """Compute the N1 perceptual hash from in-memory image bytes."""
     return analyze_image_bytes(data).perceptual_hash
 
 
@@ -104,3 +134,28 @@ def analyze_image_from_handle(handle: SupportsReadBytes) -> ImageFacts:
     if not isinstance(data, bytes):
         raise NpiError("image handle did not yield bytes", error_code=NPI_INTERNAL_ERROR)
     return analyze_image_bytes(data)
+
+
+def hamming_distance(a: PerceptualHashResult | str, b: PerceptualHashResult | str) -> int:
+    """Hamming distance (bit differences) between two dHash-8x8 values.
+
+    Both values must be equal-length lowercase-hex strings of HASH_HEX_LEN.
+    """
+    av = a.value if isinstance(a, PerceptualHashResult) else a
+    bv = b.value if isinstance(b, PerceptualHashResult) else b
+    if len(av) != len(bv):
+        raise NpiError(
+            f"hamming distance requires equal-length hashes: {len(av)} != {len(bv)}",
+            error_code=NPI_UNSUPPORTED_MEDIA,
+        )
+    return bin(int(av, 16) ^ int(bv, 16)).count("1")
+
+
+def is_near_duplicate(
+    a: PerceptualHashResult | str,
+    b: PerceptualHashResult | str,
+    *,
+    threshold: int = NEAR_DUPLICATE_THRESHOLD_HAMMING,
+) -> bool:
+    """True if the hamming distance is <= threshold (N1 fixture-level default)."""
+    return hamming_distance(a, b) <= threshold

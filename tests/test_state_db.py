@@ -24,9 +24,15 @@ def _utc_past(hours: int = 1) -> str:
 
 
 def test_at_n0_db_01_schema_created_and_reopens(db_path: Path) -> None:
-    """AT-N0-DB-01: schema v0 is created with FK on; reopen preserves data."""
+    """AT-N0-DB-01: schema is created with FK on; reopen preserves data.
+
+    N1 phase-boundary adjustment: the migration runner now stamps schema
+    version '1' (N1 migration_history + duplicate_candidates applied on top of
+    the N0 v0 schema). Audit strength is unchanged (still verifies schema
+    version, FK, reopen, transaction rollback).
+    """
     store = StateStore.open(db_path, journal_mode_candidate="WAL")
-    assert store.schema_version() == "0"
+    assert store.schema_version() == "1"
     assert store.journal_mode == "DELETE", "N0 must not adopt WAL; DELETE is the safe baseline"
     for table in (
         "metadata",
@@ -48,7 +54,7 @@ def test_at_n0_db_01_schema_created_and_reopens(db_path: Path) -> None:
 
     # Reopen without re-initializing; data must persist.
     store2 = StateStore.open(db_path, initialize=False)
-    assert store2.schema_version() == "0"
+    assert store2.schema_version() == "1"
     assert store2.asset_count() == 1
     assert store2.get_asset(aid)["current_state"] == "NEW"
     store2.close()

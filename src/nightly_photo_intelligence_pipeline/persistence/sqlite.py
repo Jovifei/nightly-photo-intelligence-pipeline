@@ -16,14 +16,14 @@ import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import TracebackType
 from typing import Any
 
 from ..domain.errors import NPI_SCHEMA_INVALID, DatabaseError, NpiError
 from ..domain.states import AssetState, parse_state, validate_transition
-from .migrations import SCHEMA_VERSION_KEY, apply_schema_v0
+from .migrations import SCHEMA_VERSION_KEY, applied_migrations, run_migrations
 
 # stage_runs.status values.
 STAGE_PENDING = "PENDING"
@@ -60,6 +60,19 @@ class StageRunRecord:
     attempt: int
     started_at: str | None
     lease_expires_at: str | None
+
+
+@dataclass(frozen=True)
+class IngestAssetResult:
+    """Outcome of an idempotent ingest_asset call."""
+
+    asset_id: str
+    created: bool
+    duplicate: bool  # True when the SHA already existed (exact duplicate)
+
+
+def _now_plus_iso(seconds: int) -> str:
+    return (datetime.now(UTC) + timedelta(seconds=seconds)).isoformat(timespec="seconds")
 
 
 class StateStore:
@@ -108,9 +121,13 @@ class StateStore:
         return store
 
     def initialize(self) -> None:
-        """Apply schema v0 if absent and stamp metadata."""
+        """Run all pending migrations (idempotent) and stamp schema version."""
         with self._conn:
-            apply_schema_v0(self._conn)
+            run_migrations(self._conn)
+
+    def applied_migrations(self) -> list[str]:
+        """Return the ordered list of applied migration ids."""
+        return applied_migrations(self._conn)
 
     @property
     def connection(self) -> sqlite3.Connection:
@@ -466,3 +483,221 @@ class StateStore:
             "SELECT * FROM assets WHERE source_sha256 = ?", (source_sha256,)
         ).fetchone()
         return dict(row) if row is not None else None
+
+    # ---- N1: idempotent ingest, sources, lease, retry, duplicates --------
+
+    def add_asset_source(
+        self,
+        *,
+        asset_id: str,
+        local_path_protected: str,
+        observed_size_bytes: int,
+        observed_mtime_ns: int | None,
+    ) -> bool:
+        """Record an additional source for an asset. Returns True if newly added."""
+        now = _utc_now_iso()
+        cur = self._conn.execute(
+            "INSERT OR IGNORE INTO asset_sources "
+            "(asset_source_id, asset_id, local_path_protected, observed_size_bytes, "
+            "observed_mtime_ns, first_seen_at) VALUES (?,?,?,?,?,?)",
+            (
+                _new_id("src"),
+                asset_id,
+                local_path_protected,
+                observed_size_bytes,
+                observed_mtime_ns,
+                now,
+            ),
+        )
+        return cur.rowcount > 0
+
+    def ingest_asset(
+        self,
+        *,
+        source_sha256: str,
+        sanitized_source_name: str,
+        local_path_protected: str,
+        observed_size_bytes: int,
+        observed_mtime_ns: int | None,
+        perceptual_hash: str | None = None,
+        perceptual_hash_algorithm: str | None = None,
+        media_type: str | None = None,
+        width: int | None = None,
+        height: int | None = None,
+    ) -> IngestAssetResult:
+        """Idempotent real ingest.
+
+        If an asset with the same source_sha256 already exists, this records
+        the additional source (exact duplicate) and returns created=False. No
+        second asset row is created; the unique-SHA invariant is preserved.
+        """
+        existing = self.get_asset_by_sha(source_sha256)
+        if existing is not None:
+            aid = str(existing["asset_id"])
+            self.add_asset_source(
+                asset_id=aid,
+                local_path_protected=local_path_protected,
+                observed_size_bytes=observed_size_bytes,
+                observed_mtime_ns=observed_mtime_ns,
+            )
+            return IngestAssetResult(asset_id=aid, created=False, duplicate=True)
+        aid = _new_id("asset")
+        now = _utc_now_iso()
+        with self.transaction() as conn:
+            conn.execute(
+                "INSERT INTO assets (asset_id, source_sha256, perceptual_hash, "
+                "perceptual_hash_algorithm, sanitized_source_name, media_type, "
+                "width, height, current_state, retry_count, created_at, updated_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,0,?,?)",
+                (
+                    aid,
+                    source_sha256,
+                    perceptual_hash,
+                    perceptual_hash_algorithm,
+                    sanitized_source_name,
+                    media_type,
+                    width,
+                    height,
+                    AssetState.INGESTED.value,
+                    now,
+                    now,
+                ),
+            )
+            conn.execute(
+                "INSERT INTO asset_sources "
+                "(asset_source_id, asset_id, local_path_protected, observed_size_bytes, "
+                "observed_mtime_ns, first_seen_at) VALUES (?,?,?,?,?,?)",
+                (
+                    _new_id("src"),
+                    aid,
+                    local_path_protected,
+                    observed_size_bytes,
+                    observed_mtime_ns,
+                    now,
+                ),
+            )
+            self._append_transition(
+                conn,
+                asset_id=aid,
+                from_state=AssetState.NEW,
+                to_state=AssetState.INGESTED,
+                reason_code="ingested",
+                actor_type="SYSTEM",
+                actor_id="npi-ingest",
+                stage_run_id=None,
+            )
+        return IngestAssetResult(asset_id=aid, created=True, duplicate=False)
+
+    def claim_stage_run(
+        self,
+        *,
+        asset_id: str,
+        stage_name: str,
+        lease_owner: str,
+        lease_seconds: int = 300,
+        attempt: int = 1,
+    ) -> str:
+        """Create a RUNNING stage run with a lease. Single-writer short transaction."""
+        rid = _new_id("run")
+        now = _utc_now_iso()
+        expires = _now_plus_iso(lease_seconds)
+        with self.transaction() as conn:
+            conn.execute(
+                "INSERT INTO stage_runs (stage_run_id, asset_id, stage_name, status, "
+                "attempt, started_at, lease_owner, lease_expires_at, heartbeat_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                (
+                    rid,
+                    asset_id,
+                    stage_name,
+                    STAGE_RUNNING,
+                    int(attempt),
+                    now,
+                    lease_owner,
+                    expires,
+                    now,
+                ),
+            )
+        return rid
+
+    def heartbeat(self, stage_run_id: str, lease_seconds: int = 300) -> None:
+        """Refresh heartbeat_at and lease_expires_at for a running stage run."""
+        now = _utc_now_iso()
+        expires = _now_plus_iso(lease_seconds)
+        with self.transaction() as conn:
+            conn.execute(
+                "UPDATE stage_runs SET heartbeat_at = ?, lease_expires_at = ? "
+                "WHERE stage_run_id = ?",
+                (now, expires, stage_run_id),
+            )
+
+    def release_run(
+        self,
+        stage_run_id: str,
+        status: str,
+        *,
+        error_code: str | None = None,
+        error_redacted: str | None = None,
+    ) -> None:
+        """Finalize a stage run (SUCCEEDED/FAILED/INTERRUPTED) with timing + error."""
+        if status not in _NEW_RUN_STATES:
+            raise NpiError(f"unknown stage run status: {status}", error_code=NPI_SCHEMA_INVALID)
+        now = _utc_now_iso()
+        with self.transaction() as conn:
+            conn.execute(
+                "UPDATE stage_runs SET status = ?, finished_at = ?, error_code = ?, "
+                "error_redacted = ? WHERE stage_run_id = ?",
+                (status, now, error_code, error_redacted, stage_run_id),
+            )
+
+    def record_retry(
+        self,
+        asset_id: str,
+        *,
+        error_code: str,
+        error_redacted: str,
+    ) -> int:
+        """Increment retry_count and stamp last_error on the asset. Returns new count."""
+        with self.transaction() as conn:
+            row = conn.execute(
+                "SELECT retry_count FROM assets WHERE asset_id = ?", (asset_id,)
+            ).fetchone()
+            if row is None:
+                raise DatabaseError(f"asset not found: {asset_id}")
+            new_count = int(row["retry_count"]) + 1
+            conn.execute(
+                "UPDATE assets SET retry_count = ?, last_error_code = ?, "
+                "last_error_redacted = ?, updated_at = ? WHERE asset_id = ?",
+                (new_count, error_code, error_redacted, _utc_now_iso(), asset_id),
+            )
+        return new_count
+
+    def insert_duplicate_candidate(
+        self,
+        *,
+        asset_id: str,
+        candidate_asset_id: str,
+        distance: float,
+        algorithm_id: str,
+        algorithm_version: str,
+        hash_size: int,
+    ) -> str:
+        """Record a near-duplicate (perceptual) candidate for human review."""
+        cid = _new_id("dup")
+        with self.transaction() as conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO duplicate_candidates "
+                "(candidate_id, asset_id, candidate_asset_id, distance, algorithm_id, "
+                "algorithm_version, hash_size, created_at) VALUES (?,?,?,?,?,?,?,?)",
+                (
+                    cid,
+                    asset_id,
+                    candidate_asset_id,
+                    distance,
+                    algorithm_id,
+                    algorithm_version,
+                    hash_size,
+                    _utc_now_iso(),
+                ),
+            )
+        return cid

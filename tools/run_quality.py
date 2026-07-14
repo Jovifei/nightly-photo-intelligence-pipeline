@@ -59,8 +59,27 @@ def check_pytest() -> tuple[str, str]:
     return FAIL, f"exit={rc}\n{evidence}"
 
 
+# Authorization-state files legitimately change with phase transitions (Owner
+# authorization updates PROJECT_STATE.json, tasks/index.json, and task-file
+# statuses). They are excluded from the "contract files unchanged" check; the
+# immutable contract files (docs, schemas, blueprints, config, MANIFEST, etc.)
+# are still verified.
+_AUTH_STATE_FILES = {"PROJECT_STATE.json", "tasks/index.json"}
+_AUTH_STATE_PREFIXES = ("tasks/phase_n",)
+
+
+def _is_auth_state_file(rel: str) -> bool:
+    if rel in _AUTH_STATE_FILES:
+        return True
+    return any(rel.startswith(prefix) for prefix in _AUTH_STATE_PREFIXES)
+
+
 def check_contract_integrity() -> tuple[str, str]:
-    """Verify every file listed in MANIFEST.sha256 is intact (subset check)."""
+    """Verify immutable contract files listed in MANIFEST.sha256 are intact.
+
+    Authorization-state files (PROJECT_STATE.json, tasks/index.json, task-file
+    statuses) are excluded - they change with Owner-approved phase transitions.
+    """
     manifest = ROOT / "MANIFEST.sha256"
     if not manifest.is_file():
         return FAIL, "MANIFEST.sha256 missing"
@@ -75,7 +94,11 @@ def check_contract_integrity() -> tuple[str, str]:
         listed[rel] = digest
     missing: list[str] = []
     mismatched: list[str] = []
+    skipped_auth_state = 0
     for rel, digest in listed.items():
+        if _is_auth_state_file(rel):
+            skipped_auth_state += 1
+            continue
         p = ROOT / rel
         if not p.is_file():
             missing.append(rel)
@@ -85,7 +108,10 @@ def check_contract_integrity() -> tuple[str, str]:
             mismatched.append(rel)
     if missing or mismatched:
         return FAIL, f"missing={len(missing)} mismatched={len(mismatched)}"
-    return PASS, f"{len(listed)} contract files intact (new N0 files allowed)"
+    return PASS, (
+        f"{len(listed) - skipped_auth_state} immutable contract files intact "
+        f"({skipped_auth_state} auth-state files excluded)"
+    )
 
 
 def check_schema_validation() -> tuple[str, str]:

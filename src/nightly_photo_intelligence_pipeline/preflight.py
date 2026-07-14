@@ -244,19 +244,31 @@ def _check_handoff() -> CheckResult:
 
 
 def _check_schema_version() -> CheckResult:
+    """Report a deterministic, traceable catalog version (never 'unknown').
+
+    Per Owner decision, catalog_version is derived from the package version
+    (or the catalog's own constant if present), not a runtime/random value.
+    """
     root = find_project_root()
     catalog = root / "schemas" / "schema_catalog.json"
     if not catalog.is_file():
         return CheckResult(name="schema_version", status=NOT_AVAILABLE, notes="catalog missing")
     try:
         data = json.loads(catalog.read_text(encoding="utf-8"))
-        return CheckResult(
-            name="schema_version",
-            status=PASS,
-            evidence=f"catalog_version={data.get('catalog_version', 'unknown')}",
-        )
     except json.JSONDecodeError as exc:
         return CheckResult(name="schema_version", status=FAIL, notes=str(exc))
+    from . import __version__ as pkg_version
+    from .persistence.migrations import SCHEMA_VERSION as db_schema_version
+
+    catalog_version = data.get("catalog_version") or pkg_version
+    return CheckResult(
+        name="schema_version",
+        status=PASS,
+        evidence=(
+            f"catalog_version={catalog_version} "
+            f"(package={pkg_version}, db_migration=v{db_schema_version})"
+        ),
+    )
 
 
 def _check_authorization() -> CheckResult:
