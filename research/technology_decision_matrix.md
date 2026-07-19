@@ -36,3 +36,14 @@
 ## SQLite WAL 说明
 
 WAL 不是默认真理。WSL、Docker bind mount 和 Windows 文件系统组合需要实测锁与恢复。N0 记录文件系统；N1 决定 journal mode。
+## N2A decision addendum (2026-07-20)
+
+| Capability | Candidate boundary | N2A decision | Rationale |
+|---|---|---|---|
+| Pose | Typed protocol + deterministic synthetic fake | Adopt interface only | Keeps model execution behind N2B and makes VLM-origin keypoints invalid |
+| Segmentation | Metadata-only typed protocol + fake backend | Adopt interface only | No mask bytes, masks, cutouts, or image artifacts in N2A |
+| Pose candidates | MMPose/rtmlib | Research only | Official source and license evidence recorded; exact weights/revision pending approval |
+| Segmentation candidates | MediaPipe/PaddleSeg | Research only | First-pass candidates; edge and multi-person limits require benchmark |
+| Fine segmentation | SAM 2 | Escalation only | Checkpoint and license review must precede any N2B request |
+| Benchmark | Fixed 20-case synthetic metadata plan | Adopt plan | Stable scenarios and explicit unknown resource metrics |
+| Execution | `npi benchmark run` | Fail closed | Returns `NPI_MODEL_NOT_AUTHORIZED` while N2B is locked |

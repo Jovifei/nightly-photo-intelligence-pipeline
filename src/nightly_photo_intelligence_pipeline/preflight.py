@@ -211,6 +211,11 @@ _OWNER_MUTABLE_ARCHIVE_FILES = {
     "tasks/index.json",
     "tasks/README.md",
     "tasks/phase_n1_ingest_state_machine.yaml",
+    "research/benchmark_protocol.md",
+    "research/license_review_checklist.md",
+    "research/model_candidate_register.md",
+    "research/source_register.md",
+    "research/technology_decision_matrix.md",
 }
 
 
@@ -309,6 +314,10 @@ def _validate_schema(schema: dict[str, Any], instance: Any) -> list[str]:
     return [error.message for error in validator.iter_errors(instance)]
 
 
+def _file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def _n1_approval_chain_is_consistent(
     *,
     state: dict[str, Any],
@@ -366,11 +375,28 @@ def _check_authorization() -> CheckResult:
         g1_task = yaml.safe_load(
             (root / "tasks" / "gate_g1_calibration_20.yaml").read_text(encoding="utf-8")
         )
+        g1_completion = yaml.safe_load(
+            (root / "approvals" / "phase_completion_G1.yaml").read_text(encoding="utf-8")
+        )
+        n2a_task = yaml.safe_load(
+            (root / "tasks" / "phase_n2a_pose_and_segmentation_benchmark.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        retry_policy = yaml.safe_load(
+            (root / "config" / "retry_policy_v1_1.yaml").read_text(encoding="utf-8")
+        )
+        error_taxonomy = yaml.safe_load(
+            (root / "config" / "error_taxonomy_v1_1.yaml").read_text(encoding="utf-8")
+        )
+        n2a_error_taxonomy = yaml.safe_load(
+            (root / "config" / "error_taxonomy_v1_2.yaml").read_text(encoding="utf-8")
+        )
         task_index = json.loads((root / "tasks" / "index.json").read_text(encoding="utf-8"))
         schemas = root / "schemas"
         checks = [
             (
-                json.loads((schemas / "project_state_v1_1.schema.json").read_text("utf-8")),
+                json.loads((schemas / "project_state_v1_2.schema.json").read_text("utf-8")),
                 state,
             ),
             (
@@ -392,8 +418,18 @@ def _check_authorization() -> CheckResult:
                 g1_task,
             ),
             (
-                json.loads((schemas / "task_index_v1_1.schema.json").read_text("utf-8")),
+                json.loads((schemas / "task_index_v1_2.schema.json").read_text("utf-8")),
                 task_index,
+            ),
+            (
+                json.loads(
+                    (schemas / "phase_completion_approval_g1_v1_0.schema.json").read_text("utf-8")
+                ),
+                g1_completion,
+            ),
+            (
+                json.loads((schemas / "task_contract_n2a_v1_0.schema.json").read_text("utf-8")),
+                n2a_task,
             ),
         ]
         if any(_validate_schema(schema, value) for schema, value in checks):
@@ -401,6 +437,23 @@ def _check_authorization() -> CheckResult:
                 name="current_authorization_contracts",
                 status=FAIL,
                 notes="current contract schema validation failed",
+            )
+        if not all(
+            (
+                _file_sha256(root / "config" / "retry_policy_v1_1.yaml")
+                == "316df5c98fa81a0ae2facf8bcb3ac4914e363eedf219ee2a48f547830b2afafe",
+                _file_sha256(root / "config" / "error_taxonomy_v1_1.yaml")
+                == "a3003f71fd7b43d3169ceb983fe4ce27feef7a1b971cffa4309251f6fb24ac65",
+                retry_policy.get("defaults", {}).get("max_attempts") == 2,
+                error_taxonomy.get("schema_version") == "1.1",
+                n2a_error_taxonomy.get("schema_version") == "1.2",
+                "NPI_MODEL_NOT_AUTHORIZED" in n2a_error_taxonomy.get("errors", {}),
+            )
+        ):
+            return CheckResult(
+                name="current_authorization_contracts",
+                status=FAIL,
+                notes="versioned retry or error taxonomy binding failed",
             )
         if not _n1_approval_chain_is_consistent(
             state=state,
@@ -415,6 +468,40 @@ def _check_authorization() -> CheckResult:
                 status=FAIL,
                 notes="N1 completion approval chain validation failed",
             )
+        n2a_authorized = state.get("authorization", {}).get("capability_gates", {})
+        phase_status = state.get("phase_status", {})
+        n2a_index = next(
+            (item for item in task_index.get("authorized", []) if item.get("phase") == "N2A"),
+            None,
+        )
+        locked_n2b = next(
+            (item for item in task_index.get("locked", []) if item.get("phase") == "N2B"),
+            None,
+        )
+        g1_baseline = g1_completion.get("baseline", {})
+        if not all(
+            (
+                g1_completion.get("status") == "APPROVED",
+                g1_completion.get("owner_decision") == "G1_OWNER_APPROVED",
+                g1_baseline.get("g1_commit") == "4a807dbbcd147a106b02b7e3899aa701c2028d83",
+                g1_baseline.get("g1_tag") == "g1-approved-2026-07-19",
+                phase_status.get("G1") == "APPROVED_COMPLETE",
+                phase_status.get("N2A") == "AUTHORIZED",
+                phase_status.get("N2B") == "LOCKED",
+                n2a_authorized.get("N2A_POSE_SEGMENTATION_BENCHMARK_PREPARATION") == "AUTHORIZED",
+                n2a_authorized.get("N2B_MODEL_DOWNLOAD_AND_INFERENCE") == "LOCKED",
+                isinstance(n2a_index, dict),
+                (n2a_index or {}).get("capability")
+                == "N2A_POSE_SEGMENTATION_BENCHMARK_PREPARATION",
+                isinstance(locked_n2b, dict),
+                (locked_n2b or {}).get("capability") == "N2B_MODEL_DOWNLOAD_AND_INFERENCE",
+            )
+        ):
+            return CheckResult(
+                name="current_authorization_contracts",
+                status=FAIL,
+                notes="G1 completion or N2A capability gate is inconsistent",
+            )
         from .ingest.g1_contract import load_g1_approval
 
         load_g1_approval(root)
@@ -427,7 +514,7 @@ def _check_authorization() -> CheckResult:
             evidence=(
                 f"phase={auth.phase_id}/{auth.phase_status} "
                 f"gate={auth.data_gate_id}/{auth.data_gate_status}; "
-                "schema+N1-approval-chain+bindings+expiry valid"
+                "schema+N1/G1 approval-chain+N2A capability gate valid"
             ),
         )
     except Exception:  # noqa: BLE001
@@ -442,6 +529,7 @@ def _check_git_baselines() -> CheckResult:
     root = find_project_root()
     n0 = "72a81f5984838b74304d23263ac450ea4b5a3a9a"
     n1 = "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"
+    g1 = "4a807dbbcd147a106b02b7e3899aa701c2028d83"
 
     def git(*args: str) -> tuple[int, str]:
         return _run(["git", "-C", str(root), *args])
@@ -449,22 +537,43 @@ def _check_git_baselines() -> CheckResult:
     checks = [
         git("rev-parse", "n0-approved-2026-07-14") == (0, n0),
         git("rev-parse", "n1-approved-2026-07-14") == (0, n1),
+        git("rev-parse", "g1-approved-2026-07-19") == (0, g1),
         git("merge-base", "--is-ancestor", n0, n1)[0] == 0,
         git("merge-base", "--is-ancestor", n1, "HEAD")[0] == 0,
-        git("rev-list", "--count", f"{n1}..HEAD") == (0, "1"),
+        git("merge-base", "--is-ancestor", g1, "HEAD")[0] == 0,
+        git("rev-list", "--count", "HEAD") == (0, "4"),
+        git("rev-list", "--count", f"{n1}..HEAD") == (0, "2"),
+        git("rev-list", "--count", f"{g1}..HEAD") == (0, "1"),
         git("rev-list", "--merges", "HEAD") == (0, ""),
         git("status", "--porcelain", "--untracked-files=all") == (0, ""),
     ]
     if not all(checks):
-        return CheckResult(name="git_stage_baselines", status=FAIL, notes="Git baseline mismatch")
+        return CheckResult(
+            name="git_stage_baselines",
+            status=FAIL,
+            notes="Git baseline or N2A commit mismatch",
+        )
     return CheckResult(
         name="git_stage_baselines",
         status=PASS,
-        evidence="N0/N1 tags and ancestry intact; N1..HEAD=1; no merge commit; worktree clean",
+        evidence=(
+            "N0/N1/G1 tags and ancestry intact; exactly one N2A commit; no merge; worktree clean"
+        ),
     )
 
 
 def _check_source_runtime_separation() -> CheckResult:
+    root = find_project_root()
+    try:
+        auth = load_authorization(root)
+    except Exception:  # noqa: BLE001 - fall through to the stricter G1 gate
+        auth = None
+    if auth is not None and auth.n2a_authorized and not auth.n2b_model_authorized:
+        return CheckResult(
+            name="g1_execution_environment",
+            status=PASS,
+            evidence="N2A model-free planning; no source/runtime/photo access performed",
+        )
     src = os.environ.get("NPI_SOURCE_ROOT")
     parent = os.environ.get("NPI_RUNTIME_PARENT")
     rt = os.environ.get("NPI_RUNTIME_ROOT")

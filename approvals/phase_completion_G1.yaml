@@ -1,0 +1,29 @@
+schema_version: "1.0"
+approval_type: "PHASE_COMPLETION"
+status: "APPROVED"
+phase_id: "G1"
+owner_id: "Jovi"
+approved_at_utc: "2026-07-19"
+baseline:
+  n0_commit: "72a81f5984838b74304d23263ac450ea4b5a3a9a"
+  n1_commit: "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"
+  g1_commit: "4a807dbbcd147a106b02b7e3899aa701c2028d83"
+  g1_tag: "g1-approved-2026-07-19"
+  immutable: true
+manifest_sha256: "29eee5fdb8e16c85649752501c4b722d2b4d071950c8a989add040e895a75c47"
+independent_reviewer:
+  conclusion: "PASS_FOR_OWNER_REVIEW"
+  reviewed_commit: "4a807dbbcd147a106b02b7e3899aa701c2028d83"
+  confirmed:
+    - "N0 and N1 baselines and approved tags unchanged"
+    - "exactly one G1 commit beyond N1"
+    - "protected snapshot OS read-only verified"
+    - "20 of 20 source hashes unchanged pre/post"
+    - "pytest 190 passed and all quality gates exit 0"
+    - "no blocking finding"
+owner_decision: "G1_OWNER_APPROVED"
+owner_statement: >
+  G1 commit 4a807dbbcd147a106b02b7e3899aa701c2028d83 is the immutable approved
+  G1 baseline. N2A is authorized only for model-free preparation; N2B model
+  download and inference remain locked. No real filename, source path, or
+  runtime-child absolute path is recorded here.

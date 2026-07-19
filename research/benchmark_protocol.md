@@ -79,3 +79,16 @@ exit status
 ## 选择
 
 P0 安全、许可或输出来源失败直接淘汰。不要用加权总分掩盖 P0。
+## N2A benchmark-plan addendum (2026-07-20)
+
+N2A defines a fixed, non-random 20-case synthetic metadata matrix: full body,
+half body, seated pose, hand near face, held object, partial occlusion, two
+people, small person, crop, collage, mirror view, left/right ambiguity, backlit
+window, hair edge, clothing edge, translucent edge, out-of-frame, portrait,
+landscape, and deterministic rerun. Each case has only a synthetic case ID,
+fixture reference, dimensions, and expected-person count; no photo path exists.
+
+Measured metrics are reserved for N2B. `processing_time_ms`, GPU peak memory,
+CPU peak memory, and OOM are `NOT_MEASURED` in N2A, never estimates. N2B must
+record exact model revision, artifact hash, runtime versions, input dimensions,
+cold/warm latency, peak memory, failure reason, and deterministic rerun result.

@@ -259,6 +259,7 @@ def test_manifest_hash_tamper_is_a_preflight_failure(
     monkeypatch.setenv("NPI_RUNTIME_PARENT", str(tmp_path / "parent"))
     monkeypatch.setenv("NPI_RUNTIME_ROOT", str(tmp_path / "parent" / "child"))
     monkeypatch.setenv("NPI_G1_MANIFEST", str(manifest))
+    monkeypatch.setattr(preflight_module, "find_project_root", lambda: tmp_path)
 
     class Approval:
         manifest_sha256 = "0" * 64

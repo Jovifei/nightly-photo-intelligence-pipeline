@@ -5,6 +5,8 @@ AUTHORIZED on G0 (three synthetic fixtures, max_assets=3). Non-dry-run ingest
 is an N1 capability but is bounded by the G0 asset cap: a 4th asset must be
 rejected. Real photo access, EXIF real-data read, model downloads, cloud, and
 OpenClaw remain NOT_AUTHORIZED.
+N2A is a model-free capability gate. N2B model download and inference remain
+locked even while N2A planning is authorized.
 """
 
 from __future__ import annotations
@@ -46,6 +48,9 @@ class AuthorizationSnapshot:
     max_assets: int | None
     n0_baseline_commit: str | None
     n1_baseline_commit: str | None = None
+    g1_completion_status: str = "UNKNOWN"
+    n2a_status: str = "LOCKED"
+    n2b_status: str = "LOCKED"
 
     @property
     def phase_authorized(self) -> bool:
@@ -62,6 +67,14 @@ class AuthorizationSnapshot:
     @property
     def is_n1(self) -> bool:
         return self.phase_id == "N1"
+
+    @property
+    def n2a_authorized(self) -> bool:
+        return self.n2a_status == "AUTHORIZED"
+
+    @property
+    def n2b_model_authorized(self) -> bool:
+        return self.n2b_status == "AUTHORIZED"
 
     def phase_at_least(self, required_phase: str) -> bool:
         """True if the authorized phase is >= required_phase."""
@@ -129,6 +142,8 @@ def load_authorization(project_root: Path | None = None) -> AuthorizationSnapsho
     baselines = data.get("baselines", {}) or {}
     n0_baseline = baselines.get("N0", data.get("n0_baseline", {})) or {}
     n1_baseline = baselines.get("N1", {}) or {}
+    phase_status = data.get("phase_status", {}) or {}
+    capability_gates = auth.get("capability_gates", {}) or {}
     return AuthorizationSnapshot(
         phase_id=phase.get("id", "UNKNOWN"),
         phase_status=phase.get("status", "UNKNOWN"),
@@ -142,4 +157,13 @@ def load_authorization(project_root: Path | None = None) -> AuthorizationSnapsho
         max_assets=data_scope.get("max_assets"),
         n0_baseline_commit=n0_baseline.get("commit"),
         n1_baseline_commit=n1_baseline.get("commit"),
+        g1_completion_status=capability_gates.get(
+            "G1_COMPLETION", phase_status.get("G1", "UNKNOWN")
+        ),
+        n2a_status=capability_gates.get(
+            "N2A_POSE_SEGMENTATION_BENCHMARK_PREPARATION", phase_status.get("N2A", "LOCKED")
+        ),
+        n2b_status=capability_gates.get(
+            "N2B_MODEL_DOWNLOAD_AND_INFERENCE", phase_status.get("N2B", "LOCKED")
+        ),
     )

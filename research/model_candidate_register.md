@@ -48,3 +48,16 @@
 ## Embedding
 
 尚不选型。先建立 20–50 个检索查询及相关性标注，再比较图像/多模态 embedding。
+## N2A candidate ledger addendum (2026-07-20)
+
+All entries below remain research-only. No dependency, model weight, checkpoint, or container was downloaded.
+
+| model/project ID | official source | exact revision | artifact | code license | weights/license | commercial constraints | N2B recommendation |
+|---|---|---|---|---|---|---|---|
+| MMPose RTMPose/RTMW | https://github.com/open-mmlab/mmpose | TBD_PENDING_N2B_APPROVAL | TBD_PER_ARTIFACT | Apache-2.0 repository; component review required | TBD per checkpoint/model card | TBD legal review | Candidate; benchmark only after approval |
+| rtmlib RTMPose/RTMO/RTMW | https://github.com/Tau-J/rtmlib | TBD_PENDING_N2B_APPROVAL | TBD_PER_ARTIFACT | Apache-2.0 repository | TBD per downloaded weights | TBD legal review | Lightweight candidate; no approval yet |
+| MediaPipe Selfie Segmentation | https://github.com/google-ai-edge/mediapipe/blob/master/docs/solutions/selfie_segmentation.md | TBD_PENDING_N2B_APPROVAL | TBD_PER_ARTIFACT | Apache-2.0 project; solution/model terms require review | TBD model-card terms | Close selfie scope; not recommended for general multi-person photos without benchmark | Conditional baseline |
+| PaddleSeg PP-HumanSeg | https://github.com/PaddlePaddle/PaddleSeg | TBD_PENDING_N2B_APPROVAL | TBD_PER_ARTIFACT | Apache-2.0 repository | TBD per model/checkpoint | TBD legal review | Lightweight segmentation candidate |
+| SAM 2 | https://github.com/facebookresearch/sam2 | TBD_PENDING_N2B_APPROVAL | TBD_PER_ARTIFACT | Code/checkpoint terms must be reviewed separately | TBD exact checkpoint terms | Escalation only; legal review required | Do not select first pass |
+
+VRAM, latency, OOM, and memory fields are `not_measured` until an explicitly approved N2B benchmark. No claim of RTX 4070 SUPER validation is made.

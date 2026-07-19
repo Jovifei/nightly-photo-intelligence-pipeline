@@ -65,3 +65,16 @@
 - 社区量化权重不能因可下载而采用；
 - URL、license、revision、Hash 和访问日期进入 provenance；
 - 若官方页面与仓库冲突，停止并记录，不自行选择更宽松许可。
+## N2A provenance addendum (2026-07-20)
+
+The parent agent reviewed official sources without downloading packages, weights, or checkpoints.
+Child A and Child B first attempts returned `Success=false`, `TimedOut=false`, `Turns=4`, `Result=null`, empty stderr; retries were also unsuccessful (Child A timeout after 90 seconds; Child B `Result=null`; Child C `Result=null`). These are recorded as child failures, not research PASS. The parent completed the direction from official sources.
+
+| Candidate | Official source | Accessed | N2A status |
+|---|---|---|---|
+| MMPose | https://github.com/open-mmlab/mmpose | 2026-07-20 | RESEARCH_ONLY / DOWNLOAD_NOT_AUTHORIZED |
+| MMPose inference | https://github.com/open-mmlab/mmpose/blob/main/docs/en/user_guides/inference.md | 2026-07-20 | RESEARCH_ONLY |
+| rtmlib | https://github.com/Tau-J/rtmlib | 2026-07-20 | RESEARCH_ONLY / DOWNLOAD_NOT_AUTHORIZED |
+| MediaPipe Selfie Segmentation | https://github.com/google-ai-edge/mediapipe/blob/master/docs/solutions/selfie_segmentation.md | 2026-07-20 | RESEARCH_ONLY / DOWNLOAD_NOT_AUTHORIZED |
+| PaddleSeg PP-HumanSeg | https://github.com/PaddlePaddle/PaddleSeg | 2026-07-20 | RESEARCH_ONLY / DOWNLOAD_NOT_AUTHORIZED |
+| SAM 2 | https://github.com/facebookresearch/sam2 | 2026-07-20 | ESCALATION_CANDIDATE / DOWNLOAD_NOT_AUTHORIZED |

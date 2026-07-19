@@ -19,3 +19,22 @@
 - Never carry historical real-photo evidence forward as post-remediation proof. Until the OS-level
   read-only gate passes, manifest metadata and non-mutating capability checks are the only permitted
   source-adjacent operations.
+## 2026-07-20 N2A continuation
+
+- Scope corrections from Owner are authoritative for the active task: verify the
+  active repository, project slug, HEAD, `PROJECT_STATE`, and task contract before
+  deciding whether to switch scope; do not let nearby text change the active workstream.
+- N2A must extend capability-gated state with a versioned error taxonomy rather
+  than mutating the approved G1 taxonomy binding.
+- Child-Claude unsuccessful or timed-out results remain inconclusive; parent
+  research and verification must be recorded explicitly.
+
+## 2026-07-20 N2A reviewer remediation
+
+- Treat an Owner-accepted `CHANGES_REQUIRED` review as a new, bounded N2A
+  contract: preserve the sole N2A commit with a recovery reference, amend only
+  the authorized remediation, and never convert a clean-worktree test failure
+  during editing into a reason to weaken that test.
+- Benchmark plans are not a product harness. Require a CLI path that calls the
+  real product runner, fake backend, per-case validator, aggregator, and report
+  DTO before calling N2A complete.

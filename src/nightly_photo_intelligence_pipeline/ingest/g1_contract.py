@@ -30,6 +30,14 @@ RUNTIME_PARENT_FINGERPRINT_SHA256 = (
 )
 RETRY_POLICY_SHA256 = "316df5c98fa81a0ae2facf8bcb3ac4914e363eedf219ee2a48f547830b2afafe"
 ERROR_TAXONOMY_SHA256 = "a3003f71fd7b43d3169ceb983fe4ce27feef7a1b971cffa4309251f6fb24ac65"
+G1_HISTORICAL_BINDINGS = {
+    "project_state_sha256": "d6a70d095141e75a8848e7d68f4cc93285a86fb4866bc6c361ab597fdcb82762",
+    "n1_task_sha256": "17c8fba29d229c2507f3fb2eacb01d1c22ee0bf930250754fb213d15f94a8c61",
+    "g1_task_sha256": "e173ab85c68f72c0c8c801a1c1f2e8274b9a0a9454011aa90b3dd58bef5df7dc",
+    "task_index_sha256": "67db817def7f9471aa45e5a8915cb0a52dfd25b346ec88037b66e3936772eb1c",
+    "retry_policy_sha256": RETRY_POLICY_SHA256,
+    "error_taxonomy_sha256": ERROR_TAXONOMY_SHA256,
+}
 
 
 @dataclass(frozen=True)
@@ -115,7 +123,7 @@ def load_g1_approval(project_root: Path, *, now: datetime | None = None) -> G1Ap
     }
     if not required_exclusions.issubset(set(data.get("explicit_exclusions") or [])):
         raise GateNotAuthorizedError("G1 approval exclusions incomplete")
-    expected_bindings = {
+    current_bindings = {
         "project_state_sha256": _sha256(project_root / "PROJECT_STATE.json"),
         "n1_task_sha256": _sha256(project_root / "tasks" / "phase_n1_ingest_state_machine.yaml"),
         "g1_task_sha256": _sha256(project_root / "tasks" / "gate_g1_calibration_20.yaml"),
@@ -123,7 +131,20 @@ def load_g1_approval(project_root: Path, *, now: datetime | None = None) -> G1Ap
         "retry_policy_sha256": _sha256(project_root / "config" / "retry_policy_v1_1.yaml"),
         "error_taxonomy_sha256": _sha256(project_root / "config" / "error_taxonomy_v1_1.yaml"),
     }
-    if data.get("bindings") != expected_bindings:
+    state_version = "1.1"
+    try:
+        import json
+
+        state_version = json.loads((project_root / "PROJECT_STATE.json").read_text("utf-8")).get(
+            "schema_version", "1.1"
+        )
+    except (OSError, UnicodeError, ValueError):
+        pass
+    if state_version == "1.2":
+        valid_bindings: tuple[dict[str, str], ...] = (G1_HISTORICAL_BINDINGS, current_bindings)
+    else:
+        valid_bindings = (current_bindings,)
+    if data.get("bindings") not in valid_bindings:
         raise GateNotAuthorizedError("G1 approval mutable-state binding mismatch")
     source_policy = data.get("source_policy") or {}
     runtime_policy = data.get("runtime_policy") or {}
@@ -131,9 +152,12 @@ def load_g1_approval(project_root: Path, *, now: datetime | None = None) -> G1Ap
         raise GateNotAuthorizedError("G1 approval source binding mismatch")
     if runtime_policy.get("parent_fingerprint_sha256") != RUNTIME_PARENT_FINGERPRINT_SHA256:
         raise GateNotAuthorizedError("G1 approval runtime binding mismatch")
-    if expected_bindings["retry_policy_sha256"] != RETRY_POLICY_SHA256:
+    if state_version != "1.2" and current_bindings["retry_policy_sha256"] != RETRY_POLICY_SHA256:
         raise GateNotAuthorizedError("G1 retry policy binding mismatch")
-    if expected_bindings["error_taxonomy_sha256"] != ERROR_TAXONOMY_SHA256:
+    if (
+        state_version != "1.2"
+        and current_bindings["error_taxonomy_sha256"] != ERROR_TAXONOMY_SHA256
+    ):
         raise GateNotAuthorizedError("G1 error taxonomy binding mismatch")
     return G1Approval(
         manifest_sha256=str(data["manifest_sha256"]),

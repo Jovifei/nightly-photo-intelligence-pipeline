@@ -28,3 +28,10 @@ REJECTED
 NEEDS_LEGAL_REVIEW
 UNKNOWN
 ```
+## N2A status addendum (2026-07-20)
+
+No candidate is approved for download or production. Code licenses, checkpoint
+licenses, model cards, training-data terms, redistribution, patents, Docker
+base images, and commercial use remain `UNKNOWN` or `NEEDS_LEGAL_REVIEW` until
+an exact N2B artifact request is approved. The N2A repository contains no
+weights, cache path, model output, or derived image.

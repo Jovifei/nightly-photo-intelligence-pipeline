@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2a_pose_segmentation.schema.json",
+  "title": "NPI N2A model-free pose, segmentation, and benchmark contracts",
+  "description": "Draft 2020-12 structural validation plus required NPI finite-number semantic validation form one fail-closed public contract.",
+  "oneOf": [
+    {"$ref": "#/$defs/poseCase"},
+    {"$ref": "#/$defs/segmentationCase"},
+    {"$ref": "#/$defs/benchmarkPlan"},
+    {"$ref": "#/$defs/benchmarkReport"}
+  ],
+  "$defs": {
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["producer_type", "producer_id", "synthetic", "model_id", "model_revision", "artifact_sha256"],
+      "properties": {
+        "producer_type": {"enum": ["FAKE_BACKEND", "SYNTHETIC_FIXTURE", "REAL_MODEL"]},
+        "producer_id": {"type": "string", "minLength": 1},
+        "synthetic": {"type": "boolean"},
+        "model_id": {"type": ["string", "null"]},
+        "model_revision": {"type": ["string", "null"]},
+        "artifact_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"producer_type": {"enum": ["FAKE_BACKEND", "SYNTHETIC_FIXTURE"]}}, "required": ["producer_type"]},
+          "then": {"properties": {"synthetic": {"const": true}, "model_id": {"const": null}, "model_revision": {"const": null}, "artifact_sha256": {"const": null}}}
+        },
+        {
+          "if": {"properties": {"producer_type": {"const": "REAL_MODEL"}}, "required": ["producer_type"]},
+          "then": {"properties": {"synthetic": {"const": false}, "model_id": {"type": "string", "minLength": 1}, "model_revision": {"type": "string", "minLength": 1}, "artifact_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}}
+        }
+      ]
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "value", "unit", "measurement_source", "environment_ref", "reason_code"],
+      "properties": {
+        "status": {"enum": ["NOT_MEASURED", "MEASURED", "UNAVAILABLE"]},
+        "value": {"type": ["number", "null"]},
+        "unit": {"type": ["string", "null"]},
+        "measurement_source": {"type": ["string", "null"]},
+        "environment_ref": {"type": ["string", "null"]},
+        "reason_code": {"type": ["string", "null"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "MEASURED"}}, "required": ["status"]},
+          "then": {"properties": {"value": {"type": "number"}, "unit": {"type": "string", "minLength": 1}, "measurement_source": {"type": "string", "minLength": 1}, "environment_ref": {"type": "string", "minLength": 1}, "reason_code": {"const": null}}}
+        },
+        {
+          "if": {"properties": {"status": {"const": "NOT_MEASURED"}}, "required": ["status"]},
+          "then": {"properties": {"value": {"const": null}, "unit": {"const": null}, "measurement_source": {"const": null}, "environment_ref": {"const": null}, "reason_code": {"const": null}}}
+        },
+        {
+          "if": {"properties": {"status": {"const": "UNAVAILABLE"}}, "required": ["status"]},
+          "then": {"properties": {"value": {"const": null}, "unit": {"const": null}, "measurement_source": {"const": null}, "environment_ref": {"const": null}, "reason_code": {"enum": ["NPI_MODEL_NOT_AUTHORIZED", "NPI_BACKEND_NOT_AVAILABLE"]}}}
+        }
+      ]
+    },
+    "keypoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keypoint_id", "partition", "coordinate_space", "pixel", "normalized", "confidence", "visibility", "anatomical_side"],
+      "properties": {
+        "keypoint_id": {"type": "string", "minLength": 1},
+        "partition": {"enum": ["BODY", "HAND_LEFT", "HAND_RIGHT", "FACE"]},
+        "coordinate_space": {"const": "PIXEL_AND_NORMALIZED"},
+        "pixel": {"type": "object", "additionalProperties": false, "required": ["x", "y"], "properties": {"x": {"type": "number"}, "y": {"type": "number"}}},
+        "normalized": {"type": "object", "additionalProperties": false, "required": ["x", "y"], "properties": {"x": {"type": "number", "minimum": 0, "maximum": 1}, "y": {"type": "number", "minimum": 0, "maximum": 1}}},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "visibility": {"enum": ["VISIBLE", "OCCLUDED", "OUT_OF_FRAME", "UNKNOWN"]},
+        "anatomical_side": {"enum": ["LEFT", "RIGHT", "CENTER", "NOT_APPLICABLE", "UNKNOWN"]}
+      },
+      "allOf": [
+        {"if": {"properties": {"keypoint_id": {"pattern": "^left_"}}, "required": ["keypoint_id"]}, "then": {"properties": {"anatomical_side": {"const": "LEFT"}}}},
+        {"if": {"properties": {"keypoint_id": {"pattern": "^right_"}}, "required": ["keypoint_id"]}, "then": {"properties": {"anatomical_side": {"const": "RIGHT"}}}},
+        {"if": {"properties": {"keypoint_id": {"const": "nose"}}, "required": ["keypoint_id"]}, "then": {"properties": {"anatomical_side": {"enum": ["CENTER", "NOT_APPLICABLE"]}}}}
+      ]
+    },
+    "person": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["person_index", "keypoint_set_id", "keypoints", "coordinate_space", "deterministic_derived", "raw_model_output_boundary"],
+      "properties": {
+        "person_index": {"type": "integer", "minimum": 0},
+        "keypoint_set_id": {"type": "string", "minLength": 1},
+        "keypoints": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/keypoint"}},
+        "coordinate_space": {"const": "PIXEL_AND_NORMALIZED"},
+        "deterministic_derived": {"type": "object", "additionalProperties": false, "required": ["source"], "properties": {"source": {"const": "KEYPOINTS_ONLY"}}},
+        "raw_model_output_boundary": {"type": "object", "additionalProperties": false, "required": ["raw_model_output_present"], "properties": {"raw_model_output_present": {"const": false}}}
+      }
+    },
+    "poseCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_type", "schema_version", "case_id", "profile", "backend_id", "backend_type", "source_type", "synthetic", "image_width", "image_height", "people", "provenance", "uncertainties", "model_artifact_present"],
+      "properties": {
+        "contract_type": {"const": "POSE_CASE"}, "schema_version": {"const": "1.1"},
+        "case_id": {"type": "string", "minLength": 1}, "profile": {"const": "pose"},
+        "backend_id": {"type": "string", "minLength": 1}, "backend_type": {"enum": ["FAKE_BACKEND", "REAL_MODEL"]},
+        "source_type": {"enum": ["SYNTHETIC", "REAL"]}, "synthetic": {"type": "boolean"},
+        "image_width": {"type": "integer", "minimum": 1}, "image_height": {"type": "integer", "minimum": 1},
+        "people": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/person"}},
+        "provenance": {"$ref": "#/$defs/provenance"}, "uncertainties": {"type": "array", "items": {"type": "string"}},
+        "model_artifact_present": {"const": false}
+      },
+      "allOf": [
+        {"if": {"properties": {"synthetic": {"const": true}}, "required": ["synthetic"]}, "then": {"properties": {"source_type": {"const": "SYNTHETIC"}, "backend_type": {"const": "FAKE_BACKEND"}, "provenance": {"properties": {"producer_type": {"const": "FAKE_BACKEND"}}}}}},
+        {"if": {"properties": {"synthetic": {"const": false}}, "required": ["synthetic"]}, "then": {"properties": {"source_type": {"const": "REAL"}, "backend_type": {"const": "REAL_MODEL"}, "provenance": {"properties": {"producer_type": {"const": "REAL_MODEL"}}}}}}
+      ]
+    },
+    "segmentationCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_type", "schema_version", "case_id", "profile", "backend_id", "backend_type", "source_type", "synthetic", "image_width", "image_height", "person_index", "bbox", "mask_metadata", "confidence", "confidence_status", "quality_flags", "provenance", "uncertainties", "mask_artifact_count"],
+      "properties": {
+        "contract_type": {"const": "SEGMENTATION_CASE"}, "schema_version": {"const": "1.1"},
+        "case_id": {"type": "string", "minLength": 1}, "profile": {"const": "segmentation"},
+        "backend_id": {"type": "string", "minLength": 1}, "backend_type": {"enum": ["FAKE_BACKEND", "REAL_MODEL"]},
+        "source_type": {"enum": ["SYNTHETIC", "REAL"]}, "synthetic": {"type": "boolean"},
+        "image_width": {"type": "integer", "minimum": 1}, "image_height": {"type": "integer", "minimum": 1}, "person_index": {"type": "integer", "minimum": 0},
+        "bbox": {"type": "object", "additionalProperties": false, "required": ["coordinate_space", "x", "y", "width", "height"], "properties": {"coordinate_space": {"const": "NORMALIZED"}, "x": {"type": "number", "minimum": 0, "maximum": 1}, "y": {"type": "number", "minimum": 0, "maximum": 1}, "width": {"type": "number", "exclusiveMinimum": 0, "maximum": 1}, "height": {"type": "number", "exclusiveMinimum": 0, "maximum": 1}}},
+        "mask_metadata": {"type": "object", "additionalProperties": false, "required": ["mask_format", "artifact_path"], "properties": {"mask_format": {"enum": ["METADATA_ONLY", "BINARY_MASK", "SOFT_MASK"]}, "artifact_path": {"const": null}}},
+        "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1}, "confidence_status": {"enum": ["KNOWN", "UNKNOWN"]},
+        "quality_flags": {"type": "array", "items": {"type": "string"}}, "provenance": {"$ref": "#/$defs/provenance"}, "uncertainties": {"type": "array", "items": {"type": "string"}}, "mask_artifact_count": {"const": 0}
+      },
+      "allOf": [
+        {"if": {"properties": {"confidence_status": {"const": "KNOWN"}}, "required": ["confidence_status"]}, "then": {"properties": {"confidence": {"type": "number"}}}},
+        {"if": {"properties": {"confidence_status": {"const": "UNKNOWN"}}, "required": ["confidence_status"]}, "then": {"properties": {"confidence": {"const": null}}}},
+        {"if": {"properties": {"synthetic": {"const": true}}, "required": ["synthetic"]}, "then": {"properties": {"source_type": {"const": "SYNTHETIC"}, "backend_type": {"const": "FAKE_BACKEND"}, "provenance": {"properties": {"producer_type": {"const": "FAKE_BACKEND"}}}}}},
+        {"if": {"properties": {"synthetic": {"const": false}}, "required": ["synthetic"]}, "then": {"properties": {"source_type": {"const": "REAL"}, "backend_type": {"const": "REAL_MODEL"}, "provenance": {"properties": {"producer_type": {"const": "REAL_MODEL"}}}}}}
+      ]
+    },
+    "planCase": {"type": "object", "additionalProperties": false, "required": ["case_id", "scenario", "fixture_ref", "image_width", "image_height", "expected_people"], "properties": {"case_id": {"type": "string", "pattern": "^n2a-(pose|segmentation)-[0-9]{2}$"}, "scenario": {"type": "string", "minLength": 1}, "fixture_ref": {"type": "string", "pattern": "^synthetic_case_[0-9]{2}$"}, "image_width": {"type": "integer", "minimum": 1}, "image_height": {"type": "integer", "minimum": 1}, "expected_people": {"type": "integer", "minimum": 1}}},
+    "benchmarkPlan": {"type": "object", "additionalProperties": false, "required": ["contract_type", "schema_version", "profile", "data_source", "real_photo_reads", "model_execution_authorized", "case_count", "cases", "required_metrics", "backend_candidates", "measurement_status"], "properties": {"contract_type": {"const": "BENCHMARK_PLAN"}, "schema_version": {"const": "1.1"}, "profile": {"enum": ["pose", "segmentation"]}, "data_source": {"const": "synthetic_metadata_only"}, "real_photo_reads": {"const": false}, "model_execution_authorized": {"const": false}, "case_count": {"const": 20}, "cases": {"type": "array", "minItems": 20, "maxItems": 20, "items": {"$ref": "#/$defs/planCase"}}, "required_metrics": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "backend_candidates": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "measurement_status": {"const": "NOT_MEASURED"}}},
+    "benchmarkCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "profile", "backend_id", "backend_type", "synthetic", "input_fixture_ref", "status", "error_code", "error_category", "processing_time", "gpu_peak_memory", "cpu_peak_memory", "deterministic_rerun", "schema_validation", "provenance", "uncertainties", "output_summary"],
+      "properties": {
+        "case_id": {"type": "string", "minLength": 1},
+        "profile": {"enum": ["pose", "segmentation"]},
+        "backend_id": {"type": "string", "minLength": 1},
+        "backend_type": {"const": "FAKE_BACKEND"},
+        "synthetic": {"const": true},
+        "input_fixture_ref": {"type": "string", "pattern": "^synthetic_case_[0-9]{2}$"},
+        "status": {"enum": ["PASS", "FAIL", "ERROR"]},
+        "error_code": {"enum": [null, "NPI_MODEL_NOT_AUTHORIZED", "NPI_BACKEND_NOT_AVAILABLE", "NPI_INVALID_BENCHMARK_CASE", "NPI_SCHEMA_VALIDATION_FAILED", "NPI_DETERMINISM_MISMATCH", "NPI_INVALID_PROVENANCE", "NPI_INVALID_SIDE_LABEL", "NPI_INVALID_MEASUREMENT_ATTESTATION", "NPI_FAKE_BACKEND_PROVENANCE_MISMATCH", "NPI_NON_FINITE_NUMBER", "NPI_INVALID_BOUNDING_BOX", "NPI_INCONSISTENT_BOUNDING_BOX", "NPI_INTERNAL_BENCHMARK_ERROR"]},
+        "error_category": {"enum": [null, "DETERMINISM", "VALIDATION", "EXECUTION"]},
+        "processing_time": {"$ref": "#/$defs/measurement"},
+        "gpu_peak_memory": {"$ref": "#/$defs/measurement"},
+        "cpu_peak_memory": {"$ref": "#/$defs/measurement"},
+        "deterministic_rerun": {"type": "object", "additionalProperties": false, "required": ["count", "match"], "properties": {"count": {"const": 1}, "match": {"type": "boolean"}}},
+        "schema_validation": {"type": "object", "additionalProperties": false, "required": ["valid", "error_code"], "properties": {"valid": {"type": "boolean"}, "error_code": {"enum": [null, "NPI_SCHEMA_VALIDATION_FAILED"]}}},
+        "provenance": {"$ref": "#/$defs/provenance"},
+        "uncertainties": {"type": "array", "items": {"type": "string"}},
+        "output_summary": {"type": "object", "additionalProperties": false, "required": ["kind", "person_count", "artifact_count"], "properties": {"kind": {"enum": ["POSE", "SEGMENTATION"]}, "person_count": {"type": "integer", "minimum": 1}, "artifact_count": {"const": 0}, "keypoint_set_id": {"type": ["string", "null"]}, "keypoint_count": {"type": ["integer", "null"], "minimum": 0}, "geometry_valid": {"type": ["boolean", "null"]}, "mirror_side_valid": {"type": ["boolean", "null"]}, "bbox_valid": {"type": ["boolean", "null"]}, "mask_metadata_valid": {"type": ["boolean", "null"]}}}
+      },
+      "allOf": [
+        {"if": {"properties": {"status": {"const": "PASS"}}, "required": ["status"]}, "then": {"properties": {"error_code": {"const": null}, "error_category": {"const": null}}}},
+        {"if": {"properties": {"status": {"const": "FAIL"}}, "required": ["status"]}, "then": {"properties": {"error_code": {"const": "NPI_DETERMINISM_MISMATCH"}, "error_category": {"const": "DETERMINISM"}}}},
+        {"if": {"properties": {"status": {"const": "ERROR"}}, "required": ["status"]}, "then": {"properties": {"error_code": {"enum": ["NPI_MODEL_NOT_AUTHORIZED", "NPI_BACKEND_NOT_AVAILABLE", "NPI_INVALID_BENCHMARK_CASE", "NPI_SCHEMA_VALIDATION_FAILED", "NPI_INVALID_PROVENANCE", "NPI_INVALID_SIDE_LABEL", "NPI_INVALID_MEASUREMENT_ATTESTATION", "NPI_FAKE_BACKEND_PROVENANCE_MISMATCH", "NPI_NON_FINITE_NUMBER", "NPI_INVALID_BOUNDING_BOX", "NPI_INCONSISTENT_BOUNDING_BOX", "NPI_INTERNAL_BENCHMARK_ERROR"]}, "error_category": {"enum": ["VALIDATION", "EXECUTION"]}}}},
+        {"if": {"properties": {"error_code": {"enum": ["NPI_MODEL_NOT_AUTHORIZED", "NPI_BACKEND_NOT_AVAILABLE", "NPI_INTERNAL_BENCHMARK_ERROR"]}}, "required": ["error_code"]}, "then": {"properties": {"error_category": {"const": "EXECUTION"}}}},
+        {"if": {"properties": {"error_code": {"enum": ["NPI_INVALID_BENCHMARK_CASE", "NPI_SCHEMA_VALIDATION_FAILED", "NPI_INVALID_PROVENANCE", "NPI_INVALID_SIDE_LABEL", "NPI_INVALID_MEASUREMENT_ATTESTATION", "NPI_FAKE_BACKEND_PROVENANCE_MISMATCH", "NPI_NON_FINITE_NUMBER", "NPI_INVALID_BOUNDING_BOX", "NPI_INCONSISTENT_BOUNDING_BOX"]}}, "required": ["error_code"]}, "then": {"properties": {"error_category": {"const": "VALIDATION"}}}}
+      ]
+    },
+    "aggregate": {"type": "object", "additionalProperties": false, "required": ["total_cases", "passed_cases", "failed_cases", "error_cases", "pass_rate", "failure_distribution", "backend_identity", "deterministic_rerun_count", "deterministic_mismatch_count", "schema_pass_count", "schema_fail_count", "measurement_coverage", "threshold_status", "threshold_uncertainty", "synthetic_only", "ready_for_real_benchmark", "authorization_status", "no_artifact_attestation"], "properties": {"total_cases": {"const": 20}, "passed_cases": {"type": "integer", "minimum": 0}, "failed_cases": {"type": "integer", "minimum": 0}, "error_cases": {"type": "integer", "minimum": 0}, "pass_rate": {"type": "number", "minimum": 0, "maximum": 1}, "failure_distribution": {"type": "object", "propertyNames": {"enum": ["NPI_MODEL_NOT_AUTHORIZED", "NPI_BACKEND_NOT_AVAILABLE", "NPI_INVALID_BENCHMARK_CASE", "NPI_SCHEMA_VALIDATION_FAILED", "NPI_DETERMINISM_MISMATCH", "NPI_INVALID_PROVENANCE", "NPI_INVALID_SIDE_LABEL", "NPI_INVALID_MEASUREMENT_ATTESTATION", "NPI_FAKE_BACKEND_PROVENANCE_MISMATCH", "NPI_NON_FINITE_NUMBER", "NPI_INVALID_BOUNDING_BOX", "NPI_INCONSISTENT_BOUNDING_BOX", "NPI_INTERNAL_BENCHMARK_ERROR"]}, "additionalProperties": {"type": "integer", "minimum": 1}}, "backend_identity": {"type": "string", "minLength": 1}, "deterministic_rerun_count": {"const": 20}, "deterministic_mismatch_count": {"type": "integer", "minimum": 0}, "schema_pass_count": {"type": "integer", "minimum": 0}, "schema_fail_count": {"type": "integer", "minimum": 0}, "measurement_coverage": {"type": "object", "additionalProperties": false, "required": ["measured", "not_measured", "unavailable"], "properties": {"measured": {"type": "integer", "minimum": 0}, "not_measured": {"type": "integer", "minimum": 0}, "unavailable": {"type": "integer", "minimum": 0}}}, "threshold_status": {"const": "NOT_CALIBRATED"}, "threshold_uncertainty": {"type": "string", "minLength": 1}, "synthetic_only": {"const": true}, "ready_for_real_benchmark": {"const": false}, "authorization_status": {"const": "N2B_LOCKED"}, "no_artifact_attestation": {"const": true}}},
+    "benchmarkReport": {"type": "object", "additionalProperties": false, "required": ["contract_type", "schema_version", "profile", "backend_id", "backend_type", "synthetic", "cases", "aggregate"], "properties": {"contract_type": {"const": "BENCHMARK_REPORT"}, "schema_version": {"const": "1.1"}, "profile": {"enum": ["pose", "segmentation"]}, "backend_id": {"type": "string", "minLength": 1}, "backend_type": {"const": "FAKE_BACKEND"}, "synthetic": {"const": true}, "cases": {"type": "array", "minItems": 20, "maxItems": 20, "items": {"$ref": "#/$defs/benchmarkCase"}}, "aggregate": {"$ref": "#/$defs/aggregate"}}}
+  }
+}

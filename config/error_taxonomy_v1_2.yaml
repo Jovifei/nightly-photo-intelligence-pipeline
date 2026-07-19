@@ -1,0 +1,21 @@
+schema_version: "1.2"
+errors:
+  NPI_CLI_USAGE_ERROR: {exit_code: 2, severity: "ERROR"}
+  NPI_PREFLIGHT_UNSATISFIED: {exit_code: 3, severity: "ERROR"}
+  NPI_GATE_NOT_AUTHORIZED: {exit_code: 8, severity: "INFO"}
+  NPI_MODEL_NOT_AUTHORIZED: {exit_code: 8, severity: "INFO"}
+  NPI_BACKEND_NOT_AVAILABLE: {exit_code: 8, severity: "INFO"}
+  NPI_INVALID_BENCHMARK_CASE: {exit_code: 5, severity: "ERROR"}
+  NPI_SCHEMA_VALIDATION_FAILED: {exit_code: 5, severity: "ERROR"}
+  NPI_DETERMINISM_MISMATCH: {exit_code: 7, severity: "ERROR"}
+  NPI_INVALID_PROVENANCE: {exit_code: 5, severity: "ERROR"}
+  NPI_INVALID_SIDE_LABEL: {exit_code: 5, severity: "ERROR"}
+  NPI_INVALID_MEASUREMENT_ATTESTATION: {exit_code: 5, severity: "ERROR"}
+  NPI_FAKE_BACKEND_PROVENANCE_MISMATCH: {exit_code: 5, severity: "ERROR"}
+  NPI_NON_FINITE_NUMBER: {exit_code: 5, severity: "ERROR"}
+  NPI_INVALID_BOUNDING_BOX: {exit_code: 5, severity: "ERROR"}
+  NPI_INCONSISTENT_BOUNDING_BOX: {exit_code: 5, severity: "ERROR"}
+  NPI_INTERNAL_BENCHMARK_ERROR: {exit_code: 10, severity: "ERROR"}
+  NPI_SOURCE_RUNTIME_OVERLAP: {exit_code: 4, severity: "CRITICAL"}
+  NPI_SOURCE_SYMLINK_ESCAPE: {exit_code: 4, severity: "CRITICAL"}
+  NPI_SOURCE_CHANGED_DURING_READ: {exit_code: 4, severity: "CRITICAL"}

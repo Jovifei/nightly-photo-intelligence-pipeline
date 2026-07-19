@@ -198,3 +198,135 @@ Night continuation evidence is complete for the real G1 run, but final closure
 is INCONCLUSIVE because the independent review chain produced no accepted
 result. Owner approval is still required; N2, G2, and all later stages remain
 locked.
+
+## N2A model-free preparation — 2026-07-19
+
+Owner has approved immutable G1 `4a807dbbcd147a106b02b7e3899aa701c2028d83`
+and authorized only N2A Pose/Segmentation Benchmark Preparation. G1 must not be
+amended, and N2B model download/inference remains locked.
+
+### Plan
+
+- [x] Create local-only `g1-approved-2026-07-19` tag pointing exactly to G1.
+- [x] Run three bounded, read-only child research/review packages; unsuccessful
+  structured results and one retry timeout were recorded truthfully; parent
+  completed the directions from official sources.
+- [x] Add N2A capability/state/schema and G1 completion approval without changing
+  N0/N1/G1 history.
+- [x] Implement typed pose/segmentation contracts, synthetic fake backends,
+  deterministic geometry, benchmark result structures, and model fail-closed CLI.
+- [x] Add research provenance, license/candidate ledgers, N2B artifact request,
+  tests, and N2A reports without downloading weights or reading real photos.
+- [x] Run the complete quality matrix plus N2A preflight/model fail-closed tests:
+  pytest 201 passed; all required quality commands and preflight exit 0; model
+  run exits 8 with NPI_MODEL_NOT_AUTHORIZED.
+- [x] Create exactly one local N2A commit, verify G1 tag/SHA unchanged, and stop
+  for Owner approval; do not push, merge, enter N2B, or run inference.
+
+### N2A review handoff
+
+- N2A commit: `365bbd37fef1f13b11c95fd16a619e4e64762d0e` before evidence-only
+  amend; final SHA is reported by the parent after the last amend.
+- G1 tag remains immutable and N2B/G2/N3-N8 remain locked.
+
+## N2A minimal reviewer remediation — 2026-07-20
+
+Owner accepted independent Reviewer conclusion `CHANGES_REQUIRED` for N2A
+`5dc07f125de5117522c439c750848465fcb8ceb6`. Scope is limited to amending that
+single N2A commit; N2B/G2, model downloads/inference, and real-photo reads stay
+locked.
+
+- [x] Audit the four-commit topology and create local-only recovery ref
+  `backup/n2a-before-review-remediation-5dc07f`.
+- [x] Run bounded read-only child reviews. Child A/B remained INCONCLUSIVE;
+  Child C returned `PROVENANCE_MEASUREMENT_CHANGES_REQUIRED`; no result was
+  treated as PASS.
+- [x] Replace permissive N2A Schema with closed Pose/Segmentation/Benchmark
+  document variants and measurement/provenance conditionals.
+- [x] Add shared provenance matrix, explicit side enum/mirror mapping, and
+  strict Python validation parity.
+- [x] Add production `benchmark validate --backend fake` path with runner,
+  per-case result, aggregate, Schema checks, deterministic rerun, and no-artifact
+  attestation for exactly 20 synthetic cases per profile.
+- [x] Add positive/negative regression tests without weakening historical tests.
+- [x] Run final quality matrix from an amended clean worktree and record actual
+  exit codes: pytest 213 passed; Ruff/format/mypy exit 0; quality 7/7 PASS;
+  sensitive scan 0; preflight 15 PASS; fake validate exit 0; real run exit 8.
+  Do not claim new Reviewer PASS.
+
+## N2A finite/taxonomy remediation — 2026-07-21
+
+Owner accepted a subsequent independent-review `CHANGES_REQUIRED` conclusion for
+the sole N2A commit `de5fb48dd3a92da31bee3442942480b54956fc77`. Scope is limited
+to finite-number rejection, strict Schema/DTO parity, canonical BBox, closed
+status/error taxonomy, measurement attestation, and related regression evidence.
+N2B/G2, real-photo reads, model downloads/inference, push, merge, and release
+remain prohibited.
+
+### Plan
+
+- [x] Confirm the clean four-commit topology and immutable N0/N1/G1 parents;
+  create local-only recovery ref
+  `backup/n2a-before-finite-taxonomy-remediation-de5fb48`.
+- [x] Complete two bounded read-only Child-Claude reviews; unsuccessful results
+  remain INCONCLUSIVE and never count as PASS.
+- [x] Reject every non-finite public numeric value at DTO construction and at the
+  common strict Draft 2020-12 plus finite-semantic validation entrypoint.
+- [x] Make normalized `x/y/width/height` the only serialized BBox representation
+  and enforce the status/error/measurement consistency matrices.
+- [x] Restore explicit zero-length geometry coverage and add Schema/DTO parity
+  counterexamples without weakening existing tests.
+- [x] Update the five required N2A/N2B reports with actual evidence and blocking
+  N2B inputs; do not self-reference the eventual commit SHA.
+- [x] Run the complete required quality/CLI matrix, amend the sole N2A commit,
+  then verify four commits, one G1-to-HEAD commit, no merge, no push, and a clean tree.
+
+### Review
+
+- In progress. The legacy `tools/verify_handoff.py` exited 1 because its N0/G0
+  assumptions intentionally reject the current authorized N2A state and its
+  runtime virtual-environment files. It is archival evidence only, not an N2A
+  preflight result and is not reported as PASS.
+- Child A result: `FINITE_SCHEMA_PARITY_INCONCLUSIVE` after three fresh
+  read-only attempts; each timed out at 90 seconds with no structured output.
+- Child B result: `BENCHMARK_TAXONOMY_INCONCLUSIVE` after the same three-attempt
+  bounded policy. No child result was treated as PASS.
+- Focused N2A test evidence: 44 passed after finite/taxonomy changes. The
+  pre-amend full suite recorded 233 passed and one expected clean-worktree
+  failure; after the required amend, the clean candidate full suite and
+  preflight passed as recorded below.
+- Clean candidate evidence before the final evidence-only amend: 234 pytest
+  passed; Ruff, format, mypy, quality (7 PASS), sensitive scan, preflight (15
+  PASS), plans/status/fake validation, and diff check all exited 0. Both real
+  runs correctly exited 8 with `NPI_MODEL_NOT_AUTHORIZED`.
+
+## N2A scope-purity remediation — 2026-07-21
+
+- [x] Reconfirm the clean four-commit topology and create local-only recovery
+  ref `backup/n2a-before-scope-purity-remediation-8e25c04` at the rejected N2A
+  candidate; no push, merge, reset, clean, or second N2A commit.
+- [x] Generalize only the named out-of-scope reference in `tasks/lessons.md`;
+  retain the reusable scope-drift prevention lesson without adding another
+  concrete project name.
+- [x] Parent scope audit: current tracked tree and G1-to-working-tree N2A diff
+  have zero Owner-specified cross-project identifier matches; no other-project
+  path/package/build artifact was found.
+- [x] Parent artifact audit: zero model/cache/runtime-DB/derived-image artifact
+  paths; exactly three pre-existing synthetic fixture images; no untracked file.
+- [x] Child A scope review exhausted two 90-second attempts; Child B Schema/DTO
+  and Child C benchmark each timed out once; Child D returned no accepted
+  structure. All are INCONCLUSIVE and no child outcome is treated as PASS.
+- [x] Run N2A focused counterexamples: 44 passed. Run synthetic CLI stability:
+  100 Pose plus 100 Segmentation fake validations, all deterministic and
+  artifact-free. Run real authorization gate: 20 Pose plus 20 Segmentation
+  calls, all expected exit 8 with `NPI_MODEL_NOT_AUTHORIZED`.
+- [x] Run clean-candidate pytest (234), Ruff, format, mypy, quality, sensitive
+  scan, preflight, plan/status/fake validate/real gate, and diff checks with
+  the actual results preserved in N2A evidence; N2B remains locked.
+- [x] Complete the scope-only amend and repeat the final clean-tree quality and
+  scope scans for the external Reviewer handoff.
+  Evidence: full test, lint, type, quality, sensitive-scan, preflight,
+  benchmark-plan/validate, and scope-purity checks completed successfully.
+  The immutable G1 parent is `4a807dbbcd147a106b02b7e3899aa701c2028d83`.
+  The exact N2A review SHA is supplied externally after commit creation;
+  external independent review remains pending.

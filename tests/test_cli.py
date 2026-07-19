@@ -46,6 +46,24 @@ def _authorize_historical_g0(monkeypatch: pytest.MonkeyPatch, root: Path) -> Non
     monkeypatch.setattr(cli_module, "load_authorization", lambda: snapshot)
 
 
+def _authorize_historical_g1(monkeypatch: pytest.MonkeyPatch, root: Path) -> None:
+    snapshot = AuthorizationSnapshot(
+        phase_id="N1",
+        phase_status="APPROVED_COMPLETE",
+        data_gate_id="G1_CALIBRATION_20",
+        data_gate_status="AUTHORIZED",
+        real_photo_access="AUTHORIZED",
+        large_model_downloads="NOT_AUTHORIZED",
+        openclaw_activation="NOT_AUTHORIZED",
+        exif_real_data_read="AUTHORIZED_NON_SENSITIVE_ONLY",
+        project_root=root,
+        max_assets=20,
+        n0_baseline_commit=N0_BASELINE,
+        n1_baseline_commit=N1_BASELINE,
+    )
+    monkeypatch.setattr(cli_module, "load_authorization", lambda: snapshot)
+
+
 def test_at_n0_cli_01_help_and_commands(fixture_dir: Path) -> None:
     """AT-N0-CLI-01: the N0/N1 commands exist and respond to --help."""
     runner = CliRunner()
@@ -206,6 +224,7 @@ def test_g1_runtime_removed_after_permit_is_rejected_before_db_open(
     manifest_path.write_text("synthetic\n", encoding="utf-8")
     monkeypatch.setenv("NPI_RUNTIME_PARENT", str(parent))
     monkeypatch.setenv("NPI_RUNTIME_ROOT", str(child))
+    _authorize_historical_g1(monkeypatch, tmp_path)
     monkeypatch.setattr(
         cli_module,
         "run_preflight",

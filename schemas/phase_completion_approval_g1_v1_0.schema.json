@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/phase_completion_approval_g1_v1_0.schema.json",
+  "title": "Immutable G1 completion approval v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "approval_type", "status", "phase_id", "owner_id", "approved_at_utc", "baseline", "manifest_sha256", "independent_reviewer", "owner_decision", "owner_statement"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "approval_type": {"const": "PHASE_COMPLETION"},
+    "status": {"const": "APPROVED"},
+    "phase_id": {"const": "G1"},
+    "owner_id": {"const": "Jovi"},
+    "approved_at_utc": {"const": "2026-07-19"},
+    "baseline": {
+      "type": "object", "additionalProperties": false,
+      "required": ["n0_commit", "n1_commit", "g1_commit", "g1_tag", "immutable"],
+      "properties": {
+        "n0_commit": {"const": "72a81f5984838b74304d23263ac450ea4b5a3a9a"},
+        "n1_commit": {"const": "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"},
+        "g1_commit": {"const": "4a807dbbcd147a106b02b7e3899aa701c2028d83"},
+        "g1_tag": {"const": "g1-approved-2026-07-19"},
+        "immutable": {"const": true}
+      }
+    },
+    "manifest_sha256": {"const": "29eee5fdb8e16c85649752501c4b722d2b4d071950c8a989add040e895a75c47"},
+    "independent_reviewer": {
+      "type": "object", "additionalProperties": false,
+      "required": ["conclusion", "reviewed_commit", "confirmed"],
+      "properties": {
+        "conclusion": {"const": "PASS_FOR_OWNER_REVIEW"},
+        "reviewed_commit": {"const": "4a807dbbcd147a106b02b7e3899aa701c2028d83"},
+        "confirmed": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}}
+      }
+    },
+    "owner_decision": {"const": "G1_OWNER_APPROVED"},
+    "owner_statement": {"type": "string", "minLength": 1}
+  }
+}

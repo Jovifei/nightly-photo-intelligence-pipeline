@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/task_contract_n2a_v1_0.schema.json",
+  "title": "NPI N2A model-free benchmark preparation contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "phase", "capability", "data_gate", "objective", "approval", "forbidden", "mandatory_stop"],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "phase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "status"],
+      "properties": {
+        "id": {"const": "N2A"},
+        "title": {"const": "Pose and Segmentation Benchmark Preparation"},
+        "status": {"const": "AUTHORIZED"}
+      }
+    },
+    "capability": {"const": "N2A_POSE_SEGMENTATION_BENCHMARK_PREPARATION"},
+    "data_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "allowed_assets"],
+      "properties": {
+        "id": {"const": "G1_CALIBRATION_20"},
+        "status": {"const": "AUTHORIZED"},
+        "allowed_assets": {"const": "synthetic contract fixtures and metadata only; no real photo reads"}
+      }
+    },
+    "objective": {"type": "string", "minLength": 1},
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["g1_completion", "g1_commit", "g1_manifest_sha256"],
+      "properties": {
+        "g1_completion": {"const": "approvals/phase_completion_G1.yaml"},
+        "g1_commit": {"const": "4a807dbbcd147a106b02b7e3899aa701c2028d83"},
+        "g1_manifest_sha256": {"const": "29eee5fdb8e16c85649752501c4b722d2b4d071950c8a989add040e895a75c47"}
+      }
+    },
+    "forbidden": {
+      "type": "array",
+      "uniqueItems": true,
+      "minItems": 12,
+      "items": {"type": "string"}
+    },
+    "mandatory_stop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "rule"],
+      "properties": {
+        "value": {"const": true},
+        "rule": {"const": "complete N2A and wait for Owner approval; do not enter N2B"}
+      }
+    }
+  }
+}

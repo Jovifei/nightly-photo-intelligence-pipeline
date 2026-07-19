@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "project": {
     "slug": "nightly-photo-intelligence-pipeline",
     "repository_relationship": "INDEPENDENT_FROM_ai-photography-director-app"
@@ -23,6 +23,13 @@
     "data_gate": {"id": "G1_CALIBRATION_20", "status": "AUTHORIZED"},
     "approval_record": "approvals/data_gate_approval_G1.yaml",
     "task_contract": "tasks/gate_g1_calibration_20.yaml",
+    "g1_completion_approval": "approvals/phase_completion_G1.yaml",
+    "n2a_task_contract": "tasks/phase_n2a_pose_and_segmentation_benchmark.yaml",
+    "capability_gates": {
+      "G1_COMPLETION": "APPROVED_COMPLETE",
+      "N2A_POSE_SEGMENTATION_BENCHMARK_PREPARATION": "AUTHORIZED",
+      "N2B_MODEL_DOWNLOAD_AND_INFERENCE": "LOCKED"
+    },
     "real_photo_access": "AUTHORIZED",
     "exif_real_data_read": "AUTHORIZED_NON_SENSITIVE_ONLY",
     "network_access": "DENY_BY_DEFAULT",
@@ -37,13 +44,18 @@
     "max_assets": 20,
     "allowed_assets": "owner-frozen manifest entries only",
     "G1_CALIBRATION_20": "AUTHORIZED",
+    "N2A_BENCHMARK_SYNTHETIC_ONLY": "AUTHORIZED",
+    "N2B_MODEL_DOWNLOAD_AND_INFERENCE": "LOCKED",
     "G2_PILOT_100": "LOCKED",
     "G3_FULL_LIBRARY": "LOCKED"
   },
   "phase_status": {
     "N0": "APPROVED_COMPLETE",
     "N1": "APPROVED_COMPLETE",
+    "G1": "APPROVED_COMPLETE",
     "N2": "LOCKED",
+    "N2A": "AUTHORIZED",
+    "N2B": "LOCKED",
     "N3": "LOCKED",
     "N4": "LOCKED",
     "N5": "LOCKED",
@@ -52,7 +64,7 @@
     "N8": "LOCKED"
   },
   "required_stop_after": {
-    "condition": "G1_CALIBRATION_AWAITING_OWNER_APPROVAL",
+    "condition": "N2A_AWAITING_OWNER_APPROVAL",
     "next_action": "WAIT_FOR_OWNER_APPROVAL"
   }
 }

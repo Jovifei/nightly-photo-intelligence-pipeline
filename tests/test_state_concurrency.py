@@ -614,10 +614,13 @@ def test_v1_database_recovers_running_run_with_incomplete_lease(
 
 
 def test_error_taxonomy_exactly_matches_domain_error_codes(project_root: Path) -> None:
-    taxonomy = yaml.safe_load(
+    taxonomy_v11 = yaml.safe_load(
         (project_root / "config/error_taxonomy_v1_1.yaml").read_text(encoding="utf-8")
     )
-    configured = taxonomy["errors"]
+    taxonomy_v12 = yaml.safe_load(
+        (project_root / "config/error_taxonomy_v1_2.yaml").read_text(encoding="utf-8")
+    )
+    configured = {**taxonomy_v11["errors"], **taxonomy_v12["errors"]}
     assert set(configured) == set(ERROR_CODE_TO_EXIT)
     assert {code: int(spec["exit_code"]) for code, spec in configured.items()} == {
         code: int(exit_code) for code, exit_code in ERROR_CODE_TO_EXIT.items()

@@ -37,8 +37,16 @@ def test_current_mutable_contracts_validate_and_are_consistent(project_root: Pat
     g1 = yaml.safe_load(
         (project_root / "tasks" / "gate_g1_calibration_20.yaml").read_text(encoding="utf-8")
     )
+    g1_completion = yaml.safe_load(
+        (project_root / "approvals" / "phase_completion_G1.yaml").read_text(encoding="utf-8")
+    )
+    n2a = yaml.safe_load(
+        (project_root / "tasks" / "phase_n2a_pose_and_segmentation_benchmark.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
     task_index = json.loads((project_root / "tasks" / "index.json").read_text(encoding="utf-8"))
-    assert not _errors(_schema(project_root, "project_state_v1_1.schema.json"), state)
+    assert not _errors(_schema(project_root, "project_state_v1_2.schema.json"), state)
     assert not _errors(_schema(project_root, "approval_record_v1_1.schema.json"), approval)
     assert not _errors(
         _schema(project_root, "phase_completion_approval_v1_0.schema.json"), n1_completion
@@ -46,13 +54,18 @@ def test_current_mutable_contracts_validate_and_are_consistent(project_root: Pat
     task_schema = _schema(project_root, "task_contract_v1_1.schema.json")
     assert not _errors(task_schema, n1)
     assert not _errors(task_schema, g1)
-    assert not _errors(_schema(project_root, "task_index_v1_1.schema.json"), task_index)
+    assert not _errors(_schema(project_root, "task_index_v1_2.schema.json"), task_index)
+    assert not _errors(
+        _schema(project_root, "phase_completion_approval_g1_v1_0.schema.json"), g1_completion
+    )
+    assert not _errors(_schema(project_root, "task_contract_n2a_v1_0.schema.json"), n2a)
     auth = load_authorization(project_root)
     assert auth.phase_id == "N1" and auth.phase_authorized
     assert auth.phase_status == "APPROVED_COMPLETE"
     assert auth.n1_baseline_commit == approval["baselines"]["N1"]
     assert auth.data_gate_id == "G1_CALIBRATION_20" and auth.data_gate_authorized
     assert auth.max_assets == approval["max_assets"] == g1["data_gate"]["max_assets"]
+    assert auth.n2a_authorized and not auth.n2b_model_authorized
     assert n1["completion_approval"] == "approvals/phase_completion_N1.yaml"
     assert g1["dependencies"]["n1_completion_approval"] == n1["completion_approval"]
     assert task_index["completed"][1]["completion_approval"] == n1["completion_approval"]
@@ -93,7 +106,7 @@ def test_current_contract_schema_rejects_scope_tampering(
     value = copy.deepcopy(values[document])
     mutation(value)
     schema_name = {
-        "state": "project_state_v1_1.schema.json",
+        "state": "project_state_v1_2.schema.json",
         "approval": "approval_record_v1_1.schema.json",
         "g1": "task_contract_v1_1.schema.json",
     }[document]

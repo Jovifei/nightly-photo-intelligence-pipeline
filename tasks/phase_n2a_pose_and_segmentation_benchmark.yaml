@@ -1,0 +1,34 @@
+contract_version: "1.0"
+phase:
+  id: "N2A"
+  title: "Pose and Segmentation Benchmark Preparation"
+  status: "AUTHORIZED"
+capability: "N2A_POSE_SEGMENTATION_BENCHMARK_PREPARATION"
+data_gate:
+  id: "G1_CALIBRATION_20"
+  status: "AUTHORIZED"
+  allowed_assets: "synthetic contract fixtures and metadata only; no real photo reads"
+objective: >
+  Establish model-free typed pose/segmentation contracts, deterministic geometry,
+  synthetic fake backends, benchmark planning, candidate provenance, and a
+  precise N2B artifact approval package.
+approval:
+  g1_completion: "approvals/phase_completion_G1.yaml"
+  g1_commit: "4a807dbbcd147a106b02b7e3899aa701c2028d83"
+  g1_manifest_sha256: "29eee5fdb8e16c85649752501c4b722d2b4d071950c8a989add040e895a75c47"
+forbidden:
+  - "model_downloads"
+  - "model_inference"
+  - "real_photo_reads"
+  - "skeleton_mask_cutout_contour_background_outputs"
+  - "21st_or_off_manifest_asset"
+  - "billfish_scan"
+  - "g2_or_g3"
+  - "cloud_processing"
+  - "openclaw"
+  - "system_configuration_changes"
+  - "main_app_changes"
+  - "git_push_merge_release"
+mandatory_stop:
+  value: true
+  rule: "complete N2A and wait for Owner approval; do not enter N2B"

@@ -23,6 +23,9 @@ from typing import Any, TypeVar, cast
 import typer
 
 from ._paths import find_project_root
+from .benchmark.protocol import BenchmarkProfile
+from .benchmark.report import render_aggregate, render_plan, render_run_report, render_status
+from .benchmark.runner import benchmark_status, plan_profile, run_profile, validate_profile
 from .domain.authorization import load_authorization
 from .domain.errors import ExitCode, GateNotAuthorizedError, NpiError, PreflightUnsatisfiedError
 from .domain.models import load_config
@@ -51,6 +54,13 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
 )
+benchmark_app = typer.Typer(
+    name="benchmark",
+    help="Model-free N2A benchmark planning and authorization status.",
+    no_args_is_help=True,
+    add_completion=False,
+)
+app.add_typer(benchmark_app, name="benchmark")
 
 
 def _resolve_runtime_root() -> Path:
@@ -164,6 +174,13 @@ def ingest(
         raise GateNotAuthorizedError("G1 frozen-manifest ingest is not authorized by this gate")
     # Gate check FIRST, before any source access.
     auth.require_ingest_authorized(dry_run=dry_run)
+    if auth.n2a_authorized and g1_frozen_manifest is not None:
+        preflight_results = run_preflight()
+        if any(result.status == FAIL for result in preflight_results):
+            raise PreflightUnsatisfiedError("N2A current-stage preflight failed")
+        raise GateNotAuthorizedError("N2A is model-free preparation and forbids real-photo ingest")
+    if auth.n2a_authorized:
+        raise GateNotAuthorizedError("N2A is model-free preparation and forbids real-photo ingest")
     config = load_config()
     runtime_root = _resolve_runtime_root()
     # Security boundary: refuse source/runtime overlap before touching source.
@@ -311,6 +328,47 @@ def report(
     finally:
         if store is not None:
             store.close()
+
+
+@benchmark_app.command("plan")
+@_run_safely
+def benchmark_plan(
+    profile: BenchmarkProfile = typer.Option(..., "--profile", help="pose or segmentation"),
+) -> None:
+    """Print a deterministic synthetic-only benchmark plan."""
+
+    typer.echo(render_plan(plan_profile(profile)))
+
+
+@benchmark_app.command("status")
+@_run_safely
+def benchmark_status_command() -> None:
+    """Print N2A/N2B benchmark authorization without accessing source data."""
+
+    typer.echo(render_status(benchmark_status()))
+
+
+@benchmark_app.command("run")
+@_run_safely
+def benchmark_run(
+    profile: BenchmarkProfile = typer.Option(..., "--profile", help="pose or segmentation"),
+) -> None:
+    """Attempt benchmark execution; N2A always fails closed before model access."""
+
+    # The runner raises NPI_MODEL_NOT_AUTHORIZED while N2B remains locked.
+    result = run_profile(profile)
+    typer.echo(render_aggregate(result))
+
+
+@benchmark_app.command("validate")
+@_run_safely
+def benchmark_validate(
+    profile: BenchmarkProfile = typer.Option(..., "--profile", help="pose or segmentation"),
+    backend: str = typer.Option(..., "--backend", help="only fake is available in N2A"),
+) -> None:
+    """Run the authorized synthetic fake harness through product code."""
+
+    typer.echo(render_run_report(validate_profile(profile, backend)))
 
 
 def main() -> None:

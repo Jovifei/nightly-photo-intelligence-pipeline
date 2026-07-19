@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/task_index_v1_2.schema.json",
+  "title": "NPI N2A task index v1.2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "completed", "authorized", "locked", "rule"],
+  "properties": {
+    "contract_version": {"const": "1.2"},
+    "completed": {"type": "array", "minItems": 2, "items": {"type": "object"}},
+    "authorized": {
+      "type": "array", "minItems": 2, "maxItems": 2,
+      "items": {"type": "object", "required": ["kind", "phase", "file", "approval_record"], "additionalProperties": true}
+    },
+    "locked": {"type": "array", "minItems": 6, "items": {"type": "object", "required": ["phase", "file"], "additionalProperties": true}},
+    "rule": {"type": "string", "minLength": 1}
+  }
+}

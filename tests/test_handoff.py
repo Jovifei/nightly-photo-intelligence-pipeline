@@ -19,6 +19,11 @@ _AUTH_STATE_FILES = {
     "tasks/index.json",
     "tasks/README.md",
     "tasks/phase_n1_ingest_state_machine.yaml",
+    "research/benchmark_protocol.md",
+    "research/license_review_checklist.md",
+    "research/model_candidate_register.md",
+    "research/source_register.md",
+    "research/technology_decision_matrix.md",
 }
 
 
@@ -85,7 +90,10 @@ def test_at_n0_gate_02_n2_through_n8_locked(project_root: Path) -> None:
     assert [state["phase_status"][f"N{i}"] for i in range(2, 9)] == ["LOCKED"] * 7
     assert state["data_scope"]["G2_PILOT_100"] == "LOCKED"
     assert state["data_scope"]["G3_FULL_LIBRARY"] == "LOCKED"
-    assert state["required_stop_after"]["condition"] == ("G1_CALIBRATION_AWAITING_OWNER_APPROVAL")
+    assert state["phase_status"]["G1"] == "APPROVED_COMPLETE"
+    assert state["phase_status"]["N2A"] == "AUTHORIZED"
+    assert state["phase_status"]["N2B"] == "LOCKED"
+    assert state["required_stop_after"]["condition"] == "N2A_AWAITING_OWNER_APPROVAL"
     # N0 and N1 baselines are approved and immutable.
     n0 = state["baselines"]["N0"]
     assert n0["status"] == "APPROVED_COMPLETE"
@@ -129,3 +137,5 @@ def test_at_n0_gate_02_authorization_snapshot_n1_complete_g1_authorized() -> Non
     assert auth.n1_baseline_commit == "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"
     assert auth.real_photo_access == "AUTHORIZED"
     assert auth.exif_real_data_read == "AUTHORIZED_NON_SENSITIVE_ONLY"
+    assert auth.n2a_authorized
+    assert not auth.n2b_model_authorized

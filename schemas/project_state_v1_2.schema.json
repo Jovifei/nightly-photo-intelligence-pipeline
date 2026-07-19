@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/project_state_v1_2.schema.json",
+  "title": "NPI N2A capability-gated project state v1.2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "project", "baselines", "authorization", "data_scope", "phase_status", "required_stop_after"],
+  "properties": {
+    "schema_version": {"const": "1.2"},
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "repository_relationship"],
+      "properties": {
+        "slug": {"const": "nightly-photo-intelligence-pipeline"},
+        "repository_relationship": {"const": "INDEPENDENT_FROM_ai-photography-director-app"}
+      }
+    },
+    "baselines": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["N0", "N1"],
+      "properties": {
+        "N0": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["commit", "tag", "status", "immutable"],
+          "properties": {
+            "commit": {"const": "72a81f5984838b74304d23263ac450ea4b5a3a9a"},
+            "tag": {"const": "n0-approved-2026-07-14"},
+            "status": {"const": "APPROVED_COMPLETE"},
+            "immutable": {"const": true}
+          }
+        },
+        "N1": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["commit", "tag", "status", "immutable"],
+          "properties": {
+            "commit": {"const": "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"},
+            "tag": {"const": "n1-approved-2026-07-14"},
+            "status": {"const": "APPROVED_COMPLETE"},
+            "immutable": {"const": true}
+          }
+        }
+      }
+    },
+    "authorization": {
+      "type": "object", "additionalProperties": false,
+      "required": ["phase", "data_gate", "approval_record", "task_contract", "g1_completion_approval", "n2a_task_contract", "capability_gates", "real_photo_access", "exif_real_data_read", "network_access", "large_model_downloads", "cloud_image_processing", "openclaw_activation", "git_remote_write", "system_configuration_changes", "ai_photography_director_app_changes"],
+      "properties": {
+        "phase": {"const": {"id": "N1", "status": "APPROVED_COMPLETE"}},
+        "data_gate": {"const": {"id": "G1_CALIBRATION_20", "status": "AUTHORIZED"}},
+        "approval_record": {"const": "approvals/data_gate_approval_G1.yaml"},
+        "task_contract": {"const": "tasks/gate_g1_calibration_20.yaml"},
+        "g1_completion_approval": {"const": "approvals/phase_completion_G1.yaml"},
+        "n2a_task_contract": {"const": "tasks/phase_n2a_pose_and_segmentation_benchmark.yaml"},
+        "capability_gates": {"const": {"G1_COMPLETION": "APPROVED_COMPLETE", "N2A_POSE_SEGMENTATION_BENCHMARK_PREPARATION": "AUTHORIZED", "N2B_MODEL_DOWNLOAD_AND_INFERENCE": "LOCKED"}},
+        "real_photo_access": {"const": "AUTHORIZED"},
+        "exif_real_data_read": {"const": "AUTHORIZED_NON_SENSITIVE_ONLY"},
+        "network_access": {"const": "DENY_BY_DEFAULT"},
+        "large_model_downloads": {"const": "NOT_AUTHORIZED"},
+        "cloud_image_processing": {"const": "NOT_AUTHORIZED"},
+        "openclaw_activation": {"const": "NOT_AUTHORIZED"},
+        "git_remote_write": {"const": "NOT_AUTHORIZED"},
+        "system_configuration_changes": {"const": "NOT_AUTHORIZED"},
+        "ai_photography_director_app_changes": {"const": "NOT_AUTHORIZED"}
+      }
+    },
+    "data_scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["max_assets", "allowed_assets", "G1_CALIBRATION_20", "N2A_BENCHMARK_SYNTHETIC_ONLY", "N2B_MODEL_DOWNLOAD_AND_INFERENCE", "G2_PILOT_100", "G3_FULL_LIBRARY"],
+      "properties": {
+        "max_assets": {"const": 20}, "allowed_assets": {"const": "owner-frozen manifest entries only"},
+        "G1_CALIBRATION_20": {"const": "AUTHORIZED"}, "N2A_BENCHMARK_SYNTHETIC_ONLY": {"const": "AUTHORIZED"},
+        "N2B_MODEL_DOWNLOAD_AND_INFERENCE": {"const": "LOCKED"}, "G2_PILOT_100": {"const": "LOCKED"}, "G3_FULL_LIBRARY": {"const": "LOCKED"}
+      }
+    },
+    "phase_status": {
+      "type": "object", "additionalProperties": false,
+      "required": ["N0", "N1", "G1", "N2", "N2A", "N2B", "N3", "N4", "N5", "N6", "N7", "N8"],
+      "properties": {
+        "N0": {"const": "APPROVED_COMPLETE"}, "N1": {"const": "APPROVED_COMPLETE"}, "G1": {"const": "APPROVED_COMPLETE"},
+        "N2": {"const": "LOCKED"}, "N2A": {"const": "AUTHORIZED"}, "N2B": {"const": "LOCKED"},
+        "N3": {"const": "LOCKED"}, "N4": {"const": "LOCKED"}, "N5": {"const": "LOCKED"}, "N6": {"const": "LOCKED"}, "N7": {"const": "LOCKED"}, "N8": {"const": "LOCKED"}
+      }
+    },
+    "required_stop_after": {"const": {"condition": "N2A_AWAITING_OWNER_APPROVAL", "next_action": "WAIT_FOR_OWNER_APPROVAL"}}
+  }
+}
