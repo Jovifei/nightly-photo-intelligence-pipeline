@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/model_artifact_approval.schema.json",
+  "title": "N2B artifact draft approval",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "purpose", "artifacts"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "status": {"const": "DRAFT_NOT_AUTHORIZED"},
+    "purpose": {"type": "string", "minLength": 1},
+    "artifacts": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["artifact_id", "purpose", "project_id", "model_id", "code_repository", "code_revision", "artifact_revision", "artifact_filename", "artifact_expected_size_bytes", "official_download_source", "allowed_download_domains", "code_license", "weights_license", "commercial_use_status", "license_evidence", "sha256_source", "expected_sha256", "post_download_hash_required", "input_shape", "keypoint_set_or_mask_contract", "runtime_candidate", "python_dependencies", "container_candidate", "cache_directory", "quarantine_directory", "deletion_procedure", "rollback_procedure", "network_required", "vram_status", "latency_status", "oom_status", "quality_status", "qualification_status", "blocking_findings"], "properties": {"artifact_id": {"type": "string", "minLength": 1}, "purpose": {"type": "string"}, "project_id": {"type": "string"}, "model_id": {"type": "string"}, "code_repository": {"type": "string", "format": "uri"}, "code_revision": {"type": "string", "minLength": 1}, "artifact_revision": {"type": "string", "minLength": 1}, "artifact_filename": {"type": "string", "minLength": 1}, "artifact_expected_size_bytes": {"type": ["integer", "string"]}, "official_download_source": {"type": "string", "minLength": 1}, "allowed_download_domains": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "code_license": {"type": "string", "minLength": 1}, "weights_license": {"type": "string", "minLength": 1}, "commercial_use_status": {"enum": ["PERMITTED", "REQUIRES_OWNER_DECISION", "UNKNOWN"]}, "license_evidence": {"type": "string"}, "sha256_source": {"type": "string"}, "expected_sha256": {"type": "string"}, "post_download_hash_required": {"const": true}, "input_shape": {"type": "string"}, "keypoint_set_or_mask_contract": {"type": "string"}, "runtime_candidate": {"type": "string"}, "python_dependencies": {"type": "array"}, "container_candidate": {"type": "string"}, "cache_directory": {"type": "string"}, "quarantine_directory": {"type": "string"}, "deletion_procedure": {"type": "string"}, "rollback_procedure": {"type": "string"}, "network_required": {"const": true}, "vram_status": {"const": "NOT_MEASURED"}, "latency_status": {"const": "NOT_MEASURED"}, "oom_status": {"const": "NOT_MEASURED"}, "quality_status": {"const": "NOT_MEASURED"}, "qualification_status": {"enum": ["QUALIFIED", "NOT_QUALIFIED", "INCONCLUSIVE"]}, "blocking_findings": {"type": "array"}}}}
+  }
+}

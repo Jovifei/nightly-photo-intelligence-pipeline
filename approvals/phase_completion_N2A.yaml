@@ -1,0 +1,25 @@
+schema_version: "1.0"
+approval_type: "PHASE_COMPLETION"
+status: "APPROVED"
+phase_id: "N2A"
+owner_id: "Jovi"
+approved_at_utc: "2026-07-22"
+baseline:
+  n0_commit: "72a81f5984838b74304d23263ac450ea4b5a3a9a"
+  n1_commit: "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"
+  g1_commit: "4a807dbbcd147a106b02b7e3899aa701c2028d83"
+  n2a_commit: "f79d2df504622ff82aa5e53d1486310bbea9985a"
+  n2a_tag: "n2a-approved-2026-07-22"
+  immutable: true
+independent_reviewer:
+  conclusion: "PASS_FOR_OWNER_REVIEW"
+  reviewed_commit: "f79d2df504622ff82aa5e53d1486310bbea9985a"
+  confirmed:
+    - "N0/N1/G1 baselines and tags unchanged"
+    - "one N2A commit beyond G1 with a clean worktree"
+    - "234 pytest passed and required quality gates passed"
+    - "model execution remained NPI_MODEL_NOT_AUTHORIZED"
+owner_decision: "N2A_OWNER_APPROVED"
+owner_statement: >
+  N2A is an immutable approved baseline. N2B0 may qualify artifact proposals only;
+  it may not download, install, load, or execute any model.

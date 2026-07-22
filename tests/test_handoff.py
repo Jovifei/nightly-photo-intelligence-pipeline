@@ -91,9 +91,9 @@ def test_at_n0_gate_02_n2_through_n8_locked(project_root: Path) -> None:
     assert state["data_scope"]["G2_PILOT_100"] == "LOCKED"
     assert state["data_scope"]["G3_FULL_LIBRARY"] == "LOCKED"
     assert state["phase_status"]["G1"] == "APPROVED_COMPLETE"
-    assert state["phase_status"]["N2A"] == "AUTHORIZED"
+    assert state["phase_status"]["N2A"] == "APPROVED_COMPLETE"
     assert state["phase_status"]["N2B"] == "LOCKED"
-    assert state["required_stop_after"]["condition"] == "N2A_AWAITING_OWNER_APPROVAL"
+    assert state["required_stop_after"]["condition"] == "N2B0_AWAITING_OWNER_APPROVAL"
     # N0 and N1 baselines are approved and immutable.
     n0 = state["baselines"]["N0"]
     assert n0["status"] == "APPROVED_COMPLETE"

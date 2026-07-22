@@ -1,0 +1,3 @@
+# N2B0 Artifact Qualification Summary
+
+No download, install, inference, real-photo access, model output, Docker pull, or system change occurred. Pose proposal: MMPose RTMPose-m whole-body (official filename and URL recorded); fallback RTMW-m (corrected official filename and URL, HEAD 200, Content-Length 129787113; ETag is not SHA-256). Segmentation proposal: PaddleSeg PP-HumanSegV2-Lite general 192x192 inference ZIP (official filename and URL recorded); fallback MediaPipe (official input shapes only; artifact identity not exposed). All artifact records remain `INCONCLUSIVE`; `N2B0_ARTIFACT_QUALIFICATION_BLOCKED` remains because weight terms, immutable artifact revision, and official SHA-256 are not fully evidenced. The draft allowlist is explicitly non-authorizing.

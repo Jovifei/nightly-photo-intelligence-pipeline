@@ -330,3 +330,30 @@ remain prohibited.
   The immutable G1 parent is `4a807dbbcd147a106b02b7e3899aa701c2028d83`.
   The exact N2A review SHA is supplied externally after commit creation;
   external independent review remains pending.
+
+## N2B0 model artifact qualification — 2026-07-23
+
+Owner approved immutable N2A `f79d2df504622ff82aa5e53d1486310bbea9985a`
+and local tag `n2a-approved-2026-07-22`. Only N2B0 qualification is authorized.
+
+### Plan
+
+- [x] Create the N2A completion approval and N2B0 contract/state gates.
+- [x] Record official-source-only Pose and segmentation proposals, license/supply-chain gaps,
+  external cache/quarantine design, N2B1 download plan, N2B2 benchmark plan, and Owner packet.
+- [x] Create a non-authorizing draft artifact allowlist and schema; all incomplete fields fail closed.
+- [x] Run full regression/quality matrix (236 pytest), create exactly one N2B0 local commit, and stop for independent review.
+
+### Review
+
+- Child A timed out twice; Child B/C/D each timed out once. None is PASS evidence.
+- No model artifact, dependency, Docker image, runtime database, or real-photo access was created.
+
+## N2B0 RTMW metadata remediation - 2026-07-23
+
+- [x] Preserve the original N2B0 commit in local-only `backup/n2b0-before-rtmw-metadata-fix-be9f900`.
+- [x] Replace the RTMW fallback typo `dw-l_m` with the official `dw-l-m` filename and URL in every tracked derived reference.
+- [x] Verify the wrong URL is HTTP 404 and the corrected official URL is HTTP HEAD 200 with final domain, Content-Length, ETag, and Last-Modified; no artifact body was requested.
+- [x] Keep RTMW `INCONCLUSIVE` / `N2B0_ARTIFACT_QUALIFICATION_BLOCKED`; HTTP 200 does not authorize download, commercial use, or inference.
+- [x] Add fixture-only regression coverage for the corrected filename, URL, fail-closed status, and absence of the old typo.
+- [x] Amend the sole N2B0 commit after the full quality matrix and stop for external review.

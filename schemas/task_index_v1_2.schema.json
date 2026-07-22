@@ -9,7 +9,7 @@
     "contract_version": {"const": "1.2"},
     "completed": {"type": "array", "minItems": 2, "items": {"type": "object"}},
     "authorized": {
-      "type": "array", "minItems": 2, "maxItems": 2,
+      "type": "array", "minItems": 3, "maxItems": 3,
       "items": {"type": "object", "required": ["kind", "phase", "file", "approval_record"], "additionalProperties": true}
     },
     "locked": {"type": "array", "minItems": 6, "items": {"type": "object", "required": ["phase", "file"], "additionalProperties": true}},

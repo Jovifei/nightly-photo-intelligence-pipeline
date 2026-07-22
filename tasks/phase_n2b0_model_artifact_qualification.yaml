@@ -1,0 +1,29 @@
+contract_version: "1.0"
+phase:
+  id: "N2B0"
+  title: "Model Artifact Qualification"
+  status: "AUTHORIZED"
+capability: "N2B0_MODEL_ARTIFACT_QUALIFICATION"
+data_gate:
+  id: "G1_CALIBRATION_20"
+  status: "AUTHORIZED"
+  allowed_assets: "metadata, official artifact metadata, and local environment observations only; no real photo reads"
+approval:
+  n2a_completion: "approvals/phase_completion_N2A.yaml"
+  n2a_commit: "f79d2df504622ff82aa5e53d1486310bbea9985a"
+forbidden:
+  - "model_downloads"
+  - "model_inference"
+  - "real_photo_reads"
+  - "model_dependency_installation"
+  - "docker_image_pull"
+  - "g2_or_g3"
+  - "cloud_processing"
+  - "openclaw"
+  - "system_configuration_changes"
+  - "main_app_changes"
+  - "git_push_merge_release"
+  - "n2b1_or_n2b2"
+mandatory_stop:
+  value: true
+  rule: "complete N2B0 and wait for Owner approval; do not enter N2B1 or N2B2"

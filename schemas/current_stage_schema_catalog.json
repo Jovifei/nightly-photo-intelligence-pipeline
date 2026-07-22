@@ -1,5 +1,5 @@
 {
-  "schema_set": "npi-current-stage-v1.2-n2a",
+  "schema_set": "npi-current-stage-v1.3-n2b0",
   "draft": "https://json-schema.org/draft/2020-12/schema",
   "schemas": [
     {"file": "task_contract_v1_1.schema.json", "purpose": "completed phase and authorized data-gate contracts"},
@@ -10,6 +10,7 @@
     {"file": "project_state_v1_2.schema.json", "purpose": "N2A capability-gated current project state"},
     {"file": "phase_completion_approval_g1_v1_0.schema.json", "purpose": "immutable Owner G1 completion approval"},
     {"file": "task_contract_n2a_v1_0.schema.json", "purpose": "authorized N2A model-free task contract"},
-    {"file": "n2a_pose_segmentation.schema.json", "purpose": "model-free N2A typed contracts"}
+    {"file": "n2a_pose_segmentation.schema.json", "purpose": "model-free N2A typed contracts"},
+    {"file": "model_artifact_approval.schema.json", "purpose": "non-authorizing N2B0 artifact qualification draft"}
   ]
 }

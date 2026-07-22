@@ -1,0 +1,9 @@
+# N2B0 Segmentation Artifact Qualification
+
+Preferred proposal: PaddleSeg PP-HumanSegV2-Lite general-human model at 192x192, an official lightweight human-segmentation candidate documented by PaddleSeg release/2.10. The published inference artifact is `human_pp_humansegv2_lite_192x192_inference_model.zip` at `https://paddleseg.bj.bcebos.com/dygraph/pp_humanseg_v2/human_pp_humansegv2_lite_192x192_inference_model.zip`; the page reports a 5.4 MB model size, not an exact ZIP byte size. It is a semantic human-region candidate, not an alpha-matting, hair-detail, transparent-edge, or multi-person quality claim. Its documented workflow has separate model/dependency download steps; N2B0 does not perform them.
+
+Fallback: MediaPipe selfie/person segmentation is a lightweight fallback for prominent-person use only. The official page identifies 256x256 general and 144x256 landscape model inputs, but does not expose an immutable model filename, byte size, hash, or separate weight terms in the checked record. It is not selected as the first general-photo baseline because its scope and multi-person/hair/clothing edge behavior need benchmark evidence. SAM 2 is escalation-only: it is prompt-oriented and its checkpoint/dependency/license profile is not appropriate for the first download.
+
+PaddleSeg repository code is Apache-2.0. The official filename and source are recorded, while exact ZIP byte size, SHA-256, weights terms, commercial status, CPU fallback, and 12GB VRAM remain `UNKNOWN` or `NOT_MEASURED`. Official evidence: https://github.com/PaddlePaddle/PaddleSeg ; https://github.com/PaddlePaddle/PaddleSeg/blob/release/2.10/contrib/PP-HumanSeg/README.md ; https://github.com/google-ai-edge/mediapipe ; https://github.com/facebookresearch/sam2 .
+
+Verdict: `SEGMENTATION_ARTIFACT_INCONCLUSIVE` / `N2B0_ARTIFACT_QUALIFICATION_BLOCKED`.

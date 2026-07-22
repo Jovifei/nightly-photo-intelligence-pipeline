@@ -1,0 +1,9 @@
+# N2B0 Pose Artifact Qualification
+
+Preferred proposal: MMPose RTMPose-m whole-body (`rtmpose-m_8xb64-270e_coco-wholebody-256x192`), using the v1.3.0 official model-index and repository only. The published checkpoint filename is `rtmpose-m_simcc-coco-wholebody_pt-aic-coco_270e-256x192-cd5e845c_20230123.pth` at `https://download.openmmlab.com/mmpose/v1/projects/rtmposev1/rtmpose-m_simcc-coco-wholebody_pt-aic-coco_270e-256x192-cd5e845c_20230123.pth`. It offers a documented whole-body inference alias and 256x192 input; it is a proposal, not an artifact authorization.
+
+Fallback: RTMW-m at 256x192 from the official MMPose v1.3.0 model-index. The corrected published checkpoint filename is `rtmw-dw-l-m_simcc-cocktail14_270e-256x192-20231122.pth` at `https://download.openmmlab.com/mmpose/v1/projects/rtmw/rtmw-dw-l-m_simcc-cocktail14_270e-256x192-20231122.pth`. An HTTP HEAD-only check on 2026-07-23 returned 200 from `download.openmmlab.com`, Content-Length `129787113`, ETag `BB41BBD1B54EB9AAE47FD9DFC7A35BEB`, and Last-Modified `2023-12-08T07:52:52Z`; the ETag is not a SHA-256. The rejected underscore-variant URL returned 404. The artifact publisher does not provide a separate immutable revision, official SHA-256, or separate weights terms in the checked official record.
+
+MMPose repository code is Apache-2.0. That code license is not treated as a checkpoint license. No 12GB VRAM, latency, OOM, Windows, WSL, Docker, PyTorch, ONNX, or TensorRT assertion is measured. Official evidence: https://github.com/open-mmlab/mmpose ; https://github.com/open-mmlab/mmpose/releases ; https://github.com/open-mmlab/mmpose/blob/main/docs/en/user_guides/inference.md .
+
+Verdict: `POSE_ARTIFACT_INCONCLUSIVE` / `N2B0_ARTIFACT_QUALIFICATION_BLOCKED`. A later N2B1 approval must name one exact official checkpoint URL, immutable revision or explicit publisher-revision exception, exact byte size, weights license/commercial terms, and hash policy.

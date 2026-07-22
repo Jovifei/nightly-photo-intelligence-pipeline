@@ -474,8 +474,8 @@ def _check_authorization() -> CheckResult:
             (item for item in task_index.get("authorized", []) if item.get("phase") == "N2A"),
             None,
         )
-        locked_n2b = next(
-            (item for item in task_index.get("locked", []) if item.get("phase") == "N2B"),
+        authorized_n2b0 = next(
+            (item for item in task_index.get("authorized", []) if item.get("phase") == "N2B0"),
             None,
         )
         g1_baseline = g1_completion.get("baseline", {})
@@ -486,21 +486,24 @@ def _check_authorization() -> CheckResult:
                 g1_baseline.get("g1_commit") == "4a807dbbcd147a106b02b7e3899aa701c2028d83",
                 g1_baseline.get("g1_tag") == "g1-approved-2026-07-19",
                 phase_status.get("G1") == "APPROVED_COMPLETE",
-                phase_status.get("N2A") == "AUTHORIZED",
+                phase_status.get("N2A") == "APPROVED_COMPLETE",
+                phase_status.get("N2B0") == "AUTHORIZED",
                 phase_status.get("N2B") == "LOCKED",
-                n2a_authorized.get("N2A_POSE_SEGMENTATION_BENCHMARK_PREPARATION") == "AUTHORIZED",
+                n2a_authorized.get("N2A_POSE_SEGMENTATION_BENCHMARK_PREPARATION")
+                == "APPROVED_COMPLETE",
+                n2a_authorized.get("N2B0_MODEL_ARTIFACT_QUALIFICATION") == "AUTHORIZED",
                 n2a_authorized.get("N2B_MODEL_DOWNLOAD_AND_INFERENCE") == "LOCKED",
                 isinstance(n2a_index, dict),
                 (n2a_index or {}).get("capability")
                 == "N2A_POSE_SEGMENTATION_BENCHMARK_PREPARATION",
-                isinstance(locked_n2b, dict),
-                (locked_n2b or {}).get("capability") == "N2B_MODEL_DOWNLOAD_AND_INFERENCE",
+                isinstance(authorized_n2b0, dict),
+                (authorized_n2b0 or {}).get("capability") == "N2B0_MODEL_ARTIFACT_QUALIFICATION",
             )
         ):
             return CheckResult(
                 name="current_authorization_contracts",
                 status=FAIL,
-                notes="G1 completion or N2A capability gate is inconsistent",
+                notes="N2A completion or N2B0 capability gate is inconsistent",
             )
         from .ingest.g1_contract import load_g1_approval
 
@@ -514,7 +517,7 @@ def _check_authorization() -> CheckResult:
             evidence=(
                 f"phase={auth.phase_id}/{auth.phase_status} "
                 f"gate={auth.data_gate_id}/{auth.data_gate_status}; "
-                "schema+N1/G1 approval-chain+N2A capability gate valid"
+                "schema+N1/G1/N2A approval-chain+N2B0 capability gate valid"
             ),
         )
     except Exception:  # noqa: BLE001
@@ -541,9 +544,9 @@ def _check_git_baselines() -> CheckResult:
         git("merge-base", "--is-ancestor", n0, n1)[0] == 0,
         git("merge-base", "--is-ancestor", n1, "HEAD")[0] == 0,
         git("merge-base", "--is-ancestor", g1, "HEAD")[0] == 0,
-        git("rev-list", "--count", "HEAD") == (0, "4"),
-        git("rev-list", "--count", f"{n1}..HEAD") == (0, "2"),
-        git("rev-list", "--count", f"{g1}..HEAD") == (0, "1"),
+        git("rev-list", "--count", "HEAD") == (0, "5"),
+        git("rev-list", "--count", f"{n1}..HEAD") == (0, "3"),
+        git("rev-list", "--count", f"{g1}..HEAD") == (0, "2"),
         git("rev-list", "--merges", "HEAD") == (0, ""),
         git("status", "--porcelain", "--untracked-files=all") == (0, ""),
     ]
@@ -557,7 +560,7 @@ def _check_git_baselines() -> CheckResult:
         name="git_stage_baselines",
         status=PASS,
         evidence=(
-            "N0/N1/G1 tags and ancestry intact; exactly one N2A commit; no merge; worktree clean"
+            "N0/N1/G1/N2A tags intact; one N2A and one N2B0 commit; no merge; worktree clean"
         ),
     )
 
@@ -568,11 +571,14 @@ def _check_source_runtime_separation() -> CheckResult:
         auth = load_authorization(root)
     except Exception:  # noqa: BLE001 - fall through to the stricter G1 gate
         auth = None
-    if auth is not None and auth.n2a_authorized and not auth.n2b_model_authorized:
+    if auth is not None and not auth.n2b_model_authorized:
         return CheckResult(
             name="g1_execution_environment",
             status=PASS,
-            evidence="N2A model-free planning; no source/runtime/photo access performed",
+            evidence=(
+                "N2B0 qualification only; no source/runtime/photo access "
+                "or model execution performed"
+            ),
         )
     src = os.environ.get("NPI_SOURCE_ROOT")
     parent = os.environ.get("NPI_RUNTIME_PARENT")

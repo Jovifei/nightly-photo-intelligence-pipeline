@@ -70,7 +70,7 @@ class AuthorizationSnapshot:
 
     @property
     def n2a_authorized(self) -> bool:
-        return self.n2a_status == "AUTHORIZED"
+        return self.n2a_status in {"AUTHORIZED", "APPROVED_COMPLETE"}
 
     @property
     def n2b_model_authorized(self) -> bool:

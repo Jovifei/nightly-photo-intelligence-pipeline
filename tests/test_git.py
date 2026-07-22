@@ -67,13 +67,13 @@ def test_git_approved_tags_and_ancestry_are_exact(project_root: Path) -> None:
     ]
 
 
-def test_git_exactly_one_n2a_commit_and_no_merges(project_root: Path) -> None:
-    assert int(_git(project_root, "rev-list", "--count", "HEAD").stdout.strip()) == 4
+def test_git_exactly_one_n2b0_commit_after_n2a_and_no_merges(project_root: Path) -> None:
+    assert int(_git(project_root, "rev-list", "--count", "HEAD").stdout.strip()) == 5
     assert (
-        int(_git(project_root, "rev-list", "--count", f"{N1_BASELINE}..HEAD").stdout.strip()) == 2
+        int(_git(project_root, "rev-list", "--count", f"{N1_BASELINE}..HEAD").stdout.strip()) == 3
     )
     assert (
-        int(_git(project_root, "rev-list", "--count", f"{G1_BASELINE}..HEAD").stdout.strip()) == 1
+        int(_git(project_root, "rev-list", "--count", f"{G1_BASELINE}..HEAD").stdout.strip()) == 2
     )
     assert _git(project_root, "rev-list", "--merges", "HEAD").stdout.strip() == ""
 
@@ -81,7 +81,7 @@ def test_git_exactly_one_n2a_commit_and_no_merges(project_root: Path) -> None:
 def test_git_worktree_is_clean(project_root: Path) -> None:
     status = _git(project_root, "status", "--porcelain", "--untracked-files=all")
     assert status.returncode == 0
-    assert status.stdout.strip() == "", "G1 acceptance requires a clean worktree after amend"
+    assert status.stdout.strip() == "", "N2B0 acceptance requires a clean worktree"
 
 
 def test_git_no_sensitive_tracked_files(project_root: Path) -> None:
@@ -100,5 +100,5 @@ def test_git_no_sensitive_tracked_files(project_root: Path) -> None:
 # Historical AT name retained for acceptance-catalog continuity.
 def test_at_n0_git_01_one_isolated_commit_no_sensitive_files(project_root: Path) -> None:
     test_git_approved_tags_and_ancestry_are_exact(project_root)
-    test_git_exactly_one_n2a_commit_and_no_merges(project_root)
+    test_git_exactly_one_n2b0_commit_after_n2a_and_no_merges(project_root)
     test_git_no_sensitive_tracked_files(project_root)
