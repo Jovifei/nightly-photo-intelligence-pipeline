@@ -2,7 +2,7 @@ contract_version: "1.0"
 phase:
   id: "N2B0"
   title: "Model Artifact Qualification"
-  status: "AUTHORIZED"
+  status: "APPROVED_COMPLETE"
 capability: "N2B0_MODEL_ARTIFACT_QUALIFICATION"
 data_gate:
   id: "G1_CALIBRATION_20"
@@ -11,6 +11,8 @@ data_gate:
 approval:
   n2a_completion: "approvals/phase_completion_N2A.yaml"
   n2a_commit: "f79d2df504622ff82aa5e53d1486310bbea9985a"
+  n2b0_completion: "approvals/phase_completion_N2B0.yaml"
+  n2b0_commit: "f331621c84905aef921c612908d01d3a8a2f577a"
 forbidden:
   - "model_downloads"
   - "model_inference"
@@ -26,4 +28,4 @@ forbidden:
   - "n2b1_or_n2b2"
 mandatory_stop:
   value: true
-  rule: "complete N2B0 and wait for Owner approval; do not enter N2B1 or N2B2"
+  rule: "N2B0 is Owner-approved and immutable; N2B0.5 may close rights/provenance only; do not enter N2B1 or N2B2"

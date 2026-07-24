@@ -54,6 +54,22 @@ NPI_RETRY_EXHAUSTED = "NPI_RETRY_EXHAUSTED"
 NPI_RUN_INTERRUPTED = "NPI_RUN_INTERRUPTED"
 NPI_SCHEMA_INVALID = "NPI_SCHEMA_INVALID"
 NPI_HANDOFF_INTEGRITY_FAILED = "NPI_HANDOFF_INTEGRITY_FAILED"
+NPI_DUPLICATE_JSON_MEMBER = "NPI_DUPLICATE_JSON_MEMBER"
+NPI_ARTIFACT_FILENAME_MISMATCH = "NPI_ARTIFACT_FILENAME_MISMATCH"
+NPI_ARTIFACT_SIZE_LIMIT_EXCEEDED = "NPI_ARTIFACT_SIZE_LIMIT_EXCEEDED"
+NPI_OWNER_SIZE_LIMIT_REQUIRED = "NPI_OWNER_SIZE_LIMIT_REQUIRED"
+NPI_INVALID_OWNER_SIZE_LIMIT = "NPI_INVALID_OWNER_SIZE_LIMIT"
+NPI_ARTIFACT_REVISION_MISMATCH = "NPI_ARTIFACT_REVISION_MISMATCH"
+NPI_OFFICIAL_ARTIFACT_HASH_MISMATCH = "NPI_OFFICIAL_ARTIFACT_HASH_MISMATCH"
+NPI_QUARANTINE_APPROVAL_EXPIRED = "NPI_QUARANTINE_APPROVAL_EXPIRED"
+NPI_QUARANTINE_APPROVAL_NOT_YET_VALID = "NPI_QUARANTINE_APPROVAL_NOT_YET_VALID"
+NPI_QUARANTINE_APPROVAL_TIME_RANGE_INVALID = "NPI_QUARANTINE_APPROVAL_TIME_RANGE_INVALID"
+NPI_QUARANTINE_APPROVAL_STATE_MISMATCH = "NPI_QUARANTINE_APPROVAL_STATE_MISMATCH"
+NPI_QUARANTINE_RIGHTS_NOT_QUALIFIED = "NPI_QUARANTINE_RIGHTS_NOT_QUALIFIED"
+NPI_QUARANTINE_APPROVAL_SCHEMA_INVALID = "NPI_QUARANTINE_APPROVAL_SCHEMA_INVALID"
+NPI_QUALIFICATION_SNAPSHOT_SCHEMA_INVALID = "NPI_QUALIFICATION_SNAPSHOT_SCHEMA_INVALID"
+NPI_PROJECT_STATE_SCHEMA_INVALID = "NPI_PROJECT_STATE_SCHEMA_INVALID"
+NPI_UNSUPPORTED_DOCUMENT_SCHEMA_VERSION = "NPI_UNSUPPORTED_DOCUMENT_SCHEMA_VERSION"
 NPI_INTERNAL_ERROR = "NPI_INTERNAL_ERROR"
 
 
@@ -211,9 +227,109 @@ class SchemaInvalidError(NpiError):
     exit_code = ExitCode.SCHEMA_CONFIG_ERROR
 
 
+class QuarantineApprovalSchemaInvalidError(SchemaInvalidError):
+    """The fixed N2B1-Q approval schema rejects the raw document."""
+
+    error_code = NPI_QUARANTINE_APPROVAL_SCHEMA_INVALID
+
+
+class QualificationSnapshotSchemaInvalidError(SchemaInvalidError):
+    """The fixed qualification-snapshot schema rejects the raw document."""
+
+    error_code = NPI_QUALIFICATION_SNAPSHOT_SCHEMA_INVALID
+
+
+class ProjectStateSchemaInvalidError(SchemaInvalidError):
+    """The fixed project-state schema rejects the raw document."""
+
+    error_code = NPI_PROJECT_STATE_SCHEMA_INVALID
+
+
+class UnsupportedDocumentSchemaVersionError(SchemaInvalidError):
+    """A raw future document claims no catalog-listed schema version."""
+
+    error_code = NPI_UNSUPPORTED_DOCUMENT_SCHEMA_VERSION
+
+
 class HandoffIntegrityError(NpiError):
     error_code = NPI_HANDOFF_INTEGRITY_FAILED
     exit_code = ExitCode.INTEGRITY_FAILED
+
+
+class DuplicateJsonMemberError(NpiError):
+    """A security-sensitive JSON document repeats one object member."""
+
+    error_code = NPI_DUPLICATE_JSON_MEMBER
+    exit_code = ExitCode.SCHEMA_CONFIG_ERROR
+
+    def __init__(self, member: str) -> None:
+        super().__init__(f"duplicate JSON member rejected: {member!r}")
+
+
+class ArtifactFilenameMismatchError(GateNotAuthorizedError):
+    """The final response URL does not bind to the approved artifact filename."""
+
+    error_code = NPI_ARTIFACT_FILENAME_MISMATCH
+
+
+class ArtifactSizeLimitExceededError(GateNotAuthorizedError):
+    """Transport metadata exceeds the Owner's approved artifact byte ceiling."""
+
+    error_code = NPI_ARTIFACT_SIZE_LIMIT_EXCEEDED
+
+
+class OwnerSizeLimitRequiredError(GateNotAuthorizedError):
+    """A future quarantine action lacks the Owner's explicit byte ceiling."""
+
+    error_code = NPI_OWNER_SIZE_LIMIT_REQUIRED
+
+
+class InvalidOwnerSizeLimitError(GateNotAuthorizedError):
+    """A supplied Owner byte ceiling is not a positive integer."""
+
+    error_code = NPI_INVALID_OWNER_SIZE_LIMIT
+
+
+class ArtifactRevisionMismatchError(GateNotAuthorizedError):
+    """Approval revision evidence does not exactly bind to its snapshot."""
+
+    error_code = NPI_ARTIFACT_REVISION_MISMATCH
+
+
+class OfficialArtifactHashMismatchError(GateNotAuthorizedError):
+    """Approval expected hash does not exactly bind to its snapshot."""
+
+    error_code = NPI_OFFICIAL_ARTIFACT_HASH_MISMATCH
+
+
+class QuarantineApprovalExpiredError(GateNotAuthorizedError):
+    """A future N2B1-Q approval is expired at the supplied deterministic time."""
+
+    error_code = NPI_QUARANTINE_APPROVAL_EXPIRED
+
+
+class QuarantineApprovalNotYetValidError(GateNotAuthorizedError):
+    """A future N2B1-Q approval is not active at the supplied time."""
+
+    error_code = NPI_QUARANTINE_APPROVAL_NOT_YET_VALID
+
+
+class QuarantineApprovalTimeRangeInvalidError(GateNotAuthorizedError):
+    """A future approval's issued/not-before/expiry ordering is invalid."""
+
+    error_code = NPI_QUARANTINE_APPROVAL_TIME_RANGE_INVALID
+
+
+class QuarantineApprovalStateMismatchError(GateNotAuthorizedError):
+    """Approval bindings do not match the supplied current state or snapshot."""
+
+    error_code = NPI_QUARANTINE_APPROVAL_STATE_MISMATCH
+
+
+class QuarantineRightsNotQualifiedError(GateNotAuthorizedError):
+    """A future N2B1-Q approval has not closed its artifact-rights gates."""
+
+    error_code = NPI_QUARANTINE_RIGHTS_NOT_QUALIFIED
 
 
 # Map error_code string -> ExitCode for callers that only have the string.
@@ -247,6 +363,22 @@ ERROR_CODE_TO_EXIT: dict[str, ExitCode] = {
     NPI_RUN_INTERRUPTED: ExitCode.DATABASE_ERROR,
     NPI_SCHEMA_INVALID: ExitCode.SCHEMA_CONFIG_ERROR,
     NPI_HANDOFF_INTEGRITY_FAILED: ExitCode.INTEGRITY_FAILED,
+    NPI_DUPLICATE_JSON_MEMBER: ExitCode.SCHEMA_CONFIG_ERROR,
+    NPI_ARTIFACT_FILENAME_MISMATCH: ExitCode.GATE_NOT_AUTHORIZED,
+    NPI_ARTIFACT_SIZE_LIMIT_EXCEEDED: ExitCode.GATE_NOT_AUTHORIZED,
+    NPI_OWNER_SIZE_LIMIT_REQUIRED: ExitCode.GATE_NOT_AUTHORIZED,
+    NPI_INVALID_OWNER_SIZE_LIMIT: ExitCode.GATE_NOT_AUTHORIZED,
+    NPI_ARTIFACT_REVISION_MISMATCH: ExitCode.GATE_NOT_AUTHORIZED,
+    NPI_OFFICIAL_ARTIFACT_HASH_MISMATCH: ExitCode.GATE_NOT_AUTHORIZED,
+    NPI_QUARANTINE_APPROVAL_EXPIRED: ExitCode.GATE_NOT_AUTHORIZED,
+    NPI_QUARANTINE_APPROVAL_NOT_YET_VALID: ExitCode.GATE_NOT_AUTHORIZED,
+    NPI_QUARANTINE_APPROVAL_TIME_RANGE_INVALID: ExitCode.GATE_NOT_AUTHORIZED,
+    NPI_QUARANTINE_APPROVAL_STATE_MISMATCH: ExitCode.GATE_NOT_AUTHORIZED,
+    NPI_QUARANTINE_RIGHTS_NOT_QUALIFIED: ExitCode.GATE_NOT_AUTHORIZED,
+    NPI_QUARANTINE_APPROVAL_SCHEMA_INVALID: ExitCode.SCHEMA_CONFIG_ERROR,
+    NPI_QUALIFICATION_SNAPSHOT_SCHEMA_INVALID: ExitCode.SCHEMA_CONFIG_ERROR,
+    NPI_PROJECT_STATE_SCHEMA_INVALID: ExitCode.SCHEMA_CONFIG_ERROR,
+    NPI_UNSUPPORTED_DOCUMENT_SCHEMA_VERSION: ExitCode.SCHEMA_CONFIG_ERROR,
     NPI_INTERNAL_ERROR: ExitCode.INTERNAL_ERROR,
 }
 

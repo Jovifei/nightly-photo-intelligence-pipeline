@@ -1,0 +1,29 @@
+contract_version: "1.0"
+phase:
+  id: "N2B0_5"
+  title: "Artifact Rights and Provenance Closure"
+  status: "AUTHORIZED"
+capability: "N2B0_5_ARTIFACT_RIGHTS_AND_PROVENANCE_CLOSURE"
+data_gate:
+  id: "G1_CALIBRATION_20"
+  status: "AUTHORIZED"
+  allowed_assets: "official pages, official GitHub/API/model-card/License metadata, and HTTP HEAD metadata only; no real photo reads"
+approval:
+  n2b0_completion: "approvals/phase_completion_N2B0.yaml"
+  n2b0_commit: "f331621c84905aef921c612908d01d3a8a2f577a"
+  n2b0_tag: "n2b0-approved-2026-07-24"
+forbidden:
+  - "model_payload_downloads"
+  - "model_dependency_installation"
+  - "model_load_or_inference"
+  - "real_photo_reads"
+  - "skeleton_mask_cutout_or_model_artifacts"
+  - "docker_image_pull"
+  - "cuda_driver_wsl_or_docker_changes"
+  - "n2b1"
+  - "n2b2"
+  - "g2_or_g3"
+  - "push_merge_release"
+mandatory_stop:
+  value: true
+  rule: "complete N2B0.5 and wait for Owner approval; do not enter N2B1, N2B2, or G2"

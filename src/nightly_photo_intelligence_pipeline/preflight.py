@@ -8,7 +8,6 @@ usernames, hostnames, home paths, and tokens.
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import platform
 import shutil
@@ -23,6 +22,8 @@ import yaml
 
 from ._paths import find_project_root
 from .domain.authorization import load_authorization
+from .domain.errors import NPI_DUPLICATE_JSON_MEMBER, DuplicateJsonMemberError
+from .json_strict import load_json_strict
 from .redaction import redact_text
 
 # Status values (do not conflate SKIPPED with PASS).
@@ -147,15 +148,17 @@ def _check_disk() -> CheckResult:
         return CheckResult(name="disk_free", status=FAIL, notes="disk query failed")
 
 
-def _check_fixture_integrity() -> CheckResult:
+def _check_fixture_integrity() -> CheckResult:  # noqa: PLR0911
     root = find_project_root()
     manifest_path = root / "fixtures" / "fixture_manifest.json"
     if not manifest_path.is_file():
         return CheckResult(name="fixture_integrity", status=FAIL, notes="manifest missing")
     try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        return CheckResult(name="fixture_integrity", status=FAIL, notes=f"manifest invalid: {exc}")
+        manifest = load_json_strict(manifest_path)
+    except DuplicateJsonMemberError:
+        return CheckResult(name="fixture_integrity", status=FAIL, notes=NPI_DUPLICATE_JSON_MEMBER)
+    except (OSError, UnicodeError, ValueError):
+        return CheckResult(name="fixture_integrity", status=FAIL, notes="manifest invalid")
     files = manifest.get("files", [])
     if len(files) != 3:
         return CheckResult(
@@ -288,8 +291,8 @@ def _check_schema_version() -> CheckResult:
     if not catalog.is_file():
         return CheckResult(name="schema_version", status=NOT_AVAILABLE, notes="catalog missing")
     try:
-        data = json.loads(catalog.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
+        data = load_json_strict(catalog)
+    except (OSError, UnicodeError, ValueError):
         return CheckResult(name="schema_version", status=FAIL, notes="catalog JSON invalid")
     from . import __version__ as pkg_version
     from .persistence.migrations import SCHEMA_VERSION as db_schema_version
@@ -359,10 +362,10 @@ def _n1_approval_chain_is_consistent(
     )
 
 
-def _check_authorization() -> CheckResult:
+def _check_authorization() -> CheckResult:  # noqa: PLR0911
     root = find_project_root()
     try:
-        state = json.loads((root / "PROJECT_STATE.json").read_text(encoding="utf-8"))
+        state = load_json_strict(root / "PROJECT_STATE.json")
         approval = yaml.safe_load(
             (root / "approvals" / "data_gate_approval_G1.yaml").read_text(encoding="utf-8")
         )
@@ -383,6 +386,14 @@ def _check_authorization() -> CheckResult:
                 encoding="utf-8"
             )
         )
+        n2b0_completion = yaml.safe_load(
+            (root / "approvals" / "phase_completion_N2B0.yaml").read_text(encoding="utf-8")
+        )
+        n2b0_5_task = yaml.safe_load(
+            (root / "tasks" / "phase_n2b0_5_artifact_rights_and_provenance.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
         retry_policy = yaml.safe_load(
             (root / "config" / "retry_policy_v1_1.yaml").read_text(encoding="utf-8")
         )
@@ -392,44 +403,48 @@ def _check_authorization() -> CheckResult:
         n2a_error_taxonomy = yaml.safe_load(
             (root / "config" / "error_taxonomy_v1_2.yaml").read_text(encoding="utf-8")
         )
-        task_index = json.loads((root / "tasks" / "index.json").read_text(encoding="utf-8"))
+        task_index = load_json_strict(root / "tasks" / "index.json")
         schemas = root / "schemas"
         checks = [
             (
-                json.loads((schemas / "project_state_v1_2.schema.json").read_text("utf-8")),
+                load_json_strict(schemas / "project_state_v1_2.schema.json"),
                 state,
             ),
             (
-                json.loads((schemas / "approval_record_v1_1.schema.json").read_text("utf-8")),
+                load_json_strict(schemas / "approval_record_v1_1.schema.json"),
                 approval,
             ),
             (
-                json.loads(
-                    (schemas / "phase_completion_approval_v1_0.schema.json").read_text("utf-8")
-                ),
+                load_json_strict(schemas / "phase_completion_approval_v1_0.schema.json"),
                 n1_completion,
             ),
             (
-                json.loads((schemas / "task_contract_v1_1.schema.json").read_text("utf-8")),
+                load_json_strict(schemas / "task_contract_v1_1.schema.json"),
                 n1_task,
             ),
             (
-                json.loads((schemas / "task_contract_v1_1.schema.json").read_text("utf-8")),
+                load_json_strict(schemas / "task_contract_v1_1.schema.json"),
                 g1_task,
             ),
             (
-                json.loads((schemas / "task_index_v1_2.schema.json").read_text("utf-8")),
+                load_json_strict(schemas / "task_index_v1_2.schema.json"),
                 task_index,
             ),
             (
-                json.loads(
-                    (schemas / "phase_completion_approval_g1_v1_0.schema.json").read_text("utf-8")
-                ),
+                load_json_strict(schemas / "phase_completion_approval_g1_v1_0.schema.json"),
                 g1_completion,
             ),
             (
-                json.loads((schemas / "task_contract_n2a_v1_0.schema.json").read_text("utf-8")),
+                load_json_strict(schemas / "task_contract_n2a_v1_0.schema.json"),
                 n2a_task,
+            ),
+            (
+                load_json_strict(schemas / "phase_completion_approval_n2b0_v1_0.schema.json"),
+                n2b0_completion,
+            ),
+            (
+                load_json_strict(schemas / "task_contract_n2b0_5_v1_0.schema.json"),
+                n2b0_5_task,
             ),
         ]
         if any(_validate_schema(schema, value) for schema, value in checks):
@@ -474,8 +489,12 @@ def _check_authorization() -> CheckResult:
             (item for item in task_index.get("authorized", []) if item.get("phase") == "N2A"),
             None,
         )
-        authorized_n2b0 = next(
-            (item for item in task_index.get("authorized", []) if item.get("phase") == "N2B0"),
+        completed_n2b0 = next(
+            (item for item in task_index.get("completed", []) if item.get("phase") == "N2B0"),
+            None,
+        )
+        authorized_n2b0_5 = next(
+            (item for item in task_index.get("authorized", []) if item.get("phase") == "N2B0_5"),
             None,
         )
         g1_baseline = g1_completion.get("baseline", {})
@@ -487,17 +506,40 @@ def _check_authorization() -> CheckResult:
                 g1_baseline.get("g1_tag") == "g1-approved-2026-07-19",
                 phase_status.get("G1") == "APPROVED_COMPLETE",
                 phase_status.get("N2A") == "APPROVED_COMPLETE",
-                phase_status.get("N2B0") == "AUTHORIZED",
+                phase_status.get("N2B0") == "APPROVED_COMPLETE",
+                phase_status.get("N2B0_5") == "AUTHORIZED",
                 phase_status.get("N2B") == "LOCKED",
+                phase_status.get("N2B1") == "LOCKED",
+                phase_status.get("N2B1_Q") == "LOCKED",
+                phase_status.get("N2B1_P") == "LOCKED",
+                phase_status.get("N2B2") == "LOCKED",
                 n2a_authorized.get("N2A_POSE_SEGMENTATION_BENCHMARK_PREPARATION")
                 == "APPROVED_COMPLETE",
-                n2a_authorized.get("N2B0_MODEL_ARTIFACT_QUALIFICATION") == "AUTHORIZED",
+                n2a_authorized.get("N2B0_MODEL_ARTIFACT_QUALIFICATION") == "APPROVED_COMPLETE",
+                n2a_authorized.get("N2B0_5_ARTIFACT_RIGHTS_AND_PROVENANCE_CLOSURE") == "AUTHORIZED",
                 n2a_authorized.get("N2B_MODEL_DOWNLOAD_AND_INFERENCE") == "LOCKED",
+                n2a_authorized.get("N2B1_MODEL_DOWNLOAD") == "LOCKED",
+                n2a_authorized.get("N2B1_Q_QUARANTINE_DOWNLOAD") == "LOCKED",
+                n2a_authorized.get("N2B1_P_CACHE_PROMOTION") == "LOCKED",
+                n2a_authorized.get("N2B2_REAL_BENCHMARK") == "LOCKED",
+                state.get("authorization", {}).get("large_model_downloads") == "NOT_AUTHORIZED",
+                state.get("authorization", {}).get("real_model_execution") == "NOT_AUTHORIZED",
                 isinstance(n2a_index, dict),
                 (n2a_index or {}).get("capability")
                 == "N2A_POSE_SEGMENTATION_BENCHMARK_PREPARATION",
-                isinstance(authorized_n2b0, dict),
-                (authorized_n2b0 or {}).get("capability") == "N2B0_MODEL_ARTIFACT_QUALIFICATION",
+                isinstance(completed_n2b0, dict),
+                (completed_n2b0 or {}).get("baseline_commit")
+                == "f331621c84905aef921c612908d01d3a8a2f577a",
+                (completed_n2b0 or {}).get("completion_approval")
+                == "approvals/phase_completion_N2B0.yaml",
+                isinstance(authorized_n2b0_5, dict),
+                (authorized_n2b0_5 or {}).get("capability")
+                == "N2B0_5_ARTIFACT_RIGHTS_AND_PROVENANCE_CLOSURE",
+                n2b0_completion.get("owner_decision") == "N2B0_OWNER_APPROVED",
+                n2b0_completion.get("independent_reviewer", {}).get("reviewed_commit")
+                == "f331621c84905aef921c612908d01d3a8a2f577a",
+                n2b0_5_task.get("approval", {}).get("n2b0_commit")
+                == "f331621c84905aef921c612908d01d3a8a2f577a",
             )
         ):
             return CheckResult(
@@ -517,8 +559,14 @@ def _check_authorization() -> CheckResult:
             evidence=(
                 f"phase={auth.phase_id}/{auth.phase_status} "
                 f"gate={auth.data_gate_id}/{auth.data_gate_status}; "
-                "schema+N1/G1/N2A approval-chain+N2B0 capability gate valid"
+                "schema+N1/G1/N2A/N2B0 approval-chain+N2B0.5 capability gate valid"
             ),
+        )
+    except DuplicateJsonMemberError:
+        return CheckResult(
+            name="current_authorization_contracts",
+            status=FAIL,
+            notes=NPI_DUPLICATE_JSON_MEMBER,
         )
     except Exception:  # noqa: BLE001
         return CheckResult(
@@ -533,6 +581,7 @@ def _check_git_baselines() -> CheckResult:
     n0 = "72a81f5984838b74304d23263ac450ea4b5a3a9a"
     n1 = "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"
     g1 = "4a807dbbcd147a106b02b7e3899aa701c2028d83"
+    n2b0 = "f331621c84905aef921c612908d01d3a8a2f577a"
 
     def git(*args: str) -> tuple[int, str]:
         return _run(["git", "-C", str(root), *args])
@@ -541,12 +590,14 @@ def _check_git_baselines() -> CheckResult:
         git("rev-parse", "n0-approved-2026-07-14") == (0, n0),
         git("rev-parse", "n1-approved-2026-07-14") == (0, n1),
         git("rev-parse", "g1-approved-2026-07-19") == (0, g1),
+        git("rev-parse", "n2b0-approved-2026-07-24") == (0, n2b0),
         git("merge-base", "--is-ancestor", n0, n1)[0] == 0,
         git("merge-base", "--is-ancestor", n1, "HEAD")[0] == 0,
         git("merge-base", "--is-ancestor", g1, "HEAD")[0] == 0,
-        git("rev-list", "--count", "HEAD") == (0, "5"),
-        git("rev-list", "--count", f"{n1}..HEAD") == (0, "3"),
-        git("rev-list", "--count", f"{g1}..HEAD") == (0, "2"),
+        git("rev-list", "--count", "HEAD") == (0, "6"),
+        git("rev-list", "--count", f"{n1}..HEAD") == (0, "4"),
+        git("rev-list", "--count", f"{g1}..HEAD") == (0, "3"),
+        git("merge-base", "--is-ancestor", n2b0, "HEAD")[0] == 0,
         git("rev-list", "--merges", "HEAD") == (0, ""),
         git("status", "--porcelain", "--untracked-files=all") == (0, ""),
     ]
@@ -559,9 +610,7 @@ def _check_git_baselines() -> CheckResult:
     return CheckResult(
         name="git_stage_baselines",
         status=PASS,
-        evidence=(
-            "N0/N1/G1/N2A tags intact; one N2A and one N2B0 commit; no merge; worktree clean"
-        ),
+        evidence=("N0/N1/G1/N2A/N2B0 tags intact; one N2B0.5 commit; no merge; worktree clean"),
     )
 
 

@@ -10,13 +10,13 @@ artifacts:
     code_revision: "v1.3.0"
     artifact_revision: "v1.3.0 model-index reference; checkpoint has no separate immutable revision"
     artifact_filename: "rtmpose-m_simcc-coco-wholebody_pt-aic-coco_270e-256x192-cd5e845c_20230123.pth"
-    artifact_expected_size_bytes: "NOT_PUBLISHED"
+    artifact_expected_size_bytes: 72010049
     official_download_source: "https://download.openmmlab.com/mmpose/v1/projects/rtmposev1/rtmpose-m_simcc-coco-wholebody_pt-aic-coco_270e-256x192-cd5e845c_20230123.pth"
     allowed_download_domains: ["download.openmmlab.com"]
     code_license: "Apache-2.0"
     weights_license: "UNKNOWN"
     commercial_use_status: "REQUIRES_OWNER_DECISION"
-    license_evidence: "official repository license; exact checkpoint terms not verified"
+    license_evidence: "official repository Apache-2.0; exact checkpoint terms not verified; HEAD-only metadata observed"
     sha256_source: "NOT_PUBLISHED"
     expected_sha256: "UNKNOWN"
     post_download_hash_required: true
@@ -35,7 +35,7 @@ artifacts:
     oom_status: "NOT_MEASURED"
     quality_status: "NOT_MEASURED"
     qualification_status: "INCONCLUSIVE"
-    blocking_findings: ["weights license, exact byte size, and SHA-256 are not published in the official model-index"]
+    blocking_findings: ["weights license, immutable artifact revision, and SHA-256 are not published; commercial-use evidence is unknown and requires Owner decision"]
   - artifact_id: "pose-rtmw-m-coco-wholebody-fallback"
     purpose: "whole-body pose fallback candidate"
     project_id: "mmpose"
@@ -50,7 +50,7 @@ artifacts:
     code_license: "Apache-2.0"
     weights_license: "UNKNOWN"
     commercial_use_status: "REQUIRES_OWNER_DECISION"
-    license_evidence: "official repository license; HTTP HEAD 200 and Content-Length observed; exact checkpoint terms not verified"
+    license_evidence: "official repository Apache-2.0; HTTP HEAD 200 and Content-Length observed; exact checkpoint terms not verified"
     sha256_source: "NOT_PUBLISHED"
     expected_sha256: "UNKNOWN"
     post_download_hash_required: true
@@ -69,7 +69,7 @@ artifacts:
     oom_status: "NOT_MEASURED"
     quality_status: "NOT_MEASURED"
     qualification_status: "INCONCLUSIVE"
-    blocking_findings: ["weights license, immutable artifact revision, and SHA-256 are not published"]
+    blocking_findings: ["weights license, immutable artifact revision, and SHA-256 are not published; commercial-use evidence is unknown and requires Owner decision"]
   - artifact_id: "segmentation-pp-humansegv2-lite"
     purpose: "lightweight human segmentation candidate"
     project_id: "paddleseg"
@@ -78,13 +78,13 @@ artifacts:
     code_revision: "release/2.10"
     artifact_revision: "release/2.10 model-index reference; publisher artifact has no separate immutable revision"
     artifact_filename: "human_pp_humansegv2_lite_192x192_inference_model.zip"
-    artifact_expected_size_bytes: "NOT_PUBLISHED (official model size: 5.4 MB)"
+    artifact_expected_size_bytes: 11349952
     official_download_source: "https://paddleseg.bj.bcebos.com/dygraph/pp_humanseg_v2/human_pp_humansegv2_lite_192x192_inference_model.zip"
     allowed_download_domains: ["paddleseg.bj.bcebos.com"]
     code_license: "Apache-2.0"
     weights_license: "UNKNOWN"
     commercial_use_status: "REQUIRES_OWNER_DECISION"
-    license_evidence: "official repository license; exact artifact terms not verified"
+    license_evidence: "official repository Apache-2.0; HTTP HEAD 200 and Content-Length observed; exact artifact terms not verified"
     sha256_source: "NOT_PUBLISHED"
     expected_sha256: "UNKNOWN"
     post_download_hash_required: true
@@ -103,4 +103,38 @@ artifacts:
     oom_status: "NOT_MEASURED"
     quality_status: "NOT_MEASURED"
     qualification_status: "INCONCLUSIVE"
-    blocking_findings: ["weights license, exact ZIP byte size, and SHA-256 are not published in the official model page"]
+    blocking_findings: ["weights license, immutable artifact revision, and SHA-256 are not published; commercial-use evidence is unknown and requires Owner decision"]
+  - artifact_id: "segmentation-mediapipe-selfie-general-fallback"
+    purpose: "lightweight human segmentation fallback candidate"
+    project_id: "mediapipe"
+    model_id: "selfie_segmentation_general"
+    code_repository: "https://github.com/google-ai-edge/mediapipe"
+    code_revision: "master"
+    artifact_revision: "official legacy model index reference; storage object has no separate immutable revision"
+    artifact_filename: "selfie_segmentation.tflite"
+    artifact_expected_size_bytes: 249505
+    official_download_source: "https://storage.googleapis.com/mediapipe-assets/selfie_segmentation.tflite"
+    allowed_download_domains: ["storage.googleapis.com"]
+    code_license: "Apache-2.0"
+    weights_license: "UNKNOWN"
+    commercial_use_status: "REQUIRES_OWNER_DECISION"
+    license_evidence: "official MediaPipe Apache-2.0 repository; model card/weight terms not machine-confirmed; HEAD-only metadata observed"
+    sha256_source: "NOT_PUBLISHED"
+    expected_sha256: "UNKNOWN"
+    post_download_hash_required: true
+    input_shape: "256x256"
+    keypoint_set_or_mask_contract: "prominent-human selfie segmentation; general model"
+    runtime_candidate: "isolated Python environment"
+    python_dependencies: ["UNKNOWN"]
+    container_candidate: "UNKNOWN"
+    cache_directory: "<EXTERNAL_MODEL_CACHE>/pending_owner_approval"
+    quarantine_directory: "<EXTERNAL_MODEL_QUARANTINE>/pending_owner_approval"
+    deletion_procedure: "N2B1-only documented deletion after Owner decision"
+    rollback_procedure: "delete quarantined artifact; retain manifest-only audit record"
+    network_required: true
+    vram_status: "NOT_MEASURED"
+    latency_status: "NOT_MEASURED"
+    oom_status: "NOT_MEASURED"
+    quality_status: "NOT_MEASURED"
+    qualification_status: "INCONCLUSIVE"
+    blocking_findings: ["weights license, immutable artifact revision, and SHA-256 are not published; commercial-use evidence is unknown and requires Owner decision"]

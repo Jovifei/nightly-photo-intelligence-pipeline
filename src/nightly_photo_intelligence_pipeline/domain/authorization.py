@@ -11,11 +11,11 @@ locked even while N2A planning is authorized.
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 
 from .._paths import find_project_root
+from ..json_strict import load_json_strict
 from .errors import GateNotAuthorizedError
 
 # Phase ordering for capability checks. non-dry-run ingest requires N1+.
@@ -134,7 +134,7 @@ def load_authorization(project_root: Path | None = None) -> AuthorizationSnapsho
         raise GateNotAuthorizedError(
             "PROJECT_STATE.json not found; cannot determine authorization",
         )
-    data = json.loads(state_path.read_text(encoding="utf-8"))
+    data = load_json_strict(state_path)
     auth = data.get("authorization", {})
     phase = auth.get("phase", {})
     gate = auth.get("data_gate", {})

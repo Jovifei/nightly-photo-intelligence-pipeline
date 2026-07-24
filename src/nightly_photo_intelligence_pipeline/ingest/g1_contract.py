@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import ntpath
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -12,6 +13,7 @@ import yaml
 
 from ..domain.authorization import AuthorizationSnapshot
 from ..domain.errors import GateNotAuthorizedError, RuntimePolicyError
+from ..json_strict import load_json_strict
 from .manifest import G1FrozenManifest
 from .read_only_capability import (
     ProbeFunction,
@@ -132,14 +134,10 @@ def load_g1_approval(project_root: Path, *, now: datetime | None = None) -> G1Ap
         "error_taxonomy_sha256": _sha256(project_root / "config" / "error_taxonomy_v1_1.yaml"),
     }
     state_version = "1.1"
-    try:
-        import json
-
-        state_version = json.loads((project_root / "PROJECT_STATE.json").read_text("utf-8")).get(
+    with suppress(OSError, UnicodeError, ValueError):
+        state_version = load_json_strict(project_root / "PROJECT_STATE.json").get(
             "schema_version", "1.1"
         )
-    except (OSError, UnicodeError, ValueError):
-        pass
     if state_version == "1.2":
         valid_bindings: tuple[dict[str, str], ...] = (G1_HISTORICAL_BINDINGS, current_bindings)
     else:

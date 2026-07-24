@@ -1,0 +1,16 @@
+{
+    "watchdogChecks":  3,
+    "watchdogIntervalSeconds":  30,
+    "startedAtUtc":  "2026-07-24T00:32:10.8442833Z",
+    "stderrBytes":  0,
+    "stdoutBytes":  0,
+    "profile":  "deepseek-v4-pro",
+    "exitCode":  1,
+    "timeoutSeconds":  90,
+    "terminationError":  "",
+    "timedOut":  true,
+    "completedAtUtc":  "2026-07-24T00:33:41.2959108Z",
+    "processId":  50624,
+    "launchError":  "",
+    "elapsedMilliseconds":  90453
+}

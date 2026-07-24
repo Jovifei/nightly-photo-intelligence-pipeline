@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/phase_completion_approval_n2b0_v1_0.schema.json",
+  "title": "Immutable N2B0 Owner approval v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "approval_type", "status", "phase_id", "owner_id", "approved_at_utc", "baseline", "n2a_completion_approval_sha256", "independent_reviewer", "owner_decision", "owner_statement"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "approval_type": {"const": "PHASE_COMPLETION"},
+    "status": {"const": "APPROVED"},
+    "phase_id": {"const": "N2B0"},
+    "owner_id": {"const": "Jovi"},
+    "approved_at_utc": {"const": "2026-07-24"},
+    "baseline": {
+      "type": "object", "additionalProperties": false,
+      "required": ["n0_commit", "n1_commit", "g1_commit", "n2a_commit", "n2a_tag", "n2b0_commit", "n2b0_tag", "immutable"],
+      "properties": {
+        "n0_commit": {"const": "72a81f5984838b74304d23263ac450ea4b5a3a9a"},
+        "n1_commit": {"const": "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"},
+        "g1_commit": {"const": "4a807dbbcd147a106b02b7e3899aa701c2028d83"},
+        "n2a_commit": {"const": "f79d2df504622ff82aa5e53d1486310bbea9985a"},
+        "n2a_tag": {"const": "n2a-approved-2026-07-22"},
+        "n2b0_commit": {"const": "f331621c84905aef921c612908d01d3a8a2f577a"},
+        "n2b0_tag": {"const": "n2b0-approved-2026-07-24"},
+        "immutable": {"const": true}
+      }
+    },
+    "n2a_completion_approval_sha256": {"pattern": "^[0-9a-f]{64}$"},
+    "independent_reviewer": {
+      "type": "object", "additionalProperties": false,
+      "required": ["conclusion", "reviewed_commit", "confirmed"],
+      "properties": {
+        "conclusion": {"const": "PASS_FOR_OWNER_REVIEW"},
+        "reviewed_commit": {"const": "f331621c84905aef921c612908d01d3a8a2f577a"},
+        "confirmed": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}}
+      }
+    },
+    "owner_decision": {"const": "N2B0_OWNER_APPROVED"},
+    "owner_statement": {"type": "string", "minLength": 1}
+  }
+}

@@ -15,6 +15,8 @@ N0_TAG = "n0-approved-2026-07-14"
 N1_TAG = "n1-approved-2026-07-14"
 G1_BASELINE = "4a807dbbcd147a106b02b7e3899aa701c2028d83"
 G1_TAG = "g1-approved-2026-07-19"
+N2B0_BASELINE = "f331621c84905aef921c612908d01d3a8a2f577a"
+N2B0_TAG = "n2b0-approved-2026-07-24"
 
 SENSITIVE_SUFFIXES = (
     ".db",
@@ -57,23 +59,25 @@ def test_git_approved_tags_and_ancestry_are_exact(project_root: Path) -> None:
     assert _git(project_root, "rev-parse", N0_TAG).stdout.strip() == N0_BASELINE
     assert _git(project_root, "rev-parse", N1_TAG).stdout.strip() == N1_BASELINE
     assert _git(project_root, "rev-parse", G1_TAG).stdout.strip() == G1_BASELINE
+    assert _git(project_root, "rev-parse", N2B0_TAG).stdout.strip() == N2B0_BASELINE
     assert (
         _git(project_root, "merge-base", "--is-ancestor", N0_BASELINE, N1_BASELINE).returncode == 0
     )
     assert _git(project_root, "merge-base", "--is-ancestor", N1_BASELINE, "HEAD").returncode == 0
     assert _git(project_root, "merge-base", "--is-ancestor", G1_BASELINE, "HEAD").returncode == 0
+    assert _git(project_root, "merge-base", "--is-ancestor", N2B0_BASELINE, "HEAD").returncode == 0
     assert _git(project_root, "rev-list", "--parents", "-n", "1", N0_BASELINE).stdout.split() == [
         N0_BASELINE
     ]
 
 
 def test_git_exactly_one_n2b0_commit_after_n2a_and_no_merges(project_root: Path) -> None:
-    assert int(_git(project_root, "rev-list", "--count", "HEAD").stdout.strip()) == 5
+    assert int(_git(project_root, "rev-list", "--count", "HEAD").stdout.strip()) == 6
     assert (
-        int(_git(project_root, "rev-list", "--count", f"{N1_BASELINE}..HEAD").stdout.strip()) == 3
+        int(_git(project_root, "rev-list", "--count", f"{N1_BASELINE}..HEAD").stdout.strip()) == 4
     )
     assert (
-        int(_git(project_root, "rev-list", "--count", f"{G1_BASELINE}..HEAD").stdout.strip()) == 2
+        int(_git(project_root, "rev-list", "--count", f"{G1_BASELINE}..HEAD").stdout.strip()) == 3
     )
     assert _git(project_root, "rev-list", "--merges", "HEAD").stdout.strip() == ""
 
@@ -81,7 +85,7 @@ def test_git_exactly_one_n2b0_commit_after_n2a_and_no_merges(project_root: Path)
 def test_git_worktree_is_clean(project_root: Path) -> None:
     status = _git(project_root, "status", "--porcelain", "--untracked-files=all")
     assert status.returncode == 0
-    assert status.stdout.strip() == "", "N2B0 acceptance requires a clean worktree"
+    assert status.stdout.strip() == "", "N2B0.5 acceptance requires a clean worktree"
 
 
 def test_git_no_sensitive_tracked_files(project_root: Path) -> None:

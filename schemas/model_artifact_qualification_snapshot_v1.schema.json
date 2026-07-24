@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/model_artifact_qualification_snapshot_v1.schema.json",
+  "title": "NPI N2B qualification snapshot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "snapshot_id", "artifact_id", "expected_artifact_filename",
+    "qualification_status", "code_license_status", "weights_license_status",
+    "commercial_use_status", "artifact_identity_status", "immutable_revision_status",
+    "official_hash_status", "ready_for_quarantine_download", "artifact_revision",
+    "official_artifact_sha256", "official_sha256_source_url", "official_request_url",
+    "allowed_request_domains", "allowed_final_domains", "expected_size_bytes",
+    "evidence_digest", "source_snapshot_digest", "n2b0_5_baseline_sha", "generated_at"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "snapshot_id": {"type": "string", "minLength": 1},
+    "artifact_id": {"type": "string", "minLength": 1},
+    "expected_artifact_filename": {"type": "string", "minLength": 1, "pattern": "^[^/\\\\]+$"},
+    "qualification_status": {"enum": ["QUALIFIED", "NOT_QUALIFIED"]},
+    "code_license_status": {"enum": ["PASS", "FAIL", "UNKNOWN", "REQUIRES_OWNER_DECISION"]},
+    "weights_license_status": {"enum": ["PASS", "FAIL", "UNKNOWN", "REQUIRES_OWNER_DECISION"]},
+    "commercial_use_status": {"enum": ["PASS", "FAIL", "UNKNOWN", "REQUIRES_OWNER_DECISION"]},
+    "artifact_identity_status": {"enum": ["PASS", "FAIL", "UNKNOWN", "REQUIRES_OWNER_DECISION"]},
+    "immutable_revision_status": {"enum": ["PASS", "FAIL", "UNKNOWN", "REQUIRES_OWNER_DECISION"]},
+    "official_hash_status": {"enum": ["PASS", "FAIL", "UNKNOWN", "REQUIRES_OWNER_DECISION"]},
+    "ready_for_quarantine_download": {"enum": ["PASS", "FAIL", "UNKNOWN", "REQUIRES_OWNER_DECISION"]},
+    "artifact_revision": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value", "source_url"],
+          "properties": {
+            "kind": {"enum": ["GIT_COMMIT", "GIT_TAG", "RELEASE_ASSET_VERSION", "OBJECT_VERSION", "CHECKPOINT_REVISION"]},
+            "value": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+            "source_url": {"type": "string", "format": "uri", "pattern": "^https://"}
+          }
+        }
+      ]
+    },
+    "official_artifact_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "official_sha256_source_url": {"type": ["string", "null"], "format": "uri", "pattern": "^https://"},
+    "official_request_url": {"type": "string", "format": "uri", "pattern": "^https://"},
+    "allowed_request_domains": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "allowed_final_domains": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "expected_size_bytes": {"type": "integer", "minimum": 1},
+    "evidence_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source_snapshot_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "n2b0_5_baseline_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "generated_at": {"type": "string", "format": "date-time"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"immutable_revision_status": {"const": "PASS"}}},
+      "then": {"properties": {"artifact_revision": {"type": "object"}}},
+      "else": {"properties": {"artifact_revision": {"type": "null"}}}
+    },
+    {
+      "if": {"properties": {"official_hash_status": {"const": "PASS"}}},
+      "then": {
+        "properties": {
+          "official_artifact_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "official_sha256_source_url": {"type": "string", "format": "uri", "pattern": "^https://"}
+        }
+      },
+      "else": {
+        "properties": {
+          "official_artifact_sha256": {"type": "null"},
+          "official_sha256_source_url": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"ready_for_quarantine_download": {"const": "PASS"}}},
+      "then": {
+        "properties": {
+          "immutable_revision_status": {"const": "PASS"},
+          "official_hash_status": {"const": "PASS"},
+          "artifact_revision": {"type": "object"},
+          "official_artifact_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "official_sha256_source_url": {"type": "string", "format": "uri", "pattern": "^https://"}
+        }
+      }
+    }
+  ]
+}

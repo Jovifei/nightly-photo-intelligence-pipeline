@@ -47,7 +47,7 @@
     },
     "authorization": {
       "type": "object", "additionalProperties": false,
-      "required": ["phase", "data_gate", "approval_record", "task_contract", "g1_completion_approval", "n2a_task_contract", "capability_gates", "real_photo_access", "exif_real_data_read", "network_access", "large_model_downloads", "cloud_image_processing", "openclaw_activation", "git_remote_write", "system_configuration_changes", "ai_photography_director_app_changes"],
+      "required": ["phase", "data_gate", "approval_record", "task_contract", "g1_completion_approval", "n2a_task_contract", "n2a_completion_approval", "n2b0_task_contract", "n2b0_completion_approval", "n2b0_5_task_contract", "capability_gates", "real_photo_access", "exif_real_data_read", "network_access", "large_model_downloads", "cloud_image_processing", "openclaw_activation", "git_remote_write", "system_configuration_changes", "ai_photography_director_app_changes"],
       "properties": {
         "phase": {"const": {"id": "N1", "status": "APPROVED_COMPLETE"}},
         "data_gate": {"const": {"id": "G1_CALIBRATION_20", "status": "AUTHORIZED"}},
@@ -57,6 +57,8 @@
         "n2a_task_contract": {"const": "tasks/phase_n2a_pose_and_segmentation_benchmark.yaml"},
         "n2a_completion_approval": {"const": "approvals/phase_completion_N2A.yaml"},
         "n2b0_task_contract": {"const": "tasks/phase_n2b0_model_artifact_qualification.yaml"},
+        "n2b0_completion_approval": {"const": "approvals/phase_completion_N2B0.yaml"},
+        "n2b0_5_task_contract": {"const": "tasks/phase_n2b0_5_artifact_rights_and_provenance.yaml"},
         "capability_gates": {"type": "object"},
         "real_photo_access": {"const": "AUTHORIZED"},
         "exif_real_data_read": {"const": "AUTHORIZED_NON_SENSITIVE_ONLY"},
@@ -72,22 +74,22 @@
     },
     "data_scope": {
       "type": "object", "additionalProperties": true,
-      "required": ["max_assets", "allowed_assets", "G1_CALIBRATION_20", "N2A_BENCHMARK_SYNTHETIC_ONLY", "N2B_MODEL_DOWNLOAD_AND_INFERENCE", "G2_PILOT_100", "G3_FULL_LIBRARY"],
+      "required": ["max_assets", "allowed_assets", "G1_CALIBRATION_20", "N2A_BENCHMARK_SYNTHETIC_ONLY", "N2B_MODEL_DOWNLOAD_AND_INFERENCE", "N2B1_Q_QUARANTINE_DOWNLOAD", "N2B1_P_CACHE_PROMOTION", "G2_PILOT_100", "G3_FULL_LIBRARY"],
       "properties": {
         "max_assets": {"const": 20}, "allowed_assets": {"const": "owner-frozen manifest entries only"},
         "G1_CALIBRATION_20": {"const": "AUTHORIZED"}, "N2A_BENCHMARK_SYNTHETIC_ONLY": {"const": "AUTHORIZED"},
-        "N2B_MODEL_DOWNLOAD_AND_INFERENCE": {"const": "LOCKED"}, "G2_PILOT_100": {"const": "LOCKED"}, "G3_FULL_LIBRARY": {"const": "LOCKED"}
+        "N2B_MODEL_DOWNLOAD_AND_INFERENCE": {"const": "LOCKED"}, "N2B1_Q_QUARANTINE_DOWNLOAD": {"const": "LOCKED"}, "N2B1_P_CACHE_PROMOTION": {"const": "LOCKED"}, "G2_PILOT_100": {"const": "LOCKED"}, "G3_FULL_LIBRARY": {"const": "LOCKED"}
       }
     },
     "phase_status": {
       "type": "object", "additionalProperties": true,
-      "required": ["N0", "N1", "G1", "N2", "N2A", "N2B", "N3", "N4", "N5", "N6", "N7", "N8"],
+      "required": ["N0", "N1", "G1", "N2", "N2A", "N2B", "N2B1_Q", "N2B1_P", "N3", "N4", "N5", "N6", "N7", "N8"],
       "properties": {
         "N0": {"const": "APPROVED_COMPLETE"}, "N1": {"const": "APPROVED_COMPLETE"}, "G1": {"const": "APPROVED_COMPLETE"},
-        "N2": {"const": "LOCKED"}, "N2A": {"enum": ["AUTHORIZED", "APPROVED_COMPLETE"]}, "N2B": {"const": "LOCKED"},
+        "N2": {"const": "LOCKED"}, "N2A": {"enum": ["AUTHORIZED", "APPROVED_COMPLETE"]}, "N2B0": {"enum": ["AUTHORIZED", "APPROVED_COMPLETE"]}, "N2B0_5": {"enum": ["AUTHORIZED", "LOCKED"]}, "N2B": {"const": "LOCKED"}, "N2B1_Q": {"const": "LOCKED"}, "N2B1_P": {"const": "LOCKED"},
         "N3": {"const": "LOCKED"}, "N4": {"const": "LOCKED"}, "N5": {"const": "LOCKED"}, "N6": {"const": "LOCKED"}, "N7": {"const": "LOCKED"}, "N8": {"const": "LOCKED"}
       }
     },
-    "required_stop_after": {"type": "object", "additionalProperties": false, "required": ["condition", "next_action"], "properties": {"condition": {"enum": ["N2A_AWAITING_OWNER_APPROVAL", "N2B0_AWAITING_OWNER_APPROVAL"]}, "next_action": {"const": "WAIT_FOR_OWNER_APPROVAL"}}}
+    "required_stop_after": {"type": "object", "additionalProperties": false, "required": ["condition", "next_action"], "properties": {"condition": {"enum": ["N2A_AWAITING_OWNER_APPROVAL", "N2B0_AWAITING_OWNER_APPROVAL", "N2B0_5_AWAITING_OWNER_APPROVAL"]}, "next_action": {"const": "WAIT_FOR_OWNER_APPROVAL"}}}
   }
 }

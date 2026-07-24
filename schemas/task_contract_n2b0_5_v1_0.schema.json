@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/task_contract_n2b0_5_v1_0.schema.json",
+  "title": "NPI N2B0.5 rights and provenance closure contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "phase", "capability", "data_gate", "approval", "forbidden", "mandatory_stop"],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "phase": {"type": "object", "additionalProperties": false, "required": ["id", "title", "status"], "properties": {"id": {"const": "N2B0_5"}, "title": {"const": "Artifact Rights and Provenance Closure"}, "status": {"const": "AUTHORIZED"}}},
+    "capability": {"const": "N2B0_5_ARTIFACT_RIGHTS_AND_PROVENANCE_CLOSURE"},
+    "data_gate": {"type": "object", "additionalProperties": false, "required": ["id", "status", "allowed_assets"], "properties": {"id": {"const": "G1_CALIBRATION_20"}, "status": {"const": "AUTHORIZED"}, "allowed_assets": {"const": "official pages, official GitHub/API/model-card/License metadata, and HTTP HEAD metadata only; no real photo reads"}}},
+    "approval": {"type": "object", "additionalProperties": false, "required": ["n2b0_completion", "n2b0_commit", "n2b0_tag"], "properties": {"n2b0_completion": {"const": "approvals/phase_completion_N2B0.yaml"}, "n2b0_commit": {"const": "f331621c84905aef921c612908d01d3a8a2f577a"}, "n2b0_tag": {"const": "n2b0-approved-2026-07-24"}}},
+    "forbidden": {"type": "array", "minItems": 11, "uniqueItems": true, "items": {"type": "string"}},
+    "mandatory_stop": {"type": "object", "additionalProperties": false, "required": ["value", "rule"], "properties": {"value": {"const": true}, "rule": {"const": "complete N2B0.5 and wait for Owner approval; do not enter N2B1, N2B2, or G2"}}}
+  }
+}

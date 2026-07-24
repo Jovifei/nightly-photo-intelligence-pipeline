@@ -39,12 +39,17 @@
     "n2a_task_contract": "tasks/phase_n2a_pose_and_segmentation_benchmark.yaml",
     "n2a_completion_approval": "approvals/phase_completion_N2A.yaml",
     "n2b0_task_contract": "tasks/phase_n2b0_model_artifact_qualification.yaml",
+    "n2b0_completion_approval": "approvals/phase_completion_N2B0.yaml",
+    "n2b0_5_task_contract": "tasks/phase_n2b0_5_artifact_rights_and_provenance.yaml",
     "capability_gates": {
       "G1_COMPLETION": "APPROVED_COMPLETE",
       "N2A_POSE_SEGMENTATION_BENCHMARK_PREPARATION": "APPROVED_COMPLETE",
-      "N2B0_MODEL_ARTIFACT_QUALIFICATION": "AUTHORIZED",
+      "N2B0_MODEL_ARTIFACT_QUALIFICATION": "APPROVED_COMPLETE",
+      "N2B0_5_ARTIFACT_RIGHTS_AND_PROVENANCE_CLOSURE": "AUTHORIZED",
       "N2B_MODEL_DOWNLOAD_AND_INFERENCE": "LOCKED",
       "N2B1_MODEL_DOWNLOAD": "LOCKED",
+      "N2B1_Q_QUARANTINE_DOWNLOAD": "LOCKED",
+      "N2B1_P_CACHE_PROMOTION": "LOCKED",
       "N2B2_REAL_BENCHMARK": "LOCKED"
     },
     "real_photo_access": "AUTHORIZED",
@@ -64,8 +69,11 @@
     "G1_CALIBRATION_20": "AUTHORIZED",
     "N2A_BENCHMARK_SYNTHETIC_ONLY": "AUTHORIZED",
     "N2B_MODEL_DOWNLOAD_AND_INFERENCE": "LOCKED",
-    "N2B0_MODEL_ARTIFACT_QUALIFICATION": "AUTHORIZED",
+    "N2B0_MODEL_ARTIFACT_QUALIFICATION": "APPROVED_COMPLETE",
+    "N2B0_5_ARTIFACT_RIGHTS_AND_PROVENANCE_CLOSURE": "AUTHORIZED",
     "N2B1_MODEL_DOWNLOAD": "LOCKED",
+    "N2B1_Q_QUARANTINE_DOWNLOAD": "LOCKED",
+    "N2B1_P_CACHE_PROMOTION": "LOCKED",
     "N2B2_REAL_BENCHMARK": "LOCKED",
     "G2_PILOT_100": "LOCKED",
     "G3_FULL_LIBRARY": "LOCKED"
@@ -76,9 +84,12 @@
     "G1": "APPROVED_COMPLETE",
     "N2": "LOCKED",
     "N2A": "APPROVED_COMPLETE",
-    "N2B0": "AUTHORIZED",
+    "N2B0": "APPROVED_COMPLETE",
+    "N2B0_5": "AUTHORIZED",
     "N2B": "LOCKED",
     "N2B1": "LOCKED",
+    "N2B1_Q": "LOCKED",
+    "N2B1_P": "LOCKED",
     "N2B2": "LOCKED",
     "N3": "LOCKED",
     "N4": "LOCKED",
@@ -88,7 +99,7 @@
     "N8": "LOCKED"
   },
   "required_stop_after": {
-    "condition": "N2B0_AWAITING_OWNER_APPROVAL",
+    "condition": "N2B0_5_AWAITING_OWNER_APPROVAL",
     "next_action": "WAIT_FOR_OWNER_APPROVAL"
   }
 }

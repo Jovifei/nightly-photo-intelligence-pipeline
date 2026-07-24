@@ -14,6 +14,7 @@ from jsonschema.validators import extend  # type: ignore[import-untyped]
 from .._paths import find_project_root
 from ..domain.errors import SchemaValidationFailedError
 from ..domain.numeric import reject_non_finite_numbers
+from ..json_strict import load_json_strict
 from ..segmentation.contracts import validate_normalized_bbox_mapping
 
 
@@ -36,7 +37,7 @@ StrictDraft202012Validator = extend(
 @lru_cache(maxsize=1)
 def _schema() -> dict[str, Any]:
     path = find_project_root() / "schemas" / "n2a_pose_segmentation.schema.json"
-    return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
+    return cast(dict[str, Any], load_json_strict(path))
 
 
 @cache

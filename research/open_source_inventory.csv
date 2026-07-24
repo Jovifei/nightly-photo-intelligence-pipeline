@@ -1,6 +1,6 @@
 project_id,official_source,accessed_utc,code_license,weights_license,exact_revision,status,download_authorized
-mmpose,https://github.com/open-mmlab/mmpose,2026-07-20,Apache-2.0,TBD_PER_ARTIFACT,TBD_PENDING_N2B_APPROVAL,RESEARCH_ONLY,false
+mmpose,https://github.com/open-mmlab/mmpose,2026-07-24,Apache-2.0,UNKNOWN,v1.3.0 model-index plus publisher filenames; no immutable checkpoint revision,RESEARCH_ONLY_N2B0_5,false
 rtmlib,https://github.com/Tau-J/rtmlib,2026-07-20,Apache-2.0,TBD_PER_ARTIFACT,TBD_PENDING_N2B_APPROVAL,RESEARCH_ONLY,false
-mediapipe-selfie-segmentation,https://github.com/google-ai-edge/mediapipe/blob/master/docs/solutions/selfie_segmentation.md,2026-07-20,Apache-2.0_PROJECT_MODEL_TERMS_REVIEW,TBD_PER_ARTIFACT,TBD_PENDING_N2B_APPROVAL,RESEARCH_ONLY,false
-paddleseg-pp-humanseg,https://github.com/PaddlePaddle/PaddleSeg,2026-07-20,Apache-2.0,TBD_PER_ARTIFACT,TBD_PENDING_N2B_APPROVAL,RESEARCH_ONLY,false
+mediapipe-selfie-segmentation,https://github.com/google-ai-edge/mediapipe/blob/master/docs/solutions/selfie_segmentation.md,2026-07-24,Apache-2.0,UNKNOWN,master legacy model index plus storage filenames; no immutable object revision,RESEARCH_ONLY_N2B0_5,false
+paddleseg-pp-humanseg,https://github.com/PaddlePaddle/PaddleSeg,2026-07-24,Apache-2.0,UNKNOWN,release/2.10 model page plus publisher filename; no immutable artifact revision,RESEARCH_ONLY_N2B0_5,false
 sam2,https://github.com/facebookresearch/sam2,2026-07-20,CODE_AND_CHECKPOINT_TERMS_REVIEW,TBD_PER_ARTIFACT,TBD_PENDING_N2B_APPROVAL,ESCALATION_ONLY,false

@@ -357,3 +357,202 @@ and local tag `n2a-approved-2026-07-22`. Only N2B0 qualification is authorized.
 - [x] Keep RTMW `INCONCLUSIVE` / `N2B0_ARTIFACT_QUALIFICATION_BLOCKED`; HTTP 200 does not authorize download, commercial use, or inference.
 - [x] Add fixture-only regression coverage for the corrected filename, URL, fail-closed status, and absence of the old typo.
 - [x] Amend the sole N2B0 commit after the full quality matrix and stop for external review.
+
+## N2B0.5 artifact rights and provenance closure - 2026-07-24
+
+### Plan
+
+- [x] Fix local-only `n2b0-approved-2026-07-24` at the Owner-approved N2B0 SHA
+  and create the N2B0 completion approval bound to N2A/N2B0/Reviewer/Owner.
+- [x] Dispatch bounded read-only Child-Claude research; retain three explicit
+  MMPose timeout diagnostics and use parent official-source fallback evidence.
+- [x] Verify exact Pose and Segmentation filenames, official URLs, code vs
+  weight rights, HEAD metadata, zero redirects, and draft domains without any
+  payload GET or model execution.
+- [x] Add fail-closed four-artifact rights matrix, upstream questions, draft
+  allowlist, quarantine/cache/rollback plans, and locked N2B1/N2B2 plans.
+- [x] Run the full quality matrix, create exactly one N2B0.5 commit, and stop
+  at Owner approval.
+
+### Review
+
+- Current disposition is `N2B0_5_RIGHTS_CLARIFICATION_BLOCKED`: all four exact
+  artifact identities, official URLs, HEAD sizes, and code licenses are
+  recorded, but weight/model licenses, commercial use, immutable revisions, and
+  official SHA-256 values remain UNKNOWN.
+- Model download bytes, model execution, and real-photo reads remain zero.
+
+## N2B0.5 governance remediation - 2026-07-26
+
+### Plan
+
+- [x] Preserve the rejected sole N2B0.5 commit with local-only recovery ref
+  `backup/n2b0-5-before-state-negative-tests-ec13450`; retain a six-commit,
+  no-merge topology and amend only this N2B0.5 successor.
+- [x] Remove the duplicate `data_scope.N2B0_MODEL_ARTIFACT_QUALIFICATION`
+  member so the sole value is `APPROVED_COMPLETE`; explicitly retain N2B1-Q,
+  N2B1-P, N2B2, G2, and G3 locks.
+- [x] Add one strict JSON raw-byte parser before Schema and semantic checks;
+  it returns `NPI_DUPLICATE_JSON_MEMBER` without leaking a source path or
+  payload, while YAML remains at its existing parser boundary.
+- [x] Add zero-I/O future-artifact policy tests for rights, HTTPS redirect and
+  exact length metadata, quarantine/cache approvals, execution isolation, and
+  ZIP/PTH metadata safety; do not download or run a model.
+- [x] Run all required quality commands, strict tracked-JSON scan, exact Git
+  topology checks, then amend the one N2B0.5 commit and stop for review.
+
+### Review
+
+- In progress. The previous Child-Claude A package had three watchdog timeouts;
+  this closely coupled governance remediation was completed directly in the
+  parent. No timeout is treated as review evidence or PASS.
+- The four artifact verdicts remain fail-closed: `weights_license=UNKNOWN`,
+  immutable revision/official SHA-256 unknown, commercial evidence unknown
+  with disposition `REQUIRES_OWNER_DECISION`, and all four `READY=FAIL`.
+- Clean-candidate evidence before the final task-record amend: 286 pytest
+  passed; Ruff, formatting, mypy, quality 7/7, sensitive scan, preflight
+  15/15, diff check, and strict JSON scan all exited 0. The scan reported
+  49 tracked JSON files, 2 explicit invalid duplicate fixtures, and 0
+  production duplicate or malformed JSON files.
+
+## N2B0.5 transport gate remediation - 2026-07-26
+
+### Plan
+
+- [x] Preserve the reviewer-targeted sole N2B0.5 candidate using the local-only
+  recovery ref `backup/n2b0-5-before-transport-gate-fix-5052463`.
+- [x] Bind final-response URL basenames exactly to the approved artifact
+  filename, including query/fragment isolation, one-time percent decoding,
+  Unicode normalization, case-sensitive comparison, and escape rejection.
+- [x] Add explicit Owner byte-ceiling validation to the typed transport
+  contract; reject missing, invalid, expected-over-cap, and final-response
+  over-cap values before any future quarantine action.
+- [x] Define a future-only N2B1-Q approval schema whose required fields bind
+  the artifact, filename, request URL, final domains, exact size, Owner cap,
+  redirect budget, quarantine fingerprint, expiry, and Owner decision.
+- [x] Add focused negative tests and redacted report/Owner-packet evidence;
+  retain the draft as `DRAFT_NOT_AUTHORIZED` with no executable Owner cap.
+- [x] Run focused and full quality gates, record actual exit codes, amend only
+  the sole N2B0.5 commit, and stop for external review.
+
+### Review
+
+- In progress. Child A and Child B were not dispatched: the bounded policy,
+  tests, schema, and reports are tightly coupled, while the prior comparable
+  Child-Claude package reached three watchdog timeouts. This is recorded as
+  `NOT_DISPATCHED_PARENT_DIRECT`, not PASS.
+- No model-download bytes, model execution, real-photo reads, payload
+  deserialization, ZIP extraction, push, merge, or release occurred.
+- Clean-commit evidence: focused 75 passed; full pytest 316 passed; Ruff,
+  formatting, mypy, unified quality 7/7, sensitive scan, preflight 15/15,
+  strict JSON scan, and diff check all exited 0. The strict scan found 50
+  tracked JSON files, 2 expected invalid duplicate fixtures, 0 production
+  duplicates, and 0 malformed files.
+
+## N2B0.5 composed quarantine-gate remediation - 2026-07-26
+
+### Plan
+
+- [x] Preserve `582797e` with local-only recovery ref
+  `backup/n2b0-5-before-composed-quarantine-gate-582797e`.
+- [x] Replace production split approval/transport validation with one strict
+  composed no-I/O entry and non-authorizing immutable result values.
+- [x] Bind approval-derived request/final domains, redirect chain, final
+  filename, expected size, Owner cap, fingerprint, rights snapshot,
+  project-state digest, N2B0.5 baseline, owner decision, and expiry.
+- [x] Add fail-closed Schema/semantic/domain/time/rights/state/direct-API
+  negative tests using explicit future synthetic state only.
+- [x] Record final quality evidence, amend the sole N2B0.5 commit, and stop
+  for external review without opening N2B1-Q/P, N2B2, or G2.
+
+### Review
+
+- Child A composition audit reached three 90-second timeouts with
+  `Success=false`, `TimedOut=true`, and no partial result. Child B is
+  `NOT_DISPATCHED_PARENT_FALLBACK_AFTER_CHILD_A_TIMEOUTS`; neither is PASS.
+- Current production N2B1-Q/P, N2B2, and G2 remain locked. Model downloads,
+  model execution, real-photo reads, payload deserialization, ZIP extraction,
+  push, merge, and release remain 0 or not performed.
+- Final local evidence: composed file 52 focused tests (48 negative test
+  entries and two additional denial branches); combined focused suite 81
+  passed; full pytest 322 passed; Ruff, formatting, mypy, quality 7/7,
+  sensitive scan, preflight 15/15, strict JSON scan, and diff check all exit 0.
+
+## N2B0.5 schema/trust-boundary remediation - 2026-07-26
+
+Owner accepted Reviewer conclusion `CHANGES_REQUIRED` for the sole N2B0.5
+commit `c6be529e0de7ae6d06c416b6022fa1134e0d3b56`. This bounded remediation may
+amend only that commit. N2B1-Q/P, N2B2, G2/G3, model payloads/dependencies,
+model execution, real-photo reads, cache/quarantine writes, push, merge, and
+release remain prohibited.
+
+### Plan
+
+- [x] Verify the exact six-commit, no-merge topology; preserve the reviewed
+  candidate in local-only `backup/n2b0-5-before-schema-trust-boundary-fix-c6be529`.
+- [x] Audit the Reviewer findings: `_VALIDATION_TOKEN` is importable and the
+  composed gate lacks formal qualification-snapshot and project-state Schema
+  validation.
+- [x] Remove token/factory authority: a frozen result DTO is output only and
+  no public future gate accepts it as a credential.
+- [x] Add a fixed, closed qualification-snapshot Schema and catalog entry; use
+  the fixed current project-state Schema rather than a caller-supplied path.
+- [x] Make the one public no-I/O gate accept raw document bytes and validate in
+  deterministic duplicate -> parse -> Schema -> digest/semantic -> transport order.
+- [x] Add direct-forgery, malformed/duplicate/schema/order/no-transport tests;
+  update reports, plans, and lessons without overstating independent review.
+- [x] Amend only the existing N2B0.5 commit; run all required quality commands,
+  topology checks, and stop for external review.
+
+### Review
+
+- Child A/B are `NOT_DISPATCHED_PARENT_DIRECT`: comparable
+  read-only Child-Claude packages already exhausted the three-attempt timeout
+  policy, and no timeout may be described as PASS.
+- Focused N2B0.5 governance, transport, Schema, order, and forgery suite:
+  103 passed, exit 0. It includes direct DTO, `object.__new__`,
+  `object.__setattr__`, and `isinstance` non-authorization checks.
+- Final clean-commit suite: 344 passed, exit 0. Ruff check, Ruff format check,
+  strict mypy, unified quality (7 PASS, 0 FAIL, 0 NOT_AVAILABLE, 0 SKIPPED),
+  sensitive scan, current-stage preflight (15 PASS), strict JSON scan, and
+  `git diff --check` all exited 0.
+- Strict JSON scan covered 52 tracked JSON documents, two isolated expected
+  duplicate-member fixtures, zero production duplicates, and zero malformed
+  production documents. Model-download bytes, model execution, real-photo
+  reads, cache/quarantine writes, archive extraction, and deserialization are 0.
+
+## N2B0.5 revision/hash/time contract remediation - 2026-07-26
+
+Owner accepted the external Reviewer conclusion `CHANGES_REQUIRED` for the
+sole N2B0.5 candidate `5c9f4ef11a6d911478c0ce71daf8670e4b160abe`. This repair
+may amend only that candidate. N2B1-Q/P, N2B2, G2/G3, all model downloads and
+execution, real-photo access, cache/quarantine writes, archive extraction,
+push, merge, and release remain prohibited.
+
+### Plan
+
+- [x] Record the correction lesson and retain the local-only pre-remediation
+  recovery ref.
+- [x] Require closed, non-floating immutable revision evidence and an
+  official lower-case SHA-256 in the qualification snapshot when status is
+  `PASS`.
+- [x] Require an exactly matching revision and expected SHA-256 in the future
+  N2B1-Q approval, and require a timezone-aware `not_before` time window.
+- [x] Add deterministic schema, digest, semantic, ordering, and no-I/O tests
+  using only future synthetic artifact evidence.
+- [x] Update redacted plans, decision packet, and test evidence; run all
+  required checks; amend only the sole N2B0.5 commit; stop for external review.
+
+### Review
+
+- Complete. Child A/B are `NOT_DISPATCHED_PARENT_DIRECT`: three comparable
+  Child-Claude attempts already reached their watchdog timeout cap, so direct
+  parent implementation and review is required. This is not a PASS result.
+- Closed revision/hash evidence, exact snapshot/approval equality, canonical
+  digest binding, and required RFC-3339 `not_before` time-window validation
+  are implemented with future synthetic no-I/O tests only.
+- Final clean-worktree evidence: focused N2B0.5 suite 147 passed; full pytest
+  384 passed; Ruff, format, strict mypy, quality 7/7, sensitive scan,
+  preflight 15/15, strict JSON scan, and `git diff --check` exited 0. No
+  download, model execution, photo read, cache/quarantine write, push, merge,
+  or release was performed.

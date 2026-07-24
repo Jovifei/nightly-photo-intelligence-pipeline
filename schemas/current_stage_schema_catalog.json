@@ -1,5 +1,5 @@
 {
-  "schema_set": "npi-current-stage-v1.3-n2b0",
+  "schema_set": "npi-current-stage-v1.6-n2b0_5-revision-hash-time-contract",
   "draft": "https://json-schema.org/draft/2020-12/schema",
   "schemas": [
     {"file": "task_contract_v1_1.schema.json", "purpose": "completed phase and authorized data-gate contracts"},
@@ -11,6 +11,11 @@
     {"file": "phase_completion_approval_g1_v1_0.schema.json", "purpose": "immutable Owner G1 completion approval"},
     {"file": "task_contract_n2a_v1_0.schema.json", "purpose": "authorized N2A model-free task contract"},
     {"file": "n2a_pose_segmentation.schema.json", "purpose": "model-free N2A typed contracts"},
-    {"file": "model_artifact_approval.schema.json", "purpose": "non-authorizing N2B0 artifact qualification draft"}
+    {"file": "model_artifact_approval.schema.json", "purpose": "non-authorizing N2B0/N2B0.5 artifact qualification draft"},
+    {"file": "phase_completion_approval_n2b0_v1_0.schema.json", "purpose": "immutable Owner N2B0 completion approval"},
+    {"file": "task_contract_n2b0_5_v1_0.schema.json", "purpose": "authorized N2B0.5 rights and provenance closure contract"},
+    {"file": "n2b1_quarantine_approval_v1_0.schema.json", "purpose": "future artifact-bound Owner approval; no active download authority"},
+    {"file": "model_artifact_qualification_snapshot_v1.schema.json", "purpose": "closed future artifact qualification snapshot for the composed no-I/O gate"},
+    {"file": "project_state_v1_3.schema.json", "purpose": "closed future N2B1 capability-gated state; current v1.2 remains accepted and locked"}
   ]
 }

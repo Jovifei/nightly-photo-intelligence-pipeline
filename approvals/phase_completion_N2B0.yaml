@@ -1,0 +1,29 @@
+schema_version: "1.0"
+approval_type: "PHASE_COMPLETION"
+status: "APPROVED"
+phase_id: "N2B0"
+owner_id: "Jovi"
+approved_at_utc: "2026-07-24"
+baseline:
+  n0_commit: "72a81f5984838b74304d23263ac450ea4b5a3a9a"
+  n1_commit: "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"
+  g1_commit: "4a807dbbcd147a106b02b7e3899aa701c2028d83"
+  n2a_commit: "f79d2df504622ff82aa5e53d1486310bbea9985a"
+  n2a_tag: "n2a-approved-2026-07-22"
+  n2b0_commit: "f331621c84905aef921c612908d01d3a8a2f577a"
+  n2b0_tag: "n2b0-approved-2026-07-24"
+  immutable: true
+n2a_completion_approval_sha256: "9f5a9a1eaa16428413aa83e455bf1a1a88f514130c110df3409868a926d8a165"
+independent_reviewer:
+  conclusion: "PASS_FOR_OWNER_REVIEW"
+  reviewed_commit: "f331621c84905aef921c612908d01d3a8a2f577a"
+  confirmed:
+    - "N0/N1/G1/N2A baselines and tags unchanged"
+    - "exactly one N2B0 commit beyond N2A; RTMW metadata correction retained"
+    - "official-source rights/provenance review is fail-closed and no model bytes were downloaded"
+    - "pytest 237 and all required quality gates passed"
+owner_decision: "N2B0_OWNER_APPROVED"
+owner_statement: >
+  N2B0 is an immutable approved baseline. N2B0.5 is authorized only to close
+  rights and provenance for the four named artifact candidates; N2B1 download,
+  N2B2 execution, real-photo access, and model payload access remain locked.

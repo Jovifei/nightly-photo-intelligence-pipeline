@@ -1,4 +1,4 @@
-"""N2B0 qualification remains descriptive and cannot authorize a download."""
+"""N2B0 approval and N2B0.5 rights closure remain fail-closed."""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ def test_n2b0_allowlist_is_a_non_authorizing_valid_draft(project_root: Path) -> 
     assert not list(Draft202012Validator(schema).iter_errors(draft))
     assert draft["status"] == "DRAFT_NOT_AUTHORIZED"
     assert all(item["post_download_hash_required"] for item in draft["artifacts"])
+    assert len(draft["artifacts"]) == 4
     assert all(item["qualification_status"] == "INCONCLUSIVE" for item in draft["artifacts"])
     assert all(item["weights_license"] == "UNKNOWN" for item in draft["artifacts"])
     pose = next(
@@ -34,6 +35,9 @@ def test_n2b0_allowlist_is_a_non_authorizing_valid_draft(project_root: Path) -> 
     assert "download.openmmlab.com" in pose["official_download_source"]
     assert segmentation["artifact_filename"].endswith(".zip")
     assert "paddleseg.bj.bcebos.com" in segmentation["official_download_source"]
+    media = next(item for item in draft["artifacts"] if item["project_id"] == "mediapipe")
+    assert media["artifact_filename"] == "selfie_segmentation.tflite"
+    assert media["official_download_source"].startswith("https://storage.googleapis.com/")
     summary = (project_root / "reports" / "N2B0_artifact_qualification_summary.md").read_text(
         "utf-8"
     )
@@ -46,11 +50,17 @@ def test_n2b0_state_authorizes_qualification_but_locks_download_and_execution(
     state = json.loads((project_root / "PROJECT_STATE.json").read_text("utf-8"))
     gates = state["authorization"]["capability_gates"]
     assert state["phase_status"]["N2A"] == "APPROVED_COMPLETE"
-    assert state["phase_status"]["N2B0"] == "AUTHORIZED"
+    assert state["phase_status"]["N2B0"] == "APPROVED_COMPLETE"
+    assert state["phase_status"]["N2B0_5"] == "AUTHORIZED"
     assert state["phase_status"]["N2B1"] == "LOCKED"
+    assert state["phase_status"]["N2B1_Q"] == "LOCKED"
+    assert state["phase_status"]["N2B1_P"] == "LOCKED"
     assert state["phase_status"]["N2B2"] == "LOCKED"
-    assert gates["N2B0_MODEL_ARTIFACT_QUALIFICATION"] == "AUTHORIZED"
+    assert gates["N2B0_MODEL_ARTIFACT_QUALIFICATION"] == "APPROVED_COMPLETE"
+    assert gates["N2B0_5_ARTIFACT_RIGHTS_AND_PROVENANCE_CLOSURE"] == "AUTHORIZED"
     assert gates["N2B1_MODEL_DOWNLOAD"] == "LOCKED"
+    assert gates["N2B1_Q_QUARANTINE_DOWNLOAD"] == "LOCKED"
+    assert gates["N2B1_P_CACHE_PROMOTION"] == "LOCKED"
     assert gates["N2B2_REAL_BENCHMARK"] == "LOCKED"
     assert state["authorization"]["large_model_downloads"] == "NOT_AUTHORIZED"
     assert state["authorization"]["real_model_execution"] == "NOT_AUTHORIZED"

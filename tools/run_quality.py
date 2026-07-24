@@ -10,7 +10,6 @@ Usage:
 
 from __future__ import annotations
 
-import json
 import subprocess
 import sys
 from pathlib import Path
@@ -18,6 +17,8 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+
+from nightly_photo_intelligence_pipeline.json_strict import load_json_strict  # noqa: E402
 
 PASS = "PASS"
 FAIL = "FAIL"
@@ -88,10 +89,10 @@ def check_schema_validation() -> tuple[str, str]:
         return NOT_AVAILABLE, "jsonschema/referencing not installed"
     schema_dir = ROOT / "schemas"
     item_schema_path = schema_dir / "photo_intelligence_item_v1.schema.json"
-    item_schema = json.loads(item_schema_path.read_text("utf-8"))
+    item_schema = load_json_strict(item_schema_path)
     registry: Any = Registry()
     for path in schema_dir.glob("*.json"):
-        schema = json.loads(path.read_text("utf-8"))
+        schema = load_json_strict(path)
         if "$schema" not in schema:
             continue
         resource = Resource.from_contents(schema)
@@ -99,7 +100,7 @@ def check_schema_validation() -> tuple[str, str]:
             registry = registry.with_resource(schema["$id"], resource)
         registry = registry.with_resource(path.resolve().as_uri(), resource)
     validator = Draft202012Validator(item_schema, registry=registry)
-    valid = json.loads((ROOT / "examples/valid/photo_intelligence_item_v1.json").read_text("utf-8"))
+    valid = load_json_strict(ROOT / "examples/valid/photo_intelligence_item_v1.json")
     valid_errors = sorted(validator.iter_errors(valid), key=lambda e: list(e.path))
     if valid_errors:
         return FAIL, f"valid item has {len(valid_errors)} schema errors: {valid_errors[0].message}"
@@ -116,7 +117,7 @@ def check_schema_validation() -> tuple[str, str]:
         path = ROOT / "examples/invalid" / name
         if not path.is_file():
             continue
-        item = json.loads(path.read_text("utf-8"))
+        item = load_json_strict(path)
         if list(validator.iter_errors(item)):
             rejected += 1
     if rejected != len(invalid_expected):

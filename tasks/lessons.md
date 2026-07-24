@@ -38,3 +38,61 @@
 - Benchmark plans are not a product harness. Require a CLI path that calls the
   real product runner, fake backend, per-case validator, aggregator, and report
   DTO before calling N2A complete.
+
+## 2026-07-24 N2B0.5 rights closure
+
+- Owner approval of an artifact-qualification commit is a new immutable
+  baseline; bind every later state transition to its exact commit and local
+  tag before editing.
+- HTTP HEAD status, Content-Length, ETag, and Last-Modified prove transport
+  metadata only. They never substitute for a weight license, commercial-use
+  grant, immutable revision, or SHA-256.
+- A child timeout is not evidence. After the bounded three-attempt watchdog,
+  record the structured timeout and let the parent perform official-source
+  research without changing the fail-closed rights verdict.
+
+## 2026-07-26 N2B0.5 governance remediation
+
+- A JSON Schema validates only the parser result; it cannot detect a duplicate
+  member that a permissive parser already overwrote. Parse raw security-critical
+  JSON with duplicate-member rejection before structural Schema and semantic
+  authorization validation.
+- Keep future artifact gates split: a quarantine transfer, cache promotion, and
+  real execution each require their own explicit authorization and cannot be
+  inferred from HTTP metadata, a code license, a local hash, or a prior stage.
+
+## 2026-07-26 N2B0.5 transport review correction
+
+- Transport provenance must bind to the final response, not the requested URL:
+  treat filename equality and the Owner's explicit byte ceiling as independent
+  fail-closed gates, and test redirects, encoded separators, and cap bypasses
+  directly before describing a future quarantine route as safe.
+
+## 2026-07-26 N2B0.5 composition review correction
+
+- Do not treat two independently passing authorization checks as a secure
+  authorization flow. Where an approval supplies transport expectations, expose
+  one composed entry that strict-loads the approval, derives every expectation,
+  binds current state and rights snapshots, and makes bypass-capable helpers
+  private/test-only.
+
+## 2026-07-26 N2B0.5 schema and trust-boundary review correction
+
+- A Python-private token or factory constructor is not a security boundary:
+  imports, `object.__new__`, and `object.__setattr__` can forge object shape.
+  Frozen DTOs may carry output data, but no later public gate may treat one as
+  a credential; revalidate raw documents at the action boundary.
+- Strict JSON duplicate rejection is necessary but insufficient. For every
+  independently supplied authorization document, perform duplicate rejection,
+  fixed-catalog Schema validation, and only then digest and semantic checks in
+  deterministic order. A caller must never select the Schema path or bytes.
+
+## 2026-07-26 N2B0.5 revision/hash/time review correction
+
+- Status labels are not artifact evidence. A `PASS` immutable-revision or
+  official-hash status must require a closed, non-floating revision object and
+  a canonical official SHA-256, with exact approval-to-snapshot binding.
+- A future approval window must require an explicit timezone-aware
+  `not_before`; optional or inferred timing weakens the authorization boundary.
+  Validate its schema before digest/state/transport and compare all instants in
+  UTC.

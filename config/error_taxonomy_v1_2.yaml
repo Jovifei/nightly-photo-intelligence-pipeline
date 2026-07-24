@@ -19,3 +19,19 @@ errors:
   NPI_SOURCE_RUNTIME_OVERLAP: {exit_code: 4, severity: "CRITICAL"}
   NPI_SOURCE_SYMLINK_ESCAPE: {exit_code: 4, severity: "CRITICAL"}
   NPI_SOURCE_CHANGED_DURING_READ: {exit_code: 4, severity: "CRITICAL"}
+  NPI_DUPLICATE_JSON_MEMBER: {exit_code: 5, severity: "ERROR"}
+  NPI_ARTIFACT_FILENAME_MISMATCH: {exit_code: 8, severity: "INFO"}
+  NPI_ARTIFACT_SIZE_LIMIT_EXCEEDED: {exit_code: 8, severity: "INFO"}
+  NPI_OWNER_SIZE_LIMIT_REQUIRED: {exit_code: 8, severity: "INFO"}
+  NPI_INVALID_OWNER_SIZE_LIMIT: {exit_code: 8, severity: "INFO"}
+  NPI_ARTIFACT_REVISION_MISMATCH: {exit_code: 8, severity: "INFO"}
+  NPI_OFFICIAL_ARTIFACT_HASH_MISMATCH: {exit_code: 8, severity: "INFO"}
+  NPI_QUARANTINE_APPROVAL_EXPIRED: {exit_code: 8, severity: "INFO"}
+  NPI_QUARANTINE_APPROVAL_NOT_YET_VALID: {exit_code: 8, severity: "INFO"}
+  NPI_QUARANTINE_APPROVAL_TIME_RANGE_INVALID: {exit_code: 8, severity: "INFO"}
+  NPI_QUARANTINE_APPROVAL_STATE_MISMATCH: {exit_code: 8, severity: "INFO"}
+  NPI_QUARANTINE_RIGHTS_NOT_QUALIFIED: {exit_code: 8, severity: "INFO"}
+  NPI_QUARANTINE_APPROVAL_SCHEMA_INVALID: {exit_code: 5, severity: "ERROR"}
+  NPI_QUALIFICATION_SNAPSHOT_SCHEMA_INVALID: {exit_code: 5, severity: "ERROR"}
+  NPI_PROJECT_STATE_SCHEMA_INVALID: {exit_code: 5, severity: "ERROR"}
+  NPI_UNSUPPORTED_DOCUMENT_SCHEMA_VERSION: {exit_code: 5, severity: "ERROR"}

@@ -8,12 +8,12 @@ manifest must be rejected by the gate (this is the "4th asset rejected" rule).
 from __future__ import annotations
 
 import hashlib
-import json
 from dataclasses import dataclass
 from pathlib import Path, PureWindowsPath
 from typing import Self
 
 from ..domain.errors import NPI_GATE_NOT_AUTHORIZED, GateNotAuthorizedError
+from ..json_strict import load_json_strict
 
 
 @dataclass(frozen=True)
@@ -41,7 +41,7 @@ class Manifest:
 
 def load_manifest(path: Path | str) -> Manifest:
     """Load a fixture/data-gate manifest from JSON."""
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    data = load_json_strict(path)
     files = tuple(
         ManifestEntry(name=f["name"], sha256=f["sha256"], size_bytes=f["size_bytes"])
         for f in data.get("files", [])
