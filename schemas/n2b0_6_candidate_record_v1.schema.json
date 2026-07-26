@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b0_6_candidate_record_v1.schema.json",
+  "title": "N2B0.6 metadata-only alternative candidate record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "phase_id", "candidates"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "phase_id": {"const": "N2B0_6"},
+    "candidates": {"type": "array", "maxItems": 4, "items": {"$ref": "#/$defs/candidate"}}
+  },
+  "$defs": {
+    "status": {"enum": ["PASS", "FAIL", "UNKNOWN", "NOT_APPLICABLE"]},
+    "candidate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_id", "category", "official_source_url", "official_domains", "artifact_files", "statuses"],
+      "properties": {
+        "artifact_id": {"type": "string", "minLength": 1},
+        "category": {"enum": ["pose", "segmentation"]},
+        "official_source_url": {"type": "string", "pattern": "^https://"},
+        "official_domains": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "artifact_files": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["filename", "size_bytes"], "properties": {"filename": {"type": "string", "minLength": 1}, "size_bytes": {"type": "integer", "minimum": 1}, "official_sha384": {"type": "string", "pattern": "^[0-9a-f]{96}$"}}}},
+        "artifact_revision": {"type": ["object", "null"]},
+        "official_artifact_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+        "official_hash_source_url": {"type": ["string", "null"], "pattern": "^https://"},
+        "statuses": {
+          "type": "object", "additionalProperties": false,
+          "required": ["CODE_LICENSE_CONFIRMED", "WEIGHTS_LICENSE_CONFIRMED", "COMMERCIAL_USE_CONFIRMED", "ARTIFACT_IDENTITY_CONFIRMED", "IMMUTABLE_REVISION_CONFIRMED", "OFFICIAL_SHA256_CONFIRMED", "OFFICIAL_SIZE_CONFIRMED", "REQUEST_DOMAIN_CONFIRMED", "FINAL_DOMAIN_CONFIRMED", "REDIRECT_CHAIN_CONFIRMED", "LOCAL_OFFLINE_PATH_CONFIRMED", "READY_FOR_OWNER_ARTIFACT_SELECTION"],
+          "properties": {
+            "CODE_LICENSE_CONFIRMED": {"$ref": "#/$defs/status"}, "WEIGHTS_LICENSE_CONFIRMED": {"$ref": "#/$defs/status"}, "COMMERCIAL_USE_CONFIRMED": {"$ref": "#/$defs/status"}, "ARTIFACT_IDENTITY_CONFIRMED": {"$ref": "#/$defs/status"}, "IMMUTABLE_REVISION_CONFIRMED": {"$ref": "#/$defs/status"}, "OFFICIAL_SHA256_CONFIRMED": {"$ref": "#/$defs/status"}, "OFFICIAL_SIZE_CONFIRMED": {"$ref": "#/$defs/status"}, "REQUEST_DOMAIN_CONFIRMED": {"$ref": "#/$defs/status"}, "FINAL_DOMAIN_CONFIRMED": {"$ref": "#/$defs/status"}, "REDIRECT_CHAIN_CONFIRMED": {"$ref": "#/$defs/status"}, "LOCAL_OFFLINE_PATH_CONFIRMED": {"$ref": "#/$defs/status"}, "READY_FOR_OWNER_ARTIFACT_SELECTION": {"$ref": "#/$defs/status"}
+          }
+        }
+      }
+    }
+  }
+}

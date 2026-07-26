@@ -1,17 +1,29 @@
 #!/usr/bin/env python3
-"""Offline, read-only verification for the agent handoff package."""
+"""Verify the current governed NPI handoff without performing any work.
+
+The repository began as an N0 archival package.  That historical package is
+not an executable authority after Owner-approved phase transitions.  This
+verifier binds the checked-in current-stage documents and every tracked file
+to ``MANIFEST.sha256``.  It never downloads, installs, opens source photos,
+or changes repository state.
+"""
+
 from __future__ import annotations
 
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+CURRENT_PHASE = "N2B0_6"
+CURRENT_TASK = "tasks/phase_n2b0_6_license_clear_alternative_candidate_research.yaml"
+CURRENT_CAPABILITY = "N2B0_6_LICENSE_CLEAR_ALTERNATIVE_CANDIDATE_RESEARCH"
+
 errors: list[str] = []
-warnings: list[str] = []
 passes: list[str] = []
 
 
@@ -23,19 +35,6 @@ def ok(message: str) -> None:
     passes.append(message)
 
 
-def warn(message: str) -> None:
-    warnings.append(message)
-
-
-def load_json(rel: str) -> Any:
-    path = ROOT / rel
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception as exc:
-        fail(f"{rel}: cannot parse JSON: {exc}")
-        return {}
-
-
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -44,361 +43,234 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _reject_duplicate_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON member: {key}")
+        value[key] = item
+    return value
+
+
+def load_json(rel: str) -> Any:
+    try:
+        return json.loads(
+            (ROOT / rel).read_text(encoding="utf-8"), object_pairs_hook=_reject_duplicate_pairs
+        )
+    except Exception as exc:  # noqa: BLE001 - report rather than crash
+        fail(f"{rel}: cannot strict-parse JSON: {type(exc).__name__}")
+        return {}
+
+
+def load_yaml(rel: str) -> Any:
+    try:
+        import yaml
+
+        return yaml.safe_load((ROOT / rel).read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001 - report rather than crash
+        fail(f"{rel}: cannot parse YAML: {type(exc).__name__}")
+        return {}
+
+
+def git(*args: str) -> tuple[int, str]:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(ROOT), *args],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return -1, type(exc).__name__
+    return result.returncode, result.stdout.strip()
+
+
 def check_required_files() -> None:
     required = [
-        "README_FIRST.md",
-        "HANDOFF_INDEX.md",
         "MASTER_EXECUTION_CONTRACT.md",
         "AGENTS.md",
-        "CLAUDE.md",
-        "OPENCLAW.md",
-        "PROJECT_CHARTER.md",
         "PROJECT_STATE.json",
-        "OWNER_INPUTS_REQUIRED.md",
-        "tasks/phase_n0_environment_scaffold.yaml",
-        "schemas/photo_intelligence_item_v1.schema.json",
-        "schemas/photo_intelligence_bundle_v1.schema.json",
-        "fixtures/fixture_manifest.json",
-        "tools/verify_handoff.py",
+        CURRENT_TASK,
+        "tasks/index.json",
         "MANIFEST.sha256",
+        "research/N2B0_6_candidate_records.json",
+        "tools/verify_handoff.py",
     ]
     missing = [rel for rel in required if not (ROOT / rel).is_file()]
     if missing:
-        fail("missing required files: " + ", ".join(missing))
+        fail("missing required current-stage files: " + ", ".join(missing))
     else:
-        ok("required files exist")
+        ok("required current-stage files exist")
 
 
-def check_authorization() -> None:
+def check_current_authorization() -> None:
     state = load_json("PROJECT_STATE.json")
-    try:
-        assert state["authorization"]["phase"] == {"id": "N0", "status": "AUTHORIZED"}
-        assert state["authorization"]["data_gate"] == {
-            "id": "G0_THREE_SYNTHETIC_FIXTURES",
-            "status": "AUTHORIZED",
-        }
-        assert state["authorization"]["real_photo_access"] == "NOT_AUTHORIZED"
-        assert state["authorization"]["large_model_downloads"] == "NOT_AUTHORIZED"
-        assert state["authorization"]["openclaw_activation"] == "NOT_AUTHORIZED"
-        assert state["locked"]["phases"] == [f"N{i}" for i in range(1, 9)]
-    except Exception:
-        fail("PROJECT_STATE authorization is not the expected N0/G0-only state")
+    task = load_yaml(CURRENT_TASK)
+    index = load_json("tasks/index.json")
+    if not isinstance(state, dict) or not isinstance(task, dict) or not isinstance(index, dict):
         return
-
-    task_index = load_json("tasks/index.json")
-    if len(task_index.get("authorized", [])) != 1:
-        fail("tasks/index.json must authorize exactly one phase")
-    elif task_index["authorized"][0].get("phase") != "N0":
-        fail("tasks/index.json authorized phase must be N0")
+    phase_status = state.get("phase_status", {})
+    auth = state.get("authorization", {})
+    gates = auth.get("capability_gates", {}) if isinstance(auth, dict) else {}
+    authorized = index.get("authorized", [])
+    current_index = next(
+        (
+            entry
+            for entry in authorized
+            if isinstance(entry, dict) and entry.get("phase") == CURRENT_PHASE
+        ),
+        None,
+    )
+    locked = ("N2B", "N2B1", "N2B1_Q", "N2B1_P", "N2B2", "N3", "N4", "N5", "N6", "N7", "N8")
+    valid = all(
+        (
+            state.get("schema_version") == "1.4",
+            auth.get("phase") == {"id": "N1", "status": "APPROVED_COMPLETE"},
+            auth.get("data_gate") == {"id": "G1_CALIBRATION_20", "status": "AUTHORIZED"},
+            phase_status.get(CURRENT_PHASE) == "AUTHORIZED",
+            task.get("phase", {}).get("id") == CURRENT_PHASE,
+            task.get("phase", {}).get("status") == "AUTHORIZED",
+            task.get("capability") == CURRENT_CAPABILITY,
+            task.get("mandatory_stop", {}).get("value") is True,
+            task.get("data_gate", {}).get("allowed_assets")
+            == "official source metadata only; no real photo reads",
+            gates.get(CURRENT_CAPABILITY) == "AUTHORIZED",
+            auth.get("large_model_downloads") == "NOT_AUTHORIZED",
+            auth.get("real_model_execution") == "NOT_AUTHORIZED",
+            all(phase_status.get(phase) == "LOCKED" for phase in locked),
+            isinstance(current_index, dict),
+            current_index.get("file") == Path(CURRENT_TASK).name,
+            current_index.get("capability") == CURRENT_CAPABILITY,
+            not (ROOT / "approvals" / "phase_completion_N2B0_6.yaml").exists(),
+        )
+    )
+    if not valid:
+        fail("current N2B0.6 authorization boundary is inconsistent or broadened")
     else:
-        ok("only N0/G0 is authorized")
-
-    n0 = (ROOT / "tasks/phase_n0_environment_scaffold.yaml").read_text(encoding="utf-8")
-    if 'status: "AUTHORIZED"' not in n0 or "G0_THREE_SYNTHETIC_FIXTURES" not in n0:
-        fail("N0 task does not contain expected authorization")
-    for path in sorted((ROOT / "tasks").glob("phase_n[1-8]_*.yaml")):
-        text = path.read_text(encoding="utf-8")
-        if 'status: "LOCKED"' not in text:
-            fail(f"{path.relative_to(ROOT)} is not locked")
-    if not any("locked" in p.lower() for p in passes):
-        ok("N1-N8 task files are locked")
+        ok("N2B0.6 metadata-only authorization is coherent; model/photo stages remain locked")
 
 
-def check_approval_templates() -> None:
-    for path in sorted((ROOT / "approvals").glob("*.yaml")):
-        text = path.read_text(encoding="utf-8")
-        if 'status: "APPROVED"' in text:
-            fail(f"approval template is accidentally approved: {path.relative_to(ROOT)}")
-    ok("approval templates are not approvals")
-
-
-def check_fixtures() -> None:
-    manifest = load_json("fixtures/fixture_manifest.json")
-    files = manifest.get("files", [])
-    if len(files) != 3:
-        fail(f"fixture manifest must contain exactly 3 files, got {len(files)}")
-        return
-    group: list[str] = []
-    for entry in files:
-        path = ROOT / "fixtures/three_image_smoke_set" / entry["name"]
-        if not path.is_file():
-            fail(f"missing fixture {entry['name']}")
-            continue
-        actual = sha256(path)
-        if actual != entry["sha256"]:
-            fail(f"fixture hash mismatch: {entry['name']}")
-        if path.stat().st_size != entry["size_bytes"]:
-            fail(f"fixture size mismatch: {entry['name']}")
-        if entry.get("expected_exact_duplicate_group") == "dup-a":
-            group.append(actual)
-    if len(group) != 2 or len(set(group)) != 1:
-        fail("expected exact duplicate fixture pair is not byte-identical")
-    else:
-        ok("three synthetic fixtures and duplicate relation verified")
-
-
-def core_item_errors(item: dict[str, Any]) -> list[str]:
-    out: list[str] = []
-    required = {
-        "schema_version",
-        "asset_id",
-        "source_reference",
-        "observed_facts",
-        "photographic_interpretation",
-        "story_candidates",
-        "pose_template",
-        "director_prompts",
-        "uncertainties",
-        "review",
-        "provenance",
-        "output_hashes",
+def check_baselines() -> None:
+    expected = {
+        "n0-approved-2026-07-14": "72a81f5984838b74304d23263ac450ea4b5a3a9a",
+        "n1-approved-2026-07-14": "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc",
+        "g1-approved-2026-07-19": "4a807dbbcd147a106b02b7e3899aa701c2028d83",
+        "n2a-approved-2026-07-22": "f79d2df504622ff82aa5e53d1486310bbea9985a",
+        "n2b0-approved-2026-07-24": "f331621c84905aef921c612908d01d3a8a2f577a",
+        "n2b0-5-approved-2026-07-26": "5ad9f8d7d0d6fa267df02d90ef25957bc679e232",
     }
-    missing = required - set(item)
-    if missing:
-        out.append("missing:" + ",".join(sorted(missing)))
-    source = item.get("source_reference", {})
-    name = source.get("sanitized_name", "")
-    if not isinstance(name, str) or "/" in name or "\\" in name or re.match(r"^[A-Za-z]:", name):
-        out.append("absolute-or-unsanitized-source-name")
-    review = item.get("review", {})
-    if review.get("status") == "APPROVED" and review.get("approved_by_human") is not True:
-        out.append("approved-without-human")
-    producer = item.get("pose_template", {}).get("producer", {}).get("producer_type")
-    if producer not in {"PROFESSIONAL_POSE_MODEL", "DETERMINISTIC_GEOMETRY"}:
-        out.append("invalid-pose-producer")
-    stories = item.get("story_candidates", {})
-    if set(stories) != {"safe", "narrative", "dynamic"}:
-        out.append("story-triplet-invalid")
-    return out
-
-
-def check_examples() -> None:
-    valid = load_json("examples/valid/photo_intelligence_item_v1.json")
-    if core_item_errors(valid):
-        fail("valid item fails core rules: " + ", ".join(core_item_errors(valid)))
-    else:
-        ok("valid item passes core rules")
-
-    expectations = {
-        "item_absolute_path.json": "absolute-or-unsanitized-source-name",
-        "item_auto_approved.json": "approved-without-human",
-        "item_pose_from_vlm.json": "invalid-pose-producer",
-    }
-    for name, expected in expectations.items():
-        item = load_json(f"examples/invalid/{name}")
-        found = core_item_errors(item)
-        if expected not in found:
-            fail(f"{name} did not fail expected core rule {expected}; found {found}")
-    ok("invalid examples fail expected core rules")
-
-    # Optional full Draft 2020-12 validation.
-    try:
-        from jsonschema import Draft202012Validator  # type: ignore
-        from referencing import Registry, Resource  # type: ignore
-
-        schema_dir = ROOT / "schemas"
-        item_schema = load_json("schemas/photo_intelligence_item_v1.schema.json")
-        registry = Registry()
-        for path in schema_dir.glob("*.json"):
-            schema = json.loads(path.read_text(encoding="utf-8"))
-            if "$schema" not in schema:
-                continue
-            resource = Resource.from_contents(schema)
-            if "$id" in schema:
-                registry = registry.with_resource(schema["$id"], resource)
-            registry = registry.with_resource(path.resolve().as_uri(), resource)
-        validator = Draft202012Validator(item_schema, registry=registry)
-        full_errors = sorted(validator.iter_errors(valid), key=lambda e: list(e.path))
-        if full_errors:
-            fail("full JSON Schema validation failed for valid item: " + "; ".join(e.message for e in full_errors[:5]))
-        else:
-            ok("valid item passes Draft 2020-12 validation")
-        for name in expectations:
-            invalid = load_json(f"examples/invalid/{name}")
-            if not list(validator.iter_errors(invalid)):
-                fail(f"{name} unexpectedly passes full JSON Schema")
-        ok("invalid items are rejected by Draft 2020-12 validation")
-    except ImportError:
-        warn("jsonschema/referencing package not installed; full optional schema validation skipped")
-    except Exception as exc:
-        warn(f"full optional JSON Schema validation could not run in this environment: {exc}")
-
-def check_bundle() -> None:
-    bundle_root = ROOT / "examples/app_fixture_bundle_v1"
-    bundle = load_json("examples/app_fixture_bundle_v1/bundle.json")
-    items = bundle.get("items", [])
-    if bundle.get("item_count") != len(items):
-        fail("fixture bundle item_count mismatch")
-    for item in items:
-        path = bundle_root / item["item_path"]
-        if not path.is_file() or sha256(path) != item["sha256"]:
-            fail(f"fixture bundle item checksum mismatch: {item.get('item_path')}")
-        if item.get("review_status") != "APPROVED":
-            fail("fixture bundle contains non-approved manifest item")
-
-    checksums_path = bundle_root / "CHECKSUMS.sha256"
-    if not checksums_path.is_file():
-        fail("fixture bundle missing CHECKSUMS.sha256")
-    else:
-        for line in checksums_path.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
-                continue
-            try:
-                expected, rel = line.split("  ", 1)
-            except ValueError:
-                fail(f"invalid checksum line: {line}")
-                continue
-            path = bundle_root / rel
-            if not path.is_file() or sha256(path) != expected:
-                fail(f"fixture bundle checksum mismatch: {rel}")
-    ok("App fixture bundle checksums verified")
-
-
-
-def check_yaml_files() -> None:
-    try:
-        import yaml  # type: ignore
-    except ImportError:
-        warn("PyYAML not installed; optional YAML syntax validation skipped")
+    mismatched = [tag for tag, commit in expected.items() if git("rev-parse", tag) != (0, commit)]
+    if mismatched:
+        fail("immutable baseline tag mismatch: " + ", ".join(mismatched))
         return
-    bad: list[str] = []
-    for path in ROOT.rglob("*.yaml"):
-        try:
-            yaml.safe_load(path.read_text(encoding="utf-8"))
-        except Exception as exc:
-            bad.append(f"{path.relative_to(ROOT)}: {exc}")
-    if bad:
-        fail("YAML parse failures: " + " | ".join(bad))
+    if git("merge-base", "--is-ancestor", expected["n2b0-5-approved-2026-07-26"], "HEAD")[0] != 0:
+        fail("N2B0.5 approved baseline is not an ancestor of HEAD")
+    elif git("rev-list", "--merges", "HEAD") != (0, ""):
+        fail("current candidate contains a merge commit")
     else:
-        ok("all YAML files parse")
-
-def check_json_files() -> None:
-    bad = []
-    for path in ROOT.rglob("*.json"):
-        try:
-            json.loads(path.read_text(encoding="utf-8"))
-        except Exception as exc:
-            bad.append(f"{path.relative_to(ROOT)}: {exc}")
-    if bad:
-        fail("JSON parse failures: " + " | ".join(bad))
-    else:
-        ok("all JSON files parse")
-
-
-def check_sensitive_and_large_files() -> None:
-    private_key_markers = ["-----BEGIN " + "PRIVATE KEY-----", "-----BEGIN " + "OPENSSH PRIVATE KEY-----"]
-    suspicious = []
-    large = []
-    for path in ROOT.rglob("*"):
-        if not path.is_file() or path.name == "MANIFEST.sha256":
-            continue
-        size = path.stat().st_size
-        if size > 5 * 1024 * 1024:
-            large.append(f"{path.relative_to(ROOT)} ({size})")
-        if path.suffix.lower() in {".png", ".zip"}:
-            continue
-        try:
-            text = path.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
-            continue
-        if any(marker in text for marker in private_key_markers):
-            suspicious.append(str(path.relative_to(ROOT)))
-        # Detect likely real home paths, but allow documented placeholders and the intentional invalid fixture.
-        if re.search(r"/home/(?!<)[A-Za-z0-9._-]+/", text):
-            suspicious.append(str(path.relative_to(ROOT)))
-        if re.search(r"C:\\\\Users\\\\(?!<|owner(?:\\\\|$))[A-Za-z0-9._-]+\\\\", text):
-            suspicious.append(str(path.relative_to(ROOT)))
-    if large:
-        fail("unexpected files larger than 5 MiB: " + ", ".join(large))
-    else:
-        ok("no unexpected large files")
-    if suspicious:
-        fail("possible secret or personal absolute path: " + ", ".join(sorted(set(suspicious))))
-    else:
-        ok("no private keys or likely personal home paths detected")
-
-
-def check_local_markdown_links() -> None:
-    missing: set[str] = set()
-    link_re = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
-    for path in ROOT.rglob("*.md"):
-        text = path.read_text(encoding="utf-8")
-        for target in link_re.findall(text):
-            target = target.split("#", 1)[0].strip()
-            if not target or target.startswith(("http://", "https://", "mailto:", "#")):
-                continue
-            candidate = (path.parent / target).resolve()
-            try:
-                candidate.relative_to(ROOT.resolve())
-            except ValueError:
-                missing.add(f"{path.relative_to(ROOT)} -> {target} (escape)")
-                continue
-            if not candidate.exists():
-                missing.add(f"{path.relative_to(ROOT)} -> {target}")
-    if missing:
-        fail("broken local markdown links: " + "; ".join(sorted(missing)))
-    else:
-        ok("local Markdown links resolve")
+        ok("N0/N1/G1/N2A/N2B0/N2B0.5 approved tags and ancestry are intact")
 
 
 def check_manifest() -> None:
     path = ROOT / "MANIFEST.sha256"
-    if not path.is_file():
-        fail("MANIFEST.sha256 missing")
-        return
     listed: dict[str, str] = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
-        try:
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
             digest, rel = line.split("  ", 1)
-        except ValueError:
-            fail(f"invalid manifest line: {line}")
-            continue
-        listed[rel] = digest
-    actual_files = {
-        p.relative_to(ROOT).as_posix()
-        for p in ROOT.rglob("*")
-        if p.is_file() and p.name != "MANIFEST.sha256"
-    }
-    if set(listed) != actual_files:
-        missing = sorted(actual_files - set(listed))
-        extra = sorted(set(listed) - actual_files)
-        fail(f"manifest file set mismatch; missing={missing}, extra={extra}")
+            if not re.fullmatch(r"[0-9a-f]{64}", digest) or rel in listed:
+                raise ValueError("invalid digest or duplicate path")
+            listed[rel] = digest
+    except (OSError, ValueError) as exc:
+        fail(f"MANIFEST.sha256 is invalid: {type(exc).__name__}")
+        return
+    rc, tracked_text = git("ls-files")
+    if rc != 0:
+        fail("cannot enumerate tracked files")
+        return
+    tracked = {rel for rel in tracked_text.splitlines() if rel and rel != "MANIFEST.sha256"}
+    if set(listed) != tracked:
+        fail("MANIFEST.sha256 does not bind exactly the tracked current-stage file set")
         return
     mismatches = [rel for rel, digest in listed.items() if sha256(ROOT / rel) != digest]
     if mismatches:
-        fail("manifest hash mismatch: " + ", ".join(mismatches))
+        fail("MANIFEST.sha256 hash mismatch: " + ", ".join(sorted(mismatches)))
+        return
+    if git("status", "--porcelain", "--untracked-files=all") != (0, ""):
+        fail("worktree is not clean")
+        return
+    ok("MANIFEST.sha256 binds every tracked current-stage file; worktree is clean")
+
+
+def check_sensitive_paths() -> None:
+    rc, tracked_text = git("ls-files")
+    if rc != 0:
+        fail("cannot inspect tracked paths for sensitive content")
+        return
+    forbidden_suffixes = (".db", ".sqlite", ".sqlite3", ".pth", ".pt", ".onnx", ".safetensors")
+    # These source files contain the detection expressions themselves, not
+    # user data.  They are still covered by the exact manifest and review.
+    pattern_source_files = {
+        "src/nightly_photo_intelligence_pipeline/redaction.py",
+        "tools/sensitive_file_scan.py",
+        "tools/verify_handoff.py",
+    }
+    violations: list[str] = []
+    for rel in (line for line in tracked_text.splitlines() if line):
+        lower = rel.casefold()
+        if lower.endswith(forbidden_suffixes):
+            violations.append(rel)
+            continue
+        if rel in pattern_source_files:
+            continue
+        try:
+            content = (ROOT / rel).read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        if re.search(r"(?i)(?:[a-z]:\\\\users\\\\(?!<|owner(?:\\\\|$))|/home/(?!<))", content):
+            violations.append(rel)
+    if violations:
+        fail("tracked sensitive path or model artifact: " + ", ".join(sorted(set(violations))))
     else:
-        ok("MANIFEST.sha256 verifies all package files")
+        ok("no tracked model artifacts or likely personal absolute paths")
+
+
+def archival_n0_notice() -> int:
+    print("N0_ARCHIVAL_SUPERSEDED")
+    print("The original N0-only verifier cannot validate a governed N2B0.6 tree.")
+    print("Use `python tools/verify_handoff.py` for the current N2B0.6 integrity gate.")
+    return 8
 
 
 def main() -> int:
-    check_required_files()
-    check_authorization()
-    check_approval_templates()
-    check_fixtures()
-    check_json_files()
-    check_yaml_files()
-    check_examples()
-    check_bundle()
-    check_sensitive_and_large_files()
-    check_local_markdown_links()
-    check_manifest()
+    if len(sys.argv) == 2 and sys.argv[1] in {"-h", "--help"}:
+        print("CURRENT_STAGE_HANDOFF_VERIFIER")
+        print("Verifies the governed N2B0.6 tracked-file, baseline, and authorization chain.")
+        return 0
+    if len(sys.argv) == 2 and sys.argv[1] == "--archival-n0":
+        return archival_n0_notice()
+    if len(sys.argv) != 1:
+        print("usage: verify_handoff.py [--archival-n0]", file=sys.stderr)
+        return 2
 
-    print("NPI handoff verification")
-    print("========================")
+    check_required_files()
+    check_current_authorization()
+    check_baselines()
+    check_manifest()
+    check_sensitive_paths()
+    print("NPI current-stage handoff verification")
+    print("======================================")
     for message in passes:
         print(f"PASS: {message}")
-    for message in warnings:
-        print(f"WARN: {message}")
     for message in errors:
         print(f"FAIL: {message}")
-    print(f"Summary: {len(passes)} pass, {len(warnings)} warn, {len(errors)} fail")
+    print(f"Summary: {len(passes)} pass, {len(errors)} fail")
     if errors:
-        print("HANDOFF_INVALID: do not execute N0")
+        print("HANDOFF_INVALID: current-stage work must not continue")
         return 1
-    print("HANDOFF_VALID: N0/G0 only; all later phases remain locked")
+    print("HANDOFF_VALID: N2B0.6 metadata-only research only; follow-on stages remain locked")
     return 0
 
 

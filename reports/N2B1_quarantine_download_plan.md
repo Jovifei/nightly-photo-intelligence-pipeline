@@ -3,6 +3,14 @@
 This is a future, non-executable plan. N2B1 is locked and no payload was
 downloaded in N2B0.5.
 
+N2B0.6 did not change this state: its bounded alternative-candidate research
+now has complete static bundle evidence for four records, but every required
+payload still lacks an official SHA-256. Therefore no N2B1-Q approval,
+snapshot, quarantine destination, cache entry, or transfer is available. Any
+future candidate must independently pass its own rights/revision/SHA-256
+review and receive a separate Owner approval before this plan can be
+considered. A SHA-384 value, ETag, or local computation is not a substitute.
+
 1. Require a separate Owner approval bound to one exact artifact record and a
    second approval for any cache promotion. A valid N2B1-Q approval must bind
    artifact ID, exact expected artifact filename, official HTTPS request URL,

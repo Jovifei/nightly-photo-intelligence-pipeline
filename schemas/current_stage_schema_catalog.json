@@ -1,5 +1,5 @@
 {
-  "schema_set": "npi-current-stage-v1.6-n2b0_5-revision-hash-time-contract",
+  "schema_set": "npi-current-stage-v1.8-n2b0_6-evidence-binding-remediation",
   "draft": "https://json-schema.org/draft/2020-12/schema",
   "schemas": [
     {"file": "task_contract_v1_1.schema.json", "purpose": "completed phase and authorized data-gate contracts"},
@@ -16,6 +16,10 @@
     {"file": "task_contract_n2b0_5_v1_0.schema.json", "purpose": "authorized N2B0.5 rights and provenance closure contract"},
     {"file": "n2b1_quarantine_approval_v1_0.schema.json", "purpose": "future artifact-bound Owner approval; no active download authority"},
     {"file": "model_artifact_qualification_snapshot_v1.schema.json", "purpose": "closed future artifact qualification snapshot for the composed no-I/O gate"},
-    {"file": "project_state_v1_3.schema.json", "purpose": "closed future N2B1 capability-gated state; current v1.2 remains accepted and locked"}
+    {"file": "project_state_v1_3.schema.json", "purpose": "closed future N2B1 capability-gated state"},
+    {"file": "phase_completion_approval_n2b0_5_v1_0.schema.json", "purpose": "immutable Owner N2B0.5 completion approval"},
+    {"file": "task_contract_n2b0_6_v1_0.schema.json", "purpose": "authorized metadata-only N2B0.6 research contract"},
+    {"file": "n2b0_6_candidate_record_v2.schema.json", "purpose": "closed metadata-only alternative candidate bundle evidence record"},
+    {"file": "project_state_v1_4.schema.json", "purpose": "current N2B0.6 state; N2B1/Q/P/N2B2 remain locked"}
   ]
 }

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/task_contract_n2b0_6_v1_0.schema.json",
+  "title": "NPI N2B0.6 license-clear alternative candidate research contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "phase", "capability", "data_gate", "approval", "candidate_limits", "allowed_network_evidence", "forbidden", "mandatory_stop"],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "phase": {"type": "object", "additionalProperties": false, "required": ["id", "title", "status"], "properties": {"id": {"const": "N2B0_6"}, "title": {"const": "License-Clear Alternative Candidate Research"}, "status": {"const": "AUTHORIZED"}}},
+    "capability": {"const": "N2B0_6_LICENSE_CLEAR_ALTERNATIVE_CANDIDATE_RESEARCH"},
+    "data_gate": {"type": "object", "additionalProperties": false, "required": ["id", "status", "allowed_assets"], "properties": {"id": {"const": "G1_CALIBRATION_20"}, "status": {"const": "AUTHORIZED"}, "allowed_assets": {"const": "official source metadata only; no real photo reads"}}},
+    "approval": {"type": "object", "additionalProperties": false, "required": ["n2b0_5_completion", "n2b0_5_commit", "n2b0_5_tag"], "properties": {"n2b0_5_completion": {"const": "approvals/phase_completion_N2B0_5.yaml"}, "n2b0_5_commit": {"const": "5ad9f8d7d0d6fa267df02d90ef25957bc679e232"}, "n2b0_5_tag": {"const": "n2b0-5-approved-2026-07-26"}}},
+    "candidate_limits": {"type": "object", "additionalProperties": false, "required": ["pose", "segmentation", "historical_candidates_excluded"], "properties": {"pose": {"const": 2}, "segmentation": {"const": 2}, "historical_candidates_excluded": {"const": true}}},
+    "allowed_network_evidence": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "forbidden": {"type": "array", "minItems": 12, "uniqueItems": true, "items": {"type": "string"}},
+    "mandatory_stop": {"type": "object", "additionalProperties": false, "required": ["value", "rule"], "properties": {"value": {"const": true}, "rule": {"const": "complete N2B0.6 evidence and wait for independent review; do not enter N2B1, N2B2, G2, or G3"}}}
+  }
+}

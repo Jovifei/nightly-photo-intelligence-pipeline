@@ -620,7 +620,10 @@ def test_error_taxonomy_exactly_matches_domain_error_codes(project_root: Path) -
     taxonomy_v12 = yaml.safe_load(
         (project_root / "config/error_taxonomy_v1_2.yaml").read_text(encoding="utf-8")
     )
-    configured = {**taxonomy_v11["errors"], **taxonomy_v12["errors"]}
+    taxonomy_v13 = yaml.safe_load(
+        (project_root / "config/error_taxonomy_v1_3.yaml").read_text(encoding="utf-8")
+    )
+    configured = {**taxonomy_v11["errors"], **taxonomy_v12["errors"], **taxonomy_v13["errors"]}
     assert set(configured) == set(ERROR_CODE_TO_EXIT)
     assert {code: int(spec["exit_code"]) for code, spec in configured.items()} == {
         code: int(exit_code) for code, exit_code in ERROR_CODE_TO_EXIT.items()

@@ -1,0 +1,1217 @@
+{
+  "schema_version": "2.0",
+  "phase_id": "N2B0_6",
+  "candidates": [
+    {
+      "candidate_id": "intel-human-pose-estimation-0001",
+      "category": "pose",
+      "model_id": "human-pose-estimation-0001",
+      "source_project": {
+        "project_id": "openvinotoolkit/open_model_zoo",
+        "name": "Intel Open Model Zoo",
+        "official_project_url": "https://github.com/openvinotoolkit/open_model_zoo",
+        "official_domains": [
+          "github.com",
+          "raw.githubusercontent.com",
+          "storage.openvinotoolkit.org"
+        ]
+      },
+      "source_revision": {
+        "kind": "GIT_COMMIT",
+        "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+        "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+      },
+      "bundle_type": "PRECONVERTED_RUNTIME",
+      "bundle_variant": {
+        "runtime_format": "OPENVINO_IR",
+        "precision": "FP32",
+        "input_shape": "1x3x256x456",
+        "target_runtime": "OPENVINO_RUNTIME"
+      },
+      "artifact_files": [
+        {
+          "file_id": "ir_xml",
+          "role": "MODEL_GRAPH",
+          "required": true,
+          "filename": "human-pose-estimation-0001.xml",
+          "size_bytes": 152120,
+          "direct_official_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/human-pose-estimation-0001/FP32/human-pose-estimation-0001.xml",
+          "request_domain": "storage.openvinotoolkit.org",
+          "expected_final_domain": "storage.openvinotoolkit.org",
+          "expected_redirect_count": 0,
+          "content_type": "application/xml",
+          "checksum_algorithm": "SHA384",
+          "official_checksum": "64e24ceca496aba4fb818edbea7c3a1405bc42c3166eac1b4be4f6cc89623c80cb9a1fd4c32d245d423653aa588e1a0b",
+          "local_bundle_relative_path": "n2b0_6/intel-human-pose-estimation-0001/FP32/human-pose-estimation-0001.xml",
+          "head_metadata": {
+            "status_code": 200,
+            "observed_final_domain": "storage.openvinotoolkit.org",
+            "redirect_count": 0,
+            "content_length": 152120,
+            "content_type": "application/xml",
+            "etag": "\"fcc771be2a687aaa732557f956799234\"",
+            "last_modified": "Tue, 17 Oct 2023 15:53:46 GMT",
+            "accept_ranges": "bytes",
+            "final_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/human-pose-estimation-0001/FP32/human-pose-estimation-0001.xml"
+          },
+          "precision": "FP32",
+          "format": "OPENVINO_IR",
+          "generated_or_downloaded": "DOWNLOAD_REQUIRED",
+          "conversion_dependency": false,
+          "source_evidence_ids": [
+            "model_configuration"
+          ],
+          "checksum_evidence_ids": [
+            "checksum_metadata"
+          ],
+          "license_evidence_ids": [
+            "model_license"
+          ]
+        },
+        {
+          "file_id": "ir_bin",
+          "role": "MODEL_WEIGHTS",
+          "required": true,
+          "filename": "human-pose-estimation-0001.bin",
+          "size_bytes": 16394708,
+          "direct_official_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/human-pose-estimation-0001/FP32/human-pose-estimation-0001.bin",
+          "request_domain": "storage.openvinotoolkit.org",
+          "expected_final_domain": "storage.openvinotoolkit.org",
+          "expected_redirect_count": 0,
+          "content_type": "application/octet-stream",
+          "checksum_algorithm": "SHA384",
+          "official_checksum": "64ef06d261ae522409172a396d927f7345525dbde011e3e2bff487f73e7b1d8cf622091feba9c23c7d4625c0aab0a3e5",
+          "local_bundle_relative_path": "n2b0_6/intel-human-pose-estimation-0001/FP32/human-pose-estimation-0001.bin",
+          "head_metadata": {
+            "status_code": 200,
+            "observed_final_domain": "storage.openvinotoolkit.org",
+            "redirect_count": 0,
+            "content_length": 16394708,
+            "content_type": "application/octet-stream",
+            "etag": "\"7289e88d146f10d02a1356f7a9004a62\"",
+            "last_modified": "Tue, 17 Oct 2023 15:53:46 GMT",
+            "accept_ranges": "bytes",
+            "final_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/human-pose-estimation-0001/FP32/human-pose-estimation-0001.bin"
+          },
+          "precision": "FP32",
+          "format": "OPENVINO_IR",
+          "generated_or_downloaded": "DOWNLOAD_REQUIRED",
+          "conversion_dependency": false,
+          "source_evidence_ids": [
+            "model_configuration"
+          ],
+          "checksum_evidence_ids": [
+            "checksum_metadata"
+          ],
+          "license_evidence_ids": [
+            "model_license"
+          ]
+        }
+      ],
+      "evidence_files": [
+        {
+          "evidence_id": "model_configuration",
+          "evidence_type": "MODEL_CONFIGURATION",
+          "applies_to": {
+            "candidate_id": "intel-human-pose-estimation-0001",
+            "bundle": true,
+            "artifact_file_ids": [
+              "ir_xml",
+              "ir_bin"
+            ]
+          },
+          "source_project": "openvinotoolkit/open_model_zoo",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+            "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+          },
+          "official_url": "https://github.com/openvinotoolkit/open_model_zoo/blob/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/models/intel/human-pose-estimation-0001/model.yml",
+          "document_role": "MODEL_YAML",
+          "required": true
+        },
+        {
+          "evidence_id": "checksum_metadata",
+          "evidence_type": "CHECKSUM_METADATA",
+          "applies_to": {
+            "candidate_id": "intel-human-pose-estimation-0001",
+            "bundle": true,
+            "artifact_file_ids": [
+              "ir_xml",
+              "ir_bin"
+            ]
+          },
+          "source_project": "openvinotoolkit/open_model_zoo",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+            "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+          },
+          "official_url": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/models/intel/human-pose-estimation-0001/model.yml",
+          "document_role": "MODEL_YAML_CHECKSUM_METADATA",
+          "required": true,
+          "artifact_assertions": [
+            {
+              "file_id": "ir_xml",
+              "filename": "human-pose-estimation-0001.xml",
+              "size_bytes": 152120,
+              "checksum_algorithm": "SHA384",
+              "official_checksum": "64e24ceca496aba4fb818edbea7c3a1405bc42c3166eac1b4be4f6cc89623c80cb9a1fd4c32d245d423653aa588e1a0b",
+              "direct_official_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/human-pose-estimation-0001/FP32/human-pose-estimation-0001.xml"
+            },
+            {
+              "file_id": "ir_bin",
+              "filename": "human-pose-estimation-0001.bin",
+              "size_bytes": 16394708,
+              "checksum_algorithm": "SHA384",
+              "official_checksum": "64ef06d261ae522409172a396d927f7345525dbde011e3e2bff487f73e7b1d8cf622091feba9c23c7d4625c0aab0a3e5",
+              "direct_official_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/human-pose-estimation-0001/FP32/human-pose-estimation-0001.bin"
+            }
+          ]
+        },
+        {
+          "evidence_id": "code_license_omz",
+          "evidence_type": "CODE_LICENSE",
+          "applies_to": {
+            "candidate_id": "intel-human-pose-estimation-0001",
+            "bundle": true,
+            "artifact_file_ids": [
+              "ir_xml",
+              "ir_bin"
+            ]
+          },
+          "source_project": "openvinotoolkit/open_model_zoo",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+            "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+          },
+          "official_url": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/LICENSE",
+          "document_role": "LICENSE_TEXT",
+          "required": true,
+          "license_terms": {
+            "license_identifier": "Apache-2.0",
+            "scope": "current candidate bundle and all declared payload files",
+            "commercial_use": "PERMITTED_WITH_NOTICE"
+          }
+        },
+        {
+          "evidence_id": "model_license",
+          "evidence_type": "MODEL_LICENSE",
+          "applies_to": {
+            "candidate_id": "intel-human-pose-estimation-0001",
+            "bundle": true,
+            "artifact_file_ids": [
+              "ir_xml",
+              "ir_bin"
+            ]
+          },
+          "source_project": "openvinotoolkit/open_model_zoo",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+            "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+          },
+          "official_url": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/LICENSE",
+          "document_role": "LICENSE_TEXT",
+          "required": true,
+          "license_terms": {
+            "license_identifier": "Apache-2.0",
+            "scope": "current candidate bundle and all declared payload files",
+            "commercial_use": "PERMITTED_WITH_NOTICE"
+          }
+        },
+        {
+          "evidence_id": "commercial_terms",
+          "evidence_type": "COMMERCIAL_USE_TERMS",
+          "applies_to": {
+            "candidate_id": "intel-human-pose-estimation-0001",
+            "bundle": true,
+            "artifact_file_ids": [
+              "ir_xml",
+              "ir_bin"
+            ]
+          },
+          "source_project": "openvinotoolkit/open_model_zoo",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+            "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+          },
+          "official_url": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/LICENSE",
+          "document_role": "LICENSE_TEXT",
+          "required": true,
+          "license_terms": {
+            "license_identifier": "Apache-2.0",
+            "scope": "current candidate bundle and all declared payload files",
+            "commercial_use": "PERMITTED_WITH_NOTICE"
+          }
+        }
+      ],
+      "qualification_matrix": {
+        "CODE_LICENSE_CONFIRMED": {
+          "status": "PASS",
+          "evidence_ids": [
+            "code_license_omz"
+          ],
+          "decision_reason": "immutable official code-license evidence applies to this candidate bundle"
+        },
+        "WEIGHTS_LICENSE_CONFIRMED": {
+          "status": "PASS",
+          "evidence_ids": [
+            "model_license"
+          ],
+          "decision_reason": "immutable official model-license evidence applies to every declared payload"
+        },
+        "COMMERCIAL_USE_CONFIRMED": {
+          "status": "PASS",
+          "evidence_ids": [
+            "model_license",
+            "commercial_terms"
+          ],
+          "decision_reason": "fixed commercial-use terms and model-license evidence cover this candidate bundle"
+        },
+        "ARTIFACT_IDENTITY_CONFIRMED": "PASS",
+        "BUNDLE_COMPLETENESS_CONFIRMED": "PASS",
+        "IMMUTABLE_REVISION_CONFIRMED": "PASS",
+        "OFFICIAL_SHA384_CONFIRMED": "PASS",
+        "OFFICIAL_SHA256_CONFIRMED": "FAIL",
+        "OFFICIAL_SIZE_CONFIRMED": "PASS",
+        "REQUEST_DOMAIN_CONFIRMED": "PASS",
+        "FINAL_DOMAIN_CONFIRMED": "PASS",
+        "REDIRECT_CHAIN_CONFIRMED": "PASS",
+        "LOCAL_OFFLINE_PATH_CONFIRMED": "PASS"
+      },
+      "ready_for_owner_artifact_selection": "FAIL"
+    },
+    {
+      "candidate_id": "intel-human-pose-estimation-0005",
+      "category": "pose",
+      "model_id": "human-pose-estimation-0005",
+      "source_project": {
+        "project_id": "openvinotoolkit/open_model_zoo",
+        "name": "Intel Open Model Zoo",
+        "official_project_url": "https://github.com/openvinotoolkit/open_model_zoo",
+        "official_domains": [
+          "github.com",
+          "raw.githubusercontent.com",
+          "storage.openvinotoolkit.org"
+        ]
+      },
+      "source_revision": {
+        "kind": "GIT_COMMIT",
+        "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+        "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+      },
+      "bundle_type": "PRECONVERTED_RUNTIME",
+      "bundle_variant": {
+        "runtime_format": "OPENVINO_IR",
+        "precision": "FP32",
+        "input_shape": "1x3x288x288",
+        "target_runtime": "OPENVINO_RUNTIME"
+      },
+      "artifact_files": [
+        {
+          "file_id": "ir_xml",
+          "role": "MODEL_GRAPH",
+          "required": true,
+          "filename": "human-pose-estimation-0005.xml",
+          "size_bytes": 849150,
+          "direct_official_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/human-pose-estimation-0005/FP32/human-pose-estimation-0005.xml",
+          "request_domain": "storage.openvinotoolkit.org",
+          "expected_final_domain": "storage.openvinotoolkit.org",
+          "expected_redirect_count": 0,
+          "content_type": "application/xml",
+          "checksum_algorithm": "SHA384",
+          "official_checksum": "b0735a220aff32a5c885b0b2e311b8dae21584edf06356246c7ad0634fb8b3a2ddf488097b5288252025dee487d029f0",
+          "local_bundle_relative_path": "n2b0_6/intel-human-pose-estimation-0005/FP32/human-pose-estimation-0005.xml",
+          "head_metadata": {
+            "status_code": 200,
+            "observed_final_domain": "storage.openvinotoolkit.org",
+            "redirect_count": 0,
+            "content_length": 849150,
+            "content_type": "application/xml",
+            "etag": "\"b8b31c55aa93869bfe6cd12426605658\"",
+            "last_modified": "Tue, 17 Oct 2023 15:53:46 GMT",
+            "accept_ranges": "bytes",
+            "final_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/human-pose-estimation-0005/FP32/human-pose-estimation-0005.xml"
+          },
+          "precision": "FP32",
+          "format": "OPENVINO_IR",
+          "generated_or_downloaded": "DOWNLOAD_REQUIRED",
+          "conversion_dependency": false,
+          "source_evidence_ids": [
+            "model_configuration"
+          ],
+          "checksum_evidence_ids": [
+            "checksum_metadata"
+          ],
+          "license_evidence_ids": [
+            "model_license"
+          ]
+        },
+        {
+          "file_id": "ir_bin",
+          "role": "MODEL_WEIGHTS",
+          "required": true,
+          "filename": "human-pose-estimation-0005.bin",
+          "size_bytes": 32601720,
+          "direct_official_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/human-pose-estimation-0005/FP32/human-pose-estimation-0005.bin",
+          "request_domain": "storage.openvinotoolkit.org",
+          "expected_final_domain": "storage.openvinotoolkit.org",
+          "expected_redirect_count": 0,
+          "content_type": "application/octet-stream",
+          "checksum_algorithm": "SHA384",
+          "official_checksum": "5711b763909990db35f20ce3dc82710001d030ea600ae81b8187d908d9f751ded6dd9bdbbdc2182225dc79cac92ffb1d",
+          "local_bundle_relative_path": "n2b0_6/intel-human-pose-estimation-0005/FP32/human-pose-estimation-0005.bin",
+          "head_metadata": {
+            "status_code": 200,
+            "observed_final_domain": "storage.openvinotoolkit.org",
+            "redirect_count": 0,
+            "content_length": 32601720,
+            "content_type": "application/octet-stream",
+            "etag": "\"7ca131515380f2afbf74b93472b3222b-7\"",
+            "last_modified": "Tue, 17 Oct 2023 15:53:46 GMT",
+            "accept_ranges": "bytes",
+            "final_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/human-pose-estimation-0005/FP32/human-pose-estimation-0005.bin"
+          },
+          "precision": "FP32",
+          "format": "OPENVINO_IR",
+          "generated_or_downloaded": "DOWNLOAD_REQUIRED",
+          "conversion_dependency": false,
+          "source_evidence_ids": [
+            "model_configuration"
+          ],
+          "checksum_evidence_ids": [
+            "checksum_metadata"
+          ],
+          "license_evidence_ids": [
+            "model_license"
+          ]
+        }
+      ],
+      "evidence_files": [
+        {
+          "evidence_id": "model_configuration",
+          "evidence_type": "MODEL_CONFIGURATION",
+          "applies_to": {
+            "candidate_id": "intel-human-pose-estimation-0005",
+            "bundle": true,
+            "artifact_file_ids": [
+              "ir_xml",
+              "ir_bin"
+            ]
+          },
+          "source_project": "openvinotoolkit/open_model_zoo",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+            "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+          },
+          "official_url": "https://github.com/openvinotoolkit/open_model_zoo/blob/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/models/intel/human-pose-estimation-0005/model.yml",
+          "document_role": "MODEL_YAML",
+          "required": true
+        },
+        {
+          "evidence_id": "checksum_metadata",
+          "evidence_type": "CHECKSUM_METADATA",
+          "applies_to": {
+            "candidate_id": "intel-human-pose-estimation-0005",
+            "bundle": true,
+            "artifact_file_ids": [
+              "ir_xml",
+              "ir_bin"
+            ]
+          },
+          "source_project": "openvinotoolkit/open_model_zoo",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+            "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+          },
+          "official_url": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/models/intel/human-pose-estimation-0005/model.yml",
+          "document_role": "MODEL_YAML_CHECKSUM_METADATA",
+          "required": true,
+          "artifact_assertions": [
+            {
+              "file_id": "ir_xml",
+              "filename": "human-pose-estimation-0005.xml",
+              "size_bytes": 849150,
+              "checksum_algorithm": "SHA384",
+              "official_checksum": "b0735a220aff32a5c885b0b2e311b8dae21584edf06356246c7ad0634fb8b3a2ddf488097b5288252025dee487d029f0",
+              "direct_official_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/human-pose-estimation-0005/FP32/human-pose-estimation-0005.xml"
+            },
+            {
+              "file_id": "ir_bin",
+              "filename": "human-pose-estimation-0005.bin",
+              "size_bytes": 32601720,
+              "checksum_algorithm": "SHA384",
+              "official_checksum": "5711b763909990db35f20ce3dc82710001d030ea600ae81b8187d908d9f751ded6dd9bdbbdc2182225dc79cac92ffb1d",
+              "direct_official_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/human-pose-estimation-0005/FP32/human-pose-estimation-0005.bin"
+            }
+          ]
+        },
+        {
+          "evidence_id": "code_license_omz",
+          "evidence_type": "CODE_LICENSE",
+          "applies_to": {
+            "candidate_id": "intel-human-pose-estimation-0005",
+            "bundle": true,
+            "artifact_file_ids": [
+              "ir_xml",
+              "ir_bin"
+            ]
+          },
+          "source_project": "openvinotoolkit/open_model_zoo",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+            "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+          },
+          "official_url": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/LICENSE",
+          "document_role": "LICENSE_TEXT",
+          "required": true,
+          "license_terms": {
+            "license_identifier": "Apache-2.0",
+            "scope": "current candidate bundle and all declared payload files",
+            "commercial_use": "PERMITTED_WITH_NOTICE"
+          }
+        },
+        {
+          "evidence_id": "model_license",
+          "evidence_type": "MODEL_LICENSE",
+          "applies_to": {
+            "candidate_id": "intel-human-pose-estimation-0005",
+            "bundle": true,
+            "artifact_file_ids": [
+              "ir_xml",
+              "ir_bin"
+            ]
+          },
+          "source_project": "openvinotoolkit/open_model_zoo",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+            "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+          },
+          "official_url": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/LICENSE",
+          "document_role": "LICENSE_TEXT",
+          "required": true,
+          "license_terms": {
+            "license_identifier": "Apache-2.0",
+            "scope": "current candidate bundle and all declared payload files",
+            "commercial_use": "PERMITTED_WITH_NOTICE"
+          }
+        },
+        {
+          "evidence_id": "commercial_terms",
+          "evidence_type": "COMMERCIAL_USE_TERMS",
+          "applies_to": {
+            "candidate_id": "intel-human-pose-estimation-0005",
+            "bundle": true,
+            "artifact_file_ids": [
+              "ir_xml",
+              "ir_bin"
+            ]
+          },
+          "source_project": "openvinotoolkit/open_model_zoo",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+            "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+          },
+          "official_url": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/LICENSE",
+          "document_role": "LICENSE_TEXT",
+          "required": true,
+          "license_terms": {
+            "license_identifier": "Apache-2.0",
+            "scope": "current candidate bundle and all declared payload files",
+            "commercial_use": "PERMITTED_WITH_NOTICE"
+          }
+        }
+      ],
+      "qualification_matrix": {
+        "CODE_LICENSE_CONFIRMED": {
+          "status": "PASS",
+          "evidence_ids": [
+            "code_license_omz"
+          ],
+          "decision_reason": "immutable official code-license evidence applies to this candidate bundle"
+        },
+        "WEIGHTS_LICENSE_CONFIRMED": {
+          "status": "PASS",
+          "evidence_ids": [
+            "model_license"
+          ],
+          "decision_reason": "immutable official model-license evidence applies to every declared payload"
+        },
+        "COMMERCIAL_USE_CONFIRMED": {
+          "status": "PASS",
+          "evidence_ids": [
+            "model_license",
+            "commercial_terms"
+          ],
+          "decision_reason": "fixed commercial-use terms and model-license evidence cover this candidate bundle"
+        },
+        "ARTIFACT_IDENTITY_CONFIRMED": "PASS",
+        "BUNDLE_COMPLETENESS_CONFIRMED": "PASS",
+        "IMMUTABLE_REVISION_CONFIRMED": "PASS",
+        "OFFICIAL_SHA384_CONFIRMED": "PASS",
+        "OFFICIAL_SHA256_CONFIRMED": "FAIL",
+        "OFFICIAL_SIZE_CONFIRMED": "PASS",
+        "REQUEST_DOMAIN_CONFIRMED": "PASS",
+        "FINAL_DOMAIN_CONFIRMED": "PASS",
+        "REDIRECT_CHAIN_CONFIRMED": "PASS",
+        "LOCAL_OFFLINE_PATH_CONFIRMED": "PASS"
+      },
+      "ready_for_owner_artifact_selection": "FAIL"
+    },
+    {
+      "candidate_id": "intel-instance-segmentation-person-0007",
+      "category": "segmentation",
+      "model_id": "instance-segmentation-person-0007",
+      "source_project": {
+        "project_id": "openvinotoolkit/open_model_zoo",
+        "name": "Intel Open Model Zoo",
+        "official_project_url": "https://github.com/openvinotoolkit/open_model_zoo",
+        "official_domains": [
+          "github.com",
+          "raw.githubusercontent.com",
+          "storage.openvinotoolkit.org"
+        ]
+      },
+      "source_revision": {
+        "kind": "GIT_COMMIT",
+        "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+        "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+      },
+      "bundle_type": "PRECONVERTED_RUNTIME",
+      "bundle_variant": {
+        "runtime_format": "OPENVINO_IR",
+        "precision": "FP16",
+        "input_shape": "1x3x320x544",
+        "target_runtime": "OPENVINO_RUNTIME"
+      },
+      "artifact_files": [
+        {
+          "file_id": "ir_xml",
+          "role": "MODEL_GRAPH",
+          "required": true,
+          "filename": "instance-segmentation-person-0007.xml",
+          "size_bytes": 3975487,
+          "direct_official_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/instance-segmentation-person-0007/FP16/instance-segmentation-person-0007.xml",
+          "request_domain": "storage.openvinotoolkit.org",
+          "expected_final_domain": "storage.openvinotoolkit.org",
+          "expected_redirect_count": 0,
+          "content_type": "application/xml",
+          "checksum_algorithm": "SHA384",
+          "official_checksum": "6e91ab4b808253a7a83fe9c94e4508743aabfeaa9bf850cf976d8c34ba0034dc78d81a4d7a475c53bc006fb90595d538",
+          "local_bundle_relative_path": "n2b0_6/intel-instance-segmentation-person-0007/FP16/instance-segmentation-person-0007.xml",
+          "head_metadata": {
+            "status_code": 200,
+            "observed_final_domain": "storage.openvinotoolkit.org",
+            "redirect_count": 0,
+            "content_length": 3975487,
+            "content_type": "application/xml",
+            "etag": "\"372650d2d6f1d43b4bf33de6c39dc06e\"",
+            "last_modified": "Tue, 17 Oct 2023 15:53:49 GMT",
+            "accept_ranges": "bytes",
+            "final_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/instance-segmentation-person-0007/FP16/instance-segmentation-person-0007.xml"
+          },
+          "precision": "FP16",
+          "format": "OPENVINO_IR",
+          "generated_or_downloaded": "DOWNLOAD_REQUIRED",
+          "conversion_dependency": false,
+          "source_evidence_ids": [
+            "model_configuration"
+          ],
+          "checksum_evidence_ids": [
+            "checksum_metadata"
+          ],
+          "license_evidence_ids": [
+            "model_license"
+          ]
+        },
+        {
+          "file_id": "ir_bin",
+          "role": "MODEL_WEIGHTS",
+          "required": true,
+          "filename": "instance-segmentation-person-0007.bin",
+          "size_bytes": 14121850,
+          "direct_official_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/instance-segmentation-person-0007/FP16/instance-segmentation-person-0007.bin",
+          "request_domain": "storage.openvinotoolkit.org",
+          "expected_final_domain": "storage.openvinotoolkit.org",
+          "expected_redirect_count": 0,
+          "content_type": "application/octet-stream",
+          "checksum_algorithm": "SHA384",
+          "official_checksum": "26039d9fe430569662a0ea6b0810c31aa7f268309657b98c45eff09632f4b952ec61d4c85f8b68f3dc30decfb46edc39",
+          "local_bundle_relative_path": "n2b0_6/intel-instance-segmentation-person-0007/FP16/instance-segmentation-person-0007.bin",
+          "head_metadata": {
+            "status_code": 200,
+            "observed_final_domain": "storage.openvinotoolkit.org",
+            "redirect_count": 0,
+            "content_length": 14121850,
+            "content_type": "application/octet-stream",
+            "etag": "\"f859043a0d01a2f7144f5f7ae6e8c261\"",
+            "last_modified": "Tue, 17 Oct 2023 15:53:49 GMT",
+            "accept_ranges": "bytes",
+            "final_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/instance-segmentation-person-0007/FP16/instance-segmentation-person-0007.bin"
+          },
+          "precision": "FP16",
+          "format": "OPENVINO_IR",
+          "generated_or_downloaded": "DOWNLOAD_REQUIRED",
+          "conversion_dependency": false,
+          "source_evidence_ids": [
+            "model_configuration"
+          ],
+          "checksum_evidence_ids": [
+            "checksum_metadata"
+          ],
+          "license_evidence_ids": [
+            "model_license"
+          ]
+        }
+      ],
+      "evidence_files": [
+        {
+          "evidence_id": "model_configuration",
+          "evidence_type": "MODEL_CONFIGURATION",
+          "applies_to": {
+            "candidate_id": "intel-instance-segmentation-person-0007",
+            "bundle": true,
+            "artifact_file_ids": [
+              "ir_xml",
+              "ir_bin"
+            ]
+          },
+          "source_project": "openvinotoolkit/open_model_zoo",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+            "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+          },
+          "official_url": "https://github.com/openvinotoolkit/open_model_zoo/blob/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/models/intel/instance-segmentation-person-0007/model.yml",
+          "document_role": "MODEL_YAML",
+          "required": true
+        },
+        {
+          "evidence_id": "checksum_metadata",
+          "evidence_type": "CHECKSUM_METADATA",
+          "applies_to": {
+            "candidate_id": "intel-instance-segmentation-person-0007",
+            "bundle": true,
+            "artifact_file_ids": [
+              "ir_xml",
+              "ir_bin"
+            ]
+          },
+          "source_project": "openvinotoolkit/open_model_zoo",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+            "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+          },
+          "official_url": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/models/intel/instance-segmentation-person-0007/model.yml",
+          "document_role": "MODEL_YAML_CHECKSUM_METADATA",
+          "required": true,
+          "artifact_assertions": [
+            {
+              "file_id": "ir_xml",
+              "filename": "instance-segmentation-person-0007.xml",
+              "size_bytes": 3975487,
+              "checksum_algorithm": "SHA384",
+              "official_checksum": "6e91ab4b808253a7a83fe9c94e4508743aabfeaa9bf850cf976d8c34ba0034dc78d81a4d7a475c53bc006fb90595d538",
+              "direct_official_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/instance-segmentation-person-0007/FP16/instance-segmentation-person-0007.xml"
+            },
+            {
+              "file_id": "ir_bin",
+              "filename": "instance-segmentation-person-0007.bin",
+              "size_bytes": 14121850,
+              "checksum_algorithm": "SHA384",
+              "official_checksum": "26039d9fe430569662a0ea6b0810c31aa7f268309657b98c45eff09632f4b952ec61d4c85f8b68f3dc30decfb46edc39",
+              "direct_official_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/instance-segmentation-person-0007/FP16/instance-segmentation-person-0007.bin"
+            }
+          ]
+        },
+        {
+          "evidence_id": "code_license_omz",
+          "evidence_type": "CODE_LICENSE",
+          "applies_to": {
+            "candidate_id": "intel-instance-segmentation-person-0007",
+            "bundle": true,
+            "artifact_file_ids": [
+              "ir_xml",
+              "ir_bin"
+            ]
+          },
+          "source_project": "openvinotoolkit/open_model_zoo",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+            "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+          },
+          "official_url": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/LICENSE",
+          "document_role": "LICENSE_TEXT",
+          "required": true,
+          "license_terms": {
+            "license_identifier": "Apache-2.0",
+            "scope": "current candidate bundle and all declared payload files",
+            "commercial_use": "PERMITTED_WITH_NOTICE"
+          }
+        },
+        {
+          "evidence_id": "model_license",
+          "evidence_type": "MODEL_LICENSE",
+          "applies_to": {
+            "candidate_id": "intel-instance-segmentation-person-0007",
+            "bundle": true,
+            "artifact_file_ids": [
+              "ir_xml",
+              "ir_bin"
+            ]
+          },
+          "source_project": "openvinotoolkit/open_model_zoo",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+            "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+          },
+          "official_url": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/LICENSE",
+          "document_role": "LICENSE_TEXT",
+          "required": true,
+          "license_terms": {
+            "license_identifier": "Apache-2.0",
+            "scope": "current candidate bundle and all declared payload files",
+            "commercial_use": "PERMITTED_WITH_NOTICE"
+          }
+        },
+        {
+          "evidence_id": "commercial_terms",
+          "evidence_type": "COMMERCIAL_USE_TERMS",
+          "applies_to": {
+            "candidate_id": "intel-instance-segmentation-person-0007",
+            "bundle": true,
+            "artifact_file_ids": [
+              "ir_xml",
+              "ir_bin"
+            ]
+          },
+          "source_project": "openvinotoolkit/open_model_zoo",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+            "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+          },
+          "official_url": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/LICENSE",
+          "document_role": "LICENSE_TEXT",
+          "required": true,
+          "license_terms": {
+            "license_identifier": "Apache-2.0",
+            "scope": "current candidate bundle and all declared payload files",
+            "commercial_use": "PERMITTED_WITH_NOTICE"
+          }
+        }
+      ],
+      "qualification_matrix": {
+        "CODE_LICENSE_CONFIRMED": {
+          "status": "PASS",
+          "evidence_ids": [
+            "code_license_omz"
+          ],
+          "decision_reason": "immutable official code-license evidence applies to this candidate bundle"
+        },
+        "WEIGHTS_LICENSE_CONFIRMED": {
+          "status": "PASS",
+          "evidence_ids": [
+            "model_license"
+          ],
+          "decision_reason": "immutable official model-license evidence applies to every declared payload"
+        },
+        "COMMERCIAL_USE_CONFIRMED": {
+          "status": "PASS",
+          "evidence_ids": [
+            "model_license",
+            "commercial_terms"
+          ],
+          "decision_reason": "fixed commercial-use terms and model-license evidence cover this candidate bundle"
+        },
+        "ARTIFACT_IDENTITY_CONFIRMED": "PASS",
+        "BUNDLE_COMPLETENESS_CONFIRMED": "PASS",
+        "IMMUTABLE_REVISION_CONFIRMED": "PASS",
+        "OFFICIAL_SHA384_CONFIRMED": "PASS",
+        "OFFICIAL_SHA256_CONFIRMED": "FAIL",
+        "OFFICIAL_SIZE_CONFIRMED": "PASS",
+        "REQUEST_DOMAIN_CONFIRMED": "PASS",
+        "FINAL_DOMAIN_CONFIRMED": "PASS",
+        "REDIRECT_CHAIN_CONFIRMED": "PASS",
+        "LOCAL_OFFLINE_PATH_CONFIRMED": "PASS"
+      },
+      "ready_for_owner_artifact_selection": "FAIL"
+    },
+    {
+      "candidate_id": "intel-modnet-webcam-portrait-matting",
+      "category": "segmentation",
+      "model_id": "modnet-webcam-portrait-matting",
+      "source_project": {
+        "project_id": "openvinotoolkit/open_model_zoo",
+        "name": "Intel Open Model Zoo",
+        "official_project_url": "https://github.com/openvinotoolkit/open_model_zoo",
+        "official_domains": [
+          "github.com",
+          "raw.githubusercontent.com",
+          "storage.openvinotoolkit.org"
+        ]
+      },
+      "source_revision": {
+        "kind": "GIT_COMMIT",
+        "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+        "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+      },
+      "bundle_type": "SOURCE_AND_CONVERSION",
+      "bundle_variant": {
+        "source_framework": "PYTORCH",
+        "input_shape": "1x3x512x512",
+        "target_runtime": "OPENVINO_RUNTIME",
+        "conversion_contract": {
+          "configuration_repository_relative_path": "models/public/modnet-webcam-portrait-matting/model.py",
+          "converter_repository_relative_path": "tools/model_tools/src/omz_tools/internal_scripts/pytorch_to_onnx.py",
+          "dependencies": [
+            {
+              "filename": "model.py",
+              "repository_relative_path": "models/public/modnet-webcam-portrait-matting/model.py",
+              "fixed_git_revision": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+              "official_source_url": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/models/public/modnet-webcam-portrait-matting/model.py",
+              "content_checksum": "3aa1d0b66cdbd9f1fc2c11ee40910efc1fdc4ac7",
+              "checksum_algorithm": "GIT_BLOB_SHA1",
+              "role": "OMZ_MODEL_CONFIGURATION",
+              "required": true,
+              "local_bundle_relative_path": "n2b0_6/intel-modnet-webcam-portrait-matting/source/open_model_zoo/model.py",
+              "source_license_reference": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/LICENSE"
+            },
+            {
+              "filename": "pytorch_to_onnx.py",
+              "repository_relative_path": "tools/model_tools/src/omz_tools/internal_scripts/pytorch_to_onnx.py",
+              "fixed_git_revision": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+              "official_source_url": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/tools/model_tools/src/omz_tools/internal_scripts/pytorch_to_onnx.py",
+              "content_checksum": "775c48310b9654acee2718a27e2ffe3c060498eb",
+              "checksum_algorithm": "GIT_BLOB_SHA1",
+              "role": "OMZ_CONVERSION_TOOL",
+              "required": true,
+              "local_bundle_relative_path": "n2b0_6/intel-modnet-webcam-portrait-matting/source/open_model_zoo/pytorch_to_onnx.py",
+              "source_license_reference": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/LICENSE"
+            },
+            {
+              "filename": "modnet_onnx.py",
+              "repository_relative_path": "onnx/modnet_onnx.py",
+              "fixed_git_revision": "2938675e4b5c60ab5f5d7a2b2191c68256f99d70",
+              "official_source_url": "https://raw.githubusercontent.com/ZHKKKe/MODNet/2938675e4b5c60ab5f5d7a2b2191c68256f99d70/onnx/modnet_onnx.py",
+              "content_checksum": "37326740f2756572c639bb8089c70cfee6994f358fb185fe5f1c1f40c061a5d73f62319a8c2aa48d367778360751385e",
+              "checksum_algorithm": "SHA384",
+              "role": "MODNET_MODEL_SOURCE",
+              "required": true,
+              "local_bundle_relative_path": "n2b0_6/intel-modnet-webcam-portrait-matting/source/modnet/onnx/modnet_onnx.py",
+              "source_license_reference": "https://raw.githubusercontent.com/ZHKKKe/MODNet/2938675e4b5c60ab5f5d7a2b2191c68256f99d70/LICENSE"
+            },
+            {
+              "filename": "__init__.py",
+              "repository_relative_path": "src/models/backbones/__init__.py",
+              "fixed_git_revision": "2938675e4b5c60ab5f5d7a2b2191c68256f99d70",
+              "official_source_url": "https://raw.githubusercontent.com/ZHKKKe/MODNet/2938675e4b5c60ab5f5d7a2b2191c68256f99d70/src/models/backbones/__init__.py",
+              "content_checksum": "cdb28b27092889a8293e189e80351087d0cd3135d3f0b56a4a4fd5ae28251bd0142e027d209cf63a24f6b6042255b384",
+              "checksum_algorithm": "SHA384",
+              "role": "MODNET_BACKBONE_INIT",
+              "required": true,
+              "local_bundle_relative_path": "n2b0_6/intel-modnet-webcam-portrait-matting/source/modnet/src/models/backbones/__init__.py",
+              "source_license_reference": "https://raw.githubusercontent.com/ZHKKKe/MODNet/2938675e4b5c60ab5f5d7a2b2191c68256f99d70/LICENSE"
+            },
+            {
+              "filename": "mobilenetv2.py",
+              "repository_relative_path": "src/models/backbones/mobilenetv2.py",
+              "fixed_git_revision": "2938675e4b5c60ab5f5d7a2b2191c68256f99d70",
+              "official_source_url": "https://raw.githubusercontent.com/ZHKKKe/MODNet/2938675e4b5c60ab5f5d7a2b2191c68256f99d70/src/models/backbones/mobilenetv2.py",
+              "content_checksum": "c100361a1b06a3751fd4b7720cb4a882153d62362421e51ef8ecccadf75acdcbd40376477739ac35f404a76388b01121",
+              "checksum_algorithm": "SHA384",
+              "role": "MODNET_BACKBONE_IMPLEMENTATION",
+              "required": true,
+              "local_bundle_relative_path": "n2b0_6/intel-modnet-webcam-portrait-matting/source/modnet/src/models/backbones/mobilenetv2.py",
+              "source_license_reference": "https://raw.githubusercontent.com/ZHKKKe/MODNet/2938675e4b5c60ab5f5d7a2b2191c68256f99d70/LICENSE"
+            },
+            {
+              "filename": "wrapper.py",
+              "repository_relative_path": "src/models/backbones/wrapper.py",
+              "fixed_git_revision": "2938675e4b5c60ab5f5d7a2b2191c68256f99d70",
+              "official_source_url": "https://raw.githubusercontent.com/ZHKKKe/MODNet/2938675e4b5c60ab5f5d7a2b2191c68256f99d70/src/models/backbones/wrapper.py",
+              "content_checksum": "c627e513d6aca544c60fc7875c159e36563542c7d9a746e5b79c1a650118b6c8920561587061979d78993f12be906bbc",
+              "checksum_algorithm": "SHA384",
+              "role": "MODNET_BACKBONE_WRAPPER",
+              "required": true,
+              "local_bundle_relative_path": "n2b0_6/intel-modnet-webcam-portrait-matting/source/modnet/src/models/backbones/wrapper.py",
+              "source_license_reference": "https://raw.githubusercontent.com/ZHKKKe/MODNet/2938675e4b5c60ab5f5d7a2b2191c68256f99d70/LICENSE"
+            }
+          ],
+          "commands": {
+            "pytorch_to_onnx": "python pytorch_to_onnx.py --model-path=$dl_dir --model-path=$config_dir --model-name=create_modnet --import-module=model --model-param=weights=r\"$dl_dir/modnet_webcam_portrait_matting.ckpt\" --input-shape=1,3,512,512 --input-names=input --output-names=output --output-file=$conv_dir/modnet_webcam_portrait_matting.onnx",
+            "model_optimizer": "mo --input_model=$conv_dir/modnet_webcam_portrait_matting.onnx --scale_values=input[127.5] --mean_values=input[127.5,127.5,127.5] --reverse_input_channels --output=output"
+          },
+          "converter_runtime": {
+            "tool_name": "Open Model Zoo fixed conversion recipe with OpenVINO Model Optimizer",
+            "fixed_recipe_revision": {
+              "kind": "GIT_COMMIT",
+              "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+              "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+            },
+            "runtime_version_status": "NOT_INSTALLED_NOT_VERIFIED"
+          },
+          "expected_outputs": [
+            {
+              "filename": "modnet_webcam_portrait_matting.onnx",
+              "format": "ONNX",
+              "generated_or_downloaded": "NOT_GENERATED",
+              "local_bundle_relative_path": "n2b0_6/intel-modnet-webcam-portrait-matting/generated/modnet_webcam_portrait_matting.onnx"
+            },
+            {
+              "filename": "modnet_webcam_portrait_matting.xml",
+              "format": "OPENVINO_IR_XML",
+              "generated_or_downloaded": "NOT_GENERATED",
+              "local_bundle_relative_path": "n2b0_6/intel-modnet-webcam-portrait-matting/generated/modnet_webcam_portrait_matting.xml"
+            },
+            {
+              "filename": "modnet_webcam_portrait_matting.bin",
+              "format": "OPENVINO_IR_BIN",
+              "generated_or_downloaded": "NOT_GENERATED",
+              "local_bundle_relative_path": "n2b0_6/intel-modnet-webcam-portrait-matting/generated/modnet_webcam_portrait_matting.bin"
+            }
+          ]
+        }
+      },
+      "artifact_files": [
+        {
+          "file_id": "checkpoint",
+          "role": "CHECKPOINT",
+          "required": true,
+          "filename": "modnet_webcam_portrait_matting.ckpt",
+          "size_bytes": 26255603,
+          "direct_official_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/public/2022.2/modnet-webcam-portrait-matting/modnet_webcam_portrait_matting.ckpt",
+          "request_domain": "storage.openvinotoolkit.org",
+          "expected_final_domain": "storage.openvinotoolkit.org",
+          "expected_redirect_count": 0,
+          "content_type": "application/octet-stream",
+          "checksum_algorithm": "SHA384",
+          "official_checksum": "fab9c2ee2995642e21656a3180e75c9a73d3442a2500e5f0e0a08e14bfe9c4640fccf7c055162ff039f4dd066102652c",
+          "local_bundle_relative_path": "n2b0_6/intel-modnet-webcam-portrait-matting/checkpoint/modnet_webcam_portrait_matting.ckpt",
+          "head_metadata": {
+            "status_code": 200,
+            "observed_final_domain": "storage.openvinotoolkit.org",
+            "redirect_count": 0,
+            "content_length": 26255603,
+            "content_type": "application/octet-stream",
+            "etag": "\"8fcfba17b81894f6c6e5d86fa2b8b72c-6\"",
+            "last_modified": "Tue, 17 Oct 2023 15:55:11 GMT",
+            "accept_ranges": "bytes",
+            "final_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/public/2022.2/modnet-webcam-portrait-matting/modnet_webcam_portrait_matting.ckpt"
+          },
+          "format": "PYTORCH_CHECKPOINT",
+          "generated_or_downloaded": "DOWNLOAD_REQUIRED",
+          "conversion_dependency": false,
+          "source_evidence_ids": [
+            "model_configuration"
+          ],
+          "checksum_evidence_ids": [
+            "checksum_metadata"
+          ],
+          "license_evidence_ids": [
+            "model_license"
+          ]
+        }
+      ],
+      "evidence_files": [
+        {
+          "evidence_id": "model_configuration",
+          "evidence_type": "MODEL_CONFIGURATION",
+          "applies_to": {
+            "candidate_id": "intel-modnet-webcam-portrait-matting",
+            "bundle": true,
+            "artifact_file_ids": [
+              "checkpoint"
+            ]
+          },
+          "source_project": "openvinotoolkit/open_model_zoo",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+            "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+          },
+          "official_url": "https://github.com/openvinotoolkit/open_model_zoo/blob/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/models/public/modnet-webcam-portrait-matting/model.yml",
+          "document_role": "MODEL_YAML",
+          "required": true
+        },
+        {
+          "evidence_id": "checksum_metadata",
+          "evidence_type": "CHECKSUM_METADATA",
+          "applies_to": {
+            "candidate_id": "intel-modnet-webcam-portrait-matting",
+            "bundle": true,
+            "artifact_file_ids": [
+              "checkpoint"
+            ]
+          },
+          "source_project": "openvinotoolkit/open_model_zoo",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+            "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+          },
+          "official_url": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/models/public/modnet-webcam-portrait-matting/model.yml",
+          "document_role": "MODEL_YAML_CHECKSUM_METADATA",
+          "required": true,
+          "artifact_assertions": [
+            {
+              "file_id": "checkpoint",
+              "filename": "modnet_webcam_portrait_matting.ckpt",
+              "size_bytes": 26255603,
+              "checksum_algorithm": "SHA384",
+              "official_checksum": "fab9c2ee2995642e21656a3180e75c9a73d3442a2500e5f0e0a08e14bfe9c4640fccf7c055162ff039f4dd066102652c",
+              "direct_official_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/public/2022.2/modnet-webcam-portrait-matting/modnet_webcam_portrait_matting.ckpt"
+            }
+          ]
+        },
+        {
+          "evidence_id": "code_license_omz",
+          "evidence_type": "CODE_LICENSE",
+          "applies_to": {
+            "candidate_id": "intel-modnet-webcam-portrait-matting",
+            "bundle": true,
+            "artifact_file_ids": [
+              "checkpoint"
+            ]
+          },
+          "source_project": "openvinotoolkit/open_model_zoo",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "7cc29a91472b4cb1289a11e655ba3e188e1d4a31",
+            "source_url": "https://github.com/openvinotoolkit/open_model_zoo/commit/7cc29a91472b4cb1289a11e655ba3e188e1d4a31"
+          },
+          "official_url": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/7cc29a91472b4cb1289a11e655ba3e188e1d4a31/LICENSE",
+          "document_role": "LICENSE_TEXT",
+          "required": true,
+          "license_terms": {
+            "license_identifier": "Apache-2.0",
+            "scope": "current candidate bundle and all declared payload files",
+            "commercial_use": "PERMITTED_WITH_NOTICE"
+          }
+        },
+        {
+          "evidence_id": "code_license_modnet",
+          "evidence_type": "CODE_LICENSE",
+          "applies_to": {
+            "candidate_id": "intel-modnet-webcam-portrait-matting",
+            "bundle": true,
+            "artifact_file_ids": [
+              "checkpoint"
+            ]
+          },
+          "source_project": "ZHKKKe/MODNet",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "2938675e4b5c60ab5f5d7a2b2191c68256f99d70",
+            "source_url": "https://github.com/ZHKKKe/MODNet/commit/2938675e4b5c60ab5f5d7a2b2191c68256f99d70"
+          },
+          "official_url": "https://raw.githubusercontent.com/ZHKKKe/MODNet/2938675e4b5c60ab5f5d7a2b2191c68256f99d70/LICENSE",
+          "document_role": "LICENSE_TEXT",
+          "required": true,
+          "license_terms": {
+            "license_identifier": "Apache-2.0",
+            "scope": "current candidate bundle and all declared payload files",
+            "commercial_use": "PERMITTED_WITH_NOTICE"
+          }
+        },
+        {
+          "evidence_id": "model_license",
+          "evidence_type": "MODEL_LICENSE",
+          "applies_to": {
+            "candidate_id": "intel-modnet-webcam-portrait-matting",
+            "bundle": true,
+            "artifact_file_ids": [
+              "checkpoint"
+            ]
+          },
+          "source_project": "ZHKKKe/MODNet",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "2938675e4b5c60ab5f5d7a2b2191c68256f99d70",
+            "source_url": "https://github.com/ZHKKKe/MODNet/commit/2938675e4b5c60ab5f5d7a2b2191c68256f99d70"
+          },
+          "official_url": "https://raw.githubusercontent.com/ZHKKKe/MODNet/2938675e4b5c60ab5f5d7a2b2191c68256f99d70/LICENSE",
+          "document_role": "LICENSE_TEXT",
+          "required": true,
+          "license_terms": {
+            "license_identifier": "Apache-2.0",
+            "scope": "current candidate bundle and all declared payload files",
+            "commercial_use": "PERMITTED_WITH_NOTICE"
+          }
+        },
+        {
+          "evidence_id": "commercial_terms",
+          "evidence_type": "COMMERCIAL_USE_TERMS",
+          "applies_to": {
+            "candidate_id": "intel-modnet-webcam-portrait-matting",
+            "bundle": true,
+            "artifact_file_ids": [
+              "checkpoint"
+            ]
+          },
+          "source_project": "ZHKKKe/MODNet",
+          "source_revision": {
+            "kind": "GIT_COMMIT",
+            "value": "2938675e4b5c60ab5f5d7a2b2191c68256f99d70",
+            "source_url": "https://github.com/ZHKKKe/MODNet/commit/2938675e4b5c60ab5f5d7a2b2191c68256f99d70"
+          },
+          "official_url": "https://raw.githubusercontent.com/ZHKKKe/MODNet/2938675e4b5c60ab5f5d7a2b2191c68256f99d70/LICENSE",
+          "document_role": "LICENSE_TEXT",
+          "required": true,
+          "license_terms": {
+            "license_identifier": "Apache-2.0",
+            "scope": "current candidate bundle and all declared payload files",
+            "commercial_use": "PERMITTED_WITH_NOTICE"
+          }
+        }
+      ],
+      "qualification_matrix": {
+        "CODE_LICENSE_CONFIRMED": {
+          "status": "PASS",
+          "evidence_ids": [
+            "code_license_omz",
+            "code_license_modnet"
+          ],
+          "decision_reason": "immutable official code-license evidence applies to this candidate bundle"
+        },
+        "WEIGHTS_LICENSE_CONFIRMED": {
+          "status": "PASS",
+          "evidence_ids": [
+            "model_license"
+          ],
+          "decision_reason": "immutable official model-license evidence applies to every declared payload"
+        },
+        "COMMERCIAL_USE_CONFIRMED": {
+          "status": "PASS",
+          "evidence_ids": [
+            "model_license",
+            "commercial_terms"
+          ],
+          "decision_reason": "fixed commercial-use terms and model-license evidence cover this candidate bundle"
+        },
+        "ARTIFACT_IDENTITY_CONFIRMED": "PASS",
+        "BUNDLE_COMPLETENESS_CONFIRMED": "PASS",
+        "IMMUTABLE_REVISION_CONFIRMED": "PASS",
+        "OFFICIAL_SHA384_CONFIRMED": "PASS",
+        "OFFICIAL_SHA256_CONFIRMED": "FAIL",
+        "OFFICIAL_SIZE_CONFIRMED": "PASS",
+        "REQUEST_DOMAIN_CONFIRMED": "PASS",
+        "FINAL_DOMAIN_CONFIRMED": "PASS",
+        "REDIRECT_CHAIN_CONFIRMED": "PASS",
+        "LOCAL_OFFLINE_PATH_CONFIRMED": "PASS"
+      },
+      "ready_for_owner_artifact_selection": "FAIL"
+    }
+  ]
+}

@@ -1,0 +1,289 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b0_6_candidate_record_v2.schema.json",
+  "title": "N2B0.6 closed metadata-only candidate bundle evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "phase_id", "candidates"],
+  "properties": {
+    "schema_version": {"const": "2.0"},
+    "phase_id": {"const": "N2B0_6"},
+    "candidates": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {"$ref": "#/$defs/candidate"},
+      "allOf": [
+        {
+          "contains": {"type": "object", "properties": {"category": {"const": "pose"}}, "required": ["category"]},
+          "minContains": 2,
+          "maxContains": 2
+        },
+        {
+          "contains": {"type": "object", "properties": {"category": {"const": "segmentation"}}, "required": ["category"]},
+          "minContains": 2,
+          "maxContains": 2
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "status": {"enum": ["PASS", "FAIL", "UNKNOWN", "NOT_APPLICABLE"]},
+    "httpsUrl": {"type": "string", "pattern": "^https://"},
+    "revision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "value", "source_url"],
+      "properties": {
+        "kind": {"enum": ["GIT_COMMIT", "RELEASE_ASSET_VERSION", "OBJECT_VERSION"]},
+        "value": {"type": "string", "minLength": 1},
+        "source_url": {"$ref": "#/$defs/httpsUrl"}
+      }
+    },
+    "headMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status_code", "final_url", "observed_final_domain", "redirect_count", "content_length", "content_type", "etag", "last_modified", "accept_ranges"],
+      "properties": {
+        "status_code": {"const": 200},
+        "final_url": {"$ref": "#/$defs/httpsUrl"},
+        "observed_final_domain": {"type": "string", "minLength": 1},
+        "redirect_count": {"const": 0},
+        "content_length": {"type": "integer", "minimum": 1},
+        "content_type": {"type": "string", "minLength": 1},
+        "etag": {"type": "string", "minLength": 1},
+        "last_modified": {"type": "string", "minLength": 1},
+        "accept_ranges": {"const": "bytes"}
+      }
+    },
+    "sourceProject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_id", "name", "official_project_url", "official_domains"],
+      "properties": {
+        "project_id": {"const": "openvinotoolkit/open_model_zoo"},
+        "name": {"type": "string", "minLength": 1},
+        "official_project_url": {"const": "https://github.com/openvinotoolkit/open_model_zoo"},
+        "official_domains": {"const": ["github.com", "raw.githubusercontent.com", "storage.openvinotoolkit.org"]}
+      }
+    },
+    "evidenceFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_id", "evidence_type", "applies_to", "source_project", "source_revision", "official_url", "document_role", "required"],
+      "properties": {
+        "evidence_id": {"type": "string", "minLength": 1},
+        "evidence_type": {"enum": ["MODEL_CONFIGURATION", "CHECKSUM_METADATA", "CODE_LICENSE", "MODEL_LICENSE", "COMMERCIAL_USE_TERMS"]},
+        "applies_to": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["candidate_id", "bundle", "artifact_file_ids"],
+          "properties": {
+            "candidate_id": {"type": "string", "minLength": 1},
+            "bundle": {"const": true},
+            "artifact_file_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+          }
+        },
+        "source_project": {"type": "string", "minLength": 1},
+        "source_revision": {"$ref": "#/$defs/revision"},
+        "official_url": {"$ref": "#/$defs/httpsUrl"},
+        "document_role": {"enum": ["MODEL_YAML", "MODEL_YAML_CHECKSUM_METADATA", "LICENSE_TEXT"]},
+        "required": {"const": true},
+        "license_terms": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["license_identifier", "scope", "commercial_use"],
+          "properties": {
+            "license_identifier": {"type": "string", "minLength": 1},
+            "scope": {"type": "string", "minLength": 1},
+            "commercial_use": {"type": "string", "minLength": 1}
+          }
+        },
+        "artifact_assertions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["file_id", "filename", "size_bytes", "checksum_algorithm", "official_checksum", "direct_official_url"],
+            "properties": {
+              "file_id": {"type": "string", "minLength": 1},
+              "filename": {"type": "string", "minLength": 1},
+              "size_bytes": {"type": "integer", "minimum": 1},
+              "checksum_algorithm": {"const": "SHA384"},
+              "official_checksum": {"type": "string", "pattern": "^[0-9a-f]{96}$"},
+              "direct_official_url": {"$ref": "#/$defs/httpsUrl"}
+            }
+          }
+        }
+      },
+      "allOf": [
+        {"if": {"properties": {"evidence_type": {"enum": ["CODE_LICENSE", "MODEL_LICENSE", "COMMERCIAL_USE_TERMS"]}}}, "then": {"required": ["license_terms"]}},
+        {"if": {"properties": {"evidence_type": {"const": "CHECKSUM_METADATA"}}}, "then": {"required": ["artifact_assertions"]}}
+      ]
+    },
+    "artifactFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file_id", "role", "required", "filename", "size_bytes", "direct_official_url", "request_domain", "expected_final_domain", "expected_redirect_count", "content_type", "checksum_algorithm", "official_checksum", "source_evidence_ids", "checksum_evidence_ids", "license_evidence_ids", "local_bundle_relative_path", "head_metadata"],
+      "properties": {
+        "file_id": {"type": "string", "minLength": 1},
+        "role": {"enum": ["MODEL_GRAPH", "MODEL_WEIGHTS", "CHECKPOINT"]},
+        "required": {"const": true},
+        "filename": {"type": "string", "minLength": 1, "pattern": "^[^\\\\/:]+$"},
+        "size_bytes": {"type": "integer", "minimum": 1},
+        "direct_official_url": {"$ref": "#/$defs/httpsUrl"},
+        "request_domain": {"type": "string", "minLength": 1},
+        "expected_final_domain": {"type": "string", "minLength": 1},
+        "expected_redirect_count": {"const": 0},
+        "content_type": {"type": "string", "minLength": 1},
+        "checksum_algorithm": {"const": "SHA384"},
+        "official_checksum": {"type": "string", "pattern": "^[0-9a-f]{96}$"},
+        "source_evidence_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "checksum_evidence_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "license_evidence_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "local_bundle_relative_path": {"type": "string", "minLength": 1},
+        "head_metadata": {"$ref": "#/$defs/headMetadata"},
+        "precision": {"enum": ["FP16", "FP32"]},
+        "format": {"enum": ["OPENVINO_IR", "PYTORCH_CHECKPOINT"]},
+        "generated_or_downloaded": {"const": "DOWNLOAD_REQUIRED"},
+        "conversion_dependency": {"type": "boolean"},
+        "official_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "official_sha256_source_url": {"$ref": "#/$defs/httpsUrl"}
+      },
+      "allOf": [
+        {
+          "if": {"required": ["official_sha256"]},
+          "then": {"required": ["official_sha256_source_url"]}
+        }
+      ]
+    },
+    "sourceDependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filename", "repository_relative_path", "fixed_git_revision", "official_source_url", "content_checksum", "checksum_algorithm", "role", "required", "local_bundle_relative_path"],
+      "properties": {
+        "filename": {"type": "string", "minLength": 1, "pattern": "^[^\\\\/:]+$"},
+        "repository_relative_path": {"type": "string", "minLength": 1},
+        "fixed_git_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "official_source_url": {"$ref": "#/$defs/httpsUrl"},
+        "content_checksum": {"type": "string", "pattern": "^[0-9a-f]{40}$|^[0-9a-f]{96}$"},
+        "checksum_algorithm": {"enum": ["SHA384", "GIT_BLOB_SHA1"]},
+        "role": {"type": "string", "minLength": 1},
+        "required": {"const": true},
+        "local_bundle_relative_path": {"type": "string", "minLength": 1},
+        "source_license_reference": {"$ref": "#/$defs/httpsUrl"}
+      }
+    },
+    "conversionOutput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filename", "format", "generated_or_downloaded", "local_bundle_relative_path"],
+      "properties": {
+        "filename": {"type": "string", "minLength": 1, "pattern": "^[^\\\\/:]+$"},
+        "format": {"enum": ["ONNX", "OPENVINO_IR_XML", "OPENVINO_IR_BIN"]},
+        "generated_or_downloaded": {"const": "NOT_GENERATED"},
+        "local_bundle_relative_path": {"type": "string", "minLength": 1}
+      }
+    },
+    "sourceAndConversionVariant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_framework", "input_shape", "target_runtime", "conversion_contract"],
+      "properties": {
+        "source_framework": {"const": "PYTORCH"},
+        "input_shape": {"const": "1x3x512x512"},
+        "target_runtime": {"const": "OPENVINO_RUNTIME"},
+        "conversion_contract": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["configuration_repository_relative_path", "converter_repository_relative_path", "dependencies", "commands", "converter_runtime", "expected_outputs"],
+          "properties": {
+            "configuration_repository_relative_path": {"type": "string", "minLength": 1},
+            "converter_repository_relative_path": {"type": "string", "minLength": 1},
+            "dependencies": {"type": "array", "minItems": 6, "items": {"$ref": "#/$defs/sourceDependency"}},
+            "commands": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["pytorch_to_onnx", "model_optimizer"],
+              "properties": {
+                "pytorch_to_onnx": {"type": "string", "minLength": 1},
+                "model_optimizer": {"type": "string", "minLength": 1}
+              }
+            },
+            "converter_runtime": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["tool_name", "fixed_recipe_revision", "runtime_version_status"],
+              "properties": {
+                "tool_name": {"type": "string", "minLength": 1},
+                "fixed_recipe_revision": {"$ref": "#/$defs/revision"},
+                "runtime_version_status": {"const": "NOT_INSTALLED_NOT_VERIFIED"}
+              }
+            },
+            "expected_outputs": {"type": "array", "minItems": 3, "items": {"$ref": "#/$defs/conversionOutput"}}
+          }
+        }
+      }
+    },
+    "preconvertedVariant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtime_format", "precision", "input_shape", "target_runtime"],
+      "properties": {
+        "runtime_format": {"const": "OPENVINO_IR"},
+        "precision": {"enum": ["FP16", "FP32"]},
+        "input_shape": {"type": "string", "minLength": 1},
+        "target_runtime": {"const": "OPENVINO_RUNTIME"}
+      }
+    },
+    "qualificationMatrix": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["CODE_LICENSE_CONFIRMED", "WEIGHTS_LICENSE_CONFIRMED", "COMMERCIAL_USE_CONFIRMED", "ARTIFACT_IDENTITY_CONFIRMED", "BUNDLE_COMPLETENESS_CONFIRMED", "IMMUTABLE_REVISION_CONFIRMED", "OFFICIAL_SHA384_CONFIRMED", "OFFICIAL_SHA256_CONFIRMED", "OFFICIAL_SIZE_CONFIRMED", "REQUEST_DOMAIN_CONFIRMED", "FINAL_DOMAIN_CONFIRMED", "REDIRECT_CHAIN_CONFIRMED", "LOCAL_OFFLINE_PATH_CONFIRMED"],
+      "properties": {
+        "CODE_LICENSE_CONFIRMED": {"$ref": "#/$defs/licenseDecision"},
+        "WEIGHTS_LICENSE_CONFIRMED": {"$ref": "#/$defs/licenseDecision"},
+        "COMMERCIAL_USE_CONFIRMED": {"$ref": "#/$defs/licenseDecision"},
+        "ARTIFACT_IDENTITY_CONFIRMED": {"$ref": "#/$defs/status"},
+        "BUNDLE_COMPLETENESS_CONFIRMED": {"$ref": "#/$defs/status"},
+        "IMMUTABLE_REVISION_CONFIRMED": {"$ref": "#/$defs/status"},
+        "OFFICIAL_SHA384_CONFIRMED": {"$ref": "#/$defs/status"},
+        "OFFICIAL_SHA256_CONFIRMED": {"$ref": "#/$defs/status"},
+        "OFFICIAL_SIZE_CONFIRMED": {"$ref": "#/$defs/status"},
+        "REQUEST_DOMAIN_CONFIRMED": {"$ref": "#/$defs/status"},
+        "FINAL_DOMAIN_CONFIRMED": {"$ref": "#/$defs/status"},
+        "REDIRECT_CHAIN_CONFIRMED": {"$ref": "#/$defs/status"},
+        "LOCAL_OFFLINE_PATH_CONFIRMED": {"$ref": "#/$defs/status"}
+      }
+    },
+    "licenseDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "evidence_ids", "decision_reason"],
+      "properties": {
+        "status": {"$ref": "#/$defs/status"},
+        "evidence_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "decision_reason": {"type": "string", "minLength": 1}
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_id", "category", "model_id", "source_project", "source_revision", "bundle_type", "bundle_variant", "artifact_files", "evidence_files", "qualification_matrix", "ready_for_owner_artifact_selection"],
+      "properties": {
+        "candidate_id": {"type": "string", "minLength": 1},
+        "category": {"enum": ["pose", "segmentation"]},
+        "model_id": {"type": "string", "minLength": 1},
+        "source_project": {"$ref": "#/$defs/sourceProject"},
+        "source_revision": {"$ref": "#/$defs/revision"},
+        "bundle_type": {"enum": ["PRECONVERTED_RUNTIME", "SOURCE_AND_CONVERSION"]},
+        "bundle_variant": {"oneOf": [{"$ref": "#/$defs/preconvertedVariant"}, {"$ref": "#/$defs/sourceAndConversionVariant"}]},
+        "artifact_files": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/artifactFile"}},
+        "evidence_files": {"type": "array", "minItems": 5, "items": {"$ref": "#/$defs/evidenceFile"}},
+        "qualification_matrix": {"$ref": "#/$defs/qualificationMatrix"},
+        "ready_for_owner_artifact_selection": {"$ref": "#/$defs/status"}
+      }
+    }
+  }
+}

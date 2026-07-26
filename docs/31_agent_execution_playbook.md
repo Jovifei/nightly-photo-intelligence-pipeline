@@ -33,7 +33,7 @@ git status --short  # 若尚未 git init，记录即可
 
 ## 自审
 
-- 对照 N0 YAML 每项；
+- 对照当前 N2B0.6 YAML 每项；
 - 运行统一质量命令；
 - `git diff --check`；
 - 敏感扫描；
@@ -44,14 +44,14 @@ git status --short  # 若尚未 git init，记录即可
 
 ## Commit
 
-建议：
+当前阶段候选建议：
 
 ```text
-chore(n0): scaffold safe local pipeline foundation
+docs(n2b): reconcile current-stage handoff integrity
 ```
 
 一个 commit。不得 merge/push。
 
 ## 停止
 
-输出 `N0_COMPLETE_AWAITING_OWNER_APPROVAL` 模板；不问“要不要顺便做 N1”，不执行任何 N1 命令。
+输出 `N2B0_6_AWAITING_EXTERNAL_REVIEW`；不问“要不要顺便做 N2B1”，不执行任何 N2B1 命令。

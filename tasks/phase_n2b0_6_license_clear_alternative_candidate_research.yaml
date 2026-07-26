@@ -1,0 +1,37 @@
+contract_version: "1.0"
+phase:
+  id: "N2B0_6"
+  title: "License-Clear Alternative Candidate Research"
+  status: "AUTHORIZED"
+capability: "N2B0_6_LICENSE_CLEAR_ALTERNATIVE_CANDIDATE_RESEARCH"
+data_gate:
+  id: "G1_CALIBRATION_20"
+  status: "AUTHORIZED"
+  allowed_assets: "official source metadata only; no real photo reads"
+approval:
+  n2b0_5_completion: "approvals/phase_completion_N2B0_5.yaml"
+  n2b0_5_commit: "5ad9f8d7d0d6fa267df02d90ef25957bc679e232"
+  n2b0_5_tag: "n2b0-5-approved-2026-07-26"
+candidate_limits:
+  pose: 2
+  segmentation: 2
+  historical_candidates_excluded: true
+allowed_network_evidence:
+  - "official HTTPS project, model-maintainer, license, release, manifest, or API text"
+  - "HTTP HEAD metadata for an official final response only"
+forbidden:
+  - "model_payload_downloads_or_range_requests"
+  - "model_dependency_installation"
+  - "model_load_or_inference"
+  - "archive_extraction_or_cache_write"
+  - "real_photo_reads"
+  - "skeleton_mask_cutout_or_model_artifacts"
+  - "docker_image_pull"
+  - "cuda_driver_wsl_or_docker_changes"
+  - "n2b1_or_n2b2"
+  - "g2_or_g3"
+  - "push_merge_release"
+  - "upstream_issue_email_or_pull_request"
+mandatory_stop:
+  value: true
+  rule: "complete N2B0.6 evidence and wait for independent review; do not enter N2B1, N2B2, G2, or G3"

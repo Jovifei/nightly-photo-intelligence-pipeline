@@ -45,8 +45,18 @@ def test_current_mutable_contracts_validate_and_are_consistent(project_root: Pat
             encoding="utf-8"
         )
     )
+    n2b0_5_completion = yaml.safe_load(
+        (project_root / "approvals" / "phase_completion_N2B0_5.yaml").read_text(encoding="utf-8")
+    )
+    n2b0_6 = yaml.safe_load(
+        (
+            project_root
+            / "tasks"
+            / "phase_n2b0_6_license_clear_alternative_candidate_research.yaml"
+        ).read_text(encoding="utf-8")
+    )
     task_index = json.loads((project_root / "tasks" / "index.json").read_text(encoding="utf-8"))
-    assert not _errors(_schema(project_root, "project_state_v1_2.schema.json"), state)
+    assert not _errors(_schema(project_root, "project_state_v1_4.schema.json"), state)
     assert not _errors(_schema(project_root, "approval_record_v1_1.schema.json"), approval)
     assert not _errors(
         _schema(project_root, "phase_completion_approval_v1_0.schema.json"), n1_completion
@@ -59,6 +69,11 @@ def test_current_mutable_contracts_validate_and_are_consistent(project_root: Pat
         _schema(project_root, "phase_completion_approval_g1_v1_0.schema.json"), g1_completion
     )
     assert not _errors(_schema(project_root, "task_contract_n2a_v1_0.schema.json"), n2a)
+    assert not _errors(
+        _schema(project_root, "phase_completion_approval_n2b0_5_v1_0.schema.json"),
+        n2b0_5_completion,
+    )
+    assert not _errors(_schema(project_root, "task_contract_n2b0_6_v1_0.schema.json"), n2b0_6)
     auth = load_authorization(project_root)
     assert auth.phase_id == "N1" and auth.phase_authorized
     assert auth.phase_status == "APPROVED_COMPLETE"
@@ -106,7 +121,7 @@ def test_current_contract_schema_rejects_scope_tampering(
     value = copy.deepcopy(values[document])
     mutation(value)
     schema_name = {
-        "state": "project_state_v1_2.schema.json",
+        "state": "project_state_v1_4.schema.json",
         "approval": "approval_record_v1_1.schema.json",
         "g1": "task_contract_v1_1.schema.json",
     }[document]

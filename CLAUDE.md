@@ -11,7 +11,7 @@
 
 ## 默认角色
 
-当前项目规划中，Claude Code 默认是**独立 Reviewer**。只有 Owner 明确将 Claude Code 指定为 N0 实现智能体时，才可实施 N0；即使如此，权限仍与 Codex 完全相同，不多也不少。
+当前项目规划中，Claude Code 默认是**独立 Reviewer**。只有 Owner 明确将 Claude Code 指定为当前 N2B0.6 实现智能体时，才可实施该元数据研究；即使如此，权限仍与 Codex 完全相同，不多也不少。
 
 作为 Reviewer 时：
 
@@ -22,4 +22,4 @@
 - 对未运行或无证据的项目写 `NOT_VERIFIED`；
 - 不执行模型下载或真实图片访问。
 
-完成 N0 实现或审查后必须停止，等待 Owner。
+完成 N2B0.6 实现或审查后必须停止，等待独立审查与 Owner 后续决定。

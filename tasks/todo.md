@@ -556,3 +556,135 @@ push, merge, and release remain prohibited.
   preflight 15/15, strict JSON scan, and `git diff --check` exited 0. No
   download, model execution, photo read, cache/quarantine write, push, merge,
   or release was performed.
+
+## N2B0.6 license-clear alternative candidate research - 2026-07-26
+
+N2B0.5 commit `5ad9f8d7d0d6fa267df02d90ef25957bc679e232` is Owner-approved
+and immutable. N2B0.6 is authorized only for metadata-only research of at most
+two new Pose and two new lightweight person-segmentation candidates. No model
+payload, dependency, runtime, cache/quarantine write, photo read, message,
+push, merge, or later-stage operation is authorized.
+
+### Plan
+
+- [x] Create the local N2B0.5 approval tag and completion-approval record;
+  extend only versioned, closed state and task-contract surfaces needed for
+  N2B0.6.
+- [x] Verify at most two official Pose candidates and two official segmentation
+  candidates using official text/API metadata and HTTP HEAD only.
+- [x] Record a fail-closed qualification matrix, preserve the four historical
+  candidates as READY FAIL, and draft but do not send upstream questions.
+- [x] Add candidate-cap, evidence, authorization-lock, and negative tests;
+  update sanitized Owner reports and plans.
+- [x] Run all required quality checks, create exactly one N2B0.6 commit, and
+  stop for independent review without entering N2B1-Q/P, N2B2, or G2.
+
+### Review
+
+- Research and focused validation complete. Any missing weights license,
+  commercial grant, immutable revision, official SHA-256, official source, or
+  HTTPS evidence is a fail-closed qualification failure, never an inferred
+  PASS. Final clean-worktree quality evidence: 404 pytest passed; Ruff,
+  formatting, mypy, unified quality 7/7, sensitive scan, preflight 15/15,
+  strict JSON scan, and `git diff --check` all exited 0. No model payload,
+  model execution, archive extraction, real-photo read, cache write, push, or
+  merge occurred.
+
+## N2B0.6 bundle-evidence remediation - 2026-07-26
+
+Owner accepted an independent Reviewer `CHANGES_REQUIRED` conclusion for
+`bb15eb53517c588d82f8e11a2ec395792058262a`. This remediation may amend only
+that N2B0.6 candidate; N2B0.5 and earlier approved history remain immutable.
+The candidate pool remains exactly two Pose and two segmentation records.
+Model payload/range requests, installs, conversion, execution, archive/cache
+writes, real-photo reads, N2B1-Q/P, N2B2, G2/G3, push, merge, and release are
+prohibited.
+
+### Plan
+
+- [x] Audit the exact seven-commit topology and create the local-only recovery
+  reference `backup/n2b0-6-before-bundle-evidence-fix-bb15eb5`.
+- [x] Re-enumerate each selected official OMZ bundle from its fixed revision,
+  including every required file, direct URL, size, checksum, and HEAD metadata.
+- [x] Derive and record the complete MODNet source-and-conversion dependency
+  bundle from the fixed conversion command and imported source files.
+- [x] Replace the shallow candidate Schema and readiness-only validator with
+  closed, always-on per-file/bundle validation and recomputed matrix rules.
+- [x] Add negative bundle, MODNet, readiness-fail, candidate-limit, and gate
+  tests; update only the necessary sanitized reports and records.
+- [x] Amend the sole N2B0.6 commit, run all Owner-required quality and locked
+  benchmark commands, then stop for a new independent review.
+
+### Review
+
+- A final `READY=FAIL` is not a reason to skip evidence validation: every
+  required bundle file is independently checked before an intermediate
+  qualification status can be PASS.
+- Complete static evidence: 4 candidate records, 7 required payload files,
+  all direct/zero-redirect HTTPS target and SHA-384 records complete. All four
+  `OFFICIAL_SHA256_CONFIRMED=FAIL`; all four final readiness values are FAIL.
+- MODNet source-and-conversion closure records its checkpoint, config,
+  converter, import closure, fixed source identities, commands, and only
+  `NOT_GENERATED` outputs. No conversion or model execution occurred.
+- Clean-amend evidence: pytest 403 passed; Ruff, format, mypy, quality 7/7,
+  sensitive scan, preflight 15/15, strict JSON scan, benchmark plans/status,
+  and diff check all exited 0. Benchmark run was deliberately denied with
+  `NPI_MODEL_NOT_AUTHORIZED`, exit 8, for both profiles; this is recorded as
+  expected denial, not PASS.
+
+## N2B0.6 evidence-binding remediation - 2026-07-26
+
+Owner accepted an independent Reviewer `CHANGES_REQUIRED` conclusion for the
+sole current N2B0.6 candidate `d740efce0ca8d8e29b0382b3f3d3d4302205f199`.
+This is a metadata-only, single-amend remediation: the candidate pool,
+SHA-384 facts, MODNet closure, phase locks, and all zero-action counters must
+remain unchanged. Downloads, payload/range requests, model work, photo access,
+N2B1/N2B2/G2, push, merge, and release remain prohibited.
+
+### Plan
+
+- [x] Audit the exact candidate/parent/baseline topology, verify clean start,
+  and create `backup/n2b0-6-before-evidence-binding-fix-d740efc`.
+- [x] Obtain two bounded read-only audits of the URL/revision and license
+  evidence gaps; both returned `CHANGES_REQUIRED`, not PASS.
+- [x] Bind every payload filename to its fixed direct and final HTTPS URL,
+  including canonical basename rejection for encoded separators and path-like
+  values.
+- [x] Make the production schema/API require typed, immutable evidence with
+  exact OMZ `model.yml` project/revision/path binding and bi-directional
+  per-payload source/checksum/license references.
+- [x] Replace license string inference with typed evidence-ID decision objects,
+  add taxonomy/negative fixtures, update sanitized reports, and mark this
+  review evidence with actual command outcomes.
+- [x] Amend the sole N2B0.6 candidate, rerun the complete Owner quality and
+  locked-stage matrix, and stop for external review.
+
+## N2B0.6 current-stage handoff integrity remediation - 2026-07-29
+
+Independent read-only review of `03f110296d256ce896eebd0bf9afb5b2a01b57e6`
+returned `CHANGES_REQUIRED`. The candidate evidence remains metadata-only and
+fail-closed, but the historical N0 verifier, stale entry contracts, and stale
+manifest could not prove current-stage handoff integrity. No N2B0.6 completion
+approval/tag may be created until this candidate is remediated and freshly
+reviewed.
+
+### Plan
+
+- [x] Preserve N0/N1/G1/N2A/N2B0/N2B0.5 immutable tags and verify the clean
+  N2B0.6 candidate before editing.
+- [x] Replace the N0-only executable verifier with a current-stage verifier
+  that binds the active task, phase locks, immutable baselines, exact tracked
+  file set, and current manifest.
+- [x] Reconcile current entry contracts so they name N2B0.6 and its
+  metadata-only restrictions rather than N0-only scope.
+- [x] Regenerate the full tracked-file manifest, add negative verifier tests,
+  run the full quality suite, and amend only the N2B0.6 candidate.
+- [ ] Request a fresh independent review of the amended clean candidate; do
+  not create an N2B0.6 completion approval/tag until it returns a valid
+  conclusion.
+
+### Hard boundary
+
+This remediation authorizes no new artifact candidate, model download, model
+execution, dependency install, source-photo access, cache/quarantine write,
+N2B1/N2B2/N3/G2/G3 action, push, merge, or release.

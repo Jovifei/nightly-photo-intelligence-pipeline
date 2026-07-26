@@ -96,3 +96,36 @@
   `not_before`; optional or inferred timing weakens the authorization boundary.
   Validate its schema before digest/state/transport and compare all instants in
   UTC.
+
+## 2026-07-26 N2B0.6 bundle-evidence review correction
+
+- Candidate-level final failure never excuses incomplete per-file evidence.
+  Validate every required bundle file, its direct official URL, size, checksum,
+  domain/redirect metadata, and local relative path before computing any
+  intermediate matrix status.
+- Model payload identity and fixed-source identity are different evidence
+  types. Do not apply a payload checksum to source files or present a Git
+  revision as a model SHA-256; source-and-conversion bundles need their full
+  conversion dependency closure.
+
+## 2026-07-26 N2B0.6 evidence-binding review correction
+
+- A URL merely being official is not payload identity. At every public
+  validation entry, bind the artifact filename to canonical direct and final
+  URL basenames, reject encoded separators and path-like values, and require
+  the exact candidate-specific fixed source URL rather than a same-host file.
+- A non-null license URL is not a license decision. Require typed immutable
+  evidence with exact project/revision/document identity and candidate/payload
+  applicability; a PASS matrix entry must cite the evidence IDs and required
+  types that support it. Do not let a partial-list helper bypass the complete
+  closed document Schema.
+
+## 2026-07-29 N2B0.6 current-stage handoff review correction
+
+- A verifier named as archival N0-only evidence cannot satisfy a later-stage
+  handoff gate, even if a separate preflight passes. The executable verifier,
+  entry documents, active task, and manifest must agree on the same current
+  phase.
+- Hash every tracked current-stage file, including governance documents that
+  legitimately evolve. Keep the historical N0 verifier explicitly
+  non-passing rather than treating a stale result as current evidence.

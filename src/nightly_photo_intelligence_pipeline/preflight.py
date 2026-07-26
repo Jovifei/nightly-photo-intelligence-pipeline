@@ -394,6 +394,13 @@ def _check_authorization() -> CheckResult:  # noqa: PLR0911
                 encoding="utf-8"
             )
         )
+        n2b0_5_approval_path = root / "approvals" / "phase_completion_N2B0_5.yaml"
+        n2b0_5_completion = yaml.safe_load(n2b0_5_approval_path.read_text(encoding="utf-8"))
+        n2b0_6_task = yaml.safe_load(
+            (
+                root / "tasks" / "phase_n2b0_6_license_clear_alternative_candidate_research.yaml"
+            ).read_text(encoding="utf-8")
+        )
         retry_policy = yaml.safe_load(
             (root / "config" / "retry_policy_v1_1.yaml").read_text(encoding="utf-8")
         )
@@ -407,7 +414,7 @@ def _check_authorization() -> CheckResult:  # noqa: PLR0911
         schemas = root / "schemas"
         checks = [
             (
-                load_json_strict(schemas / "project_state_v1_2.schema.json"),
+                load_json_strict(schemas / "project_state_v1_4.schema.json"),
                 state,
             ),
             (
@@ -445,6 +452,14 @@ def _check_authorization() -> CheckResult:  # noqa: PLR0911
             (
                 load_json_strict(schemas / "task_contract_n2b0_5_v1_0.schema.json"),
                 n2b0_5_task,
+            ),
+            (
+                load_json_strict(schemas / "phase_completion_approval_n2b0_5_v1_0.schema.json"),
+                n2b0_5_completion,
+            ),
+            (
+                load_json_strict(schemas / "task_contract_n2b0_6_v1_0.schema.json"),
+                n2b0_6_task,
             ),
         ]
         if any(_validate_schema(schema, value) for schema, value in checks):
@@ -493,8 +508,12 @@ def _check_authorization() -> CheckResult:  # noqa: PLR0911
             (item for item in task_index.get("completed", []) if item.get("phase") == "N2B0"),
             None,
         )
-        authorized_n2b0_5 = next(
-            (item for item in task_index.get("authorized", []) if item.get("phase") == "N2B0_5"),
+        completed_n2b0_5 = next(
+            (item for item in task_index.get("completed", []) if item.get("phase") == "N2B0_5"),
+            None,
+        )
+        authorized_n2b0_6 = next(
+            (item for item in task_index.get("authorized", []) if item.get("phase") == "N2B0_6"),
             None,
         )
         g1_baseline = g1_completion.get("baseline", {})
@@ -507,7 +526,8 @@ def _check_authorization() -> CheckResult:  # noqa: PLR0911
                 phase_status.get("G1") == "APPROVED_COMPLETE",
                 phase_status.get("N2A") == "APPROVED_COMPLETE",
                 phase_status.get("N2B0") == "APPROVED_COMPLETE",
-                phase_status.get("N2B0_5") == "AUTHORIZED",
+                phase_status.get("N2B0_5") == "APPROVED_COMPLETE",
+                phase_status.get("N2B0_6") == "AUTHORIZED",
                 phase_status.get("N2B") == "LOCKED",
                 phase_status.get("N2B1") == "LOCKED",
                 phase_status.get("N2B1_Q") == "LOCKED",
@@ -516,7 +536,10 @@ def _check_authorization() -> CheckResult:  # noqa: PLR0911
                 n2a_authorized.get("N2A_POSE_SEGMENTATION_BENCHMARK_PREPARATION")
                 == "APPROVED_COMPLETE",
                 n2a_authorized.get("N2B0_MODEL_ARTIFACT_QUALIFICATION") == "APPROVED_COMPLETE",
-                n2a_authorized.get("N2B0_5_ARTIFACT_RIGHTS_AND_PROVENANCE_CLOSURE") == "AUTHORIZED",
+                n2a_authorized.get("N2B0_5_ARTIFACT_RIGHTS_AND_PROVENANCE_CLOSURE")
+                == "APPROVED_COMPLETE",
+                n2a_authorized.get("N2B0_6_LICENSE_CLEAR_ALTERNATIVE_CANDIDATE_RESEARCH")
+                == "AUTHORIZED",
                 n2a_authorized.get("N2B_MODEL_DOWNLOAD_AND_INFERENCE") == "LOCKED",
                 n2a_authorized.get("N2B1_MODEL_DOWNLOAD") == "LOCKED",
                 n2a_authorized.get("N2B1_Q_QUARANTINE_DOWNLOAD") == "LOCKED",
@@ -532,20 +555,34 @@ def _check_authorization() -> CheckResult:  # noqa: PLR0911
                 == "f331621c84905aef921c612908d01d3a8a2f577a",
                 (completed_n2b0 or {}).get("completion_approval")
                 == "approvals/phase_completion_N2B0.yaml",
-                isinstance(authorized_n2b0_5, dict),
-                (authorized_n2b0_5 or {}).get("capability")
-                == "N2B0_5_ARTIFACT_RIGHTS_AND_PROVENANCE_CLOSURE",
+                isinstance(completed_n2b0_5, dict),
+                (completed_n2b0_5 or {}).get("baseline_commit")
+                == "5ad9f8d7d0d6fa267df02d90ef25957bc679e232",
+                (completed_n2b0_5 or {}).get("completion_approval")
+                == "approvals/phase_completion_N2B0_5.yaml",
+                isinstance(authorized_n2b0_6, dict),
+                (authorized_n2b0_6 or {}).get("capability")
+                == "N2B0_6_LICENSE_CLEAR_ALTERNATIVE_CANDIDATE_RESEARCH",
                 n2b0_completion.get("owner_decision") == "N2B0_OWNER_APPROVED",
                 n2b0_completion.get("independent_reviewer", {}).get("reviewed_commit")
                 == "f331621c84905aef921c612908d01d3a8a2f577a",
                 n2b0_5_task.get("approval", {}).get("n2b0_commit")
                 == "f331621c84905aef921c612908d01d3a8a2f577a",
+                n2b0_5_completion.get("owner_decision") == "N2B0_5_OWNER_APPROVED",
+                n2b0_5_completion.get("independent_reviewer", {}).get("reviewed_commit")
+                == "5ad9f8d7d0d6fa267df02d90ef25957bc679e232",
+                n2b0_6_task.get("approval", {}).get("n2b0_5_commit")
+                == "5ad9f8d7d0d6fa267df02d90ef25957bc679e232",
+                (root / "approvals" / "phase_completion_N2B0_5.sha256")
+                .read_text(encoding="utf-8")
+                .strip()
+                == _file_sha256(n2b0_5_approval_path),
             )
         ):
             return CheckResult(
                 name="current_authorization_contracts",
                 status=FAIL,
-                notes="N2A completion or N2B0 capability gate is inconsistent",
+                notes="N2B0.5 approval or N2B0.6 research gate is inconsistent",
             )
         from .ingest.g1_contract import load_g1_approval
 
@@ -559,7 +596,7 @@ def _check_authorization() -> CheckResult:  # noqa: PLR0911
             evidence=(
                 f"phase={auth.phase_id}/{auth.phase_status} "
                 f"gate={auth.data_gate_id}/{auth.data_gate_status}; "
-                "schema+N1/G1/N2A/N2B0 approval-chain+N2B0.5 capability gate valid"
+                "schema+N1/G1/N2A/N2B0/N2B0.5 approval-chain+N2B0.6 research gate valid"
             ),
         )
     except DuplicateJsonMemberError:
@@ -582,6 +619,7 @@ def _check_git_baselines() -> CheckResult:
     n1 = "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"
     g1 = "4a807dbbcd147a106b02b7e3899aa701c2028d83"
     n2b0 = "f331621c84905aef921c612908d01d3a8a2f577a"
+    n2b0_5 = "5ad9f8d7d0d6fa267df02d90ef25957bc679e232"
 
     def git(*args: str) -> tuple[int, str]:
         return _run(["git", "-C", str(root), *args])
@@ -591,13 +629,16 @@ def _check_git_baselines() -> CheckResult:
         git("rev-parse", "n1-approved-2026-07-14") == (0, n1),
         git("rev-parse", "g1-approved-2026-07-19") == (0, g1),
         git("rev-parse", "n2b0-approved-2026-07-24") == (0, n2b0),
+        git("rev-parse", "n2b0-5-approved-2026-07-26") == (0, n2b0_5),
         git("merge-base", "--is-ancestor", n0, n1)[0] == 0,
         git("merge-base", "--is-ancestor", n1, "HEAD")[0] == 0,
         git("merge-base", "--is-ancestor", g1, "HEAD")[0] == 0,
-        git("rev-list", "--count", "HEAD") == (0, "6"),
-        git("rev-list", "--count", f"{n1}..HEAD") == (0, "4"),
-        git("rev-list", "--count", f"{g1}..HEAD") == (0, "3"),
+        git("rev-list", "--count", "HEAD") == (0, "7"),
+        git("rev-list", "--count", f"{n1}..HEAD") == (0, "5"),
+        git("rev-list", "--count", f"{g1}..HEAD") == (0, "4"),
         git("merge-base", "--is-ancestor", n2b0, "HEAD")[0] == 0,
+        git("merge-base", "--is-ancestor", n2b0_5, "HEAD")[0] == 0,
+        git("rev-list", "--count", f"{n2b0_5}..HEAD") == (0, "1"),
         git("rev-list", "--merges", "HEAD") == (0, ""),
         git("status", "--porcelain", "--untracked-files=all") == (0, ""),
     ]
@@ -605,12 +646,14 @@ def _check_git_baselines() -> CheckResult:
         return CheckResult(
             name="git_stage_baselines",
             status=FAIL,
-            notes="Git baseline or N2A commit mismatch",
+            notes="Git baseline or N2B0.6 commit topology mismatch",
         )
     return CheckResult(
         name="git_stage_baselines",
         status=PASS,
-        evidence=("N0/N1/G1/N2A/N2B0 tags intact; one N2B0.5 commit; no merge; worktree clean"),
+        evidence=(
+            "N0/N1/G1/N2A/N2B0/N2B0.5 tags intact; one N2B0.6 commit; no merge; worktree clean"
+        ),
     )
 
 

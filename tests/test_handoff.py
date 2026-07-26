@@ -1,9 +1,10 @@
-"""Archival handoff integrity and current N1/G1 authorization boundaries."""
+"""Current-stage handoff integrity and governed authorization boundaries."""
 
 from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -11,24 +12,6 @@ import pytest
 from nightly_photo_intelligence_pipeline.domain.authorization import load_authorization
 
 pytestmark = pytest.mark.acceptance
-
-# Authorization-state files legitimately change with Owner-approved phase
-# transitions; excluded from the "immutable contract files intact" check.
-_AUTH_STATE_FILES = {
-    "PROJECT_STATE.json",
-    "tasks/index.json",
-    "tasks/README.md",
-    "tasks/phase_n1_ingest_state_machine.yaml",
-    "research/benchmark_protocol.md",
-    "research/license_review_checklist.md",
-    "research/model_candidate_register.md",
-    "research/source_register.md",
-    "research/technology_decision_matrix.md",
-}
-
-
-def _is_auth_state_file(rel: str) -> bool:
-    return rel in _AUTH_STATE_FILES
 
 
 def _read_manifest(root: Path) -> dict[str, str]:
@@ -41,22 +24,23 @@ def _read_manifest(root: Path) -> dict[str, str]:
     return listed
 
 
-def test_at_n0_ho_01_immutable_contract_files_intact(project_root: Path) -> None:
-    """AT-N0-HO-01: every immutable contract file listed in MANIFEST.sha256
-    hashes correctly. Auth-state files (PROJECT_STATE, tasks/index, task files)
-    are excluded - they change with phase transitions."""
+def test_current_stage_manifest_binds_every_tracked_file(project_root: Path) -> None:
+    """The current stage hashes every tracked file, including governance."""
     listed = _read_manifest(project_root)
-    assert len(listed) >= 50, "manifest should list the delivered contract files"
-    checked = 0
+    result = subprocess.run(
+        ["git", "-C", str(project_root), "ls-files"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0
+    tracked = {line for line in result.stdout.splitlines() if line and line != "MANIFEST.sha256"}
+    assert set(listed) == tracked
     for rel, digest in listed.items():
-        if _is_auth_state_file(rel):
-            continue
         p = project_root / rel
         assert p.is_file(), f"manifest file missing: {rel}"
         actual = hashlib.sha256(p.read_bytes()).hexdigest()
         assert actual == digest, f"manifest hash mismatch: {rel}"
-        checked += 1
-    assert checked > 0, "no immutable contract files checked"
 
 
 def test_at_n0_ho_01_fixtures_match_fixture_manifest(
@@ -94,8 +78,9 @@ def test_at_n0_gate_02_n2_through_n8_locked(project_root: Path) -> None:
     assert state["phase_status"]["N2A"] == "APPROVED_COMPLETE"
     assert state["phase_status"]["N2B"] == "LOCKED"
     assert state["phase_status"]["N2B0"] == "APPROVED_COMPLETE"
-    assert state["phase_status"]["N2B0_5"] == "AUTHORIZED"
-    assert state["required_stop_after"]["condition"] == "N2B0_5_AWAITING_OWNER_APPROVAL"
+    assert state["phase_status"]["N2B0_5"] == "APPROVED_COMPLETE"
+    assert state["phase_status"]["N2B0_6"] == "AUTHORIZED"
+    assert state["required_stop_after"]["condition"] == "N2B0_6_AWAITING_EXTERNAL_REVIEW"
     # N0 and N1 baselines are approved and immutable.
     n0 = state["baselines"]["N0"]
     assert n0["status"] == "APPROVED_COMPLETE"
@@ -141,3 +126,28 @@ def test_at_n0_gate_02_authorization_snapshot_n1_complete_g1_authorized() -> Non
     assert auth.exif_real_data_read == "AUTHORIZED_NON_SENSITIVE_ONLY"
     assert auth.n2a_authorized
     assert not auth.n2b_model_authorized
+
+
+def test_current_handoff_verifier_passes(project_root: Path) -> None:
+    result = subprocess.run(
+        [".venv\\Scripts\\python.exe", "tools\\verify_handoff.py"],
+        cwd=project_root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    assert "HANDOFF_VALID" in result.stdout
+    assert "N2B0.6 metadata-only research only" in result.stdout
+
+
+def test_current_entry_documents_reference_n2b0_6_not_n0_only(project_root: Path) -> None:
+    required_task = "phase_n2b0_6_license_clear_alternative_candidate_research.yaml"
+    for rel in (
+        "MASTER_EXECUTION_CONTRACT.md",
+        "AGENTS.md",
+        "README_FIRST.md",
+        "CODEX_START_HERE.md",
+        "docs/00_reading_order.md",
+    ):
+        assert required_task in (project_root / rel).read_text(encoding="utf-8"), rel

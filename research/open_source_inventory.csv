@@ -4,3 +4,5 @@ rtmlib,https://github.com/Tau-J/rtmlib,2026-07-20,Apache-2.0,TBD_PER_ARTIFACT,TB
 mediapipe-selfie-segmentation,https://github.com/google-ai-edge/mediapipe/blob/master/docs/solutions/selfie_segmentation.md,2026-07-24,Apache-2.0,UNKNOWN,master legacy model index plus storage filenames; no immutable object revision,RESEARCH_ONLY_N2B0_5,false
 paddleseg-pp-humanseg,https://github.com/PaddlePaddle/PaddleSeg,2026-07-24,Apache-2.0,UNKNOWN,release/2.10 model page plus publisher filename; no immutable artifact revision,RESEARCH_ONLY_N2B0_5,false
 sam2,https://github.com/facebookresearch/sam2,2026-07-20,CODE_AND_CHECKPOINT_TERMS_REVIEW,TBD_PER_ARTIFACT,TBD_PENDING_N2B_APPROVAL,ESCALATION_ONLY,false
+intel-open-model-zoo-pose,https://github.com/openvinotoolkit/open_model_zoo,2026-07-26,Apache-2.0,Apache-2.0 model-license declaration,7cc29a91472b4cb1289a11e655ba3e188e1d4a31,N2B0_6_OFFICIAL_SHA256_MISSING,false
+intel-open-model-zoo-segmentation,https://github.com/openvinotoolkit/open_model_zoo,2026-07-26,Apache-2.0,Apache-2.0 model-license declaration,7cc29a91472b4cb1289a11e655ba3e188e1d4a31,N2B0_6_OFFICIAL_SHA256_MISSING,false
