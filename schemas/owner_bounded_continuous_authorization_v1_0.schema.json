@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/owner_bounded_continuous_authorization_v1_0.schema.json",
+  "title": "Owner bounded continuous execution authorization v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "approval_type", "status", "owner_id", "issued_at_utc", "source", "start_phase", "conditional_follow_on", "hard_stop", "data_scope", "explicit_exclusions", "owner_statement"],
+  "properties": {
+    "schema_version": {"const": "1.0"}, "approval_type": {"const": "BOUNDED_CONTINUOUS_EXECUTION"}, "status": {"const": "APPROVED"}, "owner_id": {"const": "Jovi"}, "issued_at_utc": {"const": "2026-07-29"},
+    "source": {"type": "string", "minLength": 1},
+    "start_phase": {"type": "object", "additionalProperties": false, "required": ["id", "capability", "status"], "properties": {"id": {"const": "N2B0_7"}, "capability": {"const": "N2B0_7_GPU_NATIVE_QUALIFICATION"}, "status": {"const": "AUTHORIZED_NOW"}}},
+    "conditional_follow_on": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "object", "additionalProperties": false, "required": ["phase", "condition"], "properties": {"phase": {"enum": ["N2B1_Q", "N2B1_P", "N2B2", "N3A"]}, "condition": {"type": "string", "minLength": 1}}}},
+    "hard_stop": {"type": "object", "additionalProperties": false, "required": ["value", "rule"], "properties": {"value": {"const": true}, "rule": {"type": "string", "minLength": 1}}},
+    "data_scope": {"type": "object", "additionalProperties": false, "required": ["max_assets", "source", "forbidden_before_n2b2"], "properties": {"max_assets": {"const": 20}, "source": {"type": "string", "minLength": 1}, "forbidden_before_n2b2": {"const": "real-photo reads"}}},
+    "explicit_exclusions": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}}, "owner_statement": {"type": "string", "minLength": 1}
+  }
+}

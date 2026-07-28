@@ -688,3 +688,59 @@ reviewed.
 This remediation authorizes no new artifact candidate, model download, model
 execution, dependency install, source-photo access, cache/quarantine write,
 N2B1/N2B2/N3/G2/G3 action, push, merge, or release.
+
+## N2B0.7 RTX 4070 SUPER native artifact qualification - 2026-07-29
+
+N2B0.6 candidate `eb2eaeb61f1c21923d131a115d63edbcdebd8cb2` passed fresh
+local independent review and was approved with the local-only tag
+`n2b0-6-approved-2026-07-29`. The Owner's bounded continuous instruction
+activates only N2B0.7 now; N2B1-Q/P, N2B2, and N3A remain conditional and
+locked until each predecessor hard gate passes.
+
+### Plan
+
+- [x] Record the immutable N2B0.6 completion approval, local tag, and bounded
+  continuation authorization without opening downloads or real-photo access.
+- [x] Verify Windows/Python/GPU availability read-only and inspect official
+  TorchVision v0.22.1 source, artifact identity, wheel availability, and
+  code/weight/dataset/commercial terms separately.
+- [x] Record the Pose variant/filename mismatch and the unknown pretrained
+  weights/commercial-use status without substituting a local hash or a legacy
+  variant.
+- [x] Produce a sanitized owner decision packet and future-only quarantine,
+  cache, delete, and rollback design; do not implement or exercise it.
+- [x] Run full quality gates, create one N2B0.7 local commit, and stop at the
+  exact qualification result. Final evidence: 424 tests passed; Ruff, mypy,
+  quality, sensitive scan, strict JSON scan, preflight, handoff, and Git diff
+  checks exited 0.
+
+### Hard boundary
+
+No model payload download or Range request, wheel/dependency install, model
+load/inference, real-photo read, source snapshot open, quarantine/cache write,
+mask/skeleton/cutout/thumbnail, system configuration change, push, merge, or
+release is authorized in N2B0.7.
+
+## N2B0.7 library-level real-photo denial remediation - 2026-07-29
+
+Independent review of `94b6eb6845c8f3caa23a7f15892f7e56e7c1730c` found that
+the historical G1 approval could still be loaded under state schema 1.5 and
+used through a direct library path. Jovi authorized a bounded remediation only:
+do not read a source photo, model payload, or snapshot; do not open N2B1/N2B2/N3.
+
+### Plan
+
+- [x] Inventory every G1 permit, runner, EXIF, and SQLite library entry point
+  using code and tests only; identify the earliest common denial boundary.
+- [x] Represent the current N2B0.7 real-photo-I/O prohibition explicitly in
+  the authorization snapshot without changing the immutable historical G1
+  approval record.
+- [x] Reject current N2B0.7 state before permit creation, source opening,
+  EXIF read, or SQLite mutation; retain the historical G1 path only for a
+  future explicitly authorized real-photo execution phase.
+- [x] Add synthetic-only negative tests for permit, runner, source-open, EXIF,
+  and SQLite non-reachability; add the precise missing artifact evidence refs
+  and identity assertions from the independent review.
+- [x] Run complete quality gates, amend only the unapproved N2B0.7 commit,
+  and request a fresh independent review. Stop with N2B1/Q/P, N2B2, N3,
+  G2, and G3 locked.

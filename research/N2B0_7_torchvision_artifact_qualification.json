@@ -1,0 +1,88 @@
+{
+  "schema_version": "1.0",
+  "phase_id": "N2B0_7",
+  "collection_mode": "OFFICIAL_METADATA_ONLY",
+  "runtime_target": {
+    "python": "3.12.10",
+    "torch": "2.7.1+cu128",
+    "torchvision": "0.22.1+cu128",
+    "gpu": "NVIDIA GeForce RTX 4070 SUPER",
+    "gpu_memory_mib": 12282,
+    "torch_installed_in_project_venv": false
+  },
+  "official_download_domains_for_future_approval": [
+    "download.pytorch.org",
+    "pypi.org",
+    "files.pythonhosted.org"
+  ],
+  "official_evidence": {
+    "keypoint_model_definition": "https://raw.githubusercontent.com/pytorch/vision/v0.22.1/torchvision/models/detection/keypoint_rcnn.py",
+    "lraspp_model_definition": "https://raw.githubusercontent.com/pytorch/vision/v0.22.1/torchvision/models/segmentation/lraspp.py",
+    "deeplab_model_definition": "https://raw.githubusercontent.com/pytorch/vision/v0.22.1/torchvision/models/segmentation/deeplabv3.py",
+    "voc_category_metadata": "https://raw.githubusercontent.com/pytorch/vision/v0.22.1/torchvision/models/_meta.py",
+    "torchvision_code_license": "https://raw.githubusercontent.com/pytorch/vision/v0.22.1/LICENSE",
+    "torch_hash_prefix_contract": "https://raw.githubusercontent.com/pytorch/pytorch/v2.7.1/torch/hub.py",
+    "coco_terms": "https://github.com/cocodataset/cocodataset.github.io/blob/master/dataset/termsofuse.htm",
+    "voc_terms": "https://www.robots.ox.ac.uk/~vgg/projects/pascal/VOC/voc2012/",
+    "weights_license_status": "NOT_PUBLISHED_IN_LISTED_TORCHVISION_V0_22_1_METADATA",
+    "commercial_use_status": "NOT_PUBLISHED_IN_LISTED_TORCHVISION_V0_22_1_METADATA"
+  },
+  "artifact_candidates": [
+    {
+      "id": "torchvision-keypointrcnn-resnet50-fpn-coco-v1",
+      "role": "pose_primary",
+      "source_revision": "torchvision-v0.22.1",
+      "official_source_url": "https://raw.githubusercontent.com/pytorch/vision/v0.22.1/torchvision/models/detection/keypoint_rcnn.py",
+      "requested_variant": "COCO_V1",
+      "requested_filename": "keypointrcnn_resnet50_fpn_coco-9f466800.pth",
+      "official_variant": "COCO_V1",
+      "official_filename": "keypointrcnn_resnet50_fpn_coco-fc266e95.pth",
+      "official_legacy_variant": "COCO_LEGACY",
+      "official_legacy_filename": "keypointrcnn_resnet50_fpn_coco-9f466800.pth",
+      "official_url": "https://download.pytorch.org/models/keypointrcnn_resnet50_fpn_coco-fc266e95.pth",
+      "claimed_size_megabytes": 226.054,
+      "official_digest": {"algorithm": "SHA256_PREFIX", "value": "fc266e95", "complete_sha256_published": false},
+      "code_license": "BSD-3-Clause",
+      "weights_license": "UNKNOWN",
+      "commercial_use": "UNKNOWN",
+      "training_data_terms": "COCO image rights are not blanket commercial clearance",
+      "qualification": "BLOCKED_VARIANT_FILENAME_MISMATCH_AND_WEIGHTS_RIGHTS_UNKNOWN"
+    },
+    {
+      "id": "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1",
+      "role": "segmentation_primary",
+      "source_revision": "torchvision-v0.22.1",
+      "official_source_url": "https://raw.githubusercontent.com/pytorch/vision/v0.22.1/torchvision/models/segmentation/lraspp.py",
+      "official_variant": "COCO_WITH_VOC_LABELS_V1",
+      "official_filename": "lraspp_mobilenet_v3_large-d234d4ea.pth",
+      "official_url": "https://download.pytorch.org/models/lraspp_mobilenet_v3_large-d234d4ea.pth",
+      "claimed_size_megabytes": 12.49,
+      "person_class_index": 15,
+      "official_digest": {"algorithm": "SHA256_PREFIX", "value": "d234d4ea", "complete_sha256_published": false},
+      "code_license": "BSD-3-Clause",
+      "weights_license": "UNKNOWN",
+      "commercial_use": "UNKNOWN",
+      "training_data_terms": "COCO subset with VOC labels; not a claim of VOC-image training",
+      "qualification": "BLOCKED_WEIGHTS_RIGHTS_UNKNOWN"
+    },
+    {
+      "id": "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1",
+      "role": "segmentation_fallback",
+      "source_revision": "torchvision-v0.22.1",
+      "official_source_url": "https://raw.githubusercontent.com/pytorch/vision/v0.22.1/torchvision/models/segmentation/deeplabv3.py",
+      "official_variant": "COCO_WITH_VOC_LABELS_V1",
+      "official_filename": "deeplabv3_mobilenet_v3_large-fc3c493d.pth",
+      "official_url": "https://download.pytorch.org/models/deeplabv3_mobilenet_v3_large-fc3c493d.pth",
+      "claimed_size_megabytes": 42.301,
+      "person_class_index": 15,
+      "official_digest": {"algorithm": "SHA256_PREFIX", "value": "fc3c493d", "complete_sha256_published": false},
+      "code_license": "BSD-3-Clause",
+      "weights_license": "UNKNOWN",
+      "commercial_use": "UNKNOWN",
+      "training_data_terms": "COCO subset with VOC labels; not a claim of VOC-image training",
+      "qualification": "BLOCKED_WEIGHTS_RIGHTS_UNKNOWN"
+    }
+  ],
+  "result": "N2B0_7_ARTIFACT_QUALIFICATION_BLOCKED",
+  "prohibited_action_counters": {"model_download_bytes": 0, "dependency_installs": 0, "model_execution_runs": 0, "real_photo_reads": 0, "cache_writes": 0}
+}

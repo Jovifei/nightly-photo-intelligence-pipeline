@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from nightly_photo_intelligence_pipeline.cli import _emit_error
+from nightly_photo_intelligence_pipeline.domain.authorization import AuthorizationSnapshot
 from nightly_photo_intelligence_pipeline.domain.errors import (
     GateNotAuthorizedError,
     SourceSymlinkEscapeError,
@@ -93,7 +94,23 @@ def test_unicode_filename_removed_from_log_and_dry_run_report(
     log_text = (runtime_root / "logs" / "npi.log").read_text(encoding="utf-8")
     assert secret_name not in log_text
 
-    result = run_dry_run_ingest(source, runtime_root, config)
+    auth = AuthorizationSnapshot(
+        phase_id="N1",
+        phase_status="AUTHORIZED",
+        data_gate_id="G0_THREE_SYNTHETIC_FIXTURES",
+        data_gate_status="AUTHORIZED",
+        real_photo_access="NOT_AUTHORIZED",
+        large_model_downloads="NOT_AUTHORIZED",
+        openclaw_activation="NOT_AUTHORIZED",
+        exif_real_data_read="NOT_AUTHORIZED",
+        project_root=tmp_path,
+        max_assets=3,
+        n0_baseline_commit="72a81f5984838b74304d23263ac450ea4b5a3a9a",
+        active_execution_phase="N1",
+        active_execution_capability="N1_SYNTHETIC_INGEST",
+        source_photo_content_read="AUTHORIZED",
+    )
+    result = run_dry_run_ingest(source, runtime_root, config, auth=auth)
     report = format_dry_run_text(result)
     assert secret_name not in report
     assert all(item.sanitized_name.startswith("scan-asset-") for item in result.files)

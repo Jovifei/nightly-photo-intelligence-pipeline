@@ -11,8 +11,8 @@
 7. `docs/03_architecture_and_pipeline.md`
 8. `docs/04_export_contract.md`
 9. `OWNER_INPUTS_REQUIRED.md`
-10. `tasks/phase_n2b0_6_license_clear_alternative_candidate_research.yaml`
-11. 与 N2B0.6 相关的来源、许可、测试和验收文档
+10. `tasks/phase_n2b0_7_gpu_native_qualification.yaml`
+11. 与 N2B0.7 相关的来源、许可、环境、测试和验收文档
 
 此顺序完成前不得编辑代码。
 

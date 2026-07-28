@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/task_contract_n2b0_7_v1_0.schema.json",
+  "title": "N2B0.7 RTX 4070 SUPER native artifact qualification contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "phase", "capability", "data_gate", "approval", "runtime_target", "candidate_scope", "required_evidence", "forbidden", "mandatory_stop"],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "phase": {"type": "object", "additionalProperties": false, "required": ["id", "title", "status"], "properties": {"id": {"const": "N2B0_7"}, "title": {"const": "RTX 4070 SUPER Native Artifact Qualification"}, "status": {"const": "AUTHORIZED"}}},
+    "capability": {"const": "N2B0_7_GPU_NATIVE_QUALIFICATION"},
+    "data_gate": {"type": "object", "additionalProperties": false, "required": ["id", "status", "allowed_assets"], "properties": {"id": {"const": "G1_CALIBRATION_20"}, "status": {"const": "AUTHORIZED"}, "allowed_assets": {"const": "official source, license, release, wheel-index, and environment metadata only; no real photo reads"}}},
+    "approval": {"type": "object", "additionalProperties": false, "required": ["n2b0_6_completion", "n2b0_6_commit", "n2b0_6_tag", "bounded_continuous_authorization"], "properties": {"n2b0_6_completion": {"const": "approvals/phase_completion_N2B0_6.yaml"}, "n2b0_6_commit": {"const": "eb2eaeb61f1c21923d131a115d63edbcdebd8cb2"}, "n2b0_6_tag": {"const": "n2b0-6-approved-2026-07-29"}, "bounded_continuous_authorization": {"const": "approvals/owner_continuous_authorization_N2B0_7_to_N3A.yaml"}}},
+    "runtime_target": {"type": "object", "additionalProperties": false, "required": ["python", "torch", "torchvision", "environment", "required_gpu"], "properties": {"python": {"const": "3.12.10"}, "torch": {"const": "2.7.1+cu128"}, "torchvision": {"const": "0.22.1+cu128"}, "environment": {"const": "<RUNTIME_GPU_VENV_CONFIGURED_OUTSIDE_GIT>"}, "required_gpu": {"const": "NVIDIA GeForce RTX 4070 SUPER"}}},
+    "candidate_scope": {"type": "object", "additionalProperties": false, "required": ["pose", "segmentation_primary", "segmentation_fallback"], "properties": {"pose": {"type": "string", "minLength": 1}, "segmentation_primary": {"type": "string", "minLength": 1}, "segmentation_fallback": {"type": "string", "minLength": 1}}},
+    "required_evidence": {"type": "array", "minItems": 4, "uniqueItems": true, "items": {"type": "string"}}, "forbidden": {"type": "array", "minItems": 9, "uniqueItems": true, "items": {"type": "string"}},
+    "mandatory_stop": {"type": "object", "additionalProperties": false, "required": ["value", "rule"], "properties": {"value": {"const": true}, "rule": {"type": "string", "minLength": 1}}}
+  }
+}

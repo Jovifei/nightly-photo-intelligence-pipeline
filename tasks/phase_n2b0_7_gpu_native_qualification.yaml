@@ -1,0 +1,43 @@
+contract_version: "1.0"
+phase:
+  id: "N2B0_7"
+  title: "RTX 4070 SUPER Native Artifact Qualification"
+  status: "AUTHORIZED"
+capability: "N2B0_7_GPU_NATIVE_QUALIFICATION"
+data_gate:
+  id: "G1_CALIBRATION_20"
+  status: "AUTHORIZED"
+  allowed_assets: "official source, license, release, wheel-index, and environment metadata only; no real photo reads"
+approval:
+  n2b0_6_completion: "approvals/phase_completion_N2B0_6.yaml"
+  n2b0_6_commit: "eb2eaeb61f1c21923d131a115d63edbcdebd8cb2"
+  n2b0_6_tag: "n2b0-6-approved-2026-07-29"
+  bounded_continuous_authorization: "approvals/owner_continuous_authorization_N2B0_7_to_N3A.yaml"
+runtime_target:
+  python: "3.12.10"
+  torch: "2.7.1+cu128"
+  torchvision: "0.22.1+cu128"
+  environment: "<RUNTIME_GPU_VENV_CONFIGURED_OUTSIDE_GIT>"
+  required_gpu: "NVIDIA GeForce RTX 4070 SUPER"
+candidate_scope:
+  pose: "TorchVision KeypointRCNN ResNet50 FPN COCO_V1 only"
+  segmentation_primary: "TorchVision LRASPP MobileNetV3 Large COCO_WITH_VOC_LABELS_V1 only"
+  segmentation_fallback: "TorchVision DeepLabV3 MobileNetV3 Large COCO_WITH_VOC_LABELS_V1 only"
+required_evidence:
+  - "official URL, fixed source revision, exact filename, claimed size, and digest type"
+  - "separate code, weights, dataset, and commercial-use conclusions"
+  - "official-domain allowlist and future quarantine/cache/delete/rollback design"
+  - "read-only GPU, Windows, Docker, WSL2, and disk observations"
+forbidden:
+  - "model_payload_download_or_range_request"
+  - "dependency_or_wheel_installation"
+  - "model_load_or_execution"
+  - "real_photo_read"
+  - "quarantine_or_cache_write"
+  - "skeleton_mask_cutout_thumbnail_or_embedding"
+  - "cuda_driver_wsl_docker_or_system_configuration_change"
+  - "n2b1_n2b2_n3a_or_g2_g3"
+  - "push_merge_release_or_main_app_change"
+mandatory_stop:
+  value: true
+  rule: "If any selected artifact lacks an exact official source, correctly paired revision/filename, qualified weight license, commercial-use clearance, or permitted hash policy evidence, record N2B0_7_ARTIFACT_QUALIFICATION_BLOCKED and do not enter N2B1."

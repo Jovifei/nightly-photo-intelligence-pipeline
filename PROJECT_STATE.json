@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.4",
+  "schema_version": "1.5",
   "project": {
     "slug": "nightly-photo-intelligence-pipeline",
     "repository_relationship": "INDEPENDENT_FROM_ai-photography-director-app"
@@ -40,9 +40,16 @@
       "tag": "n2b0-5-approved-2026-07-26",
       "status": "APPROVED_COMPLETE",
       "immutable": true
+    },
+    "N2B0_6": {
+      "commit": "eb2eaeb61f1c21923d131a115d63edbcdebd8cb2",
+      "tag": "n2b0-6-approved-2026-07-29",
+      "status": "APPROVED_COMPLETE",
+      "immutable": true
     }
   },
   "n2b0_5_baseline_sha": "5ad9f8d7d0d6fa267df02d90ef25957bc679e232",
+  "n2b0_6_baseline_sha": "eb2eaeb61f1c21923d131a115d63edbcdebd8cb2",
   "authorization": {
     "phase": {"id": "N1", "status": "APPROVED_COMPLETE"},
     "data_gate": {"id": "G1_CALIBRATION_20", "status": "AUTHORIZED"},
@@ -56,12 +63,23 @@
     "n2b0_5_task_contract": "tasks/phase_n2b0_5_artifact_rights_and_provenance.yaml",
     "n2b0_5_completion_approval": "approvals/phase_completion_N2B0_5.yaml",
     "n2b0_6_task_contract": "tasks/phase_n2b0_6_license_clear_alternative_candidate_research.yaml",
+    "n2b0_6_completion_approval": "approvals/phase_completion_N2B0_6.yaml",
+    "bounded_continuous_authorization": "approvals/owner_continuous_authorization_N2B0_7_to_N3A.yaml",
+    "n2b0_7_task_contract": "tasks/phase_n2b0_7_gpu_native_qualification.yaml",
+    "active_execution": {
+      "phase": "N2B0_7",
+      "capability": "N2B0_7_GPU_NATIVE_QUALIFICATION",
+      "source_photo_content_read": "NOT_AUTHORIZED",
+      "source_photo_exif_read": "NOT_AUTHORIZED",
+      "sqlite_ingest_write": "NOT_AUTHORIZED"
+    },
     "capability_gates": {
       "G1_COMPLETION": "APPROVED_COMPLETE",
       "N2A_POSE_SEGMENTATION_BENCHMARK_PREPARATION": "APPROVED_COMPLETE",
       "N2B0_MODEL_ARTIFACT_QUALIFICATION": "APPROVED_COMPLETE",
       "N2B0_5_ARTIFACT_RIGHTS_AND_PROVENANCE_CLOSURE": "APPROVED_COMPLETE",
-      "N2B0_6_LICENSE_CLEAR_ALTERNATIVE_CANDIDATE_RESEARCH": "AUTHORIZED",
+      "N2B0_6_LICENSE_CLEAR_ALTERNATIVE_CANDIDATE_RESEARCH": "APPROVED_COMPLETE",
+      "N2B0_7_GPU_NATIVE_QUALIFICATION": "AUTHORIZED",
       "N2B_MODEL_DOWNLOAD_AND_INFERENCE": "LOCKED",
       "N2B1_MODEL_DOWNLOAD": "LOCKED",
       "N2B1_Q_QUARANTINE_DOWNLOAD": "LOCKED",
@@ -87,7 +105,8 @@
     "N2B_MODEL_DOWNLOAD_AND_INFERENCE": "LOCKED",
     "N2B0_MODEL_ARTIFACT_QUALIFICATION": "APPROVED_COMPLETE",
     "N2B0_5_ARTIFACT_RIGHTS_AND_PROVENANCE_CLOSURE": "APPROVED_COMPLETE",
-    "N2B0_6_LICENSE_CLEAR_ALTERNATIVE_CANDIDATE_RESEARCH": "AUTHORIZED",
+    "N2B0_6_LICENSE_CLEAR_ALTERNATIVE_CANDIDATE_RESEARCH": "APPROVED_COMPLETE",
+    "N2B0_7_GPU_NATIVE_QUALIFICATION": "AUTHORIZED",
     "N2B1_MODEL_DOWNLOAD": "LOCKED",
     "N2B1_Q_QUARANTINE_DOWNLOAD": "LOCKED",
     "N2B1_P_CACHE_PROMOTION": "LOCKED",
@@ -103,7 +122,8 @@
     "N2A": "APPROVED_COMPLETE",
     "N2B0": "APPROVED_COMPLETE",
     "N2B0_5": "APPROVED_COMPLETE",
-    "N2B0_6": "AUTHORIZED",
+    "N2B0_6": "APPROVED_COMPLETE",
+    "N2B0_7": "AUTHORIZED",
     "N2B": "LOCKED",
     "N2B1": "LOCKED",
     "N2B1_Q": "LOCKED",
@@ -117,7 +137,7 @@
     "N8": "LOCKED"
   },
   "required_stop_after": {
-    "condition": "N2B0_6_AWAITING_EXTERNAL_REVIEW",
-    "next_action": "WAIT_FOR_INDEPENDENT_REVIEW"
+    "condition": "N2B0_7_ARTIFACT_QUALIFICATION_BLOCKED",
+    "next_action": "WAIT_FOR_OWNER_ARTIFACT_DECISION"
   }
 }

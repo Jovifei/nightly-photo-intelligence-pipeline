@@ -362,10 +362,142 @@ def _n1_approval_chain_is_consistent(
     )
 
 
+def _check_n2b0_7_authorization(root: Path, state: dict[str, Any]) -> CheckResult:
+    """Validate the active N2B0.7 metadata-only authorization chain."""
+    try:
+        schemas = root / "schemas"
+        n2b0_6_approval_path = root / "approvals" / "phase_completion_N2B0_6.yaml"
+        n2b0_6_completion = yaml.safe_load(n2b0_6_approval_path.read_text(encoding="utf-8"))
+        bounded = yaml.safe_load(
+            (root / "approvals" / "owner_continuous_authorization_N2B0_7_to_N3A.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        n2b0_7_task = yaml.safe_load(
+            (root / "tasks" / "phase_n2b0_7_gpu_native_qualification.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        qualification = load_json_strict(
+            root / "research" / "N2B0_7_torchvision_artifact_qualification.json"
+        )
+        task_index = load_json_strict(root / "tasks" / "index.json")
+        checks = [
+            (load_json_strict(schemas / "project_state_v1_5.schema.json"), state),
+            (
+                load_json_strict(schemas / "phase_completion_approval_n2b0_6_v1_0.schema.json"),
+                n2b0_6_completion,
+            ),
+            (
+                load_json_strict(
+                    schemas / "owner_bounded_continuous_authorization_v1_0.schema.json"
+                ),
+                bounded,
+            ),
+            (load_json_strict(schemas / "task_contract_n2b0_7_v1_0.schema.json"), n2b0_7_task),
+            (
+                load_json_strict(schemas / "n2b0_7_artifact_qualification_v1.schema.json"),
+                qualification,
+            ),
+            (load_json_strict(schemas / "task_index_v1_2.schema.json"), task_index),
+        ]
+        if any(_validate_schema(schema, value) for schema, value in checks):
+            return CheckResult(
+                name="current_authorization_contracts",
+                status=FAIL,
+                notes="N2B0.7 authorization schema validation failed",
+            )
+        auth = state.get("authorization", {})
+        phase_status = state.get("phase_status", {})
+        gates = auth.get("capability_gates", {})
+        active_execution = auth.get("active_execution", {})
+        n2b0_7_index = next(
+            (item for item in task_index.get("authorized", []) if item.get("phase") == "N2B0_7"),
+            None,
+        )
+        if not all(
+            (
+                n2b0_6_completion.get("owner_decision") == "N2B0_6_OWNER_APPROVED",
+                n2b0_6_completion.get("independent_reviewer", {}).get("reviewed_commit")
+                == "eb2eaeb61f1c21923d131a115d63edbcdebd8cb2",
+                (root / "approvals" / "phase_completion_N2B0_6.sha256")
+                .read_text(encoding="utf-8")
+                .strip()
+                == _file_sha256(n2b0_6_approval_path),
+                bounded.get("start_phase", {}).get("status") == "AUTHORIZED_NOW",
+                n2b0_7_task.get("capability") == "N2B0_7_GPU_NATIVE_QUALIFICATION",
+                n2b0_7_task.get("mandatory_stop", {}).get("value") is True,
+                phase_status.get("N2B0_6") == "APPROVED_COMPLETE",
+                phase_status.get("N2B0_7") == "AUTHORIZED",
+                gates.get("N2B0_7_GPU_NATIVE_QUALIFICATION") == "AUTHORIZED",
+                gates.get("N2B_MODEL_DOWNLOAD_AND_INFERENCE") == "LOCKED",
+                gates.get("N2B1_MODEL_DOWNLOAD") == "LOCKED",
+                gates.get("N2B2_REAL_BENCHMARK") == "LOCKED",
+                auth.get("large_model_downloads") == "NOT_AUTHORIZED",
+                auth.get("real_model_execution") == "NOT_AUTHORIZED",
+                active_execution
+                == {
+                    "phase": "N2B0_7",
+                    "capability": "N2B0_7_GPU_NATIVE_QUALIFICATION",
+                    "source_photo_content_read": "NOT_AUTHORIZED",
+                    "source_photo_exif_read": "NOT_AUTHORIZED",
+                    "sqlite_ingest_write": "NOT_AUTHORIZED",
+                },
+                qualification.get("result") == "N2B0_7_ARTIFACT_QUALIFICATION_BLOCKED",
+                qualification.get("prohibited_action_counters")
+                == {
+                    "model_download_bytes": 0,
+                    "dependency_installs": 0,
+                    "model_execution_runs": 0,
+                    "real_photo_reads": 0,
+                    "cache_writes": 0,
+                },
+                state.get("required_stop_after")
+                == {
+                    "condition": "N2B0_7_ARTIFACT_QUALIFICATION_BLOCKED",
+                    "next_action": "WAIT_FOR_OWNER_ARTIFACT_DECISION",
+                },
+                isinstance(n2b0_7_index, dict),
+                (n2b0_7_index or {}).get("file") == "phase_n2b0_7_gpu_native_qualification.yaml",
+                (n2b0_7_index or {}).get("capability") == "N2B0_7_GPU_NATIVE_QUALIFICATION",
+            )
+        ):
+            return CheckResult(
+                name="current_authorization_contracts",
+                status=FAIL,
+                notes="N2B0.7 approval chain is inconsistent or broadened",
+            )
+        from .ingest.g1_contract import load_g1_approval
+
+        load_g1_approval(root)
+        return CheckResult(
+            name="current_authorization_contracts",
+            status=PASS,
+            evidence=(
+                "N2B0.6 approval+tag and bounded N2B0.7 metadata-only authorization valid; "
+                "N2B1/Q/P, N2B2, N3, G2, and G3 remain locked"
+            ),
+        )
+    except DuplicateJsonMemberError:
+        return CheckResult(
+            name="current_authorization_contracts",
+            status=FAIL,
+            notes=NPI_DUPLICATE_JSON_MEMBER,
+        )
+    except Exception:  # noqa: BLE001
+        return CheckResult(
+            name="current_authorization_contracts",
+            status=FAIL,
+            notes="N2B0.7 authorization contract validation failed",
+        )
+
+
 def _check_authorization() -> CheckResult:  # noqa: PLR0911
     root = find_project_root()
     try:
         state = load_json_strict(root / "PROJECT_STATE.json")
+        if state.get("schema_version") == "1.5":
+            return _check_n2b0_7_authorization(root, state)
         approval = yaml.safe_load(
             (root / "approvals" / "data_gate_approval_G1.yaml").read_text(encoding="utf-8")
         )
@@ -623,6 +755,40 @@ def _check_git_baselines() -> CheckResult:
 
     def git(*args: str) -> tuple[int, str]:
         return _run(["git", "-C", str(root), *args])
+
+    try:
+        state = load_json_strict(root / "PROJECT_STATE.json")
+    except Exception:  # noqa: BLE001
+        state = {}
+    if state.get("schema_version") == "1.5":
+        n2b0_6 = "eb2eaeb61f1c21923d131a115d63edbcdebd8cb2"
+        checks = [
+            git("rev-parse", "n0-approved-2026-07-14") == (0, n0),
+            git("rev-parse", "n1-approved-2026-07-14") == (0, n1),
+            git("rev-parse", "g1-approved-2026-07-19") == (0, g1),
+            git("rev-parse", "n2b0-approved-2026-07-24") == (0, n2b0),
+            git("rev-parse", "n2b0-5-approved-2026-07-26") == (0, n2b0_5),
+            git("rev-parse", "n2b0-6-approved-2026-07-29") == (0, n2b0_6),
+            git("merge-base", "--is-ancestor", n2b0_6, "HEAD")[0] == 0,
+            git("rev-list", "--count", f"{n2b0_5}..{n2b0_6}") == (0, "1"),
+            git("rev-list", "--count", f"{n2b0_6}..HEAD") == (0, "1"),
+            git("rev-list", "--merges", "HEAD") == (0, ""),
+            git("status", "--porcelain", "--untracked-files=all") == (0, ""),
+        ]
+        if not all(checks):
+            return CheckResult(
+                name="git_stage_baselines",
+                status=FAIL,
+                notes="Git baseline or N2B0.7 commit topology mismatch",
+            )
+        return CheckResult(
+            name="git_stage_baselines",
+            status=PASS,
+            evidence=(
+                "N0/N1/G1/N2A/N2B0/N2B0.5/N2B0.6 tags intact; one N2B0.7 commit; "
+                "no merge; worktree clean"
+            ),
+        )
 
     checks = [
         git("rev-parse", "n0-approved-2026-07-14") == (0, n0),

@@ -1,0 +1,254 @@
+{
+    "$schema":  "https://json-schema.org/draft/2020-12/schema",
+    "$id":  "https://schemas.npi.local/n2b0_7_artifact_qualification_v1.schema.json",
+    "title":  "N2B0.7 closed GPU-native artifact qualification record",
+    "type":  "object",
+    "additionalProperties":  false,
+    "required":  [
+                     "schema_version",
+                     "phase_id",
+                     "collection_mode",
+                     "runtime_target",
+                     "official_download_domains_for_future_approval",
+                     "official_evidence",
+                     "artifact_candidates",
+                     "result",
+                     "prohibited_action_counters"
+                 ],
+    "$defs":  {
+                  "artifact":  {
+                                   "type":  "object",
+                                   "additionalProperties":  false,
+                                   "required":  [
+                                                    "id",
+                                                    "role",
+                                                    "source_revision",
+                                                    "official_source_url",
+                                                    "official_variant",
+                                                    "official_filename",
+                                                    "official_url",
+                                                    "claimed_size_megabytes",
+                                                    "official_digest",
+                                                    "code_license",
+                                                    "weights_license",
+                                                    "commercial_use",
+                                                    "training_data_terms",
+                                                    "qualification"
+                                                ],
+                                   "properties":  {
+                                                      "id":  {
+                                                                 "enum":  [
+                                                                              "torchvision-keypointrcnn-resnet50-fpn-coco-v1",
+                                                                              "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1",
+                                                                              "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1"
+                                                                          ]
+                                                             },
+                                                      "role":  {
+                                                                   "enum":  [
+                                                                                "pose_primary",
+                                                                                "segmentation_primary",
+                                                                                "segmentation_fallback"
+                                                                            ]
+                                                               },
+                                                      "source_revision":  {
+                                                                              "const":  "torchvision-v0.22.1"
+                                                                          },
+                                                      "official_source_url":  {
+                                                                                  "type":  "string",
+                                                                                  "pattern":  "^https://raw[.]githubusercontent[.]com/pytorch/vision/v0[.]22[.]1/"
+                                                                              },
+                                                      "requested_variant":  {
+                                                                                "type":  "string",
+                                                                                "minLength":  1
+                                                                            },
+                                                      "requested_filename":  {
+                                                                                 "type":  "string",
+                                                                                 "minLength":  1
+                                                                             },
+                                                      "official_variant":  {
+                                                                               "enum":  [
+                                                                                            "COCO_V1",
+                                                                                            "COCO_WITH_VOC_LABELS_V1"
+                                                                                        ]
+                                                                           },
+                                                      "official_filename":  {
+                                                                                "type":  "string",
+                                                                                "pattern":  "^[A-Za-z0-9_.-]+[.]pth$"
+                                                                            },
+                                                      "official_legacy_variant":  {
+                                                                                       "const":  "COCO_LEGACY"
+                                                                                   },
+                                                      "official_legacy_filename":  {
+                                                                                        "const":  "keypointrcnn_resnet50_fpn_coco-9f466800.pth"
+                                                                                    },
+                                                      "official_url":  {
+                                                                           "type":  "string",
+                                                                           "pattern":  "^https://download[.]pytorch[.]org/models/[A-Za-z0-9_.-]+[.]pth$"
+                                                                       },
+                                                      "claimed_size_megabytes":  {
+                                                                                     "type":  "number",
+                                                                                     "exclusiveMinimum":  0
+                                                                                 },
+                                                      "person_class_index":  {
+                                                                                 "const":  15
+                                                                             },
+                                                      "official_digest":  {
+                                                                              "type":  "object",
+                                                                              "additionalProperties":  false,
+                                                                              "required":  [
+                                                                                               "algorithm",
+                                                                                               "value",
+                                                                                               "complete_sha256_published"
+                                                                                           ],
+                                                                              "properties":  {
+                                                                                                 "algorithm":  {
+                                                                                                                   "const":  "SHA256_PREFIX"
+                                                                                                               },
+                                                                                                 "value":  {
+                                                                                                               "pattern":  "^[0-9a-f]{8}$"
+                                                                                                           },
+                                                                                                 "complete_sha256_published":  {
+                                                                                                                                   "const":  false
+                                                                                                                               }
+                                                                                             }
+                                                                          },
+                                                      "code_license":  {
+                                                                           "const":  "BSD-3-Clause"
+                                                                       },
+                                                      "weights_license":  {
+                                                                              "const":  "UNKNOWN"
+                                                                          },
+                                                      "commercial_use":  {
+                                                                             "const":  "UNKNOWN"
+                                                                         },
+                                                      "training_data_terms":  {
+                                                                                  "type":  "string",
+                                                                                  "minLength":  1
+                                                                              },
+                                                      "qualification":  {
+                                                                            "type":  "string",
+                                                                            "pattern":  "^BLOCKED_"
+                                                                        }
+                                                  }
+                               }
+              },
+    "properties":  {
+                       "schema_version":  {
+                                              "const":  "1.0"
+                                          },
+                       "phase_id":  {
+                                        "const":  "N2B0_7"
+                                    },
+                       "collection_mode":  {
+                                               "const":  "OFFICIAL_METADATA_ONLY"
+                                           },
+                       "runtime_target":  {
+                                              "type":  "object",
+                                              "additionalProperties":  false,
+                                              "required":  [
+                                                               "python",
+                                                               "torch",
+                                                               "torchvision",
+                                                               "gpu",
+                                                               "gpu_memory_mib",
+                                                               "torch_installed_in_project_venv"
+                                                           ],
+                                              "properties":  {
+                                                                 "python":  {
+                                                                                "const":  "3.12.10"
+                                                                            },
+                                                                 "torch":  {
+                                                                               "const":  "2.7.1+cu128"
+                                                                           },
+                                                                 "torchvision":  {
+                                                                                     "const":  "0.22.1+cu128"
+                                                                                 },
+                                                                 "gpu":  {
+                                                                             "const":  "NVIDIA GeForce RTX 4070 SUPER"
+                                                                         },
+                                                                 "gpu_memory_mib":  {
+                                                                                        "const":  12282
+                                                                                    },
+                                                                 "torch_installed_in_project_venv":  {
+                                                                                                         "const":  false
+                                                                                                     }
+                                                             }
+                                          },
+                       "official_download_domains_for_future_approval":  {
+                                                                             "const":  [
+                                                                                           "download.pytorch.org",
+                                                                                           "pypi.org",
+                                                                                           "files.pythonhosted.org"
+                                                                                       ]
+                                                                         },
+                       "official_evidence":  {
+                                                   "type":  "object",
+                                                   "additionalProperties":  false,
+                                                   "required":  [
+                                                                    "keypoint_model_definition",
+                                                                    "lraspp_model_definition",
+                                                                    "deeplab_model_definition",
+                                                                    "voc_category_metadata",
+                                                                    "torchvision_code_license",
+                                                                    "torch_hash_prefix_contract",
+                                                                    "coco_terms",
+                                                                    "voc_terms",
+                                                                    "weights_license_status",
+                                                                    "commercial_use_status"
+                                                                ],
+                                                   "properties":  {
+                                                                      "keypoint_model_definition":  {
+                                                                                                        "const":  "https://raw.githubusercontent.com/pytorch/vision/v0.22.1/torchvision/models/detection/keypoint_rcnn.py"
+                                                                                                    },
+                                                                      "lraspp_model_definition":  {
+                                                                                                     "const":  "https://raw.githubusercontent.com/pytorch/vision/v0.22.1/torchvision/models/segmentation/lraspp.py"
+                                                                                                 },
+                                                                      "deeplab_model_definition":  {
+                                                                                                      "const":  "https://raw.githubusercontent.com/pytorch/vision/v0.22.1/torchvision/models/segmentation/deeplabv3.py"
+                                                                                                  },
+                                                                      "voc_category_metadata":  {
+                                                                                                    "const":  "https://raw.githubusercontent.com/pytorch/vision/v0.22.1/torchvision/models/_meta.py"
+                                                                                                },
+                                                                      "torchvision_code_license":  {
+                                                                                                       "const":  "https://raw.githubusercontent.com/pytorch/vision/v0.22.1/LICENSE"
+                                                                                                   },
+                                                                      "torch_hash_prefix_contract":  {
+                                                                                                        "const":  "https://raw.githubusercontent.com/pytorch/pytorch/v2.7.1/torch/hub.py"
+                                                                                                    },
+                                                                      "coco_terms":  {
+                                                                                          "const":  "https://github.com/cocodataset/cocodataset.github.io/blob/master/dataset/termsofuse.htm"
+                                                                                      },
+                                                                      "voc_terms":  {
+                                                                                         "const":  "https://www.robots.ox.ac.uk/~vgg/projects/pascal/VOC/voc2012/"
+                                                                                     },
+                                                                      "weights_license_status":  {
+                                                                                                       "const":  "NOT_PUBLISHED_IN_LISTED_TORCHVISION_V0_22_1_METADATA"
+                                                                                                   },
+                                                                      "commercial_use_status":  {
+                                                                                                  "const":  "NOT_PUBLISHED_IN_LISTED_TORCHVISION_V0_22_1_METADATA"
+                                                                                              }
+                                                                  }
+                                               },
+                       "artifact_candidates":  {
+                                                   "type":  "array",
+                                                   "minItems":  3,
+                                                   "maxItems":  3,
+                                                   "uniqueItems":  true,
+                                                   "items":  {
+                                                                 "$ref":  "#/$defs/artifact"
+                                                             }
+                                               },
+                       "result":  {
+                                      "const":  "N2B0_7_ARTIFACT_QUALIFICATION_BLOCKED"
+                                  },
+                       "prohibited_action_counters":  {
+                                                          "const":  {
+                                                                        "model_download_bytes":  0,
+                                                                        "dependency_installs":  0,
+                                                                        "model_execution_runs":  0,
+                                                                        "real_photo_reads":  0,
+                                                                        "cache_writes":  0
+                                                                    }
+                                                      }
+                   }
+}

@@ -33,7 +33,7 @@ git status --short  # 若尚未 git init，记录即可
 
 ## 自审
 
-- 对照当前 N2B0.6 YAML 每项；
+- 对照当前 N2B0.7 YAML 每项；
 - 运行统一质量命令；
 - `git diff --check`；
 - 敏感扫描；
@@ -47,11 +47,11 @@ git status --short  # 若尚未 git init，记录即可
 当前阶段候选建议：
 
 ```text
-docs(n2b): reconcile current-stage handoff integrity
+docs(n2b): qualify GPU-native artifacts fail-closed
 ```
 
 一个 commit。不得 merge/push。
 
 ## 停止
 
-输出 `N2B0_6_AWAITING_EXTERNAL_REVIEW`；不问“要不要顺便做 N2B1”，不执行任何 N2B1 命令。
+输出 `N2B0_7_ARTIFACT_QUALIFICATION_BLOCKED` 或等待 Owner artifact decision；不问“要不要顺便做 N2B1”，不执行任何 N2B1 命令。

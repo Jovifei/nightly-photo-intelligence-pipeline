@@ -158,9 +158,9 @@ def test_preflight_duplicate_state_exits_nonzero_before_semantic_authorization(
     for name in ("approvals", "config", "schemas", "tasks"):
         shutil.copytree(project_root / name, tmp_path / name)
     state = (project_root / "PROJECT_STATE.json").read_text(encoding="utf-8")
-    duplicate = '"schema_version": "1.4",\n  "schema_version": "1.4",'
+    duplicate = '"schema_version": "1.5",\n  "schema_version": "1.5",'
     (tmp_path / "PROJECT_STATE.json").write_text(
-        state.replace('"schema_version": "1.4",', duplicate, 1), encoding="utf-8"
+        state.replace('"schema_version": "1.5",', duplicate, 1), encoding="utf-8"
     )
     monkeypatch.setattr(preflight_module, "find_project_root", lambda: tmp_path)
     monkeypatch.setattr(preflight_module, "_BASE_CHECKS", (preflight_module._check_authorization,))

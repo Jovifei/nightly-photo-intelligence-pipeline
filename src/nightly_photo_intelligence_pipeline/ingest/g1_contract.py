@@ -142,7 +142,7 @@ def load_g1_approval(project_root: Path, *, now: datetime | None = None) -> G1Ap
     # immutable historical binding while independently validating their closed
     # current-stage Schema and locked downstream capabilities in preflight.
     # They must not require rewriting the already-approved G1 record.
-    if state_version in {"1.2", "1.4"}:
+    if state_version in {"1.2", "1.4", "1.5"}:
         valid_bindings: tuple[dict[str, str], ...] = (G1_HISTORICAL_BINDINGS, current_bindings)
     else:
         valid_bindings = (current_bindings,)
@@ -215,6 +215,7 @@ def validate_g1_execution_contract(
     manifest: G1FrozenManifest,
     approval: G1Approval,
 ) -> None:
+    auth.require_source_content_read_authorized()
     if auth.phase_id != "N1" or not auth.phase_authorized:
         raise GateNotAuthorizedError("G1 requires the approved N1 capability baseline")
     if auth.data_gate_id != "G1_CALIBRATION_20" or not auth.data_gate_authorized:

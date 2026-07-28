@@ -174,6 +174,13 @@ def ingest(
         raise GateNotAuthorizedError("G1 frozen-manifest ingest is not authorized by this gate")
     # Gate check FIRST, before any source access.
     auth.require_ingest_authorized(dry_run=dry_run)
+    # Historical G1 approval is not permission for the currently active
+    # capability to open source photos.  Keep this guard ahead of config,
+    # manifest, root validation, and StateStore access so the CLI cannot be a
+    # weaker boundary than the library runners.
+    auth.require_source_content_read_authorized()
+    if not dry_run:
+        auth.require_sqlite_ingest_write_authorized()
     if auth.n2a_authorized and g1_frozen_manifest is not None:
         preflight_results = run_preflight()
         if any(result.status == FAIL for result in preflight_results):
@@ -192,7 +199,11 @@ def ingest(
     )
     if dry_run:
         dry_result = run_dry_run_ingest(
-            input_dir, runtime_root, config, source_root_for_redaction=input_dir
+            input_dir,
+            runtime_root,
+            config,
+            auth=auth,
+            source_root_for_redaction=input_dir,
         )
         typer.echo(format_dry_run_text(dry_result))
         return
@@ -275,6 +286,11 @@ def resume() -> None:
     Does not invent outputs or advance asset state; it only flags runs so a
     later stage can reclaim them. Reports the count reclaimed.
     """
+    # Resume mutates state.  It must remain unavailable while N2B0.7 is
+    # restricted to metadata qualification, even when a historical ingest
+    # approval exists in PROJECT_STATE.
+    auth = load_authorization()
+    auth.require_sqlite_ingest_write_authorized()
     db_path = _resolve_db_path()
     if not db_path.is_file():
         typer.echo("no state database; nothing to resume")

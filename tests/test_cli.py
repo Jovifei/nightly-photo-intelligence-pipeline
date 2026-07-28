@@ -42,6 +42,10 @@ def _authorize_historical_g0(monkeypatch: pytest.MonkeyPatch, root: Path) -> Non
         max_assets=3,
         n0_baseline_commit="72a81f5984838b74304d23263ac450ea4b5a3a9a",
         n1_baseline_commit="ca812cb71c4a09d273f64d9a6f2747ac3facf4cc",
+        active_execution_phase="N1",
+        active_execution_capability="N1_SYNTHETIC_INGEST",
+        source_photo_content_read="AUTHORIZED",
+        sqlite_ingest_write="AUTHORIZED",
     )
     monkeypatch.setattr(cli_module, "load_authorization", lambda: snapshot)
 
@@ -60,6 +64,10 @@ def _authorize_historical_g1(monkeypatch: pytest.MonkeyPatch, root: Path) -> Non
         max_assets=20,
         n0_baseline_commit=N0_BASELINE,
         n1_baseline_commit=N1_BASELINE,
+        active_execution_phase="G1",
+        active_execution_capability="G1_CALIBRATION_20",
+        source_photo_content_read="AUTHORIZED",
+        sqlite_ingest_write="AUTHORIZED",
     )
     monkeypatch.setattr(cli_module, "load_authorization", lambda: snapshot)
 

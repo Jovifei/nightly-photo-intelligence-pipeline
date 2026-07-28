@@ -16,6 +16,7 @@ from typer.testing import CliRunner
 import nightly_photo_intelligence_pipeline.cli as cli_module
 import nightly_photo_intelligence_pipeline.preflight as preflight_module
 from nightly_photo_intelligence_pipeline.cli import app
+from nightly_photo_intelligence_pipeline.domain.authorization import AuthorizationSnapshot
 from nightly_photo_intelligence_pipeline.domain.errors import (
     RuntimePolicyError,
     SourceRuntimeOverlapError,
@@ -37,6 +38,28 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _synthetic_g1_authorization(root: Path) -> AuthorizationSnapshot:
+    """Historical G1 fixture authority, isolated from active N2B0.7 state."""
+    return AuthorizationSnapshot(
+        phase_id="N1",
+        phase_status="APPROVED_COMPLETE",
+        data_gate_id="G1_CALIBRATION_20",
+        data_gate_status="AUTHORIZED",
+        real_photo_access="AUTHORIZED",
+        large_model_downloads="NOT_AUTHORIZED",
+        openclaw_activation="NOT_AUTHORIZED",
+        exif_real_data_read="AUTHORIZED_NON_SENSITIVE_ONLY",
+        project_root=root,
+        max_assets=20,
+        n0_baseline_commit=N0_BASELINE,
+        n1_baseline_commit=N1_BASELINE,
+        active_execution_phase="G1",
+        active_execution_capability="G1_CALIBRATION_20",
+        source_photo_content_read="AUTHORIZED",
+        sqlite_ingest_write="AUTHORIZED",
+    )
+
+
 def test_disk_preflight_fails_closed_below_safety_floor(monkeypatch: pytest.MonkeyPatch) -> None:
     Usage = namedtuple("Usage", "total used free")
     monkeypatch.setattr(
@@ -52,7 +75,7 @@ def test_disk_preflight_fails_closed_below_safety_floor(monkeypatch: pytest.Monk
 def _prepare_synthetic_current_stage(
     project_root: Path, tmp_path: Path
 ) -> tuple[Path, Path, Path, Path, str]:
-    for item in ("PROJECT_STATE.json", "approvals", "tasks", "schemas", "config"):
+    for item in ("PROJECT_STATE.json", "approvals", "tasks", "schemas", "config", "research"):
         source_item = project_root / item
         target = tmp_path / item
         if source_item.is_dir():
@@ -156,6 +179,11 @@ def test_g1_ingest_refuses_to_bypass_failed_current_preflight(
     manifest = tmp_path / "manifest.txt"
     manifest.write_text("synthetic\n", encoding="utf-8")
     monkeypatch.setenv("NPI_RUNTIME_ROOT", str(runtime))
+    monkeypatch.setattr(
+        cli_module,
+        "load_authorization",
+        lambda: _synthetic_g1_authorization(tmp_path),
+    )
     monkeypatch.setattr(
         cli_module,
         "run_preflight",

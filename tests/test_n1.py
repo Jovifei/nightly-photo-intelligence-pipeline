@@ -14,7 +14,10 @@ from pathlib import Path
 
 import pytest
 
-from nightly_photo_intelligence_pipeline.domain.authorization import load_authorization
+from nightly_photo_intelligence_pipeline.domain.authorization import (
+    AuthorizationSnapshot,
+    load_authorization,
+)
 from nightly_photo_intelligence_pipeline.ingest.manifest import load_manifest
 from nightly_photo_intelligence_pipeline.ingest.perceptual_hash import (
     ALGORITHM_ID,
@@ -34,6 +37,33 @@ from nightly_photo_intelligence_pipeline.persistence.sqlite import (
 pytestmark = pytest.mark.acceptance
 
 N0_BASELINE = "72a81f5984838b74304d23263ac450ea4b5a3a9a"
+N1_BASELINE = "ca812cb71c4a09d273f64d9a6f2747ac3facf4cc"
+
+
+def _synthetic_n1_authorization() -> AuthorizationSnapshot:
+    """Explicit historical N1 synthetic-fixture capability for N1 tests.
+
+    These acceptance tests model the approved G0 three-fixture behavior. They
+    must not borrow the current metadata-only N2B0.7 process authorization.
+    """
+    return AuthorizationSnapshot(
+        phase_id="N1",
+        phase_status="APPROVED_COMPLETE",
+        data_gate_id="G0_THREE_SYNTHETIC_FIXTURES",
+        data_gate_status="AUTHORIZED",
+        real_photo_access="NOT_AUTHORIZED",
+        large_model_downloads="NOT_AUTHORIZED",
+        openclaw_activation="NOT_AUTHORIZED",
+        exif_real_data_read="NOT_AUTHORIZED",
+        project_root=Path("."),
+        max_assets=3,
+        n0_baseline_commit=N0_BASELINE,
+        n1_baseline_commit=N1_BASELINE,
+        active_execution_phase="N1",
+        active_execution_capability="N1_SYNTHETIC_INGEST",
+        source_photo_content_read="AUTHORIZED",
+        sqlite_ingest_write="AUTHORIZED",
+    )
 
 
 def _utc_past(hours: int = 1) -> str:
@@ -47,7 +77,7 @@ def test_at_n1_ingest_deterministic_first_ingest(
     fixture_dir: Path, runtime_root: Path, db_path: Path, config
 ) -> None:
     """First ingest of the 3 fixtures is deterministic: 2 unique assets, 1 dup."""
-    auth = load_authorization()
+    auth = _synthetic_n1_authorization()
     manifest = load_manifest(fixture_dir.parent / "fixture_manifest.json")
     store = StateStore.open(db_path)
     result = run_real_ingest(fixture_dir, runtime_root, config, auth, store, manifest)
@@ -62,7 +92,7 @@ def test_at_n1_ingest_idempotent_reingest(
     fixture_dir: Path, runtime_root: Path, db_path: Path, config
 ) -> None:
     """Re-ingesting the same fixtures creates no new asset rows."""
-    auth = load_authorization()
+    auth = _synthetic_n1_authorization()
     manifest = load_manifest(fixture_dir.parent / "fixture_manifest.json")
     store = StateStore.open(db_path)
     run_real_ingest(fixture_dir, runtime_root, config, auth, store, manifest)
@@ -78,7 +108,7 @@ def test_at_n1_exact_duplicate_recognized(
     fixture_dir: Path, runtime_root: Path, db_path: Path, config
 ) -> None:
     """The exact-duplicate pair (same SHA) is one asset with two sources."""
-    auth = load_authorization()
+    auth = _synthetic_n1_authorization()
     manifest = load_manifest(fixture_dir.parent / "fixture_manifest.json")
     store = StateStore.open(db_path)
     run_real_ingest(fixture_dir, runtime_root, config, auth, store, manifest)
@@ -100,7 +130,7 @@ def test_at_n1_exact_duplicate_recognized(
 def test_at_n1_sha_and_perceptual_hash_stored_separately(
     fixture_dir: Path, runtime_root: Path, db_path: Path, config
 ) -> None:
-    auth = load_authorization()
+    auth = _synthetic_n1_authorization()
     manifest = load_manifest(fixture_dir.parent / "fixture_manifest.json")
     store = StateStore.open(db_path)
     run_real_ingest(fixture_dir, runtime_root, config, auth, store, manifest)
@@ -302,7 +332,7 @@ def test_at_n1_db_no_absolute_photo_paths(
     fixture_dir: Path, runtime_root: Path, db_path: Path, config
 ) -> None:
     """The DB stores only redacted source paths, never absolute photo paths."""
-    auth = load_authorization()
+    auth = _synthetic_n1_authorization()
     manifest = load_manifest(fixture_dir.parent / "fixture_manifest.json")
     store = StateStore.open(db_path)
     run_real_ingest(fixture_dir, runtime_root, config, auth, store, manifest)
@@ -321,7 +351,7 @@ def test_at_n1_no_derived_artifacts(
     fixture_dir: Path, runtime_root: Path, db_path: Path, config
 ) -> None:
     """Real ingest creates no thumbnails, masks, embeddings, or model artifacts."""
-    auth = load_authorization()
+    auth = _synthetic_n1_authorization()
     manifest = load_manifest(fixture_dir.parent / "fixture_manifest.json")
     store = StateStore.open(db_path)
     run_real_ingest(fixture_dir, runtime_root, config, auth, store, manifest)
@@ -359,7 +389,7 @@ def test_at_n1_deterministic_structured_output(
     fixture_dir: Path, runtime_root: Path, db_path: Path, config
 ) -> None:
     """Two separate ingests (fresh DBs) produce identical asset SHA sets."""
-    auth = load_authorization()
+    auth = _synthetic_n1_authorization()
     manifest = load_manifest(fixture_dir.parent / "fixture_manifest.json")
 
     def shas() -> set[str]:
@@ -441,3 +471,6 @@ def test_at_n1_authorization_n1_g0_no_real_photos() -> None:
     assert auth.real_photo_access == "AUTHORIZED"
     assert auth.exif_real_data_read == "AUTHORIZED_NON_SENSITIVE_ONLY"
     assert auth.large_model_downloads == "NOT_AUTHORIZED"
+    assert auth.active_execution_phase == "N2B0_7"
+    assert not auth.source_content_read_authorized
+    assert auth.sqlite_ingest_write == "NOT_AUTHORIZED"

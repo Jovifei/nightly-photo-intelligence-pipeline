@@ -55,8 +55,21 @@ def test_current_mutable_contracts_validate_and_are_consistent(project_root: Pat
             / "phase_n2b0_6_license_clear_alternative_candidate_research.yaml"
         ).read_text(encoding="utf-8")
     )
+    n2b0_6_completion = yaml.safe_load(
+        (project_root / "approvals" / "phase_completion_N2B0_6.yaml").read_text(encoding="utf-8")
+    )
+    bounded = yaml.safe_load(
+        (
+            project_root / "approvals" / "owner_continuous_authorization_N2B0_7_to_N3A.yaml"
+        ).read_text(encoding="utf-8")
+    )
+    n2b0_7 = yaml.safe_load(
+        (project_root / "tasks" / "phase_n2b0_7_gpu_native_qualification.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
     task_index = json.loads((project_root / "tasks" / "index.json").read_text(encoding="utf-8"))
-    assert not _errors(_schema(project_root, "project_state_v1_4.schema.json"), state)
+    assert not _errors(_schema(project_root, "project_state_v1_5.schema.json"), state)
     assert not _errors(_schema(project_root, "approval_record_v1_1.schema.json"), approval)
     assert not _errors(
         _schema(project_root, "phase_completion_approval_v1_0.schema.json"), n1_completion
@@ -74,6 +87,15 @@ def test_current_mutable_contracts_validate_and_are_consistent(project_root: Pat
         n2b0_5_completion,
     )
     assert not _errors(_schema(project_root, "task_contract_n2b0_6_v1_0.schema.json"), n2b0_6)
+    assert not _errors(
+        _schema(project_root, "phase_completion_approval_n2b0_6_v1_0.schema.json"),
+        n2b0_6_completion,
+    )
+    assert not _errors(
+        _schema(project_root, "owner_bounded_continuous_authorization_v1_0.schema.json"),
+        bounded,
+    )
+    assert not _errors(_schema(project_root, "task_contract_n2b0_7_v1_0.schema.json"), n2b0_7)
     auth = load_authorization(project_root)
     assert auth.phase_id == "N1" and auth.phase_authorized
     assert auth.phase_status == "APPROVED_COMPLETE"
@@ -81,6 +103,14 @@ def test_current_mutable_contracts_validate_and_are_consistent(project_root: Pat
     assert auth.data_gate_id == "G1_CALIBRATION_20" and auth.data_gate_authorized
     assert auth.max_assets == approval["max_assets"] == g1["data_gate"]["max_assets"]
     assert auth.n2a_authorized and not auth.n2b_model_authorized
+    assert not auth.source_content_read_authorized
+    assert auth.active_execution_phase == "N2B0_7"
+    assert auth.active_execution_capability == "N2B0_7_GPU_NATIVE_QUALIFICATION"
+    assert auth.sqlite_ingest_write == "NOT_AUTHORIZED"
+    assert state["phase_status"]["N2B0_6"] == "APPROVED_COMPLETE"
+    assert state["phase_status"]["N2B0_7"] == "AUTHORIZED"
+    assert n2b0_6_completion["owner_decision"] == "N2B0_6_OWNER_APPROVED"
+    assert n2b0_7["mandatory_stop"]["value"] is True
     assert n1["completion_approval"] == "approvals/phase_completion_N1.yaml"
     assert g1["dependencies"]["n1_completion_approval"] == n1["completion_approval"]
     assert task_index["completed"][1]["completion_approval"] == n1["completion_approval"]
@@ -104,6 +134,12 @@ def test_current_mutable_contracts_validate_and_are_consistent(project_root: Pat
         ("g1", lambda value: value.pop("mandatory_stop")),
         ("g1", lambda value: value.pop("explicit_exclusions")),
         ("state", lambda value: value["authorization"].update({"gps_access": "AUTHORIZED"})),
+        (
+            "state",
+            lambda value: value["authorization"]["active_execution"].update(
+                {"source_photo_content_read": "AUTHORIZED"}
+            ),
+        ),
     ],
 )
 def test_current_contract_schema_rejects_scope_tampering(
@@ -121,7 +157,7 @@ def test_current_contract_schema_rejects_scope_tampering(
     value = copy.deepcopy(values[document])
     mutation(value)
     schema_name = {
-        "state": "project_state_v1_4.schema.json",
+        "state": "project_state_v1_5.schema.json",
         "approval": "approval_record_v1_1.schema.json",
         "g1": "task_contract_v1_1.schema.json",
     }[document]

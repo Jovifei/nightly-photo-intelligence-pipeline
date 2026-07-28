@@ -87,7 +87,8 @@ def test_n2b0_5_state_locks_download_execution_and_photos(project_root: Path) ->
     assert state["phase_status"]["N2B2"] == "LOCKED"
     assert state["authorization"]["large_model_downloads"] == "NOT_AUTHORIZED"
     assert state["authorization"]["real_model_execution"] == "NOT_AUTHORIZED"
-    assert state["phase_status"]["N2B0_6"] == "AUTHORIZED"
+    assert state["phase_status"]["N2B0_6"] == "APPROVED_COMPLETE"
+    assert state["phase_status"]["N2B0_7"] == "AUTHORIZED"
 
 
 def test_n2b0_5_provenance_has_no_payload_or_photo_access(project_root: Path) -> None:

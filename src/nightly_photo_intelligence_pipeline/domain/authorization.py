@@ -51,6 +51,10 @@ class AuthorizationSnapshot:
     g1_completion_status: str = "UNKNOWN"
     n2a_status: str = "LOCKED"
     n2b_status: str = "LOCKED"
+    active_execution_phase: str = "UNKNOWN"
+    active_execution_capability: str = "UNKNOWN"
+    source_photo_content_read: str = "NOT_AUTHORIZED"
+    sqlite_ingest_write: str = "NOT_AUTHORIZED"
 
     @property
     def phase_authorized(self) -> bool:
@@ -75,6 +79,27 @@ class AuthorizationSnapshot:
     @property
     def n2b_model_authorized(self) -> bool:
         return self.n2b_status == "AUTHORIZED"
+
+    @property
+    def source_content_read_authorized(self) -> bool:
+        """Whether the current execution capability may open source content."""
+        return self.source_photo_content_read == "AUTHORIZED"
+
+    def require_source_content_read_authorized(self) -> None:
+        """Reject source-file reads unless the active capability grants them."""
+        if not self.source_content_read_authorized:
+            raise GateNotAuthorizedError(
+                "source-content read is not authorized for active execution "
+                f"{self.active_execution_phase} ({self.active_execution_capability})"
+            )
+
+    def require_sqlite_ingest_write_authorized(self) -> None:
+        """Reject ingest/resume database mutation outside the active capability."""
+        if self.sqlite_ingest_write != "AUTHORIZED":
+            raise GateNotAuthorizedError(
+                "SQLite ingest write is not authorized for active execution "
+                f"{self.active_execution_phase} ({self.active_execution_capability})"
+            )
 
     def phase_at_least(self, required_phase: str) -> bool:
         """True if the authorized phase is >= required_phase."""
@@ -144,6 +169,7 @@ def load_authorization(project_root: Path | None = None) -> AuthorizationSnapsho
     n1_baseline = baselines.get("N1", {}) or {}
     phase_status = data.get("phase_status", {}) or {}
     capability_gates = auth.get("capability_gates", {}) or {}
+    active_execution = auth.get("active_execution", {}) or {}
     return AuthorizationSnapshot(
         phase_id=phase.get("id", "UNKNOWN"),
         phase_status=phase.get("status", "UNKNOWN"),
@@ -166,4 +192,10 @@ def load_authorization(project_root: Path | None = None) -> AuthorizationSnapsho
         n2b_status=capability_gates.get(
             "N2B_MODEL_DOWNLOAD_AND_INFERENCE", phase_status.get("N2B", "LOCKED")
         ),
+        active_execution_phase=active_execution.get("phase", "UNKNOWN"),
+        active_execution_capability=active_execution.get("capability", "UNKNOWN"),
+        source_photo_content_read=active_execution.get(
+            "source_photo_content_read", "NOT_AUTHORIZED"
+        ),
+        sqlite_ingest_write=active_execution.get("sqlite_ingest_write", "NOT_AUTHORIZED"),
     )

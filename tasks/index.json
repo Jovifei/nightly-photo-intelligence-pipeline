@@ -36,6 +36,13 @@
       "baseline_commit": "5ad9f8d7d0d6fa267df02d90ef25957bc679e232",
       "completion_approval": "approvals/phase_completion_N2B0_5.yaml",
       "approved_at_utc": "2026-07-26"
+    },
+    {
+      "phase": "N2B0_6",
+      "file": "phase_n2b0_6_license_clear_alternative_candidate_research.yaml",
+      "baseline_commit": "eb2eaeb61f1c21923d131a115d63edbcdebd8cb2",
+      "completion_approval": "approvals/phase_completion_N2B0_6.yaml",
+      "approved_at_utc": "2026-07-29"
     }
   ],
   "authorized": [
@@ -56,10 +63,10 @@
     },
     {
       "kind": "ENGINEERING_PHASE",
-      "phase": "N2B0_6",
-      "file": "phase_n2b0_6_license_clear_alternative_candidate_research.yaml",
-      "capability": "N2B0_6_LICENSE_CLEAR_ALTERNATIVE_CANDIDATE_RESEARCH",
-      "approval_record": "approvals/phase_completion_N2B0_5.yaml"
+      "phase": "N2B0_7",
+      "file": "phase_n2b0_7_gpu_native_qualification.yaml",
+      "capability": "N2B0_7_GPU_NATIVE_QUALIFICATION",
+      "approval_record": "approvals/owner_continuous_authorization_N2B0_7_to_N3A.yaml"
     }
   ],
   "locked": [
@@ -74,5 +81,5 @@
     {"phase": "N7", "file": "phase_n7_app_bundle_integration.yaml"},
     {"phase": "N8", "file": "phase_n8_nightly_scheduler_openclaw.yaml"}
   ],
-  "rule": "N0, N1, G1, N2A, N2B0, and N2B0.5 are immutable approved baselines. N2B0.6 is metadata-only alternative research; N2B1 download, N2B2 execution, G2/G3, and N3-N8 remain locked."
+  "rule": "N0, N1, G1, N2A, N2B0, N2B0.5, and N2B0.6 are immutable approved baselines. N2B0.7 is metadata-only GPU-native artifact qualification; N2B1 download, N2B2 execution, G2/G3, and N3-N8 remain locked."
 }

@@ -79,6 +79,7 @@ def run_dry_run_ingest(
     runtime_root: Path,
     config: PipelineConfig,
     *,
+    auth: AuthorizationSnapshot,
     source_root_for_redaction: Path | None = None,
 ) -> IngestDryRunResult:
     """Run a read-only dry-run ingest over *source_root*.
@@ -87,6 +88,7 @@ def run_dry_run_ingest(
     exact duplicates by SHA-256, and returns a deterministic summary. The
     database is never opened or written.
     """
+    auth.require_source_content_read_authorized()
     # Re-validate roots (the CLI also validates, but this keeps the runner safe
     # to call directly from tests).
     validate_roots(source_root, runtime_root)
@@ -266,6 +268,8 @@ def run_real_ingest(
       * the DB stores only redacted source paths, never absolute photo paths.
     """
     auth.require_ingest_authorized(dry_run=False)
+    auth.require_source_content_read_authorized()
+    auth.require_sqlite_ingest_write_authorized()
     validate_roots(source_root, runtime_root)
     redact_src = source_root_for_redaction or source_root
     allowed = manifest.allowed_names
@@ -338,6 +342,8 @@ def run_real_ingest(
 
 def _require_g1_authorized(auth: AuthorizationSnapshot) -> None:
     auth.require_ingest_authorized(dry_run=False)
+    auth.require_source_content_read_authorized()
+    auth.require_sqlite_ingest_write_authorized()
     if auth.data_gate_id != "G1_CALIBRATION_20":
         raise GateNotAuthorizedError("G1 ingest requires data gate G1_CALIBRATION_20")
     if auth.real_photo_access != "AUTHORIZED":

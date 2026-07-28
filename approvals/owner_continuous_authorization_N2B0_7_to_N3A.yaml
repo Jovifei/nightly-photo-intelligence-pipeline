@@ -1,0 +1,35 @@
+schema_version: "1.0"
+approval_type: "BOUNDED_CONTINUOUS_EXECUTION"
+status: "APPROVED"
+owner_id: "Jovi"
+issued_at_utc: "2026-07-29"
+source: "Owner direct implementation instruction for the RTX 4070 SUPER night 20-photo analysis plan"
+start_phase:
+  id: "N2B0_7"
+  capability: "N2B0_7_GPU_NATIVE_QUALIFICATION"
+  status: "AUTHORIZED_NOW"
+conditional_follow_on:
+  - phase: "N2B1_Q"
+    condition: "N2B0_7 artifact source, revision, size, weights license, commercial-use status, and Owner download approval all pass"
+  - phase: "N2B1_P"
+    condition: "N2B1_Q quarantine, local SHA-256, cache-promotion policy, and isolation gates pass"
+  - phase: "N2B2"
+    condition: "N2B1_Q and N2B1_P complete; CUDA, ACL, manifest, source integrity, schema, and resource hard gates pass"
+  - phase: "N3A"
+    condition: "N2B2 real benchmark completes with all hard gates passing"
+hard_stop:
+  value: true
+  rule: "A failed or unknown artifact source, license, commercial-use, hash, ACL, CUDA, integrity, schema, or quality gate stops at that phase; later phases remain LOCKED."
+data_scope:
+  max_assets: 20
+  source: "G1 protected snapshot only after N2B2 is active"
+  forbidden_before_n2b2: "real-photo reads"
+explicit_exclusions:
+  - "N4_N5_bundle_story_director_review"
+  - "G2_G3"
+  - "VLM_embedding_or_cloud_processing"
+  - "main_app_changes"
+  - "openclaw"
+  - "docker_wsl_driver_or_cuda_configuration_changes"
+  - "push_merge_or_release"
+owner_statement: "This is a bounded conditional authorization, not a blanket model-download or real-photo-execution approval."

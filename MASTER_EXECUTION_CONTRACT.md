@@ -2,7 +2,7 @@
 
 **Normative status: REQUIRED**  
 项目：`nightly-photo-intelligence-pipeline`  
-当前授权：`N2B0.6 / N2B0_6_LICENSE_CLEAR_ALTERNATIVE_CANDIDATE_RESEARCH`
+当前授权：`N2B0.7 / N2B0_7_GPU_NATIVE_QUALIFICATION`
 
 ## 1. 使命
 
@@ -35,7 +35,7 @@
 
 ### 先做什么
 
-只执行 `tasks/phase_n2b0_6_license_clear_alternative_candidate_research.yaml`。本阶段只允许官方 HTTPS 文本/API/许可证/发布/manifest 元数据与官方最终响应 HTTP HEAD；不得读取真实照片或模型 payload。候选上限为 Pose 2 个、轻量人物分割 2 个，必须保持既有历史候选排除与 fail-closed 资格矩阵。
+只执行 `tasks/phase_n2b0_7_gpu_native_qualification.yaml`。本阶段只允许官方 HTTPS 文本/API/许可证/发布/轮子索引和本机只读环境元数据；不得读取真实照片、模型 payload 或创建模型缓存。必须分开审查代码、权重、训练数据和商业使用结论；任一项不明即停在资格审查。
 
 ### 不能做什么
 
@@ -73,7 +73,7 @@
 
 ### 什么时候停止等待批准
 
-N2B0.6 证据、质量命令和唯一候选 commit 完成后立即停止，等待独立审查。不得创建 completion approval/tag，不得启动 N2B1、N2B2、N3、G2/G3，不得下载/运行模型或接触真实照片。任何安全硬约束无法证明时也必须 fail closed 并停止。
+N2B0.7 资格审查完成后立即停止，等待 Owner artifact decision。不得启动 N2B1、N2B2、N3、G2/G3，不得下载/运行模型或接触真实照片。任何安全硬约束无法证明时也必须 fail closed 并停止。
 
 ## 3. 不可变硬约束
 
@@ -129,15 +129,15 @@ AND handoff_integrity_passes
 ## 7. 当前阶段停止消息模板
 
 ```text
-N2B0_6_AWAITING_EXTERNAL_REVIEW
+N2B0_7_ARTIFACT_QUALIFICATION_BLOCKED
 
 Commit: <commit_sha>
-Authorized phase executed: N2B0.6 metadata-only candidate research
+Authorized phase executed: N2B0.7 metadata-only GPU-native artifact qualification
 Authorized data gate used: official-source metadata only; no real-photo reads
 Quality command: <command>
-Test evidence: reports/N2B0_6_test_evidence.md
-Handoff remediation: reports/N2B0_6_handoff_integrity_remediation.md
-Unresolved issues: reports/N2B0_6_owner_selection_packet.md
+Test evidence: reports/N2B0_7_test_evidence.md
+Artifact decision packet: reports/N2B0_7_owner_decision_packet.md
+Unresolved issues: reports/N2B0_7_owner_decision_packet.md
 N1 plan: reports/N1_detailed_plan.md
 Real photo access: NOT_USED
 Model downloads: NONE

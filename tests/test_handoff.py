@@ -79,8 +79,9 @@ def test_at_n0_gate_02_n2_through_n8_locked(project_root: Path) -> None:
     assert state["phase_status"]["N2B"] == "LOCKED"
     assert state["phase_status"]["N2B0"] == "APPROVED_COMPLETE"
     assert state["phase_status"]["N2B0_5"] == "APPROVED_COMPLETE"
-    assert state["phase_status"]["N2B0_6"] == "AUTHORIZED"
-    assert state["required_stop_after"]["condition"] == "N2B0_6_AWAITING_EXTERNAL_REVIEW"
+    assert state["phase_status"]["N2B0_6"] == "APPROVED_COMPLETE"
+    assert state["phase_status"]["N2B0_7"] == "AUTHORIZED"
+    assert state["required_stop_after"]["condition"] == "N2B0_7_ARTIFACT_QUALIFICATION_BLOCKED"
     # N0 and N1 baselines are approved and immutable.
     n0 = state["baselines"]["N0"]
     assert n0["status"] == "APPROVED_COMPLETE"
@@ -95,6 +96,13 @@ def test_at_n0_gate_02_n2_through_n8_locked(project_root: Path) -> None:
     assert state["authorization"]["real_photo_access"] == "AUTHORIZED"
     assert state["authorization"]["large_model_downloads"] == "NOT_AUTHORIZED"
     assert state["authorization"]["exif_real_data_read"] == "AUTHORIZED_NON_SENSITIVE_ONLY"
+    assert state["authorization"]["active_execution"] == {
+        "phase": "N2B0_7",
+        "capability": "N2B0_7_GPU_NATIVE_QUALIFICATION",
+        "source_photo_content_read": "NOT_AUTHORIZED",
+        "source_photo_exif_read": "NOT_AUTHORIZED",
+        "sqlite_ingest_write": "NOT_AUTHORIZED",
+    }
 
 
 def test_at_n0_gate_02_n2_n8_task_files_locked(project_root: Path) -> None:
@@ -138,11 +146,11 @@ def test_current_handoff_verifier_passes(project_root: Path) -> None:
     )
     assert result.returncode == 0
     assert "HANDOFF_VALID" in result.stdout
-    assert "N2B0.6 metadata-only research only" in result.stdout
+    assert "N2B0.7 metadata-only qualification only" in result.stdout
 
 
-def test_current_entry_documents_reference_n2b0_6_not_n0_only(project_root: Path) -> None:
-    required_task = "phase_n2b0_6_license_clear_alternative_candidate_research.yaml"
+def test_current_entry_documents_reference_n2b0_7_not_n0_only(project_root: Path) -> None:
+    required_task = "phase_n2b0_7_gpu_native_qualification.yaml"
     for rel in (
         "MASTER_EXECUTION_CONTRACT.md",
         "AGENTS.md",

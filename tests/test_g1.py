@@ -44,6 +44,11 @@ def _g1_auth(project_root: Path) -> AuthorizationSnapshot:
         project_root=project_root,
         max_assets=20,
         n0_baseline_commit="72a81f5984838b74304d23263ac450ea4b5a3a9a",
+        n1_baseline_commit="ca812cb71c4a09d273f64d9a6f2747ac3facf4cc",
+        active_execution_phase="G1",
+        active_execution_capability="G1_CALIBRATION_20",
+        source_photo_content_read="AUTHORIZED",
+        sqlite_ingest_write="AUTHORIZED",
     )
 
 

@@ -129,3 +129,31 @@
 - Hash every tracked current-stage file, including governance documents that
   legitimately evolve. Keep the historical N0 verifier explicitly
   non-passing rather than treating a stale result as current evidence.
+
+## 2026-07-29 N2B0.7 artifact-identity correction
+
+- A model enum label and a filename are a paired claim. Verify both against
+  the exact upstream revision: an official legacy filename must never be
+  silently substituted for the requested current enum variant.
+- A filename hash prefix and a local post-download SHA-256 prove different
+  things. Neither substitutes for an explicit pretrained-weight license or a
+  commercial-use grant; unknown rights fail the artifact qualification before
+  download.
+
+## 2026-07-29 PowerShell command-scope correction
+
+- PowerShell does not use a bare backslash for line continuation. Never pass
+  it to a formatter: it may resolve to a drive-root path and widen a write far
+  beyond the intended repository. Use a PowerShell array of repository-relative
+  paths (or a single `.` only after confirming the working directory), then
+  inspect the target worktree before any follow-on write.
+
+## 2026-07-29 N2B0.7 real-photo boundary review correction
+
+- Historical approval validity and current execution authority are separate
+  facts. A later metadata-only stage may retain a valid historical G1 record,
+  but every library-level permit and source-content entry point must reject it
+  unless the *current* stage explicitly authorizes real-photo I/O.
+- CLI denial is insufficient. Prove the same denial before permit issuance,
+  source-file opening, EXIF access, and SQLite mutation with synthetic-only
+  negative tests that exercise public library entry points.

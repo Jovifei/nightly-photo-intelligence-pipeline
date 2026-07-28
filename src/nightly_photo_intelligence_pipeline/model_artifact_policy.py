@@ -71,6 +71,7 @@ _FIXED_SCHEMA_FILES: dict[str, dict[str, str]] = {
         "1.2": "project_state_v1_2.schema.json",
         "1.3": "project_state_v1_3.schema.json",
         "1.4": "project_state_v1_4.schema.json",
+        "1.5": "project_state_v1_5.schema.json",
     },
 }
 
