@@ -611,7 +611,7 @@ def test_current_production_state_remains_locked_and_draft_cannot_authorize(
     approval, _, snapshot, transport = _case()
     production_state = json.loads((project_root / "PROJECT_STATE.json").read_text("utf-8"))
     approval["project_state_digest"] = _digest(production_state)
-    with pytest.raises(QuarantineApprovalStateMismatchError):
+    with pytest.raises(GateNotAuthorizedError):
         _validate(approval, production_state, snapshot, transport)
 
 

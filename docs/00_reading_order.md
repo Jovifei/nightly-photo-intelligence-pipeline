@@ -11,8 +11,11 @@
 7. `docs/03_architecture_and_pipeline.md`
 8. `docs/04_export_contract.md`
 9. `OWNER_INPUTS_REQUIRED.md`
-10. `tasks/phase_n2b0_7_gpu_native_qualification.yaml`
-11. 与 N2B0.7 相关的来源、许可、环境、测试和验收文档
+10. `approvals/phase_completion_N2B0_7.yaml`
+11. `approvals/owner_local_research_execution_N2B1R_to_N5R.yaml`
+12. `tasks/phase_n2b1r_local_research_model_acquisition.yaml`
+13. `research/N2B1R_local_research_artifact_register.json`
+14. 与 N2B1R 相关的来源、隔离下载、环境、测试和验收文档
 
 此顺序完成前不得编辑代码。
 

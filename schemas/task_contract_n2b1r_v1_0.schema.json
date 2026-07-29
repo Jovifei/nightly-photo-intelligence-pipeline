@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/task_contract_n2b1r_v1_0.schema.json",
+  "title": "N2B1R local-research model-acquisition contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "phase", "capability", "data_gate", "approval", "runtime_target", "required_before_payload", "allowed_actions", "forbidden", "mandatory_stop"],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "phase": {"type": "object", "additionalProperties": false, "required": ["id", "title", "status"], "properties": {"id": {"const": "N2B1R"}, "title": {"type": "string", "minLength": 1}, "status": {"const": "AUTHORIZED"}}},
+    "capability": {"const": "N2B1R_LOCAL_RESEARCH_MODEL_ACQUISITION"},
+    "data_gate": {"type": "object", "additionalProperties": false, "required": ["id", "status", "allowed_assets"], "properties": {"id": {"const": "G1_CALIBRATION_20"}, "status": {"const": "AUTHORIZED_METADATA_AND_MODEL_ACQUISITION_ONLY"}, "allowed_assets": {"const": "official artifact metadata, wheels, and approved model payloads only; no real photo reads"}}},
+    "approval": {"type": "object", "additionalProperties": false, "required": ["n2b0_7_completion", "local_research_continuation", "artifact_register"], "properties": {"n2b0_7_completion": {"const": "approvals/phase_completion_N2B0_7.yaml"}, "local_research_continuation": {"const": "approvals/owner_local_research_execution_N2B1R_to_N5R.yaml"}, "artifact_register": {"const": "research/N2B1R_local_research_artifact_register.json"}}},
+    "runtime_target": {"type": "object", "additionalProperties": false, "required": ["python", "torch", "torchvision", "environment", "required_gpu"], "properties": {"python": {"const": "3.12.10"}, "torch": {"const": "2.7.1+cu128"}, "torchvision": {"const": "0.22.1+cu128"}, "environment": {"const": "<ISOLATED_RUNTIME_GPU_VENV_OUTSIDE_GIT>"}, "required_gpu": {"const": "NVIDIA GeForce RTX 4070 SUPER"}}},
+    "required_before_payload": {"type": "array", "minItems": 4, "uniqueItems": true, "items": {"type": "string"}},
+    "allowed_actions": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string"}},
+    "forbidden": {"type": "array", "minItems": 8, "uniqueItems": true, "items": {"type": "string"}},
+    "mandatory_stop": {"type": "object", "additionalProperties": false, "required": ["value", "rule"], "properties": {"value": {"const": true}, "rule": {"type": "string", "minLength": 1}}}
+  }
+}

@@ -68,8 +68,26 @@ def test_current_mutable_contracts_validate_and_are_consistent(project_root: Pat
             encoding="utf-8"
         )
     )
+    n2b0_7_completion = yaml.safe_load(
+        (project_root / "approvals" / "phase_completion_N2B0_7.yaml").read_text(encoding="utf-8")
+    )
+    research_continuation = yaml.safe_load(
+        (project_root / "approvals" / "owner_local_research_execution_N2B1R_to_N5R.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    n2b1r = yaml.safe_load(
+        (project_root / "tasks" / "phase_n2b1r_local_research_model_acquisition.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    artifact_register = json.loads(
+        (project_root / "research" / "N2B1R_local_research_artifact_register.json").read_text(
+            encoding="utf-8"
+        )
+    )
     task_index = json.loads((project_root / "tasks" / "index.json").read_text(encoding="utf-8"))
-    assert not _errors(_schema(project_root, "project_state_v1_5.schema.json"), state)
+    assert not _errors(_schema(project_root, "project_state_v1_6.schema.json"), state)
     assert not _errors(_schema(project_root, "approval_record_v1_1.schema.json"), approval)
     assert not _errors(
         _schema(project_root, "phase_completion_approval_v1_0.schema.json"), n1_completion
@@ -96,6 +114,18 @@ def test_current_mutable_contracts_validate_and_are_consistent(project_root: Pat
         bounded,
     )
     assert not _errors(_schema(project_root, "task_contract_n2b0_7_v1_0.schema.json"), n2b0_7)
+    assert not _errors(
+        _schema(project_root, "phase_completion_approval_n2b0_7_v1_0.schema.json"),
+        n2b0_7_completion,
+    )
+    assert not _errors(
+        _schema(project_root, "owner_local_research_execution_v1_0.schema.json"),
+        research_continuation,
+    )
+    assert not _errors(_schema(project_root, "task_contract_n2b1r_v1_0.schema.json"), n2b1r)
+    assert not _errors(
+        _schema(project_root, "n2b1r_artifact_register_v1.schema.json"), artifact_register
+    )
     auth = load_authorization(project_root)
     assert auth.phase_id == "N1" and auth.phase_authorized
     assert auth.phase_status == "APPROVED_COMPLETE"
@@ -104,13 +134,16 @@ def test_current_mutable_contracts_validate_and_are_consistent(project_root: Pat
     assert auth.max_assets == approval["max_assets"] == g1["data_gate"]["max_assets"]
     assert auth.n2a_authorized and not auth.n2b_model_authorized
     assert not auth.source_content_read_authorized
-    assert auth.active_execution_phase == "N2B0_7"
-    assert auth.active_execution_capability == "N2B0_7_GPU_NATIVE_QUALIFICATION"
+    assert auth.active_execution_phase == "N2B1R"
+    assert auth.active_execution_capability == "N2B1R_LOCAL_RESEARCH_MODEL_ACQUISITION"
     assert auth.sqlite_ingest_write == "NOT_AUTHORIZED"
     assert state["phase_status"]["N2B0_6"] == "APPROVED_COMPLETE"
-    assert state["phase_status"]["N2B0_7"] == "AUTHORIZED"
+    assert state["phase_status"]["N2B0_7"] == "APPROVED_COMPLETE"
+    assert state["phase_status"]["N2B1R"] == "AUTHORIZED"
     assert n2b0_6_completion["owner_decision"] == "N2B0_6_OWNER_APPROVED"
     assert n2b0_7["mandatory_stop"]["value"] is True
+    assert n2b0_7_completion["owner_decision"] == "N2B0_7_OWNER_APPROVED"
+    assert artifact_register["weights_rights"]["status"] == "UNKNOWN_NOT_COMMERCIAL_CLEARANCE"
     assert n1["completion_approval"] == "approvals/phase_completion_N1.yaml"
     assert g1["dependencies"]["n1_completion_approval"] == n1["completion_approval"]
     assert task_index["completed"][1]["completion_approval"] == n1["completion_approval"]
@@ -157,7 +190,7 @@ def test_current_contract_schema_rejects_scope_tampering(
     value = copy.deepcopy(values[document])
     mutation(value)
     schema_name = {
-        "state": "project_state_v1_5.schema.json",
+        "state": "project_state_v1_6.schema.json",
         "approval": "approval_record_v1_1.schema.json",
         "g1": "task_contract_v1_1.schema.json",
     }[document]

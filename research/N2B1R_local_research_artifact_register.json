@@ -1,0 +1,60 @@
+{
+  "schema_version": "1.0",
+  "stage": "N2B1R",
+  "purpose": "Owner-approved local-research acquisition register; not a commercial-rights assertion.",
+  "weights_rights": {
+    "status": "UNKNOWN_NOT_COMMERCIAL_CLEARANCE",
+    "restriction": "Local research/evaluation only; no redistribution or commercial-clearance claim."
+  },
+  "artifacts": [
+    {
+      "id": "torchvision-keypointrcnn-resnet50-fpn-coco-v1",
+      "kind": "MODEL_WEIGHT",
+      "revision": "torchvision-v0.22.1",
+      "filename": "keypointrcnn_resnet50_fpn_coco-fc266e95.pth",
+      "official_url": "https://download.pytorch.org/models/keypointrcnn_resnet50_fpn_coco-fc266e95.pth",
+      "expected_size_bytes": null,
+      "claimed_size_megabytes": 226.054,
+      "owner_max_bytes": 260000000,
+      "allowed_request_domains": ["download.pytorch.org"],
+      "allowed_final_domains": ["download.pytorch.org"],
+      "official_sha256": null,
+      "local_sha256_required": true,
+      "preflight_content_length_required": true
+    },
+    {
+      "id": "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1",
+      "kind": "MODEL_WEIGHT",
+      "revision": "torchvision-v0.22.1",
+      "filename": "lraspp_mobilenet_v3_large-d234d4ea.pth",
+      "official_url": "https://download.pytorch.org/models/lraspp_mobilenet_v3_large-d234d4ea.pth",
+      "expected_size_bytes": null,
+      "claimed_size_megabytes": 12.49,
+      "owner_max_bytes": 20000000,
+      "allowed_request_domains": ["download.pytorch.org"],
+      "allowed_final_domains": ["download.pytorch.org"],
+      "official_sha256": null,
+      "local_sha256_required": true,
+      "preflight_content_length_required": true
+    },
+    {
+      "id": "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1",
+      "kind": "MODEL_WEIGHT",
+      "revision": "torchvision-v0.22.1",
+      "filename": "deeplabv3_mobilenet_v3_large-fc3c493d.pth",
+      "official_url": "https://download.pytorch.org/models/deeplabv3_mobilenet_v3_large-fc3c493d.pth",
+      "expected_size_bytes": null,
+      "claimed_size_megabytes": 42.301,
+      "owner_max_bytes": 50000000,
+      "allowed_request_domains": ["download.pytorch.org"],
+      "allowed_final_domains": ["download.pytorch.org"],
+      "official_sha256": null,
+      "local_sha256_required": true,
+      "preflight_content_length_required": true
+    }
+  ],
+  "unresolved": [
+    "The local SHA-256 acquired from the official byte stream is an integrity binding, not an official pretrained-weight license or commercial-use grant.",
+    "The local VLM candidate requires a separate exact multi-file register before any payload request."
+  ]
+}

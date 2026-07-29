@@ -21,6 +21,8 @@ N2B0_5_BASELINE = "5ad9f8d7d0d6fa267df02d90ef25957bc679e232"
 N2B0_5_TAG = "n2b0-5-approved-2026-07-26"
 N2B0_6_BASELINE = "eb2eaeb61f1c21923d131a115d63edbcdebd8cb2"
 N2B0_6_TAG = "n2b0-6-approved-2026-07-29"
+N2B0_7_BASELINE = "f2b1c38301d71da52b855f73de8a67908cb525ef"
+N2B0_7_TAG = "n2b0-7-approved-2026-07-29"
 
 SENSITIVE_SUFFIXES = (
     ".db",
@@ -66,6 +68,7 @@ def test_git_approved_tags_and_ancestry_are_exact(project_root: Path) -> None:
     assert _git(project_root, "rev-parse", N2B0_TAG).stdout.strip() == N2B0_BASELINE
     assert _git(project_root, "rev-parse", N2B0_5_TAG).stdout.strip() == N2B0_5_BASELINE
     assert _git(project_root, "rev-parse", N2B0_6_TAG).stdout.strip() == N2B0_6_BASELINE
+    assert _git(project_root, "rev-parse", N2B0_7_TAG).stdout.strip() == N2B0_7_BASELINE
     assert (
         _git(project_root, "merge-base", "--is-ancestor", N0_BASELINE, N1_BASELINE).returncode == 0
     )
@@ -78,18 +81,21 @@ def test_git_approved_tags_and_ancestry_are_exact(project_root: Path) -> None:
     assert (
         _git(project_root, "merge-base", "--is-ancestor", N2B0_6_BASELINE, "HEAD").returncode == 0
     )
+    assert (
+        _git(project_root, "merge-base", "--is-ancestor", N2B0_7_BASELINE, "HEAD").returncode == 0
+    )
     assert _git(project_root, "rev-list", "--parents", "-n", "1", N0_BASELINE).stdout.split() == [
         N0_BASELINE
     ]
 
 
-def test_git_one_n2b0_6_baseline_then_one_n2b0_7_commit_no_merges(project_root: Path) -> None:
-    assert int(_git(project_root, "rev-list", "--count", "HEAD").stdout.strip()) == 8
+def test_git_one_n2b0_7_baseline_then_one_n2b1r_commit_no_merges(project_root: Path) -> None:
+    assert int(_git(project_root, "rev-list", "--count", "HEAD").stdout.strip()) == 9
     assert (
-        int(_git(project_root, "rev-list", "--count", f"{N1_BASELINE}..HEAD").stdout.strip()) == 6
+        int(_git(project_root, "rev-list", "--count", f"{N1_BASELINE}..HEAD").stdout.strip()) == 7
     )
     assert (
-        int(_git(project_root, "rev-list", "--count", f"{G1_BASELINE}..HEAD").stdout.strip()) == 5
+        int(_git(project_root, "rev-list", "--count", f"{G1_BASELINE}..HEAD").stdout.strip()) == 6
     )
     assert (
         int(
@@ -100,7 +106,15 @@ def test_git_one_n2b0_6_baseline_then_one_n2b0_7_commit_no_merges(project_root: 
         == 1
     )
     assert (
-        int(_git(project_root, "rev-list", "--count", f"{N2B0_6_BASELINE}..HEAD").stdout.strip())
+        int(
+            _git(
+                project_root, "rev-list", "--count", f"{N2B0_6_BASELINE}..{N2B0_7_BASELINE}"
+            ).stdout.strip()
+        )
+        == 1
+    )
+    assert (
+        int(_git(project_root, "rev-list", "--count", f"{N2B0_7_BASELINE}..HEAD").stdout.strip())
         == 1
     )
     assert _git(project_root, "rev-list", "--merges", "HEAD").stdout.strip() == ""
@@ -128,5 +142,5 @@ def test_git_no_sensitive_tracked_files(project_root: Path) -> None:
 # Historical AT name retained for acceptance-catalog continuity.
 def test_at_n0_git_01_one_isolated_commit_no_sensitive_files(project_root: Path) -> None:
     test_git_approved_tags_and_ancestry_are_exact(project_root)
-    test_git_one_n2b0_6_baseline_then_one_n2b0_7_commit_no_merges(project_root)
+    test_git_one_n2b0_7_baseline_then_one_n2b1r_commit_no_merges(project_root)
     test_git_no_sensitive_tracked_files(project_root)

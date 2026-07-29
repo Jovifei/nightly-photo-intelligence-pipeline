@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/phase_completion_approval_n2b0_7_v1_0.schema.json",
+  "title": "Immutable Owner N2B0.7 completion approval",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "approval_type", "status", "phase_id", "owner_id", "approved_at_utc", "baseline", "independent_reviewer", "owner_decision", "quality_gates", "prohibited_action_counters", "owner_statement"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "approval_type": {"const": "PHASE_COMPLETION"},
+    "status": {"const": "APPROVED"},
+    "phase_id": {"const": "N2B0_7"},
+    "owner_id": {"const": "Jovi"},
+    "approved_at_utc": {"const": "2026-07-29"},
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["n2b0_6_commit", "n2b0_6_tag", "n2b0_7_commit", "n2b0_7_tag", "immutable"],
+      "properties": {
+        "n2b0_6_commit": {"const": "eb2eaeb61f1c21923d131a115d63edbcdebd8cb2"},
+        "n2b0_6_tag": {"const": "n2b0-6-approved-2026-07-29"},
+        "n2b0_7_commit": {"const": "f2b1c38301d71da52b855f73de8a67908cb525ef"},
+        "n2b0_7_tag": {"const": "n2b0-7-approved-2026-07-29"},
+        "immutable": {"const": true}
+      }
+    },
+    "independent_reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["conclusion", "reviewed_commit", "summary"],
+      "properties": {
+        "conclusion": {"const": "PASS_FOR_OWNER_REVIEW"},
+        "reviewed_commit": {"const": "f2b1c38301d71da52b855f73de8a67908cb525ef"},
+        "summary": {"type": "string", "minLength": 1}
+      }
+    },
+    "owner_decision": {"const": "N2B0_7_OWNER_APPROVED"},
+    "quality_gates": {"type": "object", "minProperties": 10, "additionalProperties": {"type": "object"}},
+    "prohibited_action_counters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_download_bytes", "dependency_installs", "model_execution_runs", "real_photo_reads", "cache_writes"],
+      "properties": {
+        "model_download_bytes": {"const": 0},
+        "dependency_installs": {"const": 0},
+        "model_execution_runs": {"const": 0},
+        "real_photo_reads": {"const": 0},
+        "cache_writes": {"const": 0}
+      }
+    },
+    "owner_statement": {"type": "string", "minLength": 1}
+  }
+}

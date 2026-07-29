@@ -142,7 +142,7 @@ def load_g1_approval(project_root: Path, *, now: datetime | None = None) -> G1Ap
     # immutable historical binding while independently validating their closed
     # current-stage Schema and locked downstream capabilities in preflight.
     # They must not require rewriting the already-approved G1 record.
-    if state_version in {"1.2", "1.4", "1.5"}:
+    if state_version in {"1.2", "1.4", "1.5", "1.6"}:
         valid_bindings: tuple[dict[str, str], ...] = (G1_HISTORICAL_BINDINGS, current_bindings)
     else:
         valid_bindings = (current_bindings,)

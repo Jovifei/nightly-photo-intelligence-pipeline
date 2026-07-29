@@ -1,5 +1,5 @@
 {
-  "schema_set": "npi-current-stage-v1.10-n2b0_7-gpu-native-qualification",
+  "schema_set": "npi-current-stage-v1.11-n2b1r-local-research-acquisition",
   "draft": "https://json-schema.org/draft/2020-12/schema",
   "schemas": [
     {"file": "task_contract_v1_1.schema.json", "purpose": "completed phase and authorized data-gate contracts"},
@@ -25,6 +25,12 @@
     {"file": "owner_bounded_continuous_authorization_v1_0.schema.json", "purpose": "bounded conditional Owner continuation authorization"},
     {"file": "task_contract_n2b0_7_v1_0.schema.json", "purpose": "authorized metadata-only RTX 4070 SUPER artifact qualification"},
     {"file": "n2b0_7_artifact_qualification_v1.schema.json", "purpose": "closed official-metadata record for the blocked RTX 4070 SUPER artifact decision"},
-    {"file": "project_state_v1_5.schema.json", "purpose": "current N2B0.7 state; N2B1/Q/P/N2B2/N3 remain locked"}
+    {"file": "project_state_v1_5.schema.json", "purpose": "historical N2B0.7 fail-closed state"},
+    {"file": "phase_completion_approval_n2b0_7_v1_0.schema.json", "purpose": "immutable Owner N2B0.7 completion approval"},
+    {"file": "owner_local_research_execution_v1_0.schema.json", "purpose": "bounded Owner local-research continuation authorization"},
+    {"file": "task_contract_n2b1r_v1_0.schema.json", "purpose": "current N2B1R isolated model-acquisition contract"},
+    {"file": "n2b1r_artifact_register_v1.schema.json", "purpose": "approved local-research acquisition register"},
+    {"file": "n2b1r_acquisition_evidence_v1.schema.json", "purpose": "redacted local-research acquisition evidence"},
+    {"file": "project_state_v1_6.schema.json", "purpose": "current N2B1R state; inference and real-photo stages remain locked"}
   ]
 }

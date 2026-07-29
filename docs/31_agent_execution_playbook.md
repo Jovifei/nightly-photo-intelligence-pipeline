@@ -33,7 +33,7 @@ git status --short  # 若尚未 git init，记录即可
 
 ## 自审
 
-- 对照当前 N2B0.7 YAML 每项；
+- 对照当前 N2B1R YAML、Owner continuation 和 artifact register 每项；
 - 运行统一质量命令；
 - `git diff --check`；
 - 敏感扫描；
@@ -47,11 +47,11 @@ git status --short  # 若尚未 git init，记录即可
 当前阶段候选建议：
 
 ```text
-docs(n2b): qualify GPU-native artifacts fail-closed
+  chore(n2b1r): authorize bounded local-research acquisition
 ```
 
 一个 commit。不得 merge/push。
 
 ## 停止
 
-输出 `N2B0_7_ARTIFACT_QUALIFICATION_BLOCKED` 或等待 Owner artifact decision；不问“要不要顺便做 N2B1”，不执行任何 N2B1 命令。
+完成 N2B1R 后输出 `N2B1R_ACQUISITION_AWAITING_LOCAL_VERIFICATION`；不得自动进入 cache promotion、模型执行或真实照片处理。

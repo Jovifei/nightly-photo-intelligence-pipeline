@@ -1,147 +1,74 @@
-# 主执行合同（所有智能体的唯一规范源）
+# Master Execution Contract
 
-**Normative status: REQUIRED**  
-项目：`nightly-photo-intelligence-pipeline`  
-当前授权：`N2B0.7 / N2B0_7_GPU_NATIVE_QUALIFICATION`
+Normative status: **REQUIRED**
+Project: `nightly-photo-intelligence-pipeline`
 
-## 1. 使命
+## Mission and permanent boundaries
 
-构建一个独立、本地优先、离线、可审计、可断点续传、可重复执行的数据生产工程，把 Owner 本地摄影收藏转化成结构化摄影知识，并只把**人工审核通过且符合 JSON Schema** 的 `Photo Intelligence Bundle v1` 单向交给 `ai-photography-director-app`。
+Build a local-first, auditable, resumable photo-intelligence pipeline that turns
+an Owner-controlled photography collection into structured photography knowledge.
+The pipeline is independent of `ai-photography-director-app`; it must never
+share its database or change its source code.
 
-本工程不是 iOS App，不是实时相机后端，不是云端服务，也不是模型训练工程。
+- Original photos are read-only: never modify, move, rename, delete, or change
+  their permissions.
+- Cloud image processing, image upload, OpenClaw, Docker/WSL/driver changes,
+  App changes, push, merge, remote release, G2, and G3 are prohibited unless a
+  later explicit Owner record authorizes them.
+- No real filename, absolute source path, GPS, exact location, identity field,
+  original photo, thumbnail, Base64, mask, overlay, cutout, or model artifact
+  may enter Git, reports, or Obsidian notes.
+- A data gate and a phase gate are independent. Passing code/tests does not
+  enlarge data scope or authorize a later phase.
+- Pose comes only from its approved pose backend, never from VLM text. VLM must
+  not fabricate EXIF, copyright, exact focal length, psychology, or intent.
 
-## 2. 七问执行规则
+## Current authorization: N2B1R
 
-### 为什么做
+The current and only executable task is
+[`tasks/phase_n2b1r_local_research_model_acquisition.yaml`](tasks/phase_n2b1r_local_research_model_acquisition.yaml),
+bound to:
 
-收藏图目前只是文件，不能可靠地被现场摄影产品检索和复用。流水线要把可见事实、摄影解释、故事方案、姿势模板、导演提示、疑点、审核和来源分层沉淀，使知识可追溯而不是由大模型自由发挥。
+- [`approvals/phase_completion_N2B0_7.yaml`](approvals/phase_completion_N2B0_7.yaml)
+  at immutable tag `n2b0-7-approved-2026-07-29`;
+- [`approvals/owner_local_research_execution_N2B1R_to_N5R.yaml`](approvals/owner_local_research_execution_N2B1R_to_N5R.yaml);
+- [`research/N2B1R_local_research_artifact_register.json`](research/N2B1R_local_research_artifact_register.json);
+- [`PROJECT_STATE.json`](PROJECT_STATE.json), schema `1.6`.
 
-### 做什么
+N2B1R permits only register-bound official model payload/dependency acquisition
+to a Git-external quarantine and installation into a Git-external isolated
+runtime. It does not permit model load/inference, cache promotion, source-photo
+access, EXIF read, SQLite ingest writes, derivative images, or photo analysis.
 
-最终范围包括导入、去重、可处理性分类、离线 Pose、人物分割、构图/光线/影调分析、背景摄影价值、三类故事候选、导演话术、人工审核、Bundle 导出、状态恢复和报告。
+The selected pretrained TorchVision weights have no verified commercial grant.
+Their use is therefore **local research/evaluation on this Owner-controlled
+machine only**. Local SHA-256 proves acquired-byte integrity; it is neither a
+weight license nor commercial clearance. Weight redistribution and any report
+claiming commercial clearance are prohibited.
 
-### 怎么做
+## Required N2B1R gate
 
-- Python typed package + Typer CLI；
-- SQLite 持久任务状态机；
-- 原图只读边界；
-- 显式阶段，不用隐藏的全能 Agent；
-- 确定性计算与模型推理分离；
-- Pose 坐标只能来自专业模型或确定性计算；
-- JSON Schema、输出 Hash、版本与许可可追溯；
-- 12GB VRAM 下每次只常驻一个 GPU 重模型；
-- 模型先 Benchmark，后采用；
-- 人工批准后才能导出。
+Before any payload request, strict-load the state, approval, task, and artifact
+register. For each artifact, require its exact approved filename, revision,
+official URL/domain, bounded Content-Length, exclusive quarantine destination,
+streaming SHA-256, post-write reread, and a redacted transfer manifest. The
+quarantine/cache must be outside Git and may not overlap source or runtime.
 
-### 先做什么
+At the end of N2B1R, stop. N2B1P cache promotion, N2B2 model execution and
+real-photo analysis, N3A deterministic analysis, N4R director prompts, and
+N5R report rendering each remain conditional on their own contract and hard
+gate. The only eventual source is the protected G1 snapshot and its frozen
+20-entry manifest; 19 unique assets may be inferred and one duplicate is a
+reference only.
 
-只执行 `tasks/phase_n2b0_7_gpu_native_qualification.yaml`。本阶段只允许官方 HTTPS 文本/API/许可证/发布/轮子索引和本机只读环境元数据；不得读取真实照片、模型 payload 或创建模型缓存。必须分开审查代码、权重、训练数据和商业使用结论；任一项不明即停在资格审查。
+## Verification discipline
 
-### 不能做什么
+Every stage must report reproducible commands, actual exit codes, failure/
+unknown states, artifact hashes, dependency/model/schema versions, source-data
+gate result, and unresolved issues. `PASS`, `FAIL`, `BLOCKED`, `NOT_AVAILABLE`,
+and `SKIPPED` are distinct. Never present an unrun action or a denied command as
+passing evidence.
 
-当前明确禁止：
-
-- 读取、扫描或处理 Owner 真实摄影收藏；
-- 下载、Range 请求、解压、安装或加载任何模型/权重/依赖；
-- 创建 quarantine、cache、skeleton、mask、cutout、缩略图或任何模型产物；
-- 上传图片、缩略图、向量或派生物到云端；
-- 修改 NVIDIA 驱动；
-- 修改系统级 WSL/Docker 配置；
-- 使用 Docker socket 赋予 OpenClaw；
-- 接入 OpenClaw；
-- 修改 `ai-photography-director-app`；
-- 共用数据库或导入另一工程业务源码；
-- 训练基础模型；
-- push、merge 或创建远端资源，除非 Owner 单独批准；
-- 进入 N2B1、N2B2、N3、G2/G3 或因为“测试通过”自动扩大 Scope。
-
-### 怎样验证
-
-每个阶段必须提交：
-
-- 可复现命令；
-- 测试结果；
-- 负向安全测试；
-- 产物清单与 Hash；
-- 环境问题；
-- 未解决问题；
-- 数据门禁状态；
-- 依赖、模型、Prompt、Schema 与代码版本；
-- 对应需求 ID。
-
-验证标准以任务合同和 `docs/29_acceptance_test_catalog.md` 为准。智能体不得给自己的摄影质量主观打分代替人工评审。
-
-### 什么时候停止等待批准
-
-N2B0.7 资格审查完成后立即停止，等待 Owner artifact decision。不得启动 N2B1、N2B2、N3、G2/G3，不得下载/运行模型或接触真实照片。任何安全硬约束无法证明时也必须 fail closed 并停止。
-
-## 3. 不可变硬约束
-
-1. 原始照片目录只读；绝不修改、移动、删除或改权限。
-2. 本地默认；禁止云端图片处理。
-3. 敏感与运行数据全部 Git 忽略。
-4. 真实数据放量必须依次通过 3 → 20 → 100 → 全量。
-5. 阶段授权和数据授权是两个独立门禁，两者都通过才可执行。
-6. VLM 不得伪造 EXIF、版权、精确焦段、真实心理、精确安全距离或原调色参数。
-7. Pose 坐标不得由文本 VLM 生成。
-8. 所有开源代码、模型、权重和数据记录来源、版本、Hash、许可与使用限制。
-9. Bundle 只含 APPROVED 且 Schema 有效的条目。
-10. App 不能读取 Pipeline DB；Pipeline 不能导入 App 业务源码。
-11. OpenClaw 当前没有实现权限，也没有调度权限。
-12. Owner 批准必须是仓库中的显式、范围化批准记录；缺失即未批准。
-
-## 4. 双门禁
-
-执行任一非 N0 工作必须同时满足：
-
-```text
-phase_authorized == true
-AND data_gate_authorized == true
-AND required_model_download_approvals_exist
-AND required_owner_inputs_are_present
-AND handoff_integrity_passes
-```
-
-代码阶段通过不自动推进数据规模。数据门禁通过也不自动授权新阶段。
-
-## 5. 冲突处理
-
-- 适配器与主合同冲突：主合同优先。
-- 任务与 `PROJECT_STATE.json` 冲突：选择更严格者并停止报告。
-- 文档与安全硬约束冲突：安全硬约束优先。
-- 不确定某动作是否扩大 Scope：视为禁止。
-- 发现疑似密钥、原图或绝对路径将被提交：停止并隔离，不提交。
-- Owner 新指令只有在明确说明范围、阶段、数据门禁和授权动作后才可改变状态。
-
-## 6. 实施纪律
-
-- 修改前先验证交付包；
-- 小步、可审查、可回滚；
-- 不静默吞错；
-- 不篡改测试以制造通过；
-- 不用 mock 结果声称真实硬件通过；
-- 不把未运行标成通过；
-- 不将“未检测到”写成“不存在”；
-- 证据中区分 `PASS`、`FAIL`、`SKIPPED`、`NOT_AVAILABLE`；
-- 绝对路径在报告中脱敏；
-- N0 只建底座，不建立假实现冒充后续模型能力。
-
-## 7. 当前阶段停止消息模板
-
-```text
-N2B0_7_ARTIFACT_QUALIFICATION_BLOCKED
-
-Commit: <commit_sha>
-Authorized phase executed: N2B0.7 metadata-only GPU-native artifact qualification
-Authorized data gate used: official-source metadata only; no real-photo reads
-Quality command: <command>
-Test evidence: reports/N2B0_7_test_evidence.md
-Artifact decision packet: reports/N2B0_7_owner_decision_packet.md
-Unresolved issues: reports/N2B0_7_owner_decision_packet.md
-N1 plan: reports/N1_detailed_plan.md
-Real photo access: NOT_USED
-Model downloads: NONE
-Cloud access: NONE
-OpenClaw integration: NONE
-Next action taken: STOPPED
-```
+On any ACL, manifest, path, integrity, schema, privacy, resource, quality, or
+rights gate failure, stop at that phase. Do not perform a system repair, source
+mutation, broadened download, or data read as a workaround.

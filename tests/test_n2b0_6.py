@@ -253,8 +253,8 @@ def test_n2b0_6_state_keeps_photo_model_and_follow_on_stages_locked(project_root
     state = json.loads((project_root / "PROJECT_STATE.json").read_text("utf-8"))
     assert state["phase_status"]["N2B0_5"] == "APPROVED_COMPLETE"
     assert state["phase_status"]["N2B0_6"] == "APPROVED_COMPLETE"
-    assert state["phase_status"]["N2B0_7"] == "AUTHORIZED"
-    assert state["authorization"]["large_model_downloads"] == "NOT_AUTHORIZED"
+    assert state["phase_status"]["N2B0_7"] == "APPROVED_COMPLETE"
+    assert state["authorization"]["large_model_downloads"] == "AUTHORIZED_RESEARCH_ONLY"
     assert state["authorization"]["real_model_execution"] == "NOT_AUTHORIZED"
     assert [state["phase_status"][f"N{i}"] for i in range(3, 9)] == ["LOCKED"] * 6
     assert state["data_scope"]["G2_PILOT_100"] == "LOCKED"

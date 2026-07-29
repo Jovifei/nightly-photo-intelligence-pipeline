@@ -1,0 +1,42 @@
+contract_version: "1.0"
+phase:
+  id: "N2B1R"
+  title: "Local-research isolated model acquisition"
+  status: "AUTHORIZED"
+capability: "N2B1R_LOCAL_RESEARCH_MODEL_ACQUISITION"
+data_gate:
+  id: "G1_CALIBRATION_20"
+  status: "AUTHORIZED_METADATA_AND_MODEL_ACQUISITION_ONLY"
+  allowed_assets: "official artifact metadata, wheels, and approved model payloads only; no real photo reads"
+approval:
+  n2b0_7_completion: "approvals/phase_completion_N2B0_7.yaml"
+  local_research_continuation: "approvals/owner_local_research_execution_N2B1R_to_N5R.yaml"
+  artifact_register: "research/N2B1R_local_research_artifact_register.json"
+runtime_target:
+  python: "3.12.10"
+  torch: "2.7.1+cu128"
+  torchvision: "0.22.1+cu128"
+  environment: "<ISOLATED_RUNTIME_GPU_VENV_OUTSIDE_GIT>"
+  required_gpu: "NVIDIA GeForce RTX 4070 SUPER"
+required_before_payload:
+  - "strict-load current state, task, approval, and exact artifact register"
+  - "approved artifact filename, revision, URL, preflight Content-Length, byte cap, and allowed request/final domains"
+  - "quarantine and cache remain outside Git and outside source/runtime trees"
+  - "exclusive-create, streaming SHA-256, post-write reread, and redacted transfer manifest"
+allowed_actions:
+  - "download approved model payloads and dependency wheels to quarantine only"
+  - "install hash-locked wheels into the isolated runtime only"
+  - "promote verified artifacts to an external content-addressed cache only after N2B1P"
+forbidden:
+  - "real_photo_read_or_directory_enumeration"
+  - "source_photo_exif_or_sqlite_ingest_write"
+  - "model_load_or_inference"
+  - "mask_skeleton_cutout_thumbnail_or_embedding"
+  - "cache_promotion_before_N2B1P"
+  - "cloud_image_processing"
+  - "Docker_WSL_driver_or_CUDA_system_configuration_change"
+  - "main_app_OpenClaw_G2_G3_or_more_than_20_assets"
+  - "push_merge_pull_request_or_release"
+mandatory_stop:
+  value: true
+  rule: "Stop after acquisition evidence is complete. Any failed or unverified transfer leaves N2B1P/N2B2/N3A/N4R/N5R locked."

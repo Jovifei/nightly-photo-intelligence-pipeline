@@ -53,7 +53,7 @@ def test_n2b0_state_authorizes_qualification_but_locks_download_and_execution(
     assert state["phase_status"]["N2B0"] == "APPROVED_COMPLETE"
     assert state["phase_status"]["N2B0_5"] == "APPROVED_COMPLETE"
     assert state["phase_status"]["N2B0_6"] == "APPROVED_COMPLETE"
-    assert state["phase_status"]["N2B0_7"] == "AUTHORIZED"
+    assert state["phase_status"]["N2B0_7"] == "APPROVED_COMPLETE"
     assert state["phase_status"]["N2B1"] == "LOCKED"
     assert state["phase_status"]["N2B1_Q"] == "LOCKED"
     assert state["phase_status"]["N2B1_P"] == "LOCKED"
@@ -61,12 +61,12 @@ def test_n2b0_state_authorizes_qualification_but_locks_download_and_execution(
     assert gates["N2B0_MODEL_ARTIFACT_QUALIFICATION"] == "APPROVED_COMPLETE"
     assert gates["N2B0_5_ARTIFACT_RIGHTS_AND_PROVENANCE_CLOSURE"] == "APPROVED_COMPLETE"
     assert gates["N2B0_6_LICENSE_CLEAR_ALTERNATIVE_CANDIDATE_RESEARCH"] == "APPROVED_COMPLETE"
-    assert gates["N2B0_7_GPU_NATIVE_QUALIFICATION"] == "AUTHORIZED"
+    assert gates["N2B0_7_GPU_NATIVE_QUALIFICATION"] == "APPROVED_COMPLETE"
     assert gates["N2B1_MODEL_DOWNLOAD"] == "LOCKED"
     assert gates["N2B1_Q_QUARANTINE_DOWNLOAD"] == "LOCKED"
     assert gates["N2B1_P_CACHE_PROMOTION"] == "LOCKED"
     assert gates["N2B2_REAL_BENCHMARK"] == "LOCKED"
-    assert state["authorization"]["large_model_downloads"] == "NOT_AUTHORIZED"
+    assert state["authorization"]["large_model_downloads"] == "AUTHORIZED_RESEARCH_ONLY"
     assert state["authorization"]["real_model_execution"] == "NOT_AUTHORIZED"
 
 

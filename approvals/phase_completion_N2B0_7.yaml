@@ -1,0 +1,35 @@
+schema_version: "1.0"
+approval_type: "PHASE_COMPLETION"
+status: "APPROVED"
+phase_id: "N2B0_7"
+owner_id: "Jovi"
+approved_at_utc: "2026-07-29"
+baseline:
+  n2b0_6_commit: "eb2eaeb61f1c21923d131a115d63edbcdebd8cb2"
+  n2b0_6_tag: "n2b0-6-approved-2026-07-29"
+  n2b0_7_commit: "f2b1c38301d71da52b855f73de8a67908cb525ef"
+  n2b0_7_tag: "n2b0-7-approved-2026-07-29"
+  immutable: true
+independent_reviewer:
+  conclusion: "PASS_FOR_OWNER_REVIEW"
+  reviewed_commit: "f2b1c38301d71da52b855f73de8a67908cb525ef"
+  summary: "Fresh read-only review verified that the direct G1 permit, runner, CLI, EXIF, and SQLite entry points deny source-photo access during N2B0.7."
+owner_decision: "N2B0_7_OWNER_APPROVED"
+quality_gates:
+  pytest: {exit_code: 0, result: "PASS", detail: "429 passed"}
+  ruff_check: {exit_code: 0, result: "PASS"}
+  ruff_format: {exit_code: 0, result: "PASS"}
+  mypy: {exit_code: 0, result: "PASS", detail: "47 source files"}
+  run_quality: {exit_code: 0, result: "PASS"}
+  sensitive_file_scan: {exit_code: 0, result: "PASS"}
+  preflight: {exit_code: 0, result: "PASS", detail: "15 pass, 0 fail"}
+  handoff: {exit_code: 0, result: "PASS", detail: "6 pass, 0 fail"}
+  scan_json_duplicates: {exit_code: 0, result: "PASS"}
+  git_diff_check: {exit_code: 0, result: "PASS"}
+prohibited_action_counters:
+  model_download_bytes: 0
+  dependency_installs: 0
+  model_execution_runs: 0
+  real_photo_reads: 0
+  cache_writes: 0
+owner_statement: "N2B0.7 is approved as an immutable local baseline. The separate local-research continuation record defines any later model acquisition or execution authority."

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b1r_artifact_register_v1.schema.json",
+  "title": "Owner-approved local-research model acquisition register",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "stage", "purpose", "weights_rights", "artifacts", "unresolved"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "stage": {"const": "N2B1R"},
+    "purpose": {"type": "string", "minLength": 1},
+    "weights_rights": {"type": "object", "additionalProperties": false, "required": ["status", "restriction"], "properties": {"status": {"const": "UNKNOWN_NOT_COMMERCIAL_CLEARANCE"}, "restriction": {"type": "string", "minLength": 1}}},
+    "artifacts": {"type": "array", "minItems": 3, "maxItems": 3, "uniqueItems": true, "items": {"type": "object", "additionalProperties": false, "required": ["id", "kind", "revision", "filename", "official_url", "expected_size_bytes", "claimed_size_megabytes", "owner_max_bytes", "allowed_request_domains", "allowed_final_domains", "official_sha256", "local_sha256_required", "preflight_content_length_required"], "properties": {"id": {"type": "string", "minLength": 1}, "kind": {"const": "MODEL_WEIGHT"}, "revision": {"const": "torchvision-v0.22.1"}, "filename": {"type": "string", "minLength": 5}, "official_url": {"type": "string", "pattern": "^https://download[.]pytorch[.]org/models/"}, "expected_size_bytes": {"const": null}, "claimed_size_megabytes": {"type": "number", "exclusiveMinimum": 0}, "owner_max_bytes": {"type": "integer", "minimum": 1}, "allowed_request_domains": {"const": ["download.pytorch.org"]}, "allowed_final_domains": {"const": ["download.pytorch.org"]}, "official_sha256": {"const": null}, "local_sha256_required": {"const": true}, "preflight_content_length_required": {"const": true}}}},
+    "unresolved": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+  }
+}

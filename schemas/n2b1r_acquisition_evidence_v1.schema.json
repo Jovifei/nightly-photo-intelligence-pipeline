@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b1r_acquisition_evidence_v1.schema.json",
+  "title": "N2B1R local-research acquisition evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "stage", "result", "artifact_count", "quarantine_storage", "artifacts", "prohibited_actions"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "stage": {"const": "N2B1R"},
+    "result": {"const": "N2B1R_ACQUISITION_COMPLETE_AWAITING_LOCAL_VERIFICATION"},
+    "artifact_count": {"const": 3},
+    "quarantine_storage": {"const": "EXTERNAL_REDACTED_NON_REPARSE"},
+    "artifacts": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "revision", "filename", "official_domain", "byte_count", "local_sha256", "transfer_manifest_sha256", "filename_sha256_prefix", "weights_rights", "use_restriction"],
+        "properties": {
+          "id": {"enum": ["torchvision-keypointrcnn-resnet50-fpn-coco-v1", "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1", "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1"]},
+          "revision": {"const": "torchvision-v0.22.1"},
+          "filename": {"type": "string", "minLength": 5},
+          "official_domain": {"const": "download.pytorch.org"},
+          "byte_count": {"type": "integer", "minimum": 1},
+          "local_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "transfer_manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "filename_sha256_prefix": {"const": "MATCHES_LOCAL_SHA256_PREFIX_ONLY"},
+          "weights_rights": {"const": "UNKNOWN_NOT_COMMERCIAL_CLEARANCE"},
+          "use_restriction": {"const": "LOCAL_RESEARCH_ONLY_NO_REDISTRIBUTION"}
+        }
+      }
+    },
+    "prohibited_actions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cache_promotion", "dependency_install", "model_load_or_inference", "source_photo_or_exif_read", "sqlite_ingest_write", "derived_image_output"],
+      "properties": {
+        "cache_promotion": {"const": "NOT_PERFORMED"},
+        "dependency_install": {"const": "NOT_PERFORMED"},
+        "model_load_or_inference": {"const": "NOT_PERFORMED"},
+        "source_photo_or_exif_read": {"const": "NOT_PERFORMED"},
+        "sqlite_ingest_write": {"const": "NOT_PERFORMED"},
+        "derived_image_output": {"const": "NOT_PERFORMED"}
+      }
+    }
+  }
+}

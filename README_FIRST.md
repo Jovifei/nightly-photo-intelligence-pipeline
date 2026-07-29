@@ -14,11 +14,10 @@
 1. **为什么做**：把本地摄影收藏转化成可审计、可搜索、可供摄影导演 App 消费的结构化知识。
 2. **做什么**：建设本地优先、可断点续传、可重复执行、人工审核后导出的离线数据生产流水线。
 3. **怎么做**：显式 Python 阶段、SQLite 状态机、严格 JSON Schema、只读源保护、逐阶段模型 Benchmark。
-4. **先做什么**：当前只允许 N2B0.7 的官方模型、权重许可、商业使用和本机 GPU 元数据资格审查，绝不读取真实照片或模型 payload。
-5. **不能做什么**：不能扫描真实收藏、不能下载/Range 请求/安装/运行模型、不能改驱动/WSL/Docker 系统配置、不能连接云端、不能接入 OpenClaw、不能修改主 App。
+4. **先做什么**：当前只允许 N2B1R 的 register-bound 本地研究模型获取；模型和依赖只能写入 Git 外隔离区，绝不读取真实照片或运行模型。
+5. **不能做什么**：不能扫描真实收藏、不能加载/推理模型、不能改驱动/WSL/Docker 系统配置、不能连接云端处理图片、不能接入 OpenClaw、不能修改主 App。
 6. **怎样验证**：每个需求、阶段和数据放量都有可执行验收、证据文件和负向测试。
-7. **什么时候停止**：N2B0.7 当前因权重许可与商业使用权利未获官方确认而处于
-   `N2B0_7_ARTIFACT_QUALIFICATION_BLOCKED`；任何通过都不会自动扩大到下载、推理或真实照片。
+7. **什么时候停止**：N2B1R 完成隔离下载和本地完整性证据后停止；任何通过都不会自动扩大到 cache promotion、推理或真实照片。
 
 ## 智能体入口
 
@@ -34,19 +33,19 @@
 
 | 项目 | 当前值 |
 |---|---|
-| 阶段 | `N2B0.7` |
-| 阶段状态 | `AUTHORIZED`（仅资格审查） |
-| 数据门禁 | 官方来源元数据；禁止真实照片读取 |
-| 真实图片目录 | `NOT_AUTHORIZED_FOR_N2B0.7` |
-| 模型下载 | `NOT_AUTHORIZED` |
+| 阶段 | `N2B1R` |
+| 阶段状态 | `AUTHORIZED`（仅本地研究隔离获取） |
+| 数据门禁 | 官方 artifact/依赖；禁止真实照片读取 |
+| 真实图片目录 | `NOT_AUTHORIZED_FOR_N2B1R` |
+| 模型下载 | `AUTHORIZED_RESEARCH_ONLY`（register-bound，Git 外 quarantine） |
 | 网络访问 | 默认拒绝 |
 | OpenClaw 激活 | `NOT_AUTHORIZED` |
-| 下一阶段 | `N2B0_7_ARTIFACT_QUALIFICATION_BLOCKED_OR_AWAITING_OWNER_DECISION` |
+| 下一阶段 | `N2B1R_ACQUISITION_AWAITING_LOCAL_VERIFICATION` |
 
 唯一可执行任务合同：
 
 ```text
-tasks/phase_n2b0_7_gpu_native_qualification.yaml
+tasks/phase_n2b1r_local_research_model_acquisition.yaml
 ```
 
 ## 第一次操作
@@ -55,7 +54,7 @@ tasks/phase_n2b0_7_gpu_native_qualification.yaml
 python tools/verify_handoff.py
 ```
 
-校验失败时不得实施。校验通过后，按 `docs/00_reading_order.md` 阅读并执行 N2B0.7；完成后等待 Owner artifact decision，不启动 N2B1/N2B2。
+校验失败时不得实施。校验通过后，按 `docs/00_reading_order.md` 阅读并执行 N2B1R；完成后验证下一阶段门禁，不启动模型推理或真实照片处理。
 
 ## 交付包与目标仓库
 
@@ -63,7 +62,7 @@ python tools/verify_handoff.py
 
 ## 重要说明
 
-- 文档中的模型名称是**研究候选**，不是下载授权。
+- 权重商业权利仍是 `UNKNOWN_NOT_COMMERCIAL_CLEARANCE`；许可仅限 Owner 机器本地研究/评估，不得分发或声明商用可用。
 - 示例路径都是占位符，不能改成个人绝对路径并提交。
 - 三张 fixture 是合成图片，只用于 N0；它们不代表模型质量基准。
 - OpenClaw 的限制必须由操作系统权限、只读挂载和窄命令包装器落实，不能只靠提示词。

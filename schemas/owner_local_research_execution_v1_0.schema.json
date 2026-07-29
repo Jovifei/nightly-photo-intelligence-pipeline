@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/owner_local_research_execution_v1_0.schema.json",
+  "title": "Owner bounded local-research execution authorization",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "approval_type", "status", "owner_id", "issued_at_utc", "source", "approved_baseline", "start_phase", "conditional_follow_on", "local_research_exception", "data_scope", "download_scope", "hard_stop", "explicit_exclusions", "owner_statement"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "approval_type": {"const": "LOCAL_RESEARCH_BOUNDED_EXECUTION"},
+    "status": {"const": "APPROVED"},
+    "owner_id": {"const": "Jovi"},
+    "issued_at_utc": {"const": "2026-07-29"},
+    "source": {"type": "string", "minLength": 1},
+    "approved_baseline": {
+      "type": "object", "additionalProperties": false,
+      "required": ["phase", "commit", "tag"],
+      "properties": {
+        "phase": {"const": "N2B0_7"},
+        "commit": {"const": "f2b1c38301d71da52b855f73de8a67908cb525ef"},
+        "tag": {"const": "n2b0-7-approved-2026-07-29"}
+      }
+    },
+    "start_phase": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "capability", "status"],
+      "properties": {
+        "id": {"const": "N2B1R"},
+        "capability": {"const": "N2B1R_LOCAL_RESEARCH_MODEL_ACQUISITION"},
+        "status": {"const": "AUTHORIZED_NOW"}
+      }
+    },
+    "conditional_follow_on": {"type": "array", "minItems": 5, "maxItems": 5, "uniqueItems": true, "items": {"type": "object", "additionalProperties": false, "required": ["phase", "condition"], "properties": {"phase": {"enum": ["N2B1P", "N2B2", "N3A", "N4R", "N5R"]}, "condition": {"type": "string", "minLength": 1}}}},
+    "local_research_exception": {
+      "type": "object", "additionalProperties": false,
+      "required": ["weights_license_status", "permitted_use", "prohibited_use"],
+      "properties": {
+        "weights_license_status": {"const": "UNKNOWN_NOT_COMMERCIAL_CLEARANCE"},
+        "permitted_use": {"const": "local research and evaluation on this Owner-controlled machine only"},
+        "prohibited_use": {"type": "array", "minItems": 4, "uniqueItems": true, "items": {"type": "string"}}
+      }
+    },
+    "data_scope": {"type": "object", "additionalProperties": false, "required": ["max_assets", "source", "real_photo_reads", "duplicate_rule"], "properties": {"max_assets": {"const": 20}, "source": {"type": "string", "minLength": 1}, "real_photo_reads": {"const": "only after N2B2 is the active phase and all source gates pass"}, "duplicate_rule": {"const": "process 19 unique assets and retain one duplicate reference"}}},
+    "download_scope": {"type": "object", "additionalProperties": false, "required": ["quarantine_parent", "cache_parent", "allowed_official_domains", "required_controls"], "properties": {"quarantine_parent": {"const": "<LOCAL_QUARANTINE_OUTSIDE_GIT>"}, "cache_parent": {"const": "<LOCAL_MODEL_CACHE_OUTSIDE_GIT>"}, "allowed_official_domains": {"type": "array", "minItems": 4, "uniqueItems": true, "items": {"type": "string"}}, "required_controls": {"type": "array", "minItems": 5, "uniqueItems": true, "items": {"type": "string"}}}},
+    "hard_stop": {"type": "object", "additionalProperties": false, "required": ["value", "rule"], "properties": {"value": {"const": true}, "rule": {"type": "string", "minLength": 1}}},
+    "explicit_exclusions": {"type": "array", "minItems": 7, "uniqueItems": true, "items": {"type": "string"}},
+    "owner_statement": {"type": "string", "minLength": 1}
+  }
+}

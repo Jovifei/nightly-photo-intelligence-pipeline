@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0",
+  "stage": "N2B1R",
+  "result": "N2B1R_ACQUISITION_COMPLETE_AWAITING_LOCAL_VERIFICATION",
+  "artifact_count": 3,
+  "quarantine_storage": "EXTERNAL_REDACTED_NON_REPARSE",
+  "artifacts": [
+    {
+      "id": "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1",
+      "revision": "torchvision-v0.22.1",
+      "filename": "lraspp_mobilenet_v3_large-d234d4ea.pth",
+      "official_domain": "download.pytorch.org",
+      "byte_count": 13097061,
+      "local_sha256": "d234d4eae9d55d5f76de18b77cf0dc62c66fe5c5482758209d00f950c92bb280",
+      "transfer_manifest_sha256": "d25cc430637cf19ebab31cd5aa99e344b4da58cd2b04db245c165181e3ff1f12",
+      "filename_sha256_prefix": "MATCHES_LOCAL_SHA256_PREFIX_ONLY",
+      "weights_rights": "UNKNOWN_NOT_COMMERCIAL_CLEARANCE",
+      "use_restriction": "LOCAL_RESEARCH_ONLY_NO_REDISTRIBUTION"
+    },
+    {
+      "id": "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1",
+      "revision": "torchvision-v0.22.1",
+      "filename": "deeplabv3_mobilenet_v3_large-fc3c493d.pth",
+      "official_domain": "download.pytorch.org",
+      "byte_count": 44356159,
+      "local_sha256": "fc3c493d68e89cc31ef488c803d5d7dd2f3190fb570598faa49fef69be8e5e70",
+      "transfer_manifest_sha256": "676054e8b2c366f591a1bbe1b4521e2ef7abdb08197534ca95eb11d434dd0cae",
+      "filename_sha256_prefix": "MATCHES_LOCAL_SHA256_PREFIX_ONLY",
+      "weights_rights": "UNKNOWN_NOT_COMMERCIAL_CLEARANCE",
+      "use_restriction": "LOCAL_RESEARCH_ONLY_NO_REDISTRIBUTION"
+    },
+    {
+      "id": "torchvision-keypointrcnn-resnet50-fpn-coco-v1",
+      "revision": "torchvision-v0.22.1",
+      "filename": "keypointrcnn_resnet50_fpn_coco-fc266e95.pth",
+      "official_domain": "download.pytorch.org",
+      "byte_count": 237034793,
+      "local_sha256": "fc266e953d2b302cdcbb9ae66f71f6b0d4649928bf02dc573961e361e4918926",
+      "transfer_manifest_sha256": "90da3eb000813841a980dcbaf8e1b31fdde15283a9d6b969156c5eb0ae21ce43",
+      "filename_sha256_prefix": "MATCHES_LOCAL_SHA256_PREFIX_ONLY",
+      "weights_rights": "UNKNOWN_NOT_COMMERCIAL_CLEARANCE",
+      "use_restriction": "LOCAL_RESEARCH_ONLY_NO_REDISTRIBUTION"
+    }
+  ],
+  "prohibited_actions": {
+    "cache_promotion": "NOT_PERFORMED",
+    "dependency_install": "NOT_PERFORMED",
+    "model_load_or_inference": "NOT_PERFORMED",
+    "source_photo_or_exif_read": "NOT_PERFORMED",
+    "sqlite_ingest_write": "NOT_PERFORMED",
+    "derived_image_output": "NOT_PERFORMED"
+  }
+}

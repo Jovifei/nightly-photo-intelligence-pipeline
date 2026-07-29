@@ -43,6 +43,13 @@
       "baseline_commit": "eb2eaeb61f1c21923d131a115d63edbcdebd8cb2",
       "completion_approval": "approvals/phase_completion_N2B0_6.yaml",
       "approved_at_utc": "2026-07-29"
+    },
+    {
+      "phase": "N2B0_7",
+      "file": "phase_n2b0_7_gpu_native_qualification.yaml",
+      "baseline_commit": "f2b1c38301d71da52b855f73de8a67908cb525ef",
+      "completion_approval": "approvals/phase_completion_N2B0_7.yaml",
+      "approved_at_utc": "2026-07-29"
     }
   ],
   "authorized": [
@@ -63,14 +70,15 @@
     },
     {
       "kind": "ENGINEERING_PHASE",
-      "phase": "N2B0_7",
-      "file": "phase_n2b0_7_gpu_native_qualification.yaml",
-      "capability": "N2B0_7_GPU_NATIVE_QUALIFICATION",
-      "approval_record": "approvals/owner_continuous_authorization_N2B0_7_to_N3A.yaml"
+      "phase": "N2B1R",
+      "file": "phase_n2b1r_local_research_model_acquisition.yaml",
+      "capability": "N2B1R_LOCAL_RESEARCH_MODEL_ACQUISITION",
+      "approval_record": "approvals/owner_local_research_execution_N2B1R_to_N5R.yaml"
     }
   ],
   "locked": [
     {"phase": "N2B1", "file": "phase_n2_pose_and_segmentation.yaml", "capability": "N2B1_MODEL_DOWNLOAD"},
+    {"phase": "N2B1P", "file": "phase_n2_pose_and_segmentation.yaml", "capability": "N2B1P_LOCAL_RESEARCH_CACHE_PROMOTION"},
     {"phase": "N2B1_Q", "file": "phase_n2_pose_and_segmentation.yaml", "capability": "N2B1_Q_QUARANTINE_DOWNLOAD"},
     {"phase": "N2B1_P", "file": "phase_n2_pose_and_segmentation.yaml", "capability": "N2B1_P_CACHE_PROMOTION"},
     {"phase": "N2B2", "file": "phase_n2_pose_and_segmentation.yaml", "capability": "N2B2_REAL_BENCHMARK"},
@@ -81,5 +89,5 @@
     {"phase": "N7", "file": "phase_n7_app_bundle_integration.yaml"},
     {"phase": "N8", "file": "phase_n8_nightly_scheduler_openclaw.yaml"}
   ],
-  "rule": "N0, N1, G1, N2A, N2B0, N2B0.5, and N2B0.6 are immutable approved baselines. N2B0.7 is metadata-only GPU-native artifact qualification; N2B1 download, N2B2 execution, G2/G3, and N3-N8 remain locked."
+  "rule": "N0, N1, G1, N2A, N2B0, N2B0.5, N2B0.6, and N2B0.7 are immutable approved baselines. N2B1R is a bounded local-research acquisition phase only; cache promotion, model execution, real-photo analysis, G2/G3, and N3-N8 remain locked until their own gates pass."
 }

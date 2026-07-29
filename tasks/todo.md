@@ -744,3 +744,45 @@ do not read a source photo, model payload, or snapshot; do not open N2B1/N2B2/N3
 - [x] Run complete quality gates, amend only the unapproved N2B0.7 commit,
   and request a fresh independent review. Stop with N2B1/Q/P, N2B2, N3,
   G2, and G3 locked.
+
+## Local research 20-photo execution - 2026-07-29
+
+Owner Jovi selected the local-research edition and explicitly requested execution
+through a 20-item director-prompt result.  The formal target is strictly local,
+research-only output; it is not a commercial-rights conclusion, a model
+redistribution authorization, a Bundle export, G2/G3 expansion, or an App change.
+
+### Plan
+
+- [x] Obtain a fresh independent read-only review of the N2B0.7 remediation
+  candidate `f2b1c38301d71da52b855f73de8a67908cb525ef`: `PASS_FOR_OWNER_REVIEW`.
+- [x] Create the local-only immutable `n2b0-7-approved-2026-07-29` tag at that
+  exact reviewed candidate.
+- [x] Record the N2B0.7 completion approval and a versioned research-only
+  continuation contract before any download, install, model execution, or photo read.
+- [x] Implement a separate research-only artifact policy and register-bound
+  quarantine downloader with HEAD-before-GET, byte caps, local SHA-256 reread,
+  path-redacted external manifests, and one-time library-level preflight permits;
+  do not weaken the existing commercial-grade fail-closed N2B1 policy.
+- [x] Run the approved downloader against each registered official artifact and
+  independently verify its locally acquired manifest and SHA-256; three of three
+  passed. Stop before cache promotion, installation, model loading, or photo
+  access, as required by the N2B1R mandatory stop.
+- [ ] Build and verify the isolated CUDA environment only after all approved
+  local-research acquisitions validate; cache promotion remains a separately
+  gated phase.
+- [ ] Implement GPU Pose, person-segmentation, and local VLM backends with
+  synthetic tests and one-model-per-process VRAM release evidence.
+- [ ] Revalidate protected snapshot ACL/manifest/source integrity and run only its
+  20 authorized entries (19 unique plus one duplicate reference) twice.
+- [ ] Produce redacted JSON/HTML/Obsidian evidence, run all quality gates, and
+  stop for independent N5 report review.
+
+### Hard boundary
+
+- Do not open any source photo before N2B2 has an explicit active capability,
+  OS read-only/manifest/source-runtime gates pass, and the model stages pass.
+- Treat pretrained TorchVision weight commercial rights as `UNKNOWN`: use is
+  local research only, with no distribution or commercial-clearance claim.
+- Never save original images, masks, overlays, thumbnails, cutouts, Base64,
+  GPS, identities, real filenames, or absolute source paths in Git/reports.

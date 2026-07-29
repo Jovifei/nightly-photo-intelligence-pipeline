@@ -1,0 +1,64 @@
+schema_version: "1.0"
+approval_type: "LOCAL_RESEARCH_BOUNDED_EXECUTION"
+status: "APPROVED"
+owner_id: "Jovi"
+issued_at_utc: "2026-07-29"
+source: "Owner direct confirmation: execute the RTX 4070 SUPER 20-photo plan as a local research edition, including director prompts."
+approved_baseline:
+  phase: "N2B0_7"
+  commit: "f2b1c38301d71da52b855f73de8a67908cb525ef"
+  tag: "n2b0-7-approved-2026-07-29"
+start_phase:
+  id: "N2B1R"
+  capability: "N2B1R_LOCAL_RESEARCH_MODEL_ACQUISITION"
+  status: "AUTHORIZED_NOW"
+conditional_follow_on:
+  - phase: "N2B1P"
+    condition: "Each quarantined artifact has an approved-register identity, bounded official-domain transfer record, local SHA-256, post-write reread, and cache-promotion verification."
+  - phase: "N2B2"
+    condition: "N2B1R/N2B1P complete; isolated CUDA, ACL, manifest, source/runtime separation, source hash, schema, resource, and quality gates pass."
+  - phase: "N3A"
+    condition: "N2B2 GPU Pose/person-segmentation benchmark passes all hard gates for the protected 20-entry snapshot."
+  - phase: "N4R"
+    condition: "N3A deterministic composition/light/tonal analysis passes privacy, evidence-reference, idempotency, and report-schema gates."
+  - phase: "N5R"
+    condition: "N4R local director-prompt generation passes attribution, non-fabrication, redaction, and no-image-derivative gates."
+local_research_exception:
+  weights_license_status: "UNKNOWN_NOT_COMMERCIAL_CLEARANCE"
+  permitted_use: "local research and evaluation on this Owner-controlled machine only"
+  prohibited_use:
+    - "commercial-clearance claim"
+    - "weight redistribution"
+    - "model artifact commit"
+    - "cloud image upload or cloud inference"
+data_scope:
+  max_assets: 20
+  source: "G1 protected snapshot and its frozen manifest only"
+  real_photo_reads: "only after N2B2 is the active phase and all source gates pass"
+  duplicate_rule: "process 19 unique assets and retain one duplicate reference"
+download_scope:
+  quarantine_parent: "<LOCAL_QUARANTINE_OUTSIDE_GIT>"
+  cache_parent: "<LOCAL_MODEL_CACHE_OUTSIDE_GIT>"
+  allowed_official_domains:
+    - "download.pytorch.org"
+    - "pypi.org"
+    - "files.pythonhosted.org"
+    - "huggingface.co"
+  required_controls:
+    - "approved exact artifact register before payload request"
+    - "exclusive-create quarantine destination"
+    - "streaming byte cap and SHA-256"
+    - "post-write reread and manifest binding"
+    - "atomic cache promotion with delete and rollback record"
+hard_stop:
+  value: true
+  rule: "Any artifact identity, transfer, local hash, CUDA, ACL, manifest, source integrity, schema, privacy, resource, or quality failure stops at the failing phase; no later phase is inferred."
+explicit_exclusions:
+  - "G2_G3_or_more_than_20_assets"
+  - "main_app_change"
+  - "OpenClaw"
+  - "Docker_WSL_driver_or_CUDA_system_configuration_change"
+  - "cloud_image_processing"
+  - "git_push_merge_pull_request_or_release"
+  - "Bundle_export_or_human_APPROVED_export"
+owner_statement: "This permits a bounded local research execution path, not commercial rights clearance or an unrestricted model/data authorization."

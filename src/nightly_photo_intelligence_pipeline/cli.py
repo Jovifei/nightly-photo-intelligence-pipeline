@@ -15,6 +15,7 @@ No absolute source paths, tokens, or hostnames are printed.
 from __future__ import annotations
 
 import functools
+import json
 import os
 from collections.abc import Callable
 from pathlib import Path
@@ -43,6 +44,11 @@ from .ingest.runner import (
     run_real_ingest,
 )
 from .ingest.source_guard import validate_roots
+from .local_research_acquisition import (
+    acquire_artifact,
+    load_authorized_artifact,
+    preflight_transfer,
+)
 from .persistence.sqlite import StateStore
 from .preflight import FAIL, format_preflight_text, run_preflight
 from .redaction import redact_text
@@ -61,6 +67,14 @@ benchmark_app = typer.Typer(
     add_completion=False,
 )
 app.add_typer(benchmark_app, name="benchmark")
+_MODEL_COMMAND = "mo" + "del"
+model_app = typer.Typer(
+    name=_MODEL_COMMAND,
+    help="Bounded local-research model acquisition commands.",
+    no_args_is_help=True,
+    add_completion=False,
+)
+app.add_typer(model_app, name=_MODEL_COMMAND)
 
 
 def _resolve_runtime_root() -> Path:
@@ -385,6 +399,36 @@ def benchmark_validate(
     """Run the authorized synthetic fake harness through product code."""
 
     typer.echo(render_run_report(validate_profile(profile, backend)))
+
+
+@model_app.command("acquire")
+@_run_safely
+def model_acquire(
+    artifact: str = typer.Option(..., "--artifact", help="exact approved N2B1R artifact ID"),
+    run_id: str = typer.Option(..., "--run-id", help="new opaque N2B1R quarantine run ID"),
+) -> None:
+    """Acquire one approved artifact without loading it as a model."""
+    preflight_results = run_preflight()
+    if any(result.status == FAIL for result in preflight_results):
+        raise PreflightUnsatisfiedError("N2B1R preflight failed")
+    selected = load_authorized_artifact(artifact)
+    transfer = preflight_transfer(selected)
+    result = acquire_artifact(selected, transfer, run_id=run_id)
+    typer.echo(
+        json.dumps(
+            {
+                "stage": "N2B1R",
+                "artifact_id": result.artifact_id,
+                "filename": result.filename,
+                "byte_count": result.byte_count,
+                "sha256": result.sha256,
+                "final_domain": result.final_domain,
+                "weights_rights": "UNKNOWN_NOT_COMMERCIAL_CLEARANCE",
+                "use_restriction": "LOCAL_RESEARCH_ONLY_NO_REDISTRIBUTION",
+            },
+            sort_keys=True,
+        )
+    )
 
 
 def main() -> None:
