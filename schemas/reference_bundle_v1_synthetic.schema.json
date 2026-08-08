@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/reference_bundle_v1_synthetic.schema.json",
+  "title": "Photo Intelligence Bundle v1 (synthetic validation variant)",
+  "description": "Reference bundle produced during N2B2 synthetic validation. This is a synthetic-only variant of the production Bundle v1; it contains no real photo data, EXIF, or absolute paths.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "bundle_type",
+    "case_id",
+    "image_sha256",
+    "vision_facts",
+    "photographic_reasoning",
+    "checksums",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0-synthetic"},
+    "bundle_type": {"const": "SYNTHETIC_VALIDATION"},
+    "case_id": {"type": "string", "pattern": "^n2b2-s(3|20)-[0-9]{2}$"},
+    "image_sha256": {"$ref": "#/$defs/sha256"},
+    "vision_facts": {"type": "object", "additionalProperties": false, "required": ["fact_digest", "fact_ids"], "properties": {"fact_digest": {"$ref": "#/$defs/sha256"}, "fact_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^fact-[a-z0-9-]+$"}, "uniqueItems": true}}},
+    "photographic_reasoning": {"type": "object", "additionalProperties": false, "required": ["input_fact_digest", "reasoning_model"], "properties": {"input_fact_digest": {"$ref": "#/$defs/sha256"}, "reasoning_model": {"const": "qwen3.5:9b"}}},
+    "checksums": {"type": "object", "additionalProperties": false, "required": ["vision_facts_sha256", "reasoning_sha256", "bundle_sha256"], "properties": {"vision_facts_sha256": {"$ref": "#/$defs/sha256"}, "reasoning_sha256": {"$ref": "#/$defs/sha256"}, "bundle_sha256": {"$ref": "#/$defs/sha256"}}},
+    "provenance": {"type": "object", "additionalProperties": false, "required": ["data_gate", "real_photo_read_count", "real_exif_read_count", "g1_source_access", "sqlite_write_count", "created_at_utc", "pipeline_stage"], "properties": {"data_gate": {"const": "SYNTHETIC_ONLY_DATA_GATE"}, "real_photo_read_count": {"const": 0}, "real_exif_read_count": {"const": 0}, "g1_source_access": {"const": 0}, "sqlite_write_count": {"const": 0}, "created_at_utc": {"type": "string", "format": "date-time"}, "pipeline_stage": {"const": "N2B2_SYNTHETIC_MODEL_STACK_VALIDATION"}}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

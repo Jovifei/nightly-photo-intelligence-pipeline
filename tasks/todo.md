@@ -786,3 +786,522 @@ redistribution authorization, a Bundle export, G2/G3 expansion, or an App change
   local research only, with no distribution or commercial-clearance claim.
 - Never save original images, masks, overlays, thumbnails, cutouts, Base64,
   GPS, identities, real filenames, or absolute source paths in Git/reports.
+
+## N2B1P local-research cache promotion - 2026-07-29
+
+Owner Jovi explicitly authorized `N2B1P_CACHE_PROMOTION_ONLY` after the three
+N2B1R quarantined artifacts passed transfer and local SHA-256 verification.
+This is not a model-execution or photo-analysis authorization.
+
+### Plan
+
+- [x] Bind a new N2B1P Owner record, task, state schema, and action boundary to
+  only the three exact N2B1R evidence SHA-256 values; replace the prior
+  circular cache-promotion prerequisite with completed N2B1R evidence.
+- [x] Implement a separate research-only promotion library that revalidates all
+  raw control documents at the action boundary, rejects reparse/path escape and
+  source/cache overlap, and never weakens the commercial N2B1 policy.
+- [x] Copy only the verified quarantine bytes into an external content-addressed
+  cache using an exclusive staging directory, streaming SHA-256, TOCTOU checks,
+  atomic final rename, and a path-redacted cache manifest.
+- [x] Prove idempotent cache hits, hash/size/manifest mismatch denial, forged
+  caller/spec denial before file access, symlink/junction denial, and no model,
+  CUDA, photo, EXIF, SQLite, or derivative-output reachability.
+- [x] Run full quality gates, record redacted evidence, amend/create one local
+  N2B1P commit, then stop before any environment installation, model load, or
+  real-photo access.
+
+### Review
+
+- [x] Completed N2B1P copy-only promotion for the three evidence-bound artifacts;
+  first-pass promotion and cache-hit verification were both recorded without
+  model execution, CUDA, photo/EXIF access, SQLite writes, or derivatives.
+- [ ] Awaiting independent review and separate Owner authorization before N2B2.
+
+## N2B1P reviewer remediation - 2026-08-01
+
+Scope: `N2B1P_REMEDIATION_ONLY`. Amend the sole N2B1P commit only; do not
+enter N2B2, load a model, invoke CUDA, read photos/EXIF, write SQLite, or alter
+the three external cache payloads/manifests.
+
+- [x] Confirm the reviewed N2B1P HEAD and parent, clean start, no merge/remote,
+  and create the local-only pre-remediation backup branch.
+- [x] Capture a redacted, read-only cache baseline before code changes.
+- [x] Replace path-based promotion with Windows handle-bound reparse-resistant
+  staging and publication; add deterministic race and junction tests.
+- [x] Bind immutable raw cache manifests to one canonical envelope and one
+  validated runtime configuration; add negative integrity/configuration tests.
+- [x] Run the read-only cache comparison: three `CACHE_HIT` values and all four
+  mutation counters are zero.
+- [x] Run final quality gates: 474 tests passed; Ruff, format, mypy, quality
+  7/7, sensitive scan, preflight, handoff, and diff checks passed.
+- [x] Update the exact tracked-file manifest and amend the sole N2B1P commit;
+  no second N2B1P commit, push, merge, or release.
+
+### Review
+
+- Independent review is still required. No Reviewer PASS is claimed here.
+- `tools/print_authorization.py`, `docs/02`, `docs/24`, `docs/31`, and Obsidian
+  are deferred and unmodified in this remediation.
+
+## Delivery-readiness ledger - 2026-08-01
+
+Scope: establish a truthful, continuously maintained path from the completed
+N2B1P remediation to the eventual local research delivery. This ledger is not
+an authorization for N2B2, model/CUDA execution, real-photo access, SQLite
+writes, N3--N5, G2/G3, push, merge, or release.
+
+### Plan
+
+- [x] Reconcile `PROJECT_STATE.json`, the active N2B1P contract, the amended
+  N2B1P commit, and the existing task/Obsidian records before assessing
+  delivery readiness.
+- [x] Map the final delivery milestones, verified completions, and exact
+  remaining hard gates from the current contracts rather than historical notes.
+- [x] Run only no-side-effect, currently permitted landing-test readiness gates
+  and distinguish their result from a real model/photo benchmark.
+- [x] Update this ledger's review, `tasks/lessons.md`, and the project Obsidian
+  memory with the same status, next action, and task-tracking rule.
+
+### Tracking rule
+
+For every future task, create or update a bounded plan in this file before
+execution; record the actual result, commands, and blockers in its review; and
+synchronize the corresponding project Obsidian progress note before handoff.
+Never turn an unrun, blocked, or externally pending step into `[x]`.
+
+### Review
+
+- Current code candidate: `b819e2c48229cacbf62e399d2b4130cde55cf48a`.
+  N0/N1/G1/N2A/N2B0/N2B0.5/N2B0.6/N2B0.7 are immutable approved baselines;
+  N2B1R acquisition and N2B1P cache promotion/remediation are complete. The
+  required current status remains
+  `N2B1P_REMEDIATION_COMPLETE_AWAITING_EXTERNAL_REVIEW`.
+- The bounded local-research delivery still needs N2B2 -> N3A -> N4R -> N5R.
+  A full 500--600-photo product additionally needs G2/N6 -> N7 -> N8/G3,
+  human-approved Bundle acceptance, separate App scope, and separately
+  authorized OpenClaw activation.
+- `git diff --check` exited 0. Static checks during this ledger task passed:
+  Ruff check, Ruff format, mypy (51 source files), and sensitive scan (0
+  violations). After synchronizing `MANIFEST.sha256`, the final full pytest was
+  472 passed / 2 failed; both failures assert the deliberately non-clean
+  worktree and its resulting handoff denial. No implementation or manifest
+  binding test failed.
+- After manifest synchronization, `npi benchmark status`, both metadata-only
+  plans, and fake Pose/segmentation validation exited 0; each fake profile
+  reported 20/20 PASS, `synthetic_only=true`, `ready_for_real_benchmark=false`,
+  and no artifacts. This is readiness evidence only, not a model/CUDA/photo
+  result.
+- Current `verify_handoff` (4 PASS, 1 FAIL) and `npi preflight` (14 PASS, 1
+  FAIL) correctly reject the uncommitted tracking changes as a non-clean
+  worktree. Their failure is `worktree is not clean` / `git_stage_baselines`,
+  not a permission to bypass the N2B1P external-review stop. No commit was
+  created by this tracking task.
+- `N2B2` and later remain locked. Before any real-photo/model test, obtain an
+  external N2B1P review, renew the expired G1 approval (expired
+  `2026-07-31T23:59:59+08:00`), and bind a separate N2B2 task/approval to the
+  frozen manifest, read-only source/runtime separation, isolated CUDA runtime,
+  exact model/runtime identity, resource stop thresholds, output retention, and
+  quality gates.
+
+## N2B1P independent pre-review - 2026-08-01
+
+Scope: read-only independent pre-review of
+`b819e2c48229cacbf62e399d2b4130cde55cf48a` against its parent. This is not the
+required external review and cannot unlock N2B2. Do not modify code/contracts,
+touch cache payloads, load models, invoke CUDA, access photos/EXIF, write
+SQLite, push, merge, or release.
+
+### Plan
+
+- [x] Bind the review to the exact candidate and parent, separate it from this
+  uncommitted tracking-only worktree, and preserve the N2B1P stop boundary.
+- [ ] Independently inspect the Windows handle-bound promotion path, manifest
+  integrity/configuration binding, public verification entry, and negative-test
+  coverage for reviewer-level bypasses.
+- [ ] Record a `PASS_FOR_EXTERNAL_REVIEW`, `CHANGES_REQUIRED`, or
+  `INCONCLUSIVE` verdict with evidence; do not substitute it for an external
+  reviewer conclusion.
+- [ ] Synchronize the review result to this ledger and Obsidian before any
+  follow-on authorization decision.
+
+### Interim review
+
+- Status: `INCONCLUSIVE`. The independent read-only pre-review was time-bounded
+  before it produced a complete verdict. It confirmed the candidate/parent
+  binding and found no confirmed reparse/TOCTOU or canonical-manifest bypass in
+  the inspected handle-bound path, but it did not finish validating every
+  public verification/evidence call chain.
+- This is not a `PASS_FOR_EXTERNAL_REVIEW`, does not satisfy the required
+  external review, and does not authorize a code change or N2B2. A future
+  reviewer must independently close the public `verify_promoted_artifact`
+  cache-root-identity negative case as well as the complete report/evidence
+  chain.
+
+## N2B2 local-research benchmark activation plan - 2026-08-01
+
+Scope: planning only. The executable plan is
+`docs/superpowers/plans/2026-08-01-n2b2-local-research-benchmark.md`; it is the
+fastest compliant path to a night-time run of the frozen 20-entry snapshot and
+ends at N2B2 evidence review. It does not itself authorize a model, CUDA,
+source-photo, EXIF, SQLite, N3--N5, G2/G3, App, OpenClaw, push, merge, or
+release action.
+
+### Plan
+
+- [x] Map the current code/contract gap and write the N2B2-only implementation
+  plan, including external review, renewed data gate, strict permit, adapters,
+  serial runner, smoke, night run, evidence, and mandatory stop.
+- [x] Complete the independent N2B1P review cycle. The initial `b819e2c`
+  review returned `CHANGES_REQUIRED`; its two-stage remediation produced clean
+  isolated candidate `259304c67636d05c29f9ad746ef7b2d9b1ea1698`, passed the
+  full matrix, and recorded `PASS_FOR_OWNER_N2B2_DECISION` in Git-external
+  evidence. This is not an N2B2 authorization.
+- [ ] Obtain Jovi's fresh G1 renewal and signed N2B2 approval/runtime contract.
+- [ ] Implement and test the signed N2B2 control plane, permit, real adapters,
+  runner/CLI/report, and isolated runtime smoke exactly as planned.
+- [ ] Run only the signed 20-entry serial N2B2 benchmark and its deterministic
+  rerun; record redacted evidence and stop for the next review.
+
+### Review
+
+- Plan status: `READY_FOR_OWNER_REVIEW`, not `AUTHORIZED_FOR_EXECUTION`.
+- Night-run Go/No-Go is explicitly included in the plan. With the present
+  locked state and expired G1 approval, tonight's real-photo analysis remains
+  `BLOCKED_AWAITING_OWNER_DECISION`.
+- Task 1 review result: `COMPLETED_WITH_CHANGES_REQUIRED`. The external report
+  now includes all six expected/actual SHA-256 values and accurately attributes
+  them to inherited manifest debt. The second-stage quality review also found
+  a P1: `tools/verify_handoff.py` reaches public Git-external cache verification
+  before it validates the tracked-file manifest. This does not unlock N2B2;
+  the bounded remediation task below must close both issues and repeat review.
+
+## N2B1P external-review remediation - 2026-08-01
+
+Scope: repair only the detached-review findings for
+`b819e2c48229cacbf62e399d2b4130cde55cf48a`: (1) make
+`tools/verify_handoff.py` reject an invalid tracked-file manifest before any
+public cache-verification import/call, and (2) eliminate a deterministic
+line-ending ambiguity in the six manifest entries. `.gitattributes` mandates
+LF but the pre-existing main checkout retains CRLF for those files; the old
+verifier hashed raw worktree bytes, while a fresh detached checkout hashes the
+canonical LF Git blobs. The repair must bind canonical Git blob bytes only
+after a clean-worktree check, then rebind exactly the six rows to those blobs.
+This is a source and governance-integrity repair under Jovi's direct
+authorization; it does not change phase/data authorization, access any
+payload, photo, EXIF, SQLite, network, CUDA, or model, and it does not enter
+N2B2.
+
+### Plan
+
+- [x] Record the external report and its two-stage review: the report is
+  `CHANGES_REQUIRED`; all six digest mismatches are inherited manifest debt;
+  the verifier-ordering defect is P1. Plan review additionally requires a
+  terminal manifest gate, binary Git-blob reads, a clean-CRLF regression, and
+  an exact rebind allowlist.
+- [x] In an isolated remediation worktree based exactly on `b819e2c`, add
+  focused tests proving: an invalid manifest returns before
+  `check_current_authorization()` can import or verify cache code; and the
+  manifest binds clean tracked Git blob bytes rather than checkout-dependent
+  text line endings.
+- [x] Reorder and short-circuit `verify_handoff.main()` so required-file,
+  clean-worktree, and canonical-manifest checks happen before
+  authorization/cache verification. If any of those gates adds an error,
+  immediately emit the normal nonzero result and return without calling
+  `check_current_authorization()`. Retain the existing final output contract.
+- [x] Add a dedicated binary `HEAD:<path>` Git-blob reader (never the existing
+  text/strip `git()` helper) and make the verifier and manifest test hash those
+  unmodified bytes after confirming a clean worktree. Add a regression with a
+  Git-clean, text-filtered CRLF checkout whose raw digest differs from its
+  canonical LF blob.
+- [x] Close the second-stage review P1 before any amend: pin one verified
+  commit OID before reading manifest blobs; a binary reader must explicitly
+  accept that OID and read every blob only as `<oid>:<path>` (never
+  `HEAD:<path>` after pinning). Immediately before
+  `check_current_authorization()` may load cache-verification code, re-read
+  `HEAD`, require it to equal the captured OID, and require clean status. Add a
+  regression that simulates HEAD movement and proves the handoff stops before
+  authorization/cache verification.
+- [x] Obtain a fresh plan review for the HEAD-movement remediation. It approved
+  the captured-OID reader, explicit HEAD equality recheck, clean recheck, and
+  no-amend boundary.
+- [x] Rebind only this exact canonical-blob digest allowlist in
+  `MANIFEST.sha256`: `reports/child-claude-n2b05-a-attempt1.json`,
+  `reports/child-claude-n2b05-a-attempt2.json`,
+  `reports/child-claude-n2b05-a-attempt3.json`,
+  `research/N2B0_6_candidate_records.json`,
+  `schemas/n2b0_7_artifact_qualification_v1.schema.json`, and
+  `schemas/project_state_v1_5.schema.json`; plus the verifier and test rows
+  changed by this task. Do not alter any other inherited manifest row.
+- [x] Obtain a fresh plan review. It approved the terminal gate, binary blob
+  reader, CRLF regression, exact allowlist, and unchanged privilege boundary.
+- [x] For the isolated full suite only, create an ignored `.venv` junction to
+  the already existing project virtual environment; install nothing and leave
+  the candidate worktree clean. This addresses two tests that intentionally
+  invoke a worktree-local interpreter.
+- [x] Amend (do not append to) the isolated branch's `b819e2c` candidate with
+  `--no-edit`, creating `259304c67636d05c29f9ad746ef7b2d9b1ea1698`. The
+  baseline still has exactly one commit from `d3628e2` to `HEAD`; `master` was
+  not altered, and nothing was pushed, merged, or released.
+- [x] Run the focused regression, complete suite, Ruff check/format, mypy,
+  sensitive scan, handoff verifier, CLI preflight, and whitespace diff check
+  in the clean isolated candidate. Actual result: 477 passed; Ruff check/format
+  0/0; mypy 0; sensitive scan 0; handoff 5 pass/0 fail; preflight 15 pass/0
+  fail; diff check 0; clean status; and one N2B1P commit.
+- [x] Have fresh subagents perform specification compliance and code-quality
+  review. After the OID-movement remediation, both approved the exact
+  three-file diff with no P0/P1/P2; the remaining matrix must run only after
+  the isolated candidate is made clean.
+- [x] Synchronize the exact review result to this ledger, Obsidian, and
+  Git-external evidence (`N2B1P_REMEDIATION_REVIEW_259304c.md`), then stop at
+  the unchanged N2B2 authorization gate.
+
+### Review
+
+- Status: `COMPLETED_PASS_FOR_OWNER_N2B2_DECISION`. The original ordering P1
+  and the OID-movement P1 are both remediated. Fresh specification and quality
+  reviews approved the exact three-file diff with no P0/P1/P2. The amended
+  isolated candidate `259304c67636d05c29f9ad746ef7b2d9b1ea1698` passed every
+  stated check with zero exit codes. This closes the N2B1P remediation review;
+  it does not activate N2B2 or real-photo analysis.
+
+## Owner N2B2 intent receipt and design gate - 2026-08-03
+
+Scope: record Jovi's direct confirmation before creating an executable N2B2
+control plane. This section does not change `PROJECT_STATE.json`, renew G1,
+load a model, invoke CUDA, access a photo or EXIF, write SQLite, create a
+runtime, or run a benchmark.
+
+### Plan
+
+- [x] Record Jovi's confirmed N2B2 boundary: the frozen 20 entries only,
+  read-only source access, existing cached Pose and segmentation artifacts,
+  isolated CUDA, no retained original/EXIF/mask/skeleton, no SQLite, redacted
+  reports only, then one deterministic rerun and stop.
+- [x] Record Jovi's explicit authorization to merge the independently reviewed
+  `259304c67636d05c29f9ad746ef7b2d9b1ea1698` N2B1P remediation candidate into
+  `master`; preserve the currently dirty tracking records and do not push.
+- [x] Complete a read-only audit of the three already cached N2B2 model
+  candidates against their fixed TorchVision identities, local-research rights
+  boundary, output-retention prohibition, and serial RTX 4070 SUPER fit. No
+  new weight is required for N2B2.
+- [ ] Confirm the exact segmentation candidate set and deterministic fallback
+  policy: lightweight candidate primary, higher-accuracy candidate as the only
+  preapproved fallback, or lightweight candidate only.
+- [ ] Present the N2B2 design, including thresholds, runtime/report identity,
+  expiry, retention, failure handling, merge procedure, and final delivery
+  milestones; obtain Jovi's design approval.
+- [ ] Only after design approval, materialize and test the renewed G1 and N2B2
+  control plane, safely merge the reviewed candidate, and execute the approved
+  task-by-task implementation plan.
+
+### Review
+
+- Jovi's direct authorization was received on 2026-08-03. The active checked
+  state remains `N2B1P`; G1 remains expired and `N2B2_REAL_BENCHMARK` remains
+  `LOCKED` until the signed documents, current-state binding, and negative
+  authorization tests exist and pass.
+- No code, state, approval, cache, runtime, source-photo, EXIF, SQLite, CUDA,
+  model, download, merge, push, or benchmark action occurred while recording
+  this design gate.
+- Model-audit recommendation: retain the registered Pose candidate as the sole
+  N2B2 Pose model; use the lightweight registered person-segmentation candidate
+  as primary. The registered higher-accuracy segmentation candidate is viable
+  on the serial 12 GiB device but should run only under a signed deterministic
+  fallback rule. All outputs remain metadata-only; the audit neither proves
+  runtime performance nor activates N2B2.
+
+## N2B model payload reconciliation and download-if-missing - 2026-08-04
+
+Scope: execute Jovi's direct
+`N2B_MODEL_PAYLOAD_RECONCILIATION_AND_DOWNLOAD_IF_MISSING` authorization only.
+The three fixed TorchVision artifacts are reconciled through the repaired
+N2B1P verifier. Download is conditional on an artifact actually missing and a
+separately active N2B1Q gate; this record does not activate that gate. This
+task prohibits model/CUDA execution, photo/EXIF reads, SQLite writes, N2B2,
+promotion unless its separate conditions are true, merge, push, and Obsidian
+updates.
+
+### Plan
+
+- [x] Capture the current `master` Git state and record its dirty tracking
+  boundary without staging, stashing, merging, or cleaning it.
+- [x] Read and bind the current N2B1P contract, owner approval, promotion
+  evidence, report, state, and the three-artifact register.
+- [x] Confirm the independently reviewed remediation candidate and use only its
+  clean worktree for strict read-only cache verification; do not merge it.
+- [x] Verify every cache entry and manifest with the repaired public verifier,
+  including strict JSON, canonical manifest binding, SHA-256, byte size,
+  identity, reparse safety, and runtime/cache separation.
+- [x] All three verified `CACHE_HIT`; made no network request or mutation and
+  stopped with `N2B_MODEL_PAYLOADS_ALREADY_AVAILABLE_NO_DOWNLOAD_PERFORMED`.
+- [x] No artifact was absent, so the N2B1Q download branch was not entered.
+  Current state also keeps `N2B1_Q` locked, which independently forbids a
+  HEAD, GET, Range request, or quarantine write.
+- [x] Run the stated non-model quality matrix in the clean verification
+  worktree, record actual exits and counters, and document the final status in
+  this ledger only. Do not update Obsidian for this task.
+
+### Review
+
+- Final status: `N2B_MODEL_PAYLOADS_ALREADY_AVAILABLE_NO_DOWNLOAD_PERFORMED`.
+  The current `master` remains `b819e2c48229cacbf62e399d2b4130cde55cf48a`
+  and is intentionally dirty only in task/lesson/manifest/planning records.
+  The reviewed remediation candidate `259304c` was read only and is not merged.
+- The repaired public verifier, run in clean `259304c`, returned all three
+  cache entries as `CACHE_HIT`; `tools/verify_handoff.py` returned 5 PASS and
+  0 FAIL. It validates the external cache through strict JSON, canonical raw
+  manifest digest, approved identity/byte/digest binding, handle-bound
+  non-reparse paths, and runtime/cache separation. No cache path is recorded.
+- No network request, HEAD, GET, Range, download, quarantine write, cache write,
+  promotion, payload/manifest/timestamp mutation, model execution, CUDA call,
+  source-photo/EXIF read, SQLite write, push, merge, or Obsidian update was
+  performed. All mutation and execution counters are 0.
+- Quality evidence in clean `259304c`: direct pytest 477 passed (0); Ruff check
+  0; Ruff format 0; mypy 51 files/0; quality gate 7 PASS/0 FAIL/0 SKIPPED;
+  sensitive scan 0 violations; handoff 5 PASS/0 FAIL; source-module preflight
+  15 PASS/0 FAIL; `git diff --check` 0; clean status; one N2B1P commit from
+  `d3628e2`.
+- The exact requested `.venv\\Scripts\\npi.exe preflight` exited 1 with 13 PASS
+  and 2 FAIL. Investigation proved that its reused editable console environment
+  imported the main worktree source rather than the isolated candidate; the
+  candidate-source module preflight passed 15/0. This is an environment-binding
+  drift, not a cache/integrity finding. It was not repaired because this task
+  forbids installs and environment changes. Do not report the exact console
+  command as passing.
+
+## N2B2 model-stack alignment and controlled preparation - 2026-08-04
+
+Scope: record Jovi's overall architecture roadmap: deterministic visual facts
+plus a local Qwen3-VL photography-reasoning layer. The first version is planned
+as controlled model preparation, synthetic smoke, then a separately gated
+frozen-20 validation. This record is not an activation of N2B2, N3/N4/N5,
+real-photo access, App deployment, production release, or a model download.
+
+### Plan
+
+- [x] Record the Owner-confirmed first-version model roles, staged synthetic
+  then frozen-20 validation sequence, and future six-model upgrade roadmap in
+  project Obsidian without storing model payloads, source paths, hashes, or
+  real-photo information.
+- [x] Audit the Qwen3-VL official weight source at read-only level: GitHub is
+  implementation documentation only; controlled preparation requires a pinned
+  official model snapshot with a complete multi-file manifest and local
+  per-file SHA-256 binding.
+- [x] Record Jovi's explicit approval to use the audited official Qwen model
+  snapshot source and fixed revision for a future controlled quarantine
+  acquisition; this approval does not bypass the required task contract,
+  complete-file manifest, integrity checks, or synthetic-only data gate.
+- [ ] Resolve the new task-contract fields that determine the data gate, exact
+  Qwen snapshot/format/runtime lock, GPU/token limits, report retention,
+  deterministic-fact immutability, and research-only Director Prompt status.
+- [ ] Present and obtain approval for the bounded model-stack design before
+  creating schemas, control-plane code, acquisition records, or runtime files.
+- [ ] Build and test the approved control plane, obtain/publish only approved
+  model bytes through quarantine and cache promotion, then run synthetic smoke.
+- [ ] Permit the protected real-20 validation only after the separate G1/N2B2
+  gate and all current-stage tests are green; stop for Owner review without
+  App deployment or production release.
+
+### Owner scope confirmation — synthetic-only
+
+- [x] Bind this first N2B2 validation to `SYNTHETIC_ONLY_DATA_GATE`: exactly
+  20 synthetic images from generated tests or existing synthetic fixtures;
+  `REAL_PHOTO_READ_COUNT=0`, `REAL_EXIF_READ_COUNT=0`, and
+  `G1_SOURCE_ACCESS=0` are mandatory final assertions.
+- [x] Bind the four allowed roles: Qwen3-VL-2B-Instruct for non-authoritative
+  photography reasoning, Keypoint R-CNN only as a COCO pose smoke baseline,
+  LRASPP as the segmentation baseline, and DeepLabV3 only as a quality
+  comparator rather than an OOM/timeout fallback.
+- [x] Bind the Fact Contract: deterministic vision facts are immutable inputs
+  to Qwen; its structured output may contain interpretation, advice, and a
+  research Director Prompt candidate but cannot replace or modify any fact.
+- [x] Bind the required redacted research outputs: `analysis.json`,
+  `vision_facts.json`, `director_prompt.json`, and `reference_bundle.json`;
+  each requires strict Schema and provenance validation.
+- [x] Bind serial model lifetime on RTX 4070 SUPER: Pose, then Segmentation,
+  then Qwen; each model loads, infers, emits redacted data, and unloads before
+  the next. No model may remain resident or run in parallel.
+- [x] Keep RTMW, RTMDet, SAM2, all other OpenMMLab candidates, real-photo
+  experiments, SQLite knowledge writes, App deployment, and Obsidian syncing
+  prohibited for this task.
+- [ ] Resolve the remaining deterministic runtime and control-plane values,
+  then review the N2B2 synthetic-stack design before implementation.
+
+### Review
+
+- In progress at the design and source-audit boundary. No Qwen model byte,
+  runtime dependency, CUDA call, source photo, EXIF record, SQLite write,
+  Bundle, App action, or cloud operation has occurred.
+- The existing three deterministic vision payloads remain verified cache hits
+  and must not be downloaded again. RTMDet-nano, RTMW-l, and SAM2.1 Tiny remain
+  future-only and must not be requested or downloaded in this task.
+- Owner scope confirmation received. No runtime, code, schema, approval,
+  registry, cache, model artifact, CUDA operation, synthetic inference, or
+  output Bundle has been created under the new synthetic-only task yet.
+
+## N2B2 synthetic model stack validation — control plane - 2026-08-05
+
+Scope: create N2B2 control-plane contracts, schemas, and plan reports only.
+Owner Jovi authorized N2B2_SYNTHETIC_MODEL_STACK_VALIDATION with Choice A
+(qwen3.5:9b supersedes Qwen3-VL-2B; SYNTHETIC_ONLY_DATA_GATE; S3 then S20).
+This is control-plane-only because N2B1P has not passed independent external
+review. No model execution, CUDA, real-photo, EXIF, SQLite, App, or Obsidian
+access. No push, merge, or release.
+
+### Plan
+
+- [x] Reconcile disk state: HEAD=b819e2c, N2B1P=AWAITING_EXTERNAL_REVIEW,
+  N2B1P review verdict=NONE (pre-review was INCONCLUSIVE), three
+  TorchVision cache=CACHE_HIT, N2B2_REAL_BENCHMARK=LOCKED,
+  real_model_execution=NOT_AUTHORIZED.
+- [x] Confirm blocking condition: N2B2 contract Section 2 requires N2B1P
+  independent review PASS before model execution. Not met. Only
+  non-overstepping control-plane checks permitted. Stop at
+  N2B2_EXECUTION_BLOCKED_N2B1P_NOT_APPROVED.
+- [x] Create `tasks/phase_n2b2_synthetic_model_stack_validation.yaml` task
+  contract with Owner Choice A, runtime architecture, execution sequence,
+  vision fact contract, Qwen reasoning contract, GPU gates, forbidden list,
+  and mandatory stop rules.
+- [x] Create `schemas/n2b2_synthetic_model_stack.schema.json` (validation
+  summary), `schemas/n2b2_vision_fact_contract.schema.json` (deterministic
+  facts), `schemas/n2b2_photography_reasoning.schema.json` (Qwen output with
+  forbiddenProperties), `schemas/reference_bundle_v1_synthetic.schema.json`
+  (synthetic Bundle v1 variant).
+- [x] Create `reports/N2B2_synthetic_validation_plan.md` and
+  `reports/N2B2_owner_inputs_and_limits.md`.
+- [x] Update `model_registry/candidates.yaml`: add qwen3.5:9b entry; mark
+  vlm-qwen3-vl-2b-class as SUPERSEDED_FOR_N2B2.
+- [ ] Deferred: update PROJECT_STATE.json (requires new schema v1.8 +
+  preflight update + test update — cannot do without risking N2B1P stop
+  boundary enforcement).
+- [ ] Deferred: update tasks/index.json (same risk).
+- [ ] Deferred: update preflight.py and error_taxonomy (code changes requiring
+  test updates).
+- [ ] Awaiting: N2B1P independent external review PASS_FOR_EXTERNAL_REVIEW.
+
+### Review
+
+- Current code candidate: `b819e2c48229cacbf62e399d2b4130cde55cf48a`.
+- N2B1P required stop remains
+  `N2B1P_REMEDIATION_COMPLETE_AWAITING_EXTERNAL_REVIEW`. This control-plane
+  task does NOT change that stop boundary and does NOT self-approve N2B1P.
+- Control-plane files created: 1 task YAML, 4 JSON schemas, 2 reports.
+- Tracking files updated: `tasks/todo.md` (this section),
+  `model_registry/candidates.yaml`.
+- PROJECT_STATE.json, tasks/index.json, preflight.py, and error_taxonomy were
+  NOT modified because `project_state_v1_7.schema.json` has
+  `additionalProperties: false` at every level; adding N2B2 fields requires a
+  new schema version and preflight/test updates that risk breaking the N2B1P
+  stop-boundary enforcement. These changes are documented in
+  `reports/N2B2_synthetic_validation_plan.md` Section 3.3 for batch execution
+  when N2B1P is approved.
+- No model was loaded, no CUDA was invoked, no real photo or EXIF was read,
+  no SQLite write occurred, no App or Obsidian access happened, no download
+  occurred, and no push/merge/release was performed.
+- Comet CLI was non-functional in this environment (path resolution failure);
+  the project's own MASTER_EXECUTION_CONTRACT is the authoritative governance
+  source and was followed.
+- Next action: Owner arranges N2B1P independent external review. When
+  PASS_FOR_EXTERNAL_REVIEW is on disk, execute the deferred state changes and
+  proceed with N2B2 model execution per the plan.

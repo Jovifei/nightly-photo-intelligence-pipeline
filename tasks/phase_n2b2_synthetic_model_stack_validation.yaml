@@ -1,0 +1,310 @@
+contract_version: "1.0"
+phase:
+  id: "N2B2"
+  title: "Synthetic model stack validation"
+  status: "AUTHORIZED_CONTROL_PLANE_ONLY"
+  capability: "N2B2_SYNTHETIC_MODEL_STACK_VALIDATION"
+  supersedes: "N2B2_REAL_BENCHMARK (remains LOCKED)"
+data_gate:
+  id: "SYNTHETIC_ONLY_DATA_GATE"
+  status: "AUTHORIZED_SYNTHETIC_ONLY"
+  allowed_assets: "synthetic fixtures only; zero real-photo reads"
+  hard_counts:
+    real_photo_read_count: 0
+    real_exif_read_count: 0
+    g1_source_access: 0
+    sqlite_write_count: 0
+    app_write_count: 0
+    obsidian_write_count: 0
+owner_decision:
+  choice: "A"
+  summary: "Use existing local qwen3.5:9b (Q4_K_M) to supersede Qwen3-VL-2B for this round only"
+  qwen3_vl_2b_status: "SUPERSEDED_FOR_N2B2_SYNTHETIC_VALIDATION / NOT_DOWNLOADED / NOT_EXECUTED"
+  no_dual_model_ab: true
+  no_qwen_download: true
+  torchvision_cache_only: true
+  no_torchvision_redownload: true
+prerequisite:
+  n2b1p_review: "REQUIRED_INDEPENDENT_EXTERNAL_REVIEW"
+  # The N2B1P candidate is the single commit stacked on the immutable N2B1R baseline.
+  # It MUST NOT be hardcoded: the candidate is amended in place (squash-to-one is required
+  # by tools/verify_handoff.py), so any literal SHA written here would describe a commit
+  # that this very commit supersedes -- a self-reference that goes stale on every amend.
+  # Anchor on the immutable parent and resolve the candidate instead.
+  n2b1p_parent_sha: "d3628e27334e819ba2d5944151447595e03f39f9"
+  n2b1p_sha_resolution: "git rev-list d3628e27334e819ba2d5944151447595e03f39f9..HEAD"
+  n2b1p_sha_resolution_invariant: "must yield exactly 1 commit; enforced by tools/verify_handoff.py"
+  n2b1p_sha_superseded_literals:
+    - "b819e2c48229cacbf62e399d2b4130cde55cf48a"
+    - "ffbcaaf9950c38bf1fb687f81a31c15308ec028a"
+  n2b1p_sha_supersession_reason: >
+    Historical literals only, retained so an external reviewer can trace provenance.
+    Both are unreachable from every branch: b819e2c (the original N2B1P candidate) was
+    squashed with the N2B2 control-plane work into ffbcaaf, which was itself amended when
+    this governance-alignment pass folded in. Content was preserved at each step. Never
+    check out these literals; always resolve via n2b1p_sha_resolution.
+  n2b1p_current_verdict: "AWAITING_EXTERNAL_REVIEW (NOT PASSED)"
+  three_torchvision_cache: "CACHE_HIT (all three)"
+  blocking_condition: "N2B1P exact SHA must pass independent external review before any model execution"
+  if_blocked: "N2B2_EXECUTION_BLOCKED_N2B1P_NOT_APPROVED"
+  control_plane_only_when_blocked: true
+  no_self_approval: "Must not self-mark N2B1P as passed to advance"
+runtime_architecture:
+  deterministic_vision:
+    - id: "torchvision-keypointrcnn-resnet50-fpn-coco-v1"
+      role: "POSE_BASELINE_SMOKE"
+      cache_status: "CACHE_HIT"
+    - id: "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1"
+      role: "SEGMENTATION_PRIMARY"
+      cache_status: "CACHE_HIT"
+    - id: "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1"
+      role: "SEGMENTATION_QUALITY_COMPARATOR"
+      cache_status: "CACHE_HIT"
+  photography_reasoning:
+    model_name: "qwen3.5:9b"
+    role: "PHOTOGRAPHY_REASONING_MODEL"
+    runtime: "LOCAL_OLLAMA_MULTIMODAL_Q4_K_M"
+    endpoint: "http://127.0.0.1:11434"
+    loopback_only: true
+    image_transport: "in-memory base64 bytes (no absolute path)"
+    request_constraints:
+      stream: false
+      think: false
+      format: "strict JSON Schema"
+      single_image: true
+      temperature: 0
+      num_ctx: 8192
+      num_predict_max: 1200
+      image_long_side_max: 1024
+      seed: "fixed stage seed if supported; else SEED_NOT_AVAILABLE"
+    residency_rule: "Qwen may stay loaded during S3/S20 serial; must unload (keep_alive=0) after stage; verify via /api/ps + GPU baseline"
+    co_residency_forbidden: "TorchVision models and Qwen must never co-reside on GPU"
+    forbidden_ollama_ops:
+      - "ollama pull"
+      - "ollama create"
+      - "ollama copy"
+      - "ollama delete"
+      - "cloud API"
+      - "remote host"
+      - "proxy"
+      - "non-loopback port"
+      - "any network model fetch"
+  identity_requirements:
+    model_name: "qwen3.5:9b"
+    vision_capability: "present"
+    quantization_level: "Q4_K_M"
+    record_fields:
+      - "model_name"
+      - "full_local_digest"
+      - "size_bytes"
+      - "format"
+      - "family"
+      - "parameter_size"
+      - "quantization_level"
+      - "capabilities"
+      - "license"
+      - "modified_at"
+      - "ollama_version"
+    mismatch_stop: "N2B2_LOCAL_QWEN_IDENTITY_MISMATCH"
+    vision_missing_stop: "N2B2_LOCAL_QWEN_VISION_CAPABILITY_MISSING"
+execution_sequence:
+  - step: 1
+    action: "state reconciliation (read-only disk evidence)"
+  - step: 2
+    action: "TorchVision cache read-only verification (no redownload)"
+  - step: 3
+    action: "Ollama model identity verification (read-only /api/tags, /api/show)"
+  - step: 4
+    action: "synthetic fixture generation and freeze"
+  - step: 5
+    action: "S3 Pose stage (3 smoke images)"
+  - step: 6
+    action: "unload Pose"
+  - step: 7
+    action: "S3 LRASPP stage"
+  - step: 8
+    action: "unload LRASPP"
+  - step: 9
+    action: "S3 DeepLab comparator (fixed 5-case subset, predeclared)"
+  - step: 10
+    action: "unload DeepLab"
+  - step: 11
+    action: "build vision fact contracts (deterministic, canonical JSON)"
+  - step: 12
+    action: "S3 Qwen reasoning stage"
+  - step: 13
+    action: "unload Qwen (keep_alive=0, verify /api/ps + GPU)"
+  - step: 14
+    action: "S3 strict validation (schema, fact digest, forbidden fields)"
+  - step: 15
+    action: "only if S3 passes, repeat for S20 (20 fixed synthetic images)"
+synthetic_fixture_gate:
+  s3_smoke:
+    case_count: 3
+    coverage:
+      - "single person"
+      - "multi-person or occlusion"
+      - "no-person / unsupported negative control"
+    rule: "must pass S3 before S20; no direct S20"
+  s20_fixed:
+    case_matrix:
+      "01-04": "single person: full-body, half-body, seated, prop"
+      "05-08": "multi-person: separated, close, occluded, mirror"
+      "09-11": "night/low-light"
+      "12-14": "complex background"
+      "15-16": "strong backlight/silhouette"
+      "17-18": "minimal composition/large negative space"
+      "19": "no-person negative control"
+      "20": "collage/screenshot unsupported control"
+    frozen_fields:
+      - "case_id"
+      - "generator_version"
+      - "seed"
+      - "image_sha256"
+      - "width"
+      - "height"
+      - "expected_processability"
+      - "tags"
+    insufficient_stop: "N2B2_SYNTHETIC_FIXTURE_CAPABILITY_INSUFFICIENT"
+    no_fake_pose: "must not fake Pose success; must not use real photos to compensate"
+vision_fact_contract:
+  authoritative_fields:
+    - "case_id"
+    - "image_sha256"
+    - "person_count"
+    - "person_boxes"
+    - "pose_keypoints"
+    - "pose_scores"
+    - "segmentation_foreground_ratio"
+    - "subject_centroids"
+    - "frame_contact_flags"
+    - "negative_space_metrics"
+    - "fact_ids"
+    - "uncertainties"
+    - "fact_digest"
+    - "provenance"
+  rules:
+    - "all facts from deterministic models or deterministic computation"
+    - "canonical JSON; strict JSON; no NaN/Infinity"
+    - "fact_digest = canonical payload SHA-256"
+    - "Qwen cannot modify these fields"
+    - "Qwen does not generate keypoints"
+    - "Qwen does not generate exact angles"
+  determinism: "same image + same weights + same env = byte-identical canonical facts + identical fact_digest"
+qwen_reasoning_contract:
+  input:
+    - "synthetic image bytes (base64, in-memory)"
+    - "immutable vision facts"
+    - "fact_digest"
+    - "uncertainty list"
+    - "forbidden-field contract"
+  allowed_output:
+    - "input_fact_digest"
+    - "reasoning_based_on_fact_ids"
+    - "photographic_interpretation"
+    - "story_candidates (safe, narrative, dynamic)"
+    - "director_prompts (standard, dramatic, plan_b, technical)"
+    - "uncertainties"
+  forbidden_output:
+    - "person_count"
+    - "bbox"
+    - "keypoints"
+    - "mask"
+    - "pose_confidence"
+    - "segmentation_confidence"
+    - "EXIF"
+    - "exact_focal_length"
+    - "exact_camera_distance"
+    - "copyright_status"
+    - "real_mental_state"
+  validation:
+    - "output.input_fact_digest == input fact_digest"
+    - "all referenced fact_ids exist"
+    - "forbidden field count == 0"
+  conflict_rule: "conflicts must enter uncertainties, not overwrite facts"
+gpu_resource_gates:
+  thresholds:
+    absolute_gpu_used_max_mib: 11500
+    pose_single_image_max_s: 60
+    segmentation_single_image_max_s: 60
+    qwen_cold_load_max_s: 180
+    qwen_steady_single_image_max_s: 120
+  unload_verification:
+    within_60s:
+      - "/api/ps no longer lists qwen3.5:9b"
+      - "GPU used <= pre-Qwen baseline + 1024 MiB"
+  stop_on_any:
+    - "OOM"
+    - "timeout"
+    - "system memory exhaustion"
+    - "model unload failure"
+    - "GPU not falling back"
+    - "Ollama queue/503"
+    - "fact inconsistency"
+repeatability:
+  deterministic_vision: "same image + same weights = byte-identical facts + identical fact_digest"
+  qwen: "schema pass + fact_digest consistent + forbidden=0 + story type set consistent + fact IDs legal + no fact conflict; no relaxing facts for text consistency"
+output:
+  per_case:
+    - "analysis.json"
+    - "vision_facts.json"
+    - "director_prompt.json"
+    - "reference_bundle.json"
+    - "runtime_metrics.json"
+  stage_summary:
+    - "model_identity_attestation.json"
+    - "synthetic_fixture_manifest.json"
+    - "gpu_metrics.json"
+    - "validation_summary.json"
+    - "CHECKSUMS.sha256"
+  git_committed_only:
+    - "code"
+    - "schemas"
+    - "tests"
+    - "control contracts"
+    - "redacted reports"
+    - "task status"
+  git_forbidden:
+    - "model files"
+    - "ollama blobs"
+    - "bulk image artifacts"
+    - "raw thinking"
+    - "absolute paths"
+    - "runtime DB"
+    - "real photos"
+forbidden:
+  - "real_photo_read_or_directory_enumeration"
+  - "real_exif_read"
+  - "g1_source_access"
+  - "sqlite_ingest_write"
+  - "app_write"
+  - "obsidian_sync"
+  - "qwen3_vl_2b_download"
+  - "any_model_download"
+  - "torchvision_redownload"
+  - "ollama_pull_create_copy_delete"
+  - "cloud_ollama_or_remote_api"
+  - "non_loopback_endpoint"
+  - "absolute_path_to_qwen"
+  - "qwen_overwrite_deterministic_facts"
+  - "fake_pose_success"
+  - "real_photo_to_compensate_fixture_gap"
+  - "model_co_residency"
+  - "cuda_system_configuration_change"
+  - "main_app_openclaw_g2_g3_or_more_than_20_assets"
+  - "g1_renewal"
+  - "rtmw_rtmdet_sam2"
+  - "push_merge_pull_request_or_release"
+  - "self_approve_n2b1p"
+mandatory_stop:
+  value: true
+  blocked_stop: "N2B2_EXECUTION_BLOCKED_N2B1P_NOT_APPROVED"
+  success_stop: "N2B2_SYNTHETIC_MODEL_STACK_VALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW"
+  rule: >
+    If N2B1P has not passed independent external review (proven by disk evidence),
+    complete only non-overstepping control-plane checks and stop at
+    N2B2_EXECUTION_BLOCKED_N2B1P_NOT_APPROVED. Must not self-mark N2B1P as passed.
+    If N2B1P is approved and full S3+S20 pass, stop at
+    N2B2_SYNTHETIC_MODEL_STACK_VALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW.
+    Never enter real 20-photo benchmark, G1 renewal, RTMW, RTMDet, SAM2,
+    App deployment, Obsidian sync, G2, or N3.

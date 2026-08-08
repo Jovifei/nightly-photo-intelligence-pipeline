@@ -74,14 +74,21 @@
       "file": "phase_n2b1r_local_research_model_acquisition.yaml",
       "capability": "N2B1R_LOCAL_RESEARCH_MODEL_ACQUISITION",
       "approval_record": "approvals/owner_local_research_execution_N2B1R_to_N5R.yaml"
+    },
+    {
+      "kind": "ENGINEERING_PHASE",
+      "phase": "N2B1P",
+      "file": "phase_n2b1p_local_research_cache_promotion.yaml",
+      "capability": "N2B1P_LOCAL_RESEARCH_CACHE_PROMOTION",
+      "approval_record": "approvals/owner_n2b1p_cache_promotion.yaml"
     }
   ],
   "locked": [
     {"phase": "N2B1", "file": "phase_n2_pose_and_segmentation.yaml", "capability": "N2B1_MODEL_DOWNLOAD"},
-    {"phase": "N2B1P", "file": "phase_n2_pose_and_segmentation.yaml", "capability": "N2B1P_LOCAL_RESEARCH_CACHE_PROMOTION"},
     {"phase": "N2B1_Q", "file": "phase_n2_pose_and_segmentation.yaml", "capability": "N2B1_Q_QUARANTINE_DOWNLOAD"},
     {"phase": "N2B1_P", "file": "phase_n2_pose_and_segmentation.yaml", "capability": "N2B1_P_CACHE_PROMOTION"},
     {"phase": "N2B2", "file": "phase_n2_pose_and_segmentation.yaml", "capability": "N2B2_REAL_BENCHMARK"},
+    {"phase": "N2B2", "file": "phase_n2b2_synthetic_model_stack_validation.yaml", "capability": "N2B2_SYNTHETIC_MODEL_STACK_VALIDATION", "contract_status": "AUTHORIZED_CONTROL_PLANE_ONLY", "blocked_stop": "N2B2_EXECUTION_BLOCKED_N2B1P_NOT_APPROVED"},
     {"phase": "N3", "file": "phase_n3_facts_and_interpretation.yaml"},
     {"phase": "N4", "file": "phase_n4_director_prompts.yaml"},
     {"phase": "N5", "file": "phase_n5_review_and_export.yaml"},
@@ -89,5 +96,5 @@
     {"phase": "N7", "file": "phase_n7_app_bundle_integration.yaml"},
     {"phase": "N8", "file": "phase_n8_nightly_scheduler_openclaw.yaml"}
   ],
-  "rule": "N0, N1, G1, N2A, N2B0, N2B0.5, N2B0.6, and N2B0.7 are immutable approved baselines. N2B1R is a bounded local-research acquisition phase only; cache promotion, model execution, real-photo analysis, G2/G3, and N3-N8 remain locked until their own gates pass."
+  "rule": "N0, N1, G1, N2A, N2B0, N2B0.5, N2B0.6, and N2B0.7 are immutable approved baselines. N2B1R acquisition is complete. N2B1P is a bounded local-research cache-promotion phase only; model execution, real-photo analysis, G2/G3, and N3-N8 remain locked until their own gates pass."
 }

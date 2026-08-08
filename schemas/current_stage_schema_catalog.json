@@ -1,5 +1,5 @@
 {
-  "schema_set": "npi-current-stage-v1.11-n2b1r-local-research-acquisition",
+  "schema_set": "npi-current-stage-v1.13-n2b1p-remediation",
   "draft": "https://json-schema.org/draft/2020-12/schema",
   "schemas": [
     {"file": "task_contract_v1_1.schema.json", "purpose": "completed phase and authorized data-gate contracts"},
@@ -28,9 +28,14 @@
     {"file": "project_state_v1_5.schema.json", "purpose": "historical N2B0.7 fail-closed state"},
     {"file": "phase_completion_approval_n2b0_7_v1_0.schema.json", "purpose": "immutable Owner N2B0.7 completion approval"},
     {"file": "owner_local_research_execution_v1_0.schema.json", "purpose": "bounded Owner local-research continuation authorization"},
-    {"file": "task_contract_n2b1r_v1_0.schema.json", "purpose": "current N2B1R isolated model-acquisition contract"},
+    {"file": "task_contract_n2b1r_v1_0.schema.json", "purpose": "historical N2B1R isolated model-acquisition contract"},
     {"file": "n2b1r_artifact_register_v1.schema.json", "purpose": "approved local-research acquisition register"},
-    {"file": "n2b1r_acquisition_evidence_v1.schema.json", "purpose": "redacted local-research acquisition evidence"},
-    {"file": "project_state_v1_6.schema.json", "purpose": "current N2B1R state; inference and real-photo stages remain locked"}
+    {"file": "n2b1r_acquisition_evidence_v1.schema.json", "purpose": "completed redacted local-research acquisition evidence"},
+    {"file": "project_state_v1_6.schema.json", "purpose": "historical N2B1R state; inference and real-photo stages remain locked"},
+    {"file": "owner_n2b1p_cache_promotion_v1_0.schema.json", "purpose": "Owner N2B1P promotion-only authorization"},
+    {"file": "task_contract_n2b1p_v1_0.schema.json", "purpose": "current N2B1P local-research cache-promotion contract"},
+    {"file": "n2b1p_cache_promotion_evidence_v1.schema.json", "purpose": "redacted N2B1P cache-promotion completion evidence"},
+    {"file": "n2b1p_runtime_configuration_v1_0.schema.json", "purpose": "validated N2B1P runtime and cache-root configuration"},
+    {"file": "project_state_v1_7.schema.json", "purpose": "current N2B1P state; model execution and real-photo stages remain locked"}
   ]
 }

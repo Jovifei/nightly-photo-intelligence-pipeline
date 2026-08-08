@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "stage": "N2B1P_REMEDIATION",
+  "result": "N2B1P_REMEDIATION_CACHE_REVALIDATION_PASS",
+  "revalidated_at_utc": "2026-08-01T12:59:14.4550644Z",
+  "baseline_record": {
+    "path": "research/N2B1P_remediation_cache_baseline.json",
+    "sha256": "8e50ebe804bdf75448bd7590d1cc981085619e503f4f43675c1aea2809154f88"
+  },
+  "cache_root": "EXTERNAL_REDACTED_CONTENT_ADDRESSED_NON_REPARSE",
+  "artifacts": [
+    {
+      "artifact_id": "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1",
+      "status": "CACHE_HIT",
+      "payload_size_unchanged": true,
+      "payload_sha256_unchanged": true,
+      "manifest_size_unchanged": true,
+      "manifest_sha256_unchanged": true,
+      "file_attributes_unchanged": true,
+      "last_write_time_unchanged": true
+    },
+    {
+      "artifact_id": "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1",
+      "status": "CACHE_HIT",
+      "payload_size_unchanged": true,
+      "payload_sha256_unchanged": true,
+      "manifest_size_unchanged": true,
+      "manifest_sha256_unchanged": true,
+      "file_attributes_unchanged": true,
+      "last_write_time_unchanged": true
+    },
+    {
+      "artifact_id": "torchvision-keypointrcnn-resnet50-fpn-coco-v1",
+      "status": "CACHE_HIT",
+      "payload_size_unchanged": true,
+      "payload_sha256_unchanged": true,
+      "manifest_size_unchanged": true,
+      "manifest_sha256_unchanged": true,
+      "file_attributes_unchanged": true,
+      "last_write_time_unchanged": true
+    }
+  ],
+  "cache_tree": {
+    "file_count_before": 6,
+    "file_count_after": 6,
+    "baseline_manifest_sha256": "0746cb1fdb3849218810948a059eabf9bcec4b61947883762c31eb54e3c9206b",
+    "final_manifest_sha256": "0746cb1fdb3849218810948a059eabf9bcec4b61947883762c31eb54e3c9206b",
+    "baseline_reparse_inventory_sha256": "706910b4eb801b9ca8504133715262ae0c87bf84d3f5c54d3e01fd3930693b3f",
+    "final_reparse_inventory_sha256": "706910b4eb801b9ca8504133715262ae0c87bf84d3f5c54d3e01fd3930693b3f",
+    "canonical_inventory_sha256_v2_before": "9eccc14a2cd18d44e1323b9805d7c7715f067329fbc0704fab48485779d266e1",
+    "canonical_inventory_sha256_v2_after": "9eccc14a2cd18d44e1323b9805d7c7715f067329fbc0704fab48485779d266e1",
+    "reparse_points_before": 0,
+    "reparse_points_after": 0
+  },
+  "mutation_counts": {
+    "CACHE_PAYLOAD_MUTATION_COUNT": 0,
+    "CACHE_MANIFEST_MUTATION_COUNT": 0,
+    "CACHE_NEW_FILE_COUNT": 0,
+    "CACHE_DELETED_FILE_COUNT": 0
+  },
+  "prohibited_action_counts": {
+    "model_execution": 0,
+    "cuda_calls": 0,
+    "real_photo_or_exif_reads": 0,
+    "sqlite_writes": 0,
+    "payload_copy_or_repromotion": 0
+  }
+}

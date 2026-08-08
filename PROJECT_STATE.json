@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.6",
+  "schema_version": "1.7",
   "project": {
     "slug": "nightly-photo-intelligence-pipeline",
     "repository_relationship": "INDEPENDENT_FROM_ai-photography-director-app"
@@ -36,9 +36,14 @@
     "local_research_continuation": "approvals/owner_local_research_execution_N2B1R_to_N5R.yaml",
     "n2b1r_task_contract": "tasks/phase_n2b1r_local_research_model_acquisition.yaml",
     "n2b1r_artifact_register": "research/N2B1R_local_research_artifact_register.json",
+    "n2b1r_acquisition_evidence": "research/N2B1R_acquisition_evidence.json",
+    "n2b1p_owner_authorization": "approvals/owner_n2b1p_cache_promotion.yaml",
+    "n2b1p_task_contract": "tasks/phase_n2b1p_local_research_cache_promotion.yaml",
+    "n2b1p_promotion_evidence": "research/N2B1P_cache_promotion_evidence.json",
+    "n2b1p_runtime_configuration": "approvals/n2b1p_runtime_configuration.json",
     "active_execution": {
-      "phase": "N2B1R",
-      "capability": "N2B1R_LOCAL_RESEARCH_MODEL_ACQUISITION",
+      "phase": "N2B1P",
+      "capability": "N2B1P_LOCAL_RESEARCH_CACHE_PROMOTION",
       "source_photo_content_read": "NOT_AUTHORIZED",
       "source_photo_exif_read": "NOT_AUTHORIZED",
       "sqlite_ingest_write": "NOT_AUTHORIZED"
@@ -50,7 +55,8 @@
       "N2B0_5_ARTIFACT_RIGHTS_AND_PROVENANCE_CLOSURE": "APPROVED_COMPLETE",
       "N2B0_6_LICENSE_CLEAR_ALTERNATIVE_CANDIDATE_RESEARCH": "APPROVED_COMPLETE",
       "N2B0_7_GPU_NATIVE_QUALIFICATION": "APPROVED_COMPLETE",
-      "N2B1R_LOCAL_RESEARCH_MODEL_ACQUISITION": "AUTHORIZED",
+      "N2B1R_LOCAL_RESEARCH_MODEL_ACQUISITION": "ACQUISITION_COMPLETE",
+      "N2B1P_LOCAL_RESEARCH_CACHE_PROMOTION": "AUTHORIZED",
       "N2B_MODEL_DOWNLOAD_AND_INFERENCE": "LOCKED",
       "N2B1_MODEL_DOWNLOAD": "LOCKED",
       "N2B1_Q_QUARANTINE_DOWNLOAD": "LOCKED",
@@ -77,7 +83,8 @@
     "N2B0_5_ARTIFACT_RIGHTS_AND_PROVENANCE_CLOSURE": "APPROVED_COMPLETE",
     "N2B0_6_LICENSE_CLEAR_ALTERNATIVE_CANDIDATE_RESEARCH": "APPROVED_COMPLETE",
     "N2B0_7_GPU_NATIVE_QUALIFICATION": "APPROVED_COMPLETE",
-    "N2B1R_LOCAL_RESEARCH_MODEL_ACQUISITION": "AUTHORIZED",
+    "N2B1R_LOCAL_RESEARCH_MODEL_ACQUISITION": "ACQUISITION_COMPLETE",
+    "N2B1P_LOCAL_RESEARCH_CACHE_PROMOTION": "AUTHORIZED_CACHE_ONLY_NO_PHOTO_READ",
     "N2B_MODEL_DOWNLOAD_AND_INFERENCE": "LOCKED",
     "N2B1_MODEL_DOWNLOAD": "LOCKED",
     "N2B1_Q_QUARANTINE_DOWNLOAD": "LOCKED",
@@ -87,10 +94,10 @@
     "G3_FULL_LIBRARY": "LOCKED"
   },
   "phase_status": {
-    "N0": "APPROVED_COMPLETE", "N1": "APPROVED_COMPLETE", "G1": "APPROVED_COMPLETE", "N2": "LOCKED", "N2A": "APPROVED_COMPLETE", "N2B0": "APPROVED_COMPLETE", "N2B0_5": "APPROVED_COMPLETE", "N2B0_6": "APPROVED_COMPLETE", "N2B0_7": "APPROVED_COMPLETE", "N2B": "LOCKED", "N2B1": "LOCKED", "N2B1R": "AUTHORIZED", "N2B1P": "LOCKED", "N2B1_Q": "LOCKED", "N2B1_P": "LOCKED", "N2B2": "LOCKED", "N3": "LOCKED", "N4": "LOCKED", "N5": "LOCKED", "N6": "LOCKED", "N7": "LOCKED", "N8": "LOCKED"
+    "N0": "APPROVED_COMPLETE", "N1": "APPROVED_COMPLETE", "G1": "APPROVED_COMPLETE", "N2": "LOCKED", "N2A": "APPROVED_COMPLETE", "N2B0": "APPROVED_COMPLETE", "N2B0_5": "APPROVED_COMPLETE", "N2B0_6": "APPROVED_COMPLETE", "N2B0_7": "APPROVED_COMPLETE", "N2B": "LOCKED", "N2B1": "LOCKED", "N2B1R": "ACQUISITION_COMPLETE", "N2B1P": "AUTHORIZED", "N2B1_Q": "LOCKED", "N2B1_P": "LOCKED", "N2B2": "LOCKED", "N3": "LOCKED", "N4": "LOCKED", "N5": "LOCKED", "N6": "LOCKED", "N7": "LOCKED", "N8": "LOCKED"
   },
   "required_stop_after": {
-    "condition": "N2B1R_ACQUISITION_AWAITING_LOCAL_VERIFICATION",
-    "next_action": "VERIFY_QUARANTINE_AND_CREATE_N2B1P_AUTHORIZATION"
+    "condition": "N2B1P_REMEDIATION_COMPLETE_AWAITING_EXTERNAL_REVIEW",
+    "next_action": "EXTERNAL_REVIEW_N2B1P_REMEDIATION"
   }
 }

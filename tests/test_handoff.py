@@ -81,9 +81,11 @@ def test_at_n0_gate_02_n2_through_n8_locked(project_root: Path) -> None:
     assert state["phase_status"]["N2B0_5"] == "APPROVED_COMPLETE"
     assert state["phase_status"]["N2B0_6"] == "APPROVED_COMPLETE"
     assert state["phase_status"]["N2B0_7"] == "APPROVED_COMPLETE"
-    assert state["phase_status"]["N2B1R"] == "AUTHORIZED"
+    assert state["phase_status"]["N2B1R"] == "ACQUISITION_COMPLETE"
+    assert state["phase_status"]["N2B1P"] == "AUTHORIZED"
     assert (
-        state["required_stop_after"]["condition"] == "N2B1R_ACQUISITION_AWAITING_LOCAL_VERIFICATION"
+        state["required_stop_after"]["condition"]
+        == "N2B1P_REMEDIATION_COMPLETE_AWAITING_EXTERNAL_REVIEW"
     )
     # N0 and N1 baselines are approved and immutable.
     n0 = state["baselines"]["N0"]
@@ -100,8 +102,8 @@ def test_at_n0_gate_02_n2_through_n8_locked(project_root: Path) -> None:
     assert state["authorization"]["large_model_downloads"] == "AUTHORIZED_RESEARCH_ONLY"
     assert state["authorization"]["exif_real_data_read"] == "AUTHORIZED_NON_SENSITIVE_ONLY"
     assert state["authorization"]["active_execution"] == {
-        "phase": "N2B1R",
-        "capability": "N2B1R_LOCAL_RESEARCH_MODEL_ACQUISITION",
+        "phase": "N2B1P",
+        "capability": "N2B1P_LOCAL_RESEARCH_CACHE_PROMOTION",
         "source_photo_content_read": "NOT_AUTHORIZED",
         "source_photo_exif_read": "NOT_AUTHORIZED",
         "sqlite_ingest_write": "NOT_AUTHORIZED",
@@ -149,11 +151,11 @@ def test_current_handoff_verifier_passes(project_root: Path) -> None:
     )
     assert result.returncode == 0
     assert "HANDOFF_VALID" in result.stdout
-    assert "N2B1R local-research acquisition only" in result.stdout
+    assert "N2B1P local-research cache promotion only" in result.stdout
 
 
-def test_current_entry_documents_reference_n2b1r_not_n0_only(project_root: Path) -> None:
-    required_task = "phase_n2b1r_local_research_model_acquisition.yaml"
+def test_current_entry_documents_reference_n2b1p_not_n0_only(project_root: Path) -> None:
+    required_task = "phase_n2b1p_local_research_cache_promotion.yaml"
     for rel in (
         "MASTER_EXECUTION_CONTRACT.md",
         "AGENTS.md",

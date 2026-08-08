@@ -11,6 +11,7 @@ import yaml
 from jsonschema import Draft202012Validator, FormatChecker
 
 from nightly_photo_intelligence_pipeline.domain.authorization import load_authorization
+from nightly_photo_intelligence_pipeline.domain.errors import GateNotAuthorizedError
 from nightly_photo_intelligence_pipeline.ingest.g1_contract import load_g1_approval
 
 
@@ -86,8 +87,26 @@ def test_current_mutable_contracts_validate_and_are_consistent(project_root: Pat
             encoding="utf-8"
         )
     )
+    n2b1r_evidence = json.loads(
+        (project_root / "research" / "N2B1R_acquisition_evidence.json").read_text(encoding="utf-8")
+    )
+    n2b1p_approval = yaml.safe_load(
+        (project_root / "approvals" / "owner_n2b1p_cache_promotion.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    n2b1p = yaml.safe_load(
+        (project_root / "tasks" / "phase_n2b1p_local_research_cache_promotion.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    n2b1p_evidence = json.loads(
+        (project_root / "research" / "N2B1P_cache_promotion_evidence.json").read_text(
+            encoding="utf-8"
+        )
+    )
     task_index = json.loads((project_root / "tasks" / "index.json").read_text(encoding="utf-8"))
-    assert not _errors(_schema(project_root, "project_state_v1_6.schema.json"), state)
+    assert not _errors(_schema(project_root, "project_state_v1_7.schema.json"), state)
     assert not _errors(_schema(project_root, "approval_record_v1_1.schema.json"), approval)
     assert not _errors(
         _schema(project_root, "phase_completion_approval_v1_0.schema.json"), n1_completion
@@ -126,6 +145,16 @@ def test_current_mutable_contracts_validate_and_are_consistent(project_root: Pat
     assert not _errors(
         _schema(project_root, "n2b1r_artifact_register_v1.schema.json"), artifact_register
     )
+    assert not _errors(
+        _schema(project_root, "n2b1r_acquisition_evidence_v1.schema.json"), n2b1r_evidence
+    )
+    assert not _errors(
+        _schema(project_root, "owner_n2b1p_cache_promotion_v1_0.schema.json"), n2b1p_approval
+    )
+    assert not _errors(_schema(project_root, "task_contract_n2b1p_v1_0.schema.json"), n2b1p)
+    assert not _errors(
+        _schema(project_root, "n2b1p_cache_promotion_evidence_v1.schema.json"), n2b1p_evidence
+    )
     auth = load_authorization(project_root)
     assert auth.phase_id == "N1" and auth.phase_authorized
     assert auth.phase_status == "APPROVED_COMPLETE"
@@ -134,12 +163,14 @@ def test_current_mutable_contracts_validate_and_are_consistent(project_root: Pat
     assert auth.max_assets == approval["max_assets"] == g1["data_gate"]["max_assets"]
     assert auth.n2a_authorized and not auth.n2b_model_authorized
     assert not auth.source_content_read_authorized
-    assert auth.active_execution_phase == "N2B1R"
-    assert auth.active_execution_capability == "N2B1R_LOCAL_RESEARCH_MODEL_ACQUISITION"
+    assert auth.active_execution_phase == "N2B1P"
+    assert auth.active_execution_capability == "N2B1P_LOCAL_RESEARCH_CACHE_PROMOTION"
     assert auth.sqlite_ingest_write == "NOT_AUTHORIZED"
     assert state["phase_status"]["N2B0_6"] == "APPROVED_COMPLETE"
     assert state["phase_status"]["N2B0_7"] == "APPROVED_COMPLETE"
-    assert state["phase_status"]["N2B1R"] == "AUTHORIZED"
+    assert state["phase_status"]["N2B1R"] == "ACQUISITION_COMPLETE"
+    assert state["phase_status"]["N2B1P"] == "AUTHORIZED"
+    assert n2b1p_evidence["result"] == "N2B1P_REMEDIATION_COMPLETE_AWAITING_EXTERNAL_REVIEW"
     assert n2b0_6_completion["owner_decision"] == "N2B0_6_OWNER_APPROVED"
     assert n2b0_7["mandatory_stop"]["value"] is True
     assert n2b0_7_completion["owner_decision"] == "N2B0_7_OWNER_APPROVED"
@@ -148,7 +179,8 @@ def test_current_mutable_contracts_validate_and_are_consistent(project_root: Pat
     assert g1["dependencies"]["n1_completion_approval"] == n1["completion_approval"]
     assert task_index["completed"][1]["completion_approval"] == n1["completion_approval"]
     assert n1_completion["baseline"]["n1_commit"] == auth.n1_baseline_commit
-    load_g1_approval(project_root)
+    with pytest.raises(GateNotAuthorizedError):
+        load_g1_approval(project_root)
 
 
 @pytest.mark.parametrize(
@@ -190,7 +222,7 @@ def test_current_contract_schema_rejects_scope_tampering(
     value = copy.deepcopy(values[document])
     mutation(value)
     schema_name = {
-        "state": "project_state_v1_6.schema.json",
+        "state": "project_state_v1_7.schema.json",
         "approval": "approval_record_v1_1.schema.json",
         "g1": "task_contract_v1_1.schema.json",
     }[document]

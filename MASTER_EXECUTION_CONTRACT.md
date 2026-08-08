@@ -23,22 +23,24 @@ share its database or change its source code.
 - Pose comes only from its approved pose backend, never from VLM text. VLM must
   not fabricate EXIF, copyright, exact focal length, psychology, or intent.
 
-## Current authorization: N2B1R
+## Current authorization: N2B1P
 
 The current and only executable task is
-[`tasks/phase_n2b1r_local_research_model_acquisition.yaml`](tasks/phase_n2b1r_local_research_model_acquisition.yaml),
-bound to:
+[`tasks/phase_n2b1p_local_research_cache_promotion.yaml`](tasks/phase_n2b1p_local_research_cache_promotion.yaml),
+bound to the completed N2B1R transfer evidence and:
 
 - [`approvals/phase_completion_N2B0_7.yaml`](approvals/phase_completion_N2B0_7.yaml)
   at immutable tag `n2b0-7-approved-2026-07-29`;
-- [`approvals/owner_local_research_execution_N2B1R_to_N5R.yaml`](approvals/owner_local_research_execution_N2B1R_to_N5R.yaml);
+- [`approvals/owner_n2b1p_cache_promotion.yaml`](approvals/owner_n2b1p_cache_promotion.yaml);
+- [`research/N2B1R_acquisition_evidence.json`](research/N2B1R_acquisition_evidence.json);
 - [`research/N2B1R_local_research_artifact_register.json`](research/N2B1R_local_research_artifact_register.json);
-- [`PROJECT_STATE.json`](PROJECT_STATE.json), schema `1.6`.
+- [`PROJECT_STATE.json`](PROJECT_STATE.json), schema `1.7`.
 
-N2B1R permits only register-bound official model payload/dependency acquisition
-to a Git-external quarantine and installation into a Git-external isolated
-runtime. It does not permit model load/inference, cache promotion, source-photo
-access, EXIF read, SQLite ingest writes, derivative images, or photo analysis.
+N2B1P permits only a content-addressed, Git-external copy and verification of
+the three exact local-SHA-256 payloads already recorded by N2B1R. It does not
+permit network access, dependency installation, model load/inference, CUDA,
+source-photo access, EXIF read, SQLite ingest writes, derivative images, or
+photo analysis. The quarantine is retained.
 
 The selected pretrained TorchVision weights have no verified commercial grant.
 Their use is therefore **local research/evaluation on this Owner-controlled
@@ -46,20 +48,21 @@ machine only**. Local SHA-256 proves acquired-byte integrity; it is neither a
 weight license nor commercial clearance. Weight redistribution and any report
 claiming commercial clearance are prohibited.
 
-## Required N2B1R gate
+## Required N2B1P gate
 
-Before any payload request, strict-load the state, approval, task, and artifact
-register. For each artifact, require its exact approved filename, revision,
-official URL/domain, bounded Content-Length, exclusive quarantine destination,
-streaming SHA-256, post-write reread, and a redacted transfer manifest. The
-quarantine/cache must be outside Git and may not overlap source or runtime.
+Before every copy, strict-load the state, approval, task, N2B1R evidence, and
+artifact register. For each artifact, require its exact approved filename,
+revision, byte count, local SHA-256, and completed N2B1R transfer-manifest
+SHA-256. The quarantine/cache must be non-reparse, outside Git and runtime,
+and may not overlap source or each other. Copy through exclusive staging, then
+stream-hash and reread the promoted payload before atomically publishing its
+path-redacted cache manifest.
 
-At the end of N2B1R, stop. N2B1P cache promotion, N2B2 model execution and
-real-photo analysis, N3A deterministic analysis, N4R director prompts, and
-N5R report rendering each remain conditional on their own contract and hard
-gate. The only eventual source is the protected G1 snapshot and its frozen
-20-entry manifest; 19 unique assets may be inferred and one duplicate is a
-reference only.
+At the end of N2B1P, stop. N2B2 model execution and real-photo analysis, N3A
+deterministic analysis, N4R director prompts, and N5R report rendering each
+remain conditional on their own contract and hard gate. The only eventual
+source is the protected G1 snapshot and its frozen 20-entry manifest; 19
+unique assets may be inferred and one duplicate is a reference only.
 
 ## Verification discipline
 

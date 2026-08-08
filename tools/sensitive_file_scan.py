@@ -154,11 +154,21 @@ CONTENT_RULE_ALLOWLIST: frozenset[tuple[str, str]] = frozenset(
         ("src/nightly_photo_intelligence_pipeline/redaction.py", "unc_path"),
         ("src/nightly_photo_intelligence_pipeline/redaction.py", "wsl_mount_path"),
         ("src/nightly_photo_intelligence_pipeline/ingest/exif.py", "sensitive_exif_field"),
+        # The Ollama HTTP API mandates a literal ``"model"`` request key; it is an
+        # API field name, not an EXIF Model tag.
+        (
+            "src/nightly_photo_intelligence_pipeline/n2b2_synthetic/ollama_client.py",
+            "sensitive_exif_field",
+        ),
         ("tools/sensitive_file_scan.py", "windows_absolute_path"),
         ("tools/sensitive_file_scan.py", "unc_path"),
         ("tools/sensitive_file_scan.py", "wsl_mount_path"),
         ("tools/sensitive_file_scan.py", "sensitive_exif_field"),
         ("tools/verify_handoff.py", "windows_absolute_path"),
+        (
+            "approvals/n2b1p_runtime_configuration.json",
+            "windows_absolute_path",
+        ),
         ("tests/test_path_confidentiality.py", "windows_absolute_path"),
         ("tests/test_path_confidentiality.py", "unc_path"),
         ("tests/test_path_confidentiality.py", "wsl_mount_path"),

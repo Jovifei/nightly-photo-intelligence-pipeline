@@ -471,6 +471,6 @@ def test_at_n1_authorization_n1_g0_no_real_photos() -> None:
     assert auth.real_photo_access == "AUTHORIZED"
     assert auth.exif_real_data_read == "AUTHORIZED_NON_SENSITIVE_ONLY"
     assert auth.large_model_downloads == "AUTHORIZED_RESEARCH_ONLY"
-    assert auth.active_execution_phase == "N2B1R"
+    assert auth.active_execution_phase == "N2B1P"
     assert not auth.source_content_read_authorized
     assert auth.sqlite_ingest_write == "NOT_AUTHORIZED"

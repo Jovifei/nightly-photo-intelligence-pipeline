@@ -1,4 +1,4 @@
-"""N2B1R quarantine acquisition stays bounded, streaming, and path-redacted."""
+"""Completed N2B1R acquisition is denied during the N2B1P cache-only stage."""
 
 from __future__ import annotations
 
@@ -13,10 +13,7 @@ from typer.testing import CliRunner
 import nightly_photo_intelligence_pipeline.cli as cli_module
 import nightly_photo_intelligence_pipeline.local_research_acquisition as acquisition
 from nightly_photo_intelligence_pipeline.cli import app
-from nightly_photo_intelligence_pipeline.domain.errors import (
-    GateNotAuthorizedError,
-    PreflightUnsatisfiedError,
-)
+from nightly_photo_intelligence_pipeline.domain.errors import GateNotAuthorizedError
 from nightly_photo_intelligence_pipeline.local_research_acquisition import (
     AcquisitionResult,
     ResearchArtifact,
@@ -78,25 +75,23 @@ def _opener(payload: bytes, calls: list[Request]):
     return open_url
 
 
-def test_load_authorized_artifact_preserves_research_only_rights(project_root: Path) -> None:
-    artifact = load_authorized_artifact(
-        "torchvision-keypointrcnn-resnet50-fpn-coco-v1", project_root=project_root
-    )
-    assert artifact.filename == "keypointrcnn_resnet50_fpn_coco-fc266e95.pth"
-    assert artifact.owner_max_bytes == 260000000
+def test_completed_n2b1r_artifact_loader_is_denied(project_root: Path) -> None:
+    with pytest.raises(GateNotAuthorizedError):
+        load_authorized_artifact(
+            "torchvision-keypointrcnn-resnet50-fpn-coco-v1", project_root=project_root
+        )
 
 
-def test_preflight_requires_head_content_length_before_payload(project_root: Path) -> None:
+def test_completed_n2b1r_preflight_is_denied_before_network(project_root: Path) -> None:
     calls: list[Request] = []
-    transfer = preflight_transfer(
-        _artifact(), project_root=project_root, open_url=_opener(b"synthetic", calls)
-    )
-    assert transfer.content_length_bytes == 9
-    assert len(calls) == 1
-    assert calls[0].method == "HEAD"
+    with pytest.raises(GateNotAuthorizedError):
+        preflight_transfer(
+            _artifact(), project_root=project_root, open_url=_opener(b"synthetic", calls)
+        )
+    assert calls == []
 
 
-def test_preflight_rejects_missing_or_oversized_content_length(project_root: Path) -> None:
+def test_completed_n2b1r_preflight_denies_every_transfer_variant(project_root: Path) -> None:
     artifact = _artifact()
 
     class MissingLength(_Response):
@@ -109,14 +104,14 @@ def test_preflight_rejects_missing_or_oversized_content_length(project_root: Pat
             super().__init__(url, b"")
             self.headers = {"Content-Length": "20000001"}
 
-    with pytest.raises(PreflightUnsatisfiedError):
+    with pytest.raises(GateNotAuthorizedError):
         preflight_transfer(
             artifact,
             project_root=project_root,
             open_url=lambda request, timeout: MissingLength(request.full_url),
         )
 
-    with pytest.raises(PreflightUnsatisfiedError):
+    with pytest.raises(GateNotAuthorizedError):
         preflight_transfer(
             artifact,
             project_root=project_root,
@@ -146,42 +141,43 @@ def test_preflight_rejects_forged_artifact_before_network(project_root: Path) ->
     assert not called
 
 
-def test_acquisition_streams_exclusively_rereads_and_writes_redacted_manifest(
+def test_completed_n2b1r_acquisition_is_denied_before_quarantine_write(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, project_root: Path
 ) -> None:
     artifact = _artifact()
-    calls: list[Request] = []
-    opener = _opener(b"model-bytes", calls)
-    transfer = preflight_transfer(artifact, project_root=project_root, open_url=opener)
     quarantine = tmp_path / "quarantine"
     monkeypatch.setattr(acquisition, "DEFAULT_QUARANTINE_PARENT", quarantine)
-    result = acquire_artifact(
-        artifact,
-        transfer,
-        quarantine_parent=quarantine,
-        run_id="run_001",
-        project_root=project_root,
-        open_url=opener,
+    transfer = TransferPreflight(
+        artifact=artifact,
+        request_url=artifact.official_url,
+        final_url=artifact.official_url,
+        redirect_chain=(),
+        content_length_bytes=4,
     )
-    assert result.byte_count == len(b"model-bytes")
-    assert len(result.sha256) == 64
-    payload = quarantine / "run_001" / artifact.filename
-    assert payload.read_bytes() == b"model-bytes"
-    manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
-    assert manifest["sha256"] == result.sha256
-    assert manifest["request_domain"] == "download.pytorch.org"
-    assert str(quarantine) not in result.manifest_path.read_text(encoding="utf-8")
-    assert [request.method for request in calls] == ["HEAD", "GET"]
+    with pytest.raises(GateNotAuthorizedError):
+        acquire_artifact(
+            artifact,
+            transfer,
+            quarantine_parent=quarantine,
+            run_id="run_001",
+            project_root=project_root,
+            open_url=_opener(b"model-bytes", []),
+        )
+    assert not (quarantine / "run_001").exists()
 
 
-def test_acquisition_rejects_reused_run_id_and_cleans_partial_payload(
+def test_completed_n2b1r_acquisition_denies_before_run_id_or_write(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, project_root: Path
 ) -> None:
     artifact = _artifact()
     quarantine = tmp_path / "quarantine"
     monkeypatch.setattr(acquisition, "DEFAULT_QUARANTINE_PARENT", quarantine)
-    transfer = preflight_transfer(
-        artifact, project_root=project_root, open_url=_opener(b"good", [])
+    transfer = TransferPreflight(
+        artifact=artifact,
+        request_url=artifact.official_url,
+        final_url=artifact.official_url,
+        redirect_chain=(),
+        content_length_bytes=4,
     )
 
     def changed_length(request: Request, timeout: float) -> _Response:
@@ -190,7 +186,7 @@ def test_acquisition_rejects_reused_run_id_and_cleans_partial_payload(
             response.headers = {"Content-Length": "5"}
         return response
 
-    with pytest.raises(PreflightUnsatisfiedError):
+    with pytest.raises(GateNotAuthorizedError):
         acquire_artifact(
             artifact,
             transfer,
@@ -200,15 +196,6 @@ def test_acquisition_rejects_reused_run_id_and_cleans_partial_payload(
             open_url=changed_length,
         )
     assert not (quarantine / "run_002" / artifact.filename).exists()
-    with pytest.raises(GateNotAuthorizedError):
-        acquire_artifact(
-            artifact,
-            transfer,
-            quarantine_parent=quarantine,
-            run_id="run_002",
-            project_root=project_root,
-            open_url=_opener(b"good", []),
-        )
 
 
 def test_acquisition_rejects_forged_preflight_before_network_or_write(

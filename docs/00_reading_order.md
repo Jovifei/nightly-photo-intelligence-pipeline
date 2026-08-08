@@ -12,10 +12,12 @@
 8. `docs/04_export_contract.md`
 9. `OWNER_INPUTS_REQUIRED.md`
 10. `approvals/phase_completion_N2B0_7.yaml`
-11. `approvals/owner_local_research_execution_N2B1R_to_N5R.yaml`
-12. `tasks/phase_n2b1r_local_research_model_acquisition.yaml`
-13. `research/N2B1R_local_research_artifact_register.json`
-14. 与 N2B1R 相关的来源、隔离下载、环境、测试和验收文档
+11. `approvals/owner_n2b1p_cache_promotion.yaml`
+12. `tasks/phase_n2b1p_local_research_cache_promotion.yaml`
+13. `research/N2B1R_acquisition_evidence.json`
+14. `research/N2B1P_cache_promotion_evidence.json`
+15. `research/N2B1R_local_research_artifact_register.json`
+16. 与 N2B1P 相关的 cache、测试和验收文档
 
 此顺序完成前不得编辑代码。
 

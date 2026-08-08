@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0",
+  "configuration_version": "N2B1P_RUNTIME_CONFIGURATION_V1",
+  "runtime_parent": "F:\\npi_runtime",
+  "work_root": "F:\\npi_runtime\\work",
+  "snapshot_root": "NOT_APPLICABLE_N2B1P_SOURCE_ACCESS_FORBIDDEN",
+  "cache_root": "E:\\Claude_allow\\Download\\npi-model-cache",
+  "cache_root_identity": "15cb613d6ecb39247799adca13c6fcbfd9c9edb72c223db7cebf1ee975d7b2ba",
+  "configuration_digest": "462e999671c2073ef8d02cbeaccd561cbc1f4734c4f312baee079a8134040bfd"
+}

@@ -24,6 +24,24 @@ errors:
   NPI_HANDOFF_INTEGRITY_FAILED:
     exit_code: 9
     severity: "CRITICAL"
+  NPI_PROMOTION_REPARSE_POINT_REJECTED:
+    exit_code: 4
+    severity: "CRITICAL"
+  NPI_PROMOTION_BOUND_ROOT_IDENTITY_CHANGED:
+    exit_code: 4
+    severity: "CRITICAL"
+  NPI_PROMOTION_PATH_ESCAPED_BOUND_ROOT:
+    exit_code: 4
+    severity: "CRITICAL"
+  NPI_PROMOTION_VOLUME_IDENTITY_CHANGED:
+    exit_code: 4
+    severity: "CRITICAL"
+  NPI_PROMOTION_RACE_DETECTED:
+    exit_code: 4
+    severity: "CRITICAL"
+  NPI_PROMOTION_RACE_RESISTANT_PATH_OPERATION_UNAVAILABLE:
+    exit_code: 3
+    severity: "CRITICAL"
   NPI_INTERNAL_ERROR:
     exit_code: 10
     severity: "ERROR"

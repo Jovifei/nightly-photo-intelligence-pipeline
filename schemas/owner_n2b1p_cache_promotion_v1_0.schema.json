@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/owner_n2b1p_cache_promotion_v1_0.schema.json",
+  "title": "Owner N2B1P local-research cache-promotion authorization",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "approval_type", "status", "owner_id", "issued_at_utc", "source", "n2b1r_commit", "n2b1r_evidence", "runtime_configuration", "allowed_artifacts", "cache", "prohibited_actions", "mandatory_stop"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "approval_type": {"const": "N2B1P_CACHE_PROMOTION_ONLY"},
+    "status": {"const": "APPROVED"},
+    "owner_id": {"const": "Jovi"},
+    "issued_at_utc": {"const": "2026-07-29"},
+    "source": {"type": "string", "minLength": 1},
+    "n2b1r_commit": {"const": "d3628e27334e819ba2d5944151447595e03f39f9"},
+    "n2b1r_evidence": {"type": "object", "additionalProperties": false, "required": ["path", "sha256", "result"], "properties": {"path": {"const": "research/N2B1R_acquisition_evidence.json"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "result": {"const": "N2B1R_ACQUISITION_COMPLETE_AWAITING_LOCAL_VERIFICATION"}}},
+    "runtime_configuration": {"type": "object", "additionalProperties": false, "required": ["path", "configuration_digest", "cache_root_identity"], "properties": {"path": {"const": "approvals/n2b1p_runtime_configuration.json"}, "configuration_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "cache_root_identity": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}},
+    "allowed_artifacts": {"type": "array", "minItems": 3, "maxItems": 3, "uniqueItems": true, "items": {"type": "object", "additionalProperties": false, "required": ["id", "revision", "filename", "byte_count", "local_sha256", "transfer_manifest_sha256"], "properties": {"id": {"enum": ["torchvision-keypointrcnn-resnet50-fpn-coco-v1", "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1", "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1"]}, "revision": {"const": "torchvision-v0.22.1"}, "filename": {"type": "string", "minLength": 5}, "byte_count": {"type": "integer", "minimum": 1}, "local_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "transfer_manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}}},
+    "cache": {"type": "object", "additionalProperties": false, "required": ["parent", "layout", "transfer_method", "retain_quarantine", "required_controls"], "properties": {"parent": {"const": "<LOCAL_CONTENT_ADDRESSED_CACHE_OUTSIDE_GIT_AND_RUNTIME>"}, "layout": {"const": "<local_sha256>/<approved_filename>"}, "transfer_method": {"const": "COPY_ONLY"}, "retain_quarantine": {"const": true}, "required_controls": {"type": "array", "minItems": 7, "uniqueItems": true, "items": {"type": "string"}}}},
+    "prohibited_actions": {"type": "array", "minItems": 9, "uniqueItems": true, "items": {"type": "string"}},
+    "mandatory_stop": {"type": "object", "additionalProperties": false, "required": ["value", "rule"], "properties": {"value": {"const": true}, "rule": {"type": "string", "minLength": 1}}}
+  }
+}

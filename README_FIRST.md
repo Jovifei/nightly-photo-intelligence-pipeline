@@ -14,10 +14,10 @@
 1. **为什么做**：把本地摄影收藏转化成可审计、可搜索、可供摄影导演 App 消费的结构化知识。
 2. **做什么**：建设本地优先、可断点续传、可重复执行、人工审核后导出的离线数据生产流水线。
 3. **怎么做**：显式 Python 阶段、SQLite 状态机、严格 JSON Schema、只读源保护、逐阶段模型 Benchmark。
-4. **先做什么**：当前只允许 N2B1R 的 register-bound 本地研究模型获取；模型和依赖只能写入 Git 外隔离区，绝不读取真实照片或运行模型。
+4. **先做什么**：当前只允许 N2B1P 的三份 evidence-bound payload 内容寻址 cache 提升；只能在 Git 外 quarantine 与 Git 外 cache 间复制，绝不读取真实照片或运行模型。
 5. **不能做什么**：不能扫描真实收藏、不能加载/推理模型、不能改驱动/WSL/Docker 系统配置、不能连接云端处理图片、不能接入 OpenClaw、不能修改主 App。
 6. **怎样验证**：每个需求、阶段和数据放量都有可执行验收、证据文件和负向测试。
-7. **什么时候停止**：N2B1R 完成隔离下载和本地完整性证据后停止；任何通过都不会自动扩大到 cache promotion、推理或真实照片。
+7. **什么时候停止**：N2B1P 完成三份 payload 的 cache 完整性证据后停止；任何通过都不会自动扩大到推理或真实照片。
 
 ## 智能体入口
 
@@ -33,19 +33,19 @@
 
 | 项目 | 当前值 |
 |---|---|
-| 阶段 | `N2B1R` |
-| 阶段状态 | `AUTHORIZED`（仅本地研究隔离获取） |
-| 数据门禁 | 官方 artifact/依赖；禁止真实照片读取 |
-| 真实图片目录 | `NOT_AUTHORIZED_FOR_N2B1R` |
-| 模型下载 | `AUTHORIZED_RESEARCH_ONLY`（register-bound，Git 外 quarantine） |
+| 阶段 | `N2B1P` |
+| 阶段状态 | `AUTHORIZED`（仅本地研究 cache promotion） |
+| 数据门禁 | 三份已完成 N2B1R evidence-bound payload；禁止真实照片读取 |
+| 真实图片目录 | `NOT_AUTHORIZED_FOR_N2B1P` |
+| 模型下载 | `NOT_AUTHORIZED`（仅 Git 外 quarantine 到 cache 的 copy-only） |
 | 网络访问 | 默认拒绝 |
 | OpenClaw 激活 | `NOT_AUTHORIZED` |
-| 下一阶段 | `N2B1R_ACQUISITION_AWAITING_LOCAL_VERIFICATION` |
+| 下一阶段 | `N2B1P_CACHE_PROMOTION_COMPLETE_AWAITING_NEXT_AUTHORIZATION` |
 
 唯一可执行任务合同：
 
 ```text
-tasks/phase_n2b1r_local_research_model_acquisition.yaml
+tasks/phase_n2b1p_local_research_cache_promotion.yaml
 ```
 
 ## 第一次操作
@@ -54,7 +54,7 @@ tasks/phase_n2b1r_local_research_model_acquisition.yaml
 python tools/verify_handoff.py
 ```
 
-校验失败时不得实施。校验通过后，按 `docs/00_reading_order.md` 阅读并执行 N2B1R；完成后验证下一阶段门禁，不启动模型推理或真实照片处理。
+校验失败时不得实施。校验通过后，按 `docs/00_reading_order.md` 阅读并执行 N2B1P；完成后验证下一阶段门禁，不启动模型推理或真实照片处理。
 
 ## 交付包与目标仓库
 

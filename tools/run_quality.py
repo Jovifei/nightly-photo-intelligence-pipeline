@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Unified current-stage quality command.
 
-All listed checks are hard gates for G1 remediation. Missing tools are reported
-truthfully and make the gate fail; NOT_AVAILABLE is never treated as PASS.
+All listed checks are hard gates for the current N2B1P cache-promotion stage.
+Missing tools are reported truthfully and make the gate fail; NOT_AVAILABLE is
+never treated as PASS.
 
 Usage:
     python tools/run_quality.py

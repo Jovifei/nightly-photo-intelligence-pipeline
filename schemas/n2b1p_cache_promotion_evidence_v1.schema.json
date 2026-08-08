@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b1p_cache_promotion_evidence_v1.schema.json",
+  "title": "N2B1P redacted cache-promotion evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "stage", "result", "n2b1r_evidence_sha256", "runtime_configuration", "storage", "artifacts", "prohibited_actions", "mandatory_stop"],
+  "properties": {
+    "schema_version": {"const": "1.1"},
+    "stage": {"const": "N2B1P"},
+    "result": {"const": "N2B1P_REMEDIATION_COMPLETE_AWAITING_EXTERNAL_REVIEW"},
+    "n2b1r_evidence_sha256": {"const": "d1bc60148b09640b41a299009b84a81bf38f5e6b06ab5135661a9aa62382150c"},
+    "runtime_configuration": {"$ref": "#/$defs/runtime_configuration"},
+    "storage": {"type": "object", "additionalProperties": false, "required": ["quarantine", "cache", "retained_quarantine", "cache_layout"], "properties": {"quarantine": {"const": "EXTERNAL_REDACTED_NON_REPARSE"}, "cache": {"const": "EXTERNAL_REDACTED_CONTENT_ADDRESSED_NON_REPARSE"}, "retained_quarantine": {"const": true}, "cache_layout": {"const": "<local_sha256>/<approved_filename>"}}},
+    "artifacts": {"type": "array", "minItems": 3, "maxItems": 3, "uniqueItems": true, "items": {"$ref": "#/$defs/artifact"}},
+    "prohibited_actions": {"type": "object", "additionalProperties": false, "required": ["source_photo_or_exif_read", "sqlite_ingest_write", "model_load_or_inference", "cuda_execution", "dependency_install", "derived_image_or_model_output", "network_request_or_download", "cache_or_quarantine_delete"], "properties": {"source_photo_or_exif_read": {"const": "NOT_PERFORMED"}, "sqlite_ingest_write": {"const": "NOT_PERFORMED"}, "model_load_or_inference": {"const": "NOT_PERFORMED"}, "cuda_execution": {"const": "NOT_PERFORMED"}, "dependency_install": {"const": "NOT_PERFORMED"}, "derived_image_or_model_output": {"const": "NOT_PERFORMED"}, "network_request_or_download": {"const": "NOT_PERFORMED"}, "cache_or_quarantine_delete": {"const": "NOT_PERFORMED"}}},
+    "mandatory_stop": {"type": "object", "additionalProperties": false, "required": ["value", "next_action"], "properties": {"value": {"const": true}, "next_action": {"const": "EXTERNAL_REVIEW_N2B1P_REMEDIATION"}}},
+    "review_verdict": {"type": "string", "enum": ["PASS", "FAIL"]},
+    "independent_reviewer": {"type": "string"},
+    "external_review": {"type": "object", "additionalProperties": false, "required": ["reviewed_at_utc", "method", "all_three_artifacts_cache_hit_verified", "prohibited_actions_confirmed", "notes"], "properties": {"reviewed_at_utc": {"type": "string", "format": "date-time"}, "method": {"type": "string"}, "all_three_artifacts_cache_hit_verified": {"type": "boolean"}, "prohibited_actions_confirmed": {"type": "boolean"}, "notes": {"type": "string"}}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "runtime_configuration": {"type": "object", "additionalProperties": false, "required": ["path", "configuration_digest", "cache_root_identity"], "properties": {"path": {"const": "approvals/n2b1p_runtime_configuration.json"}, "configuration_digest": {"$ref": "#/$defs/sha256"}, "cache_root_identity": {"$ref": "#/$defs/sha256"}}},
+    "binding_payload": {"type": "object", "additionalProperties": false, "required": ["schema_version", "artifact_id", "approved_evidence_id", "approved_payload_sha256", "payload_size_bytes", "cache_relative_path", "cache_filename", "promotion_source", "promotion_completed_at_utc", "cache_root_identity", "runtime_configuration_digest", "raw_cache_manifest_sha256"], "properties": {"schema_version": {"const": "1.0"}, "artifact_id": {"type": "string"}, "approved_evidence_id": {"$ref": "#/$defs/sha256"}, "approved_payload_sha256": {"$ref": "#/$defs/sha256"}, "payload_size_bytes": {"type": "integer", "minimum": 1}, "cache_relative_path": {"type": "string", "pattern": "^[0-9a-f]{64}/[A-Za-z0-9][A-Za-z0-9._-]{0,191}$"}, "cache_filename": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,191}$"}, "promotion_source": {"const": "N2B1R_COPY_ONLY"}, "promotion_completed_at_utc": {"type": "string", "format": "date-time"}, "cache_root_identity": {"$ref": "#/$defs/sha256"}, "runtime_configuration_digest": {"$ref": "#/$defs/sha256"}, "raw_cache_manifest_sha256": {"$ref": "#/$defs/sha256"}}},
+    "artifact": {"type": "object", "additionalProperties": false, "required": ["id", "byte_count", "local_sha256", "transfer_manifest_sha256", "cache_manifest_sha256", "legacy_cache_manifest_binding", "first_pass_status", "verification_status", "weights_rights", "use_restriction"], "properties": {"id": {"enum": ["torchvision-keypointrcnn-resnet50-fpn-coco-v1", "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1", "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1"]}, "byte_count": {"type": "integer", "minimum": 1}, "local_sha256": {"$ref": "#/$defs/sha256"}, "transfer_manifest_sha256": {"$ref": "#/$defs/sha256"}, "cache_manifest_sha256": {"$ref": "#/$defs/sha256"}, "legacy_cache_manifest_binding": {"type": "object", "additionalProperties": false, "required": ["payload", "binding_payload_sha256"], "properties": {"payload": {"$ref": "#/$defs/binding_payload"}, "binding_payload_sha256": {"$ref": "#/$defs/sha256"}}}, "first_pass_status": {"const": "PROMOTED"}, "verification_status": {"const": "CACHE_HIT"}, "weights_rights": {"const": "UNKNOWN_NOT_COMMERCIAL_CLEARANCE"}, "use_restriction": {"const": "LOCAL_RESEARCH_ONLY_NO_REDISTRIBUTION"}}}
+  }
+}

@@ -1,0 +1,60 @@
+schema_version: "1.0"
+approval_type: "N2B1P_CACHE_PROMOTION_ONLY"
+status: "APPROVED"
+owner_id: "Jovi"
+issued_at_utc: "2026-07-29"
+source: "Owner direct authorization: bind only the three N2B1R evidence SHA-256 artifacts; permit Git-external content-addressed cache promotion and verification; keep source photos, EXIF, SQLite, model loading/inference, CUDA execution, and derivatives prohibited; replace the circular prerequisite with completed N2B1R transfer evidence; require one local N2B1P commit and full quality gates."
+n2b1r_commit: "d3628e27334e819ba2d5944151447595e03f39f9"
+n2b1r_evidence:
+  path: "research/N2B1R_acquisition_evidence.json"
+  sha256: "d1bc60148b09640b41a299009b84a81bf38f5e6b06ab5135661a9aa62382150c"
+  result: "N2B1R_ACQUISITION_COMPLETE_AWAITING_LOCAL_VERIFICATION"
+runtime_configuration:
+  path: "approvals/n2b1p_runtime_configuration.json"
+  configuration_digest: "462e999671c2073ef8d02cbeaccd561cbc1f4734c4f312baee079a8134040bfd"
+  cache_root_identity: "15cb613d6ecb39247799adca13c6fcbfd9c9edb72c223db7cebf1ee975d7b2ba"
+allowed_artifacts:
+  - id: "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1"
+    revision: "torchvision-v0.22.1"
+    filename: "lraspp_mobilenet_v3_large-d234d4ea.pth"
+    byte_count: 13097061
+    local_sha256: "d234d4eae9d55d5f76de18b77cf0dc62c66fe5c5482758209d00f950c92bb280"
+    transfer_manifest_sha256: "d25cc430637cf19ebab31cd5aa99e344b4da58cd2b04db245c165181e3ff1f12"
+  - id: "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1"
+    revision: "torchvision-v0.22.1"
+    filename: "deeplabv3_mobilenet_v3_large-fc3c493d.pth"
+    byte_count: 44356159
+    local_sha256: "fc3c493d68e89cc31ef488c803d5d7dd2f3190fb570598faa49fef69be8e5e70"
+    transfer_manifest_sha256: "676054e8b2c366f591a1bbe1b4521e2ef7abdb08197534ca95eb11d434dd0cae"
+  - id: "torchvision-keypointrcnn-resnet50-fpn-coco-v1"
+    revision: "torchvision-v0.22.1"
+    filename: "keypointrcnn_resnet50_fpn_coco-fc266e95.pth"
+    byte_count: 237034793
+    local_sha256: "fc266e953d2b302cdcbb9ae66f71f6b0d4649928bf02dc573961e361e4918926"
+    transfer_manifest_sha256: "90da3eb000813841a980dcbaf8e1b31fdde15283a9d6b969156c5eb0ae21ce43"
+cache:
+  parent: "<LOCAL_CONTENT_ADDRESSED_CACHE_OUTSIDE_GIT_AND_RUNTIME>"
+  layout: "<local_sha256>/<approved_filename>"
+  transfer_method: "COPY_ONLY"
+  retain_quarantine: true
+  required_controls:
+    - "strict control-document revalidation at the action boundary"
+    - "non-reparse quarantine and cache paths with no repository/runtime overlap"
+    - "source TOCTOU identity checks, streaming SHA-256, and post-copy reread"
+    - "exclusive staging directory and atomic final directory rename"
+    - "path-redacted cache manifest and idempotent cache-hit verification"
+    - "handle-bound reparse-resistant staging and publication"
+    - "canonical raw-manifest hash and runtime-configuration envelope binding"
+prohibited_actions:
+  - "source_photo_or_exif_read"
+  - "sqlite_ingest_write"
+  - "model_load_or_inference"
+  - "cuda_execution"
+  - "dependency_install"
+  - "derived_image_or_model_output"
+  - "final_cache_or_quarantine_delete"
+  - "cloud_processing_or_external_upload"
+  - "push_merge_pull_request_or_release"
+mandatory_stop:
+  value: true
+  rule: "Stop after promotion evidence and one local N2B1P commit. N2B2 and every photo or model-execution path remain locked pending a separate Owner authorization."

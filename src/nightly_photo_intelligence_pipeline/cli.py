@@ -49,6 +49,7 @@ from .local_research_acquisition import (
     load_authorized_artifact,
     preflight_transfer,
 )
+from .local_research_promotion import load_authorized_promotion, promote_artifact
 from .persistence.sqlite import StateStore
 from .preflight import FAIL, format_preflight_text, run_preflight
 from .redaction import redact_text
@@ -75,6 +76,14 @@ model_app = typer.Typer(
     add_completion=False,
 )
 app.add_typer(model_app, name=_MODEL_COMMAND)
+
+n2b2_app = typer.Typer(
+    name="n2b2",
+    help="N2B2 synthetic photography model-stack validation (CODEX N2B2).",
+    no_args_is_help=True,
+    add_completion=False,
+)
+app.add_typer(n2b2_app, name="n2b2")
 
 
 def _resolve_runtime_root() -> Path:
@@ -429,6 +438,176 @@ def model_acquire(
             sort_keys=True,
         )
     )
+
+
+@model_app.command("promote")
+@_run_safely
+def model_promote(
+    artifact: str = typer.Option(..., "--artifact", help="exact approved N2B1P artifact ID"),
+    quarantine_run_id: str = typer.Option(
+        ..., "--quarantine-run-id", help="opaque existing N2B1R quarantine run ID"
+    ),
+) -> None:
+    """Copy one approved quarantine payload into the local content-addressed cache."""
+    preflight_results = run_preflight()
+    if any(result.status == FAIL for result in preflight_results):
+        raise PreflightUnsatisfiedError("N2B1P preflight failed")
+    selected = load_authorized_promotion(artifact)
+    result = promote_artifact(selected, quarantine_run_id=quarantine_run_id)
+    typer.echo(
+        json.dumps(
+            {
+                "stage": "N2B1P",
+                "artifact_id": result.artifact_id,
+                "cache_key": result.cache_key,
+                "byte_count": result.byte_count,
+                "sha256": result.local_sha256,
+                "status": result.status,
+                "weights_rights": "UNKNOWN_NOT_COMMERCIAL_CLEARANCE",
+                "use_restriction": "LOCAL_RESEARCH_ONLY_NO_REDISTRIBUTION",
+            },
+            sort_keys=True,
+        )
+    )
+
+
+@n2b2_app.command("run")
+@_run_safely
+def n2b2_run(
+    backend: str = typer.Option(
+        "real", "--backend", help="real (torch + Ollama) | fake (torch-free, tests only)"
+    ),
+    s20_manifest_dir: Path = typer.Option(
+        None, "--s20-manifest-dir", help="frozen S20 synthetic fixture dir (Git-external)"
+    ),
+    out: Path = typer.Option(None, "--out", help="Git-external runtime output dir"),
+) -> None:
+    """Validate the synthetic photography model stack (CODEX N2B2).
+
+    Pure synthetic data only. Refuses real photos, G1, EXIF, SQLite writes,
+    App and Obsidian access. Stops at the precise contract state on any
+    boundary violation (e.g. insufficient synthetic fixtures, model unload
+    failure, Qwen provenance failure).
+    """
+    import subprocess  # noqa: PLC0415
+    from io import BytesIO  # noqa: PLC0415
+
+    import yaml  # noqa: PLC0415
+    from PIL import Image  # noqa: PLC0415
+
+    from ._paths import find_project_root
+    from .json_strict import load_json_strict
+    from .n2b2_synthetic import N2B2RunConfig, SyntheticFixture, run_n2b2
+
+    root = find_project_root()
+    schemas_dir = root / "schemas"
+    reasoning_schema = load_json_strict(schemas_dir / "n2b2_photography_reasoning.schema.json")
+    _vision_schema = load_json_strict(schemas_dir / "n2b2_vision_fact_contract.schema.json")
+    evidence = load_json_strict(root / "research" / "N2B1P_cache_promotion_evidence.json")
+    n2b1p_review_passed = bool(evidence.get("review_verdict") == "PASS")
+
+    def _sha(rev: str) -> str:
+        return subprocess.run(
+            ["git", "rev-parse", rev], cwd=str(root), capture_output=True, text=True, check=True
+        ).stdout.strip()
+
+    start_head = _sha("HEAD")
+    # The N2B1P candidate must never be hardcoded. It is the single commit stacked on the
+    # immutable N2B1R parent, and it is amended in place (squash-to-one is required by
+    # tools/verify_handoff.py), so any literal SHA would go stale on the next amend.
+    # Resolve it from the parent anchor recorded in the N2B2 task contract and fail closed
+    # unless exactly one commit is found, rather than attesting to an ambiguous baseline.
+    n2b2_contract = yaml.safe_load(
+        (root / "tasks" / "phase_n2b2_synthetic_model_stack_validation.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    n2b1p_parent = str(n2b2_contract["prerequisite"]["n2b1p_parent_sha"])
+    _candidates = subprocess.run(
+        ["git", "rev-list", f"{_sha(n2b1p_parent)}..HEAD"],
+        cwd=str(root),
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.split()
+    if len(_candidates) != 1:
+        raise RuntimeError(
+            "N2B2_N2B1P_BASELINE_UNRESOLVABLE: expected exactly 1 commit in "
+            f"{n2b1p_parent}..HEAD, found {len(_candidates)}"
+        )
+    n2b1p_sha = _candidates[0]
+
+    cache_root = root / "npi-model-cache"
+    runtime_out = out or (root / ".npi_runtime" / "n2b2")
+    runtime_out.mkdir(parents=True, exist_ok=True)
+
+    config = N2B2RunConfig(
+        project_root=root,
+        cache_root=cache_root,
+        fixtures_dir=root / "fixtures",
+        runtime_out_dir=runtime_out,
+        backend=backend,  # type: ignore[arg-type]
+    )
+
+    def _read(path: Path, case_id: str, expected: str = "processable") -> SyntheticFixture:
+        data = path.read_bytes()
+        with Image.open(BytesIO(data)) as img:
+            width, height = img.size
+        return SyntheticFixture(
+            case_id=case_id,
+            image_bytes=data,
+            width=width,
+            height=height,
+            expected_processability=expected,
+        )
+
+    s3_dir = root / "fixtures" / "three_image_smoke_set"
+    s3_fixtures = [
+        _read(p, f"n2b2-s3-{i:02d}")
+        for i, p in enumerate(sorted(s3_dir.glob("*.png")), start=1)
+        if p.is_file()
+    ]
+    s20_fixtures: list[SyntheticFixture] = []
+    if s20_manifest_dir is not None:
+        manifest = load_json_strict(Path(s20_manifest_dir) / "fixture_manifest.json")
+        for i, entry in enumerate(manifest.get("files", []), start=1):
+            fpath = Path(s20_manifest_dir) / entry["name"]
+            exp = (
+                "unsupported"
+                if entry.get("expected_processability") == "unsupported"
+                else "processable"
+            )
+            s20_fixtures.append(_read(fpath, f"n2b2-s20-{i:02d}", exp))
+
+    result = run_n2b2(
+        config=config,
+        s3_fixtures=s3_fixtures,
+        s20_fixtures=s20_fixtures,
+        reasoning_schema=reasoning_schema,
+        vision_schema=_vision_schema,
+        n2b1p_sha=n2b1p_sha,
+        n2b1p_review_passed=n2b1p_review_passed,
+        start_head=start_head,
+    )
+
+    summary_path = runtime_out / "validation_summary.json"
+    summary_path.write_text(
+        json_strict_dump(result.summary) if result.summary else "{}", encoding="utf-8"
+    )
+    typer.echo(f"N2B2 result: {result.result}")
+    if result.stop_reason:
+        typer.echo(f"stop_reason: {result.stop_reason}")
+    typer.echo(f"summary: {summary_path}")
+    if result.result != "N2B2_SYNTHETIC_MODEL_STACK_VALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW":
+        raise typer.Exit(code=int(ExitCode.PARTIAL_FAILURE))
+
+
+def json_strict_dump(obj: object) -> str:
+    """Canonical JSON dump for N2B2 runtime artifacts."""
+
+    import json  # noqa: PLC0415
+
+    return json.dumps(obj, sort_keys=True, indent=2, ensure_ascii=False)
 
 
 def main() -> None:

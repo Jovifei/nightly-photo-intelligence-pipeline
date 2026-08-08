@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b2_photography_reasoning.schema.json",
+  "title": "N2B2 Qwen photography reasoning output",
+  "description": "Strict output schema for qwen3.5:9b photography reasoning. Qwen must echo input_fact_digest, reference valid fact_ids, and must NOT produce any forbidden field.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "case_id",
+    "input_fact_digest",
+    "reasoning_based_on_fact_ids",
+    "photographic_interpretation",
+    "story_candidates",
+    "director_prompts",
+    "uncertainties"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "case_id": {"type": "string", "pattern": "^n2b2-s(3|20)-[0-9]{2}$"},
+    "input_fact_digest": {"$ref": "#/$defs/sha256"},
+    "reasoning_based_on_fact_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^fact-[a-z0-9-]+$"}, "uniqueItems": true},
+    "photographic_interpretation": {"type": "object", "additionalProperties": false, "required": ["scene_value", "composition_notes", "lighting_notes", "tone_notes"], "properties": {"scene_value": {"enum": ["high", "medium", "low", "unsupported"]}, "composition_notes": {"type": "string", "minLength": 1, "maxLength": 500}, "lighting_notes": {"type": "string", "minLength": 1, "maxLength": 500}, "tone_notes": {"type": "string", "minLength": 1, "maxLength": 500}}},
+    "story_candidates": {"type": "object", "additionalProperties": false, "required": ["safe", "narrative", "dynamic"], "properties": {"safe": {"type": "string", "minLength": 1, "maxLength": 1000}, "narrative": {"type": "string", "minLength": 1, "maxLength": 1000}, "dynamic": {"type": "string", "minLength": 1, "maxLength": 1000}}},
+    "director_prompts": {"type": "object", "additionalProperties": false, "required": ["standard", "dramatic", "plan_b", "technical"], "properties": {"standard": {"type": "string", "minLength": 1, "maxLength": 1000}, "dramatic": {"type": "string", "minLength": 1, "maxLength": 1000}, "plan_b": {"type": "string", "minLength": 1, "maxLength": 1000}, "technical": {"type": "string", "minLength": 1, "maxLength": 1000}}},
+    "uncertainties": {"type": "array", "items": {"$ref": "#/$defs/qwen_uncertainty"}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "qwen_uncertainty": {"type": "object", "additionalProperties": false, "required": ["description", "related_fact_ids"], "properties": {"description": {"type": "string", "minLength": 1, "maxLength": 500}, "related_fact_ids": {"type": "array", "items": {"type": "string", "pattern": "^fact-[a-z0-9-]+$"}}}}
+  },
+  "forbiddenProperties": {
+    "$comment": "Validation hint: the following field names must NEVER appear in a valid Qwen output instance. If any is present, reject with N2B2_QWEN_SCHEMA_OR_PROVENANCE_FAILED.",
+    "person_count": true,
+    "bbox": true,
+    "keypoints": true,
+    "mask": true,
+    "pose_confidence": true,
+    "segmentation_confidence": true,
+    "EXIF": true,
+    "exact_focal_length": true,
+    "exact_camera_distance": true,
+    "copyright_status": true,
+    "real_mental_state": true
+  }
+}

@@ -1,0 +1,42 @@
+contract_version: "1.0"
+phase:
+  id: "N2B1P"
+  title: "Local-research content-addressed cache promotion"
+  status: "AUTHORIZED"
+capability: "N2B1P_LOCAL_RESEARCH_CACHE_PROMOTION"
+data_gate:
+  id: "G1_CALIBRATION_20"
+  status: "AUTHORIZED_CACHE_ONLY_NO_PHOTO_READ"
+  allowed_assets: "three N2B1R evidence-bound model payloads only; no real photo reads"
+approval:
+  owner_n2b1p: "approvals/owner_n2b1p_cache_promotion.yaml"
+  n2b1r_evidence: "research/N2B1R_acquisition_evidence.json"
+  n2b1r_register: "research/N2B1R_local_research_artifact_register.json"
+  n2b1p_promotion_evidence: "research/N2B1P_cache_promotion_evidence.json"
+  n2b1p_runtime_configuration: "approvals/n2b1p_runtime_configuration.json"
+required_before_promotion:
+  - "strict-load current state, N2B1P approval, task, N2B1R evidence, and N2B1R register"
+  - "bind exactly three approved artifact IDs, filenames, byte counts, and local SHA-256 values"
+  - "strict-load the one approved runtime configuration and bind its configuration digest and cache-root identity"
+  - "verify external quarantine and cache parents are non-reparse, outside Git and runtime, and non-overlapping"
+  - "verify selected quarantine run manifest, payload identity, byte count, and SHA-256 before copy"
+  - "use handle-bound source open, exclusive staging, atomic handle-relative directory rename, and post-copy reread"
+allowed_actions:
+  - "copy one approved quarantined payload into its local-SHA-256 content-addressed cache directory"
+  - "write one path-redacted external cache manifest adjacent to the promoted payload"
+  - "verify an existing cache hit without mutation when its manifest and payload exactly match"
+forbidden:
+  - "source_photo_read_or_directory_enumeration"
+  - "source_photo_exif_or_sqlite_ingest_write"
+  - "model_load_or_inference"
+  - "cuda_execution_or_dependency_install"
+  - "mask_skeleton_cutout_thumbnail_embedding_or_other_derivative"
+  - "final_cache_or_quarantine_delete"
+  - "network_request_or_download"
+  - "cloud_image_processing"
+  - "Docker_WSL_driver_or_CUDA_system_configuration_change"
+  - "main_app_OpenClaw_G2_G3_or_more_than_20_assets"
+  - "push_merge_pull_request_or_release"
+mandatory_stop:
+  value: true
+  rule: "Stop at N2B1P_REMEDIATION_COMPLETE_AWAITING_EXTERNAL_REVIEW after all three cache-promotion records validate. N2B2, model execution, CUDA, and real-photo access remain locked."

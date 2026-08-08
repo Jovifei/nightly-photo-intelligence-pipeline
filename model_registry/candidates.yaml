@@ -37,7 +37,29 @@ candidates:
     exact_revision: null
     code_license: "VERIFY_AT_ADOPTION"
     weight_license: "VERIFY_MODEL_CARD_AT_EXACT_REVISION"
-    status: "RESEARCH_ONLY"
+    status: "SUPERSEDED_FOR_N2B2_SYNTHETIC_VALIDATION"
+    superseded_by: "vlm-qwen3.5-9b-ollama-local"
+    supersession_scope: "N2B2 synthetic validation round only; not a permanent production model decision"
+    not_downloaded: true
+    not_executed: true
+  - id: "vlm-qwen3.5-9b-ollama-local"
+    purpose: "PHOTOGRAPHY_REASONING_MODEL"
+    official_source: "https://ollama.com/library/qwen3.5"
+    model_card: "https://huggingface.co/Qwen/Qwen3.5-9B"
+    exact_revision: null
+    code_license: "VERIFY_AT_ADOPTION"
+    weight_license: "LOCAL_OLLAMA_Q4_K_M_NO_REDISTRIBUTION"
+    status: "AUTHORIZED_FOR_N2B2_SYNTHETIC_VALIDATION_ONLY"
+    runtime: "LOCAL_OLLAMA_MULTIMODAL_Q4_K_M"
+    endpoint: "http://127.0.0.1:11434"
+    loopback_only: true
+    image_transport: "in-memory base64 bytes"
+    quantization_level: "Q4_K_M"
+    co_residency_forbidden: "TorchVision models must not co-reside on GPU"
+    forbidden_ops: ["ollama pull", "ollama create", "ollama copy", "ollama delete", "cloud API", "remote host"]
+    n2b2_role: "PHOTOGRAPHY_REASONING_MODEL"
+    n2b2_allowed_output: ["photographic_interpretation", "story_candidates", "director_prompts", "uncertainties", "reasoning_based_on_fact_ids", "input_fact_digest"]
+    n2b2_forbidden_output: ["person_count", "bbox", "keypoints", "mask", "pose_confidence", "segmentation_confidence", "EXIF", "exact_focal_length", "exact_camera_distance", "copyright_status", "real_mental_state"]
   - id: "embedding-tbd"
     purpose: "RETRIEVAL"
     official_source: null

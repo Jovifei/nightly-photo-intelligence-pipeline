@@ -93,3 +93,17 @@ build/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Assistant / comet-classic local scratch (not project source; must never be committed
+# or scanned as project artifacts). These hold assistant memory and comet OpenSpec/
+# Superpowers working drafts, not nightly-photo-intelligence-pipeline deliverables.
+.workbuddy/
+.superpowers/
+docs/superpowers/
+# Comet init byproduct scaffolding (agent skill symlinks, lockfile, ownership tmp files)
+# — tooling state, not N2B2 source. The OpenSpec *change* under docs/openspec/changes/
+# IS a tracked design artifact; only the tool's own config/scratch is ignored here.
+.agents/
+.codex/
+.comet/
+skills-lock.json

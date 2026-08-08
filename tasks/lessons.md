@@ -157,3 +157,11 @@
 - CLI denial is insufficient. Prove the same denial before permit issuance,
   source-file opening, EXIF access, and SQLite mutation with synthetic-only
   negative tests that exercise public library entry points.
+
+## 2026-08-01 delivery tracking correction
+
+- A completed code/test change is not a usable project handoff unless its
+  bounded task ledger and project Obsidian progress note state the same current
+  phase, evidence level, blocker, and next action. Before each task, add a
+  checkable plan; after each task, update its review and Obsidian note without
+  exposing source paths, filenames, images, identities, or model payloads.

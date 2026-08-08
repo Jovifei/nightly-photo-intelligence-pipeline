@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/task_contract_n2b1p_v1_0.schema.json",
+  "title": "N2B1P local-research cache-promotion contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "phase", "capability", "data_gate", "approval", "required_before_promotion", "allowed_actions", "forbidden", "mandatory_stop"],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "phase": {"type": "object", "additionalProperties": false, "required": ["id", "title", "status"], "properties": {"id": {"const": "N2B1P"}, "title": {"type": "string", "minLength": 1}, "status": {"const": "AUTHORIZED"}}},
+    "capability": {"const": "N2B1P_LOCAL_RESEARCH_CACHE_PROMOTION"},
+    "data_gate": {"type": "object", "additionalProperties": false, "required": ["id", "status", "allowed_assets"], "properties": {"id": {"const": "G1_CALIBRATION_20"}, "status": {"const": "AUTHORIZED_CACHE_ONLY_NO_PHOTO_READ"}, "allowed_assets": {"const": "three N2B1R evidence-bound model payloads only; no real photo reads"}}},
+    "approval": {"type": "object", "additionalProperties": false, "required": ["owner_n2b1p", "n2b1r_evidence", "n2b1r_register", "n2b1p_promotion_evidence", "n2b1p_runtime_configuration"], "properties": {"owner_n2b1p": {"const": "approvals/owner_n2b1p_cache_promotion.yaml"}, "n2b1r_evidence": {"const": "research/N2B1R_acquisition_evidence.json"}, "n2b1r_register": {"const": "research/N2B1R_local_research_artifact_register.json"}, "n2b1p_promotion_evidence": {"const": "research/N2B1P_cache_promotion_evidence.json"}, "n2b1p_runtime_configuration": {"const": "approvals/n2b1p_runtime_configuration.json"}}},
+    "required_before_promotion": {"type": "array", "minItems": 5, "uniqueItems": true, "items": {"type": "string"}},
+    "allowed_actions": {"type": "array", "minItems": 3, "uniqueItems": true, "items": {"type": "string"}},
+    "forbidden": {"type": "array", "minItems": 11, "uniqueItems": true, "items": {"type": "string"}},
+    "mandatory_stop": {"type": "object", "additionalProperties": false, "required": ["value", "rule"], "properties": {"value": {"const": true}, "rule": {"type": "string", "minLength": 1}}}
+  }
+}

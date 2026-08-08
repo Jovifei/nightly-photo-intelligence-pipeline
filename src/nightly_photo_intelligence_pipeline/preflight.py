@@ -628,10 +628,173 @@ def _check_n2b1r_authorization(root: Path, state: dict[str, Any]) -> CheckResult
         )
 
 
+def _check_n2b1p_authorization(root: Path, state: dict[str, Any]) -> CheckResult:
+    """Validate N2B1P controls without opening a quarantine payload or photo."""
+    try:
+        schemas = root / "schemas"
+        approval = yaml.safe_load(
+            (root / "approvals" / "owner_n2b1p_cache_promotion.yaml").read_text(encoding="utf-8")
+        )
+        task = yaml.safe_load(
+            (root / "tasks" / "phase_n2b1p_local_research_cache_promotion.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        evidence = load_json_strict(root / "research" / "N2B1R_acquisition_evidence.json")
+        promotion_evidence = load_json_strict(
+            root / "research" / "N2B1P_cache_promotion_evidence.json"
+        )
+        runtime_configuration = load_json_strict(
+            root / "approvals" / "n2b1p_runtime_configuration.json"
+        )
+        register = load_json_strict(
+            root / "research" / "N2B1R_local_research_artifact_register.json"
+        )
+        task_index = load_json_strict(root / "tasks" / "index.json")
+        checks = [
+            (load_json_strict(schemas / "project_state_v1_7.schema.json"), state),
+            (
+                load_json_strict(schemas / "owner_n2b1p_cache_promotion_v1_0.schema.json"),
+                approval,
+            ),
+            (load_json_strict(schemas / "task_contract_n2b1p_v1_0.schema.json"), task),
+            (load_json_strict(schemas / "n2b1r_acquisition_evidence_v1.schema.json"), evidence),
+            (
+                load_json_strict(schemas / "n2b1p_cache_promotion_evidence_v1.schema.json"),
+                promotion_evidence,
+            ),
+            (
+                load_json_strict(schemas / "n2b1p_runtime_configuration_v1_0.schema.json"),
+                runtime_configuration,
+            ),
+            (load_json_strict(schemas / "n2b1r_artifact_register_v1.schema.json"), register),
+            (load_json_strict(schemas / "task_index_v1_2.schema.json"), task_index),
+        ]
+        if any(_validate_schema(schema, value) for schema, value in checks):
+            return CheckResult(
+                name="current_authorization_contracts",
+                status=FAIL,
+                notes="N2B1P authorization schema validation failed",
+            )
+        auth = state.get("authorization", {})
+        phases = state.get("phase_status", {})
+        gates = auth.get("capability_gates", {})
+        active = auth.get("active_execution", {})
+        index_entry = next(
+            (item for item in task_index.get("authorized", []) if item.get("phase") == "N2B1P"),
+            None,
+        )
+        required_locked = (
+            "N2B",
+            "N2B1",
+            "N2B1_Q",
+            "N2B1_P",
+            "N2B2",
+            "N3",
+            "N4",
+            "N5",
+            "N6",
+            "N7",
+            "N8",
+        )
+        from .local_research_promotion import (
+            load_authorized_promotion,
+            verify_promoted_artifact,
+        )
+
+        artifacts = {
+            load_authorized_promotion(artifact_id, project_root=root).local_sha256
+            for artifact_id in (
+                "torchvision-keypointrcnn-resnet50-fpn-coco-v1",
+                "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1",
+                "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1",
+            )
+        }
+        cache_results = {
+            verify_promoted_artifact(artifact_id, project_root=root).status
+            for artifact_id in (
+                "torchvision-keypointrcnn-resnet50-fpn-coco-v1",
+                "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1",
+                "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1",
+            )
+        }
+        if not all(
+            (
+                phases.get("N2B0_7") == "APPROVED_COMPLETE",
+                phases.get("N2B1R") == "ACQUISITION_COMPLETE",
+                phases.get("N2B1P") == "AUTHORIZED",
+                gates.get("N2B1R_LOCAL_RESEARCH_MODEL_ACQUISITION") == "ACQUISITION_COMPLETE",
+                gates.get("N2B1P_LOCAL_RESEARCH_CACHE_PROMOTION") == "AUTHORIZED",
+                auth.get("real_model_execution") == "NOT_AUTHORIZED",
+                auth.get("network_access") == "DENY_BY_DEFAULT",
+                active
+                == {
+                    "phase": "N2B1P",
+                    "capability": "N2B1P_LOCAL_RESEARCH_CACHE_PROMOTION",
+                    "source_photo_content_read": "NOT_AUTHORIZED",
+                    "source_photo_exif_read": "NOT_AUTHORIZED",
+                    "sqlite_ingest_write": "NOT_AUTHORIZED",
+                },
+                all(phases.get(phase) == "LOCKED" for phase in required_locked),
+                isinstance(index_entry, dict),
+                (index_entry or {}).get("file")
+                == "phase_n2b1p_local_research_cache_promotion.yaml",
+                (index_entry or {}).get("capability") == "N2B1P_LOCAL_RESEARCH_CACHE_PROMOTION",
+                len(artifacts) == 3,
+                promotion_evidence.get("result")
+                == "N2B1P_REMEDIATION_COMPLETE_AWAITING_EXTERNAL_REVIEW",
+                promotion_evidence.get("prohibited_actions")
+                == {
+                    "source_photo_or_exif_read": "NOT_PERFORMED",
+                    "sqlite_ingest_write": "NOT_PERFORMED",
+                    "model_load_or_inference": "NOT_PERFORMED",
+                    "cuda_execution": "NOT_PERFORMED",
+                    "dependency_install": "NOT_PERFORMED",
+                    "derived_image_or_model_output": "NOT_PERFORMED",
+                    "network_request_or_download": "NOT_PERFORMED",
+                    "cache_or_quarantine_delete": "NOT_PERFORMED",
+                },
+                state.get("required_stop_after")
+                == {
+                    "condition": "N2B1P_REMEDIATION_COMPLETE_AWAITING_EXTERNAL_REVIEW",
+                    "next_action": "EXTERNAL_REVIEW_N2B1P_REMEDIATION",
+                },
+                cache_results == {"CACHE_HIT"},
+            )
+        ):
+            return CheckResult(
+                name="current_authorization_contracts",
+                status=FAIL,
+                notes="N2B1P authorization boundary is inconsistent or broadened",
+            )
+        return CheckResult(
+            name="current_authorization_contracts",
+            status=PASS,
+            evidence=(
+                "N2B1P cache promotion is bound to three local-research artifacts; "
+                "model execution and source-photo access remain denied"
+            ),
+        )
+    except DuplicateJsonMemberError:
+        return CheckResult(
+            name="current_authorization_contracts",
+            status=FAIL,
+            notes=NPI_DUPLICATE_JSON_MEMBER,
+        )
+    except Exception:  # noqa: BLE001
+        return CheckResult(
+            name="current_authorization_contracts",
+            status=FAIL,
+            notes="N2B1P authorization contract validation failed",
+        )
+
+
 def _check_authorization() -> CheckResult:  # noqa: PLR0911
     root = find_project_root()
     try:
         state = load_json_strict(root / "PROJECT_STATE.json")
+        if state.get("schema_version") == "1.7":
+            return _check_n2b1p_authorization(root, state)
         if state.get("schema_version") == "1.6":
             return _check_n2b1r_authorization(root, state)
         if state.get("schema_version") == "1.5":
@@ -894,10 +1057,46 @@ def _check_git_baselines() -> CheckResult:
     def git(*args: str) -> tuple[int, str]:
         return _run(["git", "-C", str(root), *args])
 
+    def result(checks: list[bool], *, failure_notes: str, pass_evidence: str) -> CheckResult:
+        return CheckResult(
+            name="git_stage_baselines",
+            status=PASS if all(checks) else FAIL,
+            evidence=pass_evidence if all(checks) else "",
+            notes=failure_notes if not all(checks) else "",
+        )
+
     try:
         state = load_json_strict(root / "PROJECT_STATE.json")
     except Exception:  # noqa: BLE001
         state = {}
+    if state.get("schema_version") == "1.7":
+        n2b0_6 = "eb2eaeb61f1c21923d131a115d63edbcdebd8cb2"
+        n2b0_7 = "f2b1c38301d71da52b855f73de8a67908cb525ef"
+        n2b1r = "d3628e27334e819ba2d5944151447595e03f39f9"
+        checks = [
+            git("rev-parse", "n0-approved-2026-07-14") == (0, n0),
+            git("rev-parse", "n1-approved-2026-07-14") == (0, n1),
+            git("rev-parse", "g1-approved-2026-07-19") == (0, g1),
+            git("rev-parse", "n2b0-approved-2026-07-24") == (0, n2b0),
+            git("rev-parse", "n2b0-5-approved-2026-07-26") == (0, n2b0_5),
+            git("rev-parse", "n2b0-6-approved-2026-07-29") == (0, n2b0_6),
+            git("rev-parse", "n2b0-7-approved-2026-07-29") == (0, n2b0_7),
+            git("merge-base", "--is-ancestor", n2b0_7, "HEAD")[0] == 0,
+            git("rev-list", "--count", f"{n2b0_6}..{n2b0_7}") == (0, "1"),
+            git("rev-list", "--count", f"{n2b0_7}..{n2b1r}") == (0, "1"),
+            git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "1"),
+            git("rev-list", "--merges", "HEAD") == (0, ""),
+            git("status", "--porcelain", "--untracked-files=all") == (0, ""),
+        ]
+        return result(
+            checks,
+            failure_notes="Git baseline or N2B1P cache-promotion commit topology mismatch",
+            pass_evidence=(
+                "N0/N1/G1/N2A/N2B0/N2B0.5/N2B0.6/N2B0.7 tags intact; "
+                "one N2B1R and one N2B1P commit; no merge; worktree clean"
+            ),
+        )
+
     if state.get("schema_version") == "1.6":
         n2b0_6 = "eb2eaeb61f1c21923d131a115d63edbcdebd8cb2"
         n2b0_7 = "f2b1c38301d71da52b855f73de8a67908cb525ef"
@@ -915,16 +1114,10 @@ def _check_git_baselines() -> CheckResult:
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),
         ]
-        if not all(checks):
-            return CheckResult(
-                name="git_stage_baselines",
-                status=FAIL,
-                notes="Git baseline or N2B1R governance commit topology mismatch",
-            )
-        return CheckResult(
-            name="git_stage_baselines",
-            status=PASS,
-            evidence=(
+        return result(
+            checks,
+            failure_notes="Git baseline or N2B1R governance commit topology mismatch",
+            pass_evidence=(
                 "N0/N1/G1/N2A/N2B0/N2B0.5/N2B0.6/N2B0.7 tags intact; "
                 "one N2B1R governance commit; no merge; worktree clean"
             ),
@@ -945,16 +1138,10 @@ def _check_git_baselines() -> CheckResult:
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),
         ]
-        if not all(checks):
-            return CheckResult(
-                name="git_stage_baselines",
-                status=FAIL,
-                notes="Git baseline or N2B0.7 commit topology mismatch",
-            )
-        return CheckResult(
-            name="git_stage_baselines",
-            status=PASS,
-            evidence=(
+        return result(
+            checks,
+            failure_notes="Git baseline or N2B0.7 commit topology mismatch",
+            pass_evidence=(
                 "N0/N1/G1/N2A/N2B0/N2B0.5/N2B0.6 tags intact; one N2B0.7 commit; "
                 "no merge; worktree clean"
             ),
@@ -978,16 +1165,10 @@ def _check_git_baselines() -> CheckResult:
         git("rev-list", "--merges", "HEAD") == (0, ""),
         git("status", "--porcelain", "--untracked-files=all") == (0, ""),
     ]
-    if not all(checks):
-        return CheckResult(
-            name="git_stage_baselines",
-            status=FAIL,
-            notes="Git baseline or N2B0.6 commit topology mismatch",
-        )
-    return CheckResult(
-        name="git_stage_baselines",
-        status=PASS,
-        evidence=(
+    return result(
+        checks,
+        failure_notes="Git baseline or N2B0.6 commit topology mismatch",
+        pass_evidence=(
             "N0/N1/G1/N2A/N2B0/N2B0.5 tags intact; one N2B0.6 commit; no merge; worktree clean"
         ),
     )

@@ -1,0 +1,126 @@
+{
+  "review_verdict": "PASS",
+  "independent_reviewer": "workbuddy-independent-reviewer (comet-classic workflow)",
+  "external_review": {
+    "reviewed_at_utc": "2026-08-06T14:01:27Z",
+    "method": "independent on-disk SHA-256 recomputation + evidence-binding cross-check",
+    "all_three_artifacts_cache_hit_verified": true,
+    "prohibited_actions_confirmed": true,
+    "notes": "Independent reviewer recomputed SHA-256 of all 3 promoted .pth files in EXTERNAL_REDACTED_CONTENT_ADDRESSED_NON_REPARSE and confirmed exact match to local_sha256 plus exact byte sizes (13097061/44356159/237034793). Cross-checked id/filename/byte_count/local_sha256 against N2B1R acquisition evidence, artifact register, and owner approval - all identical. cache_manifest_sha256 matches each adjacent path-redacted cache_manifest.json; cache_root_identity 15cb613d... matches runtime config. runtime configuration_digest 462e9996... and n2b1r_evidence_sha256 d1bc6014... both match. prohibited_actions all NOT_PERFORMED; cache parents non-reparse and outside Git/runtime; result+mandatory_stop+next_action correct (no advance to N2B2/model/CUDA). Project verifier tools/verify_handoff.py N2B1P-specific checks all PASS (4/4) with canonical verify_promoted_artifact returning CACHE_HIT for all 3. NOTE: verifier repo-wide MANIFEST.sha256 check fails on 3 unrelated files (.gitignore, model_registry/candidates.yaml, tasks/todo.md) due to later N2B2 planning edits - outside N2B1P scope; not edited by this review."
+  },
+  "schema_version": "1.1",
+  "stage": "N2B1P",
+  "result": "N2B1P_REMEDIATION_COMPLETE_AWAITING_EXTERNAL_REVIEW",
+  "n2b1r_evidence_sha256": "d1bc60148b09640b41a299009b84a81bf38f5e6b06ab5135661a9aa62382150c",
+  "runtime_configuration": {
+    "path": "approvals/n2b1p_runtime_configuration.json",
+    "configuration_digest": "462e999671c2073ef8d02cbeaccd561cbc1f4734c4f312baee079a8134040bfd",
+    "cache_root_identity": "15cb613d6ecb39247799adca13c6fcbfd9c9edb72c223db7cebf1ee975d7b2ba"
+  },
+  "storage": {
+    "quarantine": "EXTERNAL_REDACTED_NON_REPARSE",
+    "cache": "EXTERNAL_REDACTED_CONTENT_ADDRESSED_NON_REPARSE",
+    "retained_quarantine": true,
+    "cache_layout": "<local_sha256>/<approved_filename>"
+  },
+  "artifacts": [
+    {
+      "id": "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1",
+      "byte_count": 13097061,
+      "local_sha256": "d234d4eae9d55d5f76de18b77cf0dc62c66fe5c5482758209d00f950c92bb280",
+      "transfer_manifest_sha256": "d25cc430637cf19ebab31cd5aa99e344b4da58cd2b04db245c165181e3ff1f12",
+      "cache_manifest_sha256": "aec6b1cbbaf68ce7cc2f8378308f1b3d1d2c1f1e0556302e528aafc7ee1f23d8",
+      "legacy_cache_manifest_binding": {
+        "payload": {
+          "schema_version": "1.0",
+          "artifact_id": "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1",
+          "approved_evidence_id": "d25cc430637cf19ebab31cd5aa99e344b4da58cd2b04db245c165181e3ff1f12",
+          "approved_payload_sha256": "d234d4eae9d55d5f76de18b77cf0dc62c66fe5c5482758209d00f950c92bb280",
+          "payload_size_bytes": 13097061,
+          "cache_relative_path": "d234d4eae9d55d5f76de18b77cf0dc62c66fe5c5482758209d00f950c92bb280/lraspp_mobilenet_v3_large-d234d4ea.pth",
+          "cache_filename": "lraspp_mobilenet_v3_large-d234d4ea.pth",
+          "promotion_source": "N2B1R_COPY_ONLY",
+          "promotion_completed_at_utc": "2026-07-29T15:28:02.8514077Z",
+          "cache_root_identity": "15cb613d6ecb39247799adca13c6fcbfd9c9edb72c223db7cebf1ee975d7b2ba",
+          "runtime_configuration_digest": "462e999671c2073ef8d02cbeaccd561cbc1f4734c4f312baee079a8134040bfd",
+          "raw_cache_manifest_sha256": "aec6b1cbbaf68ce7cc2f8378308f1b3d1d2c1f1e0556302e528aafc7ee1f23d8"
+        },
+        "binding_payload_sha256": "909d98cf298cc9a3c71384dfbd04362d23ae0951745225c087381932006f9ba0"
+      },
+      "first_pass_status": "PROMOTED",
+      "verification_status": "CACHE_HIT",
+      "weights_rights": "UNKNOWN_NOT_COMMERCIAL_CLEARANCE",
+      "use_restriction": "LOCAL_RESEARCH_ONLY_NO_REDISTRIBUTION"
+    },
+    {
+      "id": "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1",
+      "byte_count": 44356159,
+      "local_sha256": "fc3c493d68e89cc31ef488c803d5d7dd2f3190fb570598faa49fef69be8e5e70",
+      "transfer_manifest_sha256": "676054e8b2c366f591a1bbe1b4521e2ef7abdb08197534ca95eb11d434dd0cae",
+      "cache_manifest_sha256": "1ae9348ad3d5486eab6ae527dcc1f7e70f2feb8e459d5b43d29f6e0007766f29",
+      "legacy_cache_manifest_binding": {
+        "payload": {
+          "schema_version": "1.0",
+          "artifact_id": "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1",
+          "approved_evidence_id": "676054e8b2c366f591a1bbe1b4521e2ef7abdb08197534ca95eb11d434dd0cae",
+          "approved_payload_sha256": "fc3c493d68e89cc31ef488c803d5d7dd2f3190fb570598faa49fef69be8e5e70",
+          "payload_size_bytes": 44356159,
+          "cache_relative_path": "fc3c493d68e89cc31ef488c803d5d7dd2f3190fb570598faa49fef69be8e5e70/deeplabv3_mobilenet_v3_large-fc3c493d.pth",
+          "cache_filename": "deeplabv3_mobilenet_v3_large-fc3c493d.pth",
+          "promotion_source": "N2B1R_COPY_ONLY",
+          "promotion_completed_at_utc": "2026-07-29T15:28:04.2981285Z",
+          "cache_root_identity": "15cb613d6ecb39247799adca13c6fcbfd9c9edb72c223db7cebf1ee975d7b2ba",
+          "runtime_configuration_digest": "462e999671c2073ef8d02cbeaccd561cbc1f4734c4f312baee079a8134040bfd",
+          "raw_cache_manifest_sha256": "1ae9348ad3d5486eab6ae527dcc1f7e70f2feb8e459d5b43d29f6e0007766f29"
+        },
+        "binding_payload_sha256": "45195e56f6480e321903b0ec9c9aeb81c75be22d4163d22a57ae772049693757"
+      },
+      "first_pass_status": "PROMOTED",
+      "verification_status": "CACHE_HIT",
+      "weights_rights": "UNKNOWN_NOT_COMMERCIAL_CLEARANCE",
+      "use_restriction": "LOCAL_RESEARCH_ONLY_NO_REDISTRIBUTION"
+    },
+    {
+      "id": "torchvision-keypointrcnn-resnet50-fpn-coco-v1",
+      "byte_count": 237034793,
+      "local_sha256": "fc266e953d2b302cdcbb9ae66f71f6b0d4649928bf02dc573961e361e4918926",
+      "transfer_manifest_sha256": "90da3eb000813841a980dcbaf8e1b31fdde15283a9d6b969156c5eb0ae21ce43",
+      "cache_manifest_sha256": "1eac996e7088ef26bc3b35cdf25d267e0b127dab23df6f5f4c4f67cb980e58fb",
+      "legacy_cache_manifest_binding": {
+        "payload": {
+          "schema_version": "1.0",
+          "artifact_id": "torchvision-keypointrcnn-resnet50-fpn-coco-v1",
+          "approved_evidence_id": "90da3eb000813841a980dcbaf8e1b31fdde15283a9d6b969156c5eb0ae21ce43",
+          "approved_payload_sha256": "fc266e953d2b302cdcbb9ae66f71f6b0d4649928bf02dc573961e361e4918926",
+          "payload_size_bytes": 237034793,
+          "cache_relative_path": "fc266e953d2b302cdcbb9ae66f71f6b0d4649928bf02dc573961e361e4918926/keypointrcnn_resnet50_fpn_coco-fc266e95.pth",
+          "cache_filename": "keypointrcnn_resnet50_fpn_coco-fc266e95.pth",
+          "promotion_source": "N2B1R_COPY_ONLY",
+          "promotion_completed_at_utc": "2026-07-29T15:28:06.0935243Z",
+          "cache_root_identity": "15cb613d6ecb39247799adca13c6fcbfd9c9edb72c223db7cebf1ee975d7b2ba",
+          "runtime_configuration_digest": "462e999671c2073ef8d02cbeaccd561cbc1f4734c4f312baee079a8134040bfd",
+          "raw_cache_manifest_sha256": "1eac996e7088ef26bc3b35cdf25d267e0b127dab23df6f5f4c4f67cb980e58fb"
+        },
+        "binding_payload_sha256": "f739fe4de06ac80eb58e0d1783a0aa8840b0101e41488f5a1726195d4a74a6e9"
+      },
+      "first_pass_status": "PROMOTED",
+      "verification_status": "CACHE_HIT",
+      "weights_rights": "UNKNOWN_NOT_COMMERCIAL_CLEARANCE",
+      "use_restriction": "LOCAL_RESEARCH_ONLY_NO_REDISTRIBUTION"
+    }
+  ],
+  "prohibited_actions": {
+    "source_photo_or_exif_read": "NOT_PERFORMED",
+    "sqlite_ingest_write": "NOT_PERFORMED",
+    "model_load_or_inference": "NOT_PERFORMED",
+    "cuda_execution": "NOT_PERFORMED",
+    "dependency_install": "NOT_PERFORMED",
+    "derived_image_or_model_output": "NOT_PERFORMED",
+    "network_request_or_download": "NOT_PERFORMED",
+    "cache_or_quarantine_delete": "NOT_PERFORMED"
+  },
+  "mandatory_stop": {
+    "value": true,
+    "next_action": "EXTERNAL_REVIEW_N2B1P_REMEDIATION"
+  }
+}

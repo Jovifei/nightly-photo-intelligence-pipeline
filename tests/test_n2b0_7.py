@@ -81,23 +81,23 @@ def test_n2b0_7_preserves_exact_variant_identity_and_official_domains(project_ro
         assert candidate["official_digest"]["complete_sha256_published"] is False
 
 
-def test_n2b0_7_is_approved_while_n2b1r_keeps_execution_and_photo_io_locked(project_root) -> None:
+def test_n2b0_7_is_approved_while_n2b1p_keeps_execution_and_photo_io_locked(project_root) -> None:
     state = _read_json(project_root, "PROJECT_STATE.json")
     assert state["phase_status"]["N2B0_7"] == "APPROVED_COMPLETE"
     assert state["required_stop_after"] == {
-        "condition": "N2B1R_ACQUISITION_AWAITING_LOCAL_VERIFICATION",
-        "next_action": "VERIFY_QUARANTINE_AND_CREATE_N2B1P_AUTHORIZATION",
+        "condition": "N2B1P_REMEDIATION_COMPLETE_AWAITING_EXTERNAL_REVIEW",
+        "next_action": "EXTERNAL_REVIEW_N2B1P_REMEDIATION",
     }
     assert state["authorization"]["large_model_downloads"] == "AUTHORIZED_RESEARCH_ONLY"
     assert state["authorization"]["real_model_execution"] == "NOT_AUTHORIZED"
     assert state["authorization"]["active_execution"] == {
-        "phase": "N2B1R",
-        "capability": "N2B1R_LOCAL_RESEARCH_MODEL_ACQUISITION",
+        "phase": "N2B1P",
+        "capability": "N2B1P_LOCAL_RESEARCH_CACHE_PROMOTION",
         "source_photo_content_read": "NOT_AUTHORIZED",
         "source_photo_exif_read": "NOT_AUTHORIZED",
         "sqlite_ingest_write": "NOT_AUTHORIZED",
     }
     assert all(
         state["phase_status"][phase] == "LOCKED"
-        for phase in ("N2B1", "N2B1P", "N2B1_Q", "N2B1_P", "N2B2", "N3")
+        for phase in ("N2B1", "N2B1_Q", "N2B1_P", "N2B2", "N3")
     )

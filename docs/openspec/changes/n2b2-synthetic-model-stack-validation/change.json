@@ -1,0 +1,9 @@
+{
+  "name": "n2b2-synthetic-model-stack-validation",
+  "description": "N2B2 synthetic photography model-stack validation — control-plane artifacts only. Model execution withheld pending N2B1P independent external review (Section 2 hard gate of CODEX_N2B2_Execution_Prompt.md).",
+  "type": "minor",
+  "status": "proposed",
+  "created": "2026-08-06",
+  "owner": "Jovi",
+  "reviewed_by": null
+}

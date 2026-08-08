@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.0",
+  "stage": "N2B1P_REMEDIATION",
+  "result": "CACHE_BASELINE_PASS",
+  "captured_at_utc": "2026-08-01T12:07:42.8018750Z",
+  "cache_root": "EXTERNAL_REDACTED_CONTENT_ADDRESSED_NON_REPARSE",
+  "artifacts": [
+    {
+      "artifact_id": "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1",
+      "relative_path": "fc3c493d68e89cc31ef488c803d5d7dd2f3190fb570598faa49fef69be8e5e70/deeplabv3_mobilenet_v3_large-fc3c493d.pth",
+      "filename": "deeplabv3_mobilenet_v3_large-fc3c493d.pth",
+      "size_bytes": 44356159,
+      "payload_sha256": "fc3c493d68e89cc31ef488c803d5d7dd2f3190fb570598faa49fef69be8e5e70",
+      "manifest_path": "fc3c493d68e89cc31ef488c803d5d7dd2f3190fb570598faa49fef69be8e5e70/cache_manifest.json",
+      "manifest_size_bytes": 605,
+      "manifest_sha256": "1ae9348ad3d5486eab6ae527dcc1f7e70f2feb8e459d5b43d29f6e0007766f29",
+      "payload_file_attributes": "Archive",
+      "payload_reparse_state": "NOT_REPARSE",
+      "payload_last_write_time_utc": "2026-07-29T15:28:04.2675695Z",
+      "manifest_file_attributes": "Archive",
+      "manifest_reparse_state": "NOT_REPARSE",
+      "manifest_last_write_time_utc": "2026-07-29T15:28:04.2981285Z"
+    },
+    {
+      "artifact_id": "torchvision-keypointrcnn-resnet50-fpn-coco-v1",
+      "relative_path": "fc266e953d2b302cdcbb9ae66f71f6b0d4649928bf02dc573961e361e4918926/keypointrcnn_resnet50_fpn_coco-fc266e95.pth",
+      "filename": "keypointrcnn_resnet50_fpn_coco-fc266e95.pth",
+      "size_bytes": 237034793,
+      "payload_sha256": "fc266e953d2b302cdcbb9ae66f71f6b0d4649928bf02dc573961e361e4918926",
+      "manifest_path": "fc266e953d2b302cdcbb9ae66f71f6b0d4649928bf02dc573961e361e4918926/cache_manifest.json",
+      "manifest_size_bytes": 601,
+      "manifest_sha256": "1eac996e7088ef26bc3b35cdf25d267e0b127dab23df6f5f4c4f67cb980e58fb",
+      "payload_file_attributes": "Archive",
+      "payload_reparse_state": "NOT_REPARSE",
+      "payload_last_write_time_utc": "2026-07-29T15:28:05.9264798Z",
+      "manifest_file_attributes": "Archive",
+      "manifest_reparse_state": "NOT_REPARSE",
+      "manifest_last_write_time_utc": "2026-07-29T15:28:06.0935243Z"
+    },
+    {
+      "artifact_id": "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1",
+      "relative_path": "d234d4eae9d55d5f76de18b77cf0dc62c66fe5c5482758209d00f950c92bb280/lraspp_mobilenet_v3_large-d234d4ea.pth",
+      "filename": "lraspp_mobilenet_v3_large-d234d4ea.pth",
+      "size_bytes": 13097061,
+      "payload_sha256": "d234d4eae9d55d5f76de18b77cf0dc62c66fe5c5482758209d00f950c92bb280",
+      "manifest_path": "d234d4eae9d55d5f76de18b77cf0dc62c66fe5c5482758209d00f950c92bb280/cache_manifest.json",
+      "manifest_size_bytes": 599,
+      "manifest_sha256": "aec6b1cbbaf68ce7cc2f8378308f1b3d1d2c1f1e0556302e528aafc7ee1f23d8",
+      "payload_file_attributes": "Archive",
+      "payload_reparse_state": "NOT_REPARSE",
+      "payload_last_write_time_utc": "2026-07-29T15:28:02.8413798Z",
+      "manifest_file_attributes": "Archive",
+      "manifest_reparse_state": "NOT_REPARSE",
+      "manifest_last_write_time_utc": "2026-07-29T15:28:02.8514077Z"
+    }
+  ],
+  "cache_tree_file_count": 6,
+  "cache_tree_manifest_sha256": "0746cb1fdb3849218810948a059eabf9bcec4b61947883762c31eb54e3c9206b",
+  "cache_reparse_inventory_sha256": "706910b4eb801b9ca8504133715262ae0c87bf84d3f5c54d3e01fd3930693b3f",
+  "cache_tree_reparse_points": 0,
+  "cache_root_attributes": "Directory",
+  "cache_root_reparse_state": "NOT_REPARSE"
+}
