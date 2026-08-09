@@ -52,3 +52,9 @@ VERIFY_HANDOFF
 2. 不尝试“自动修复”系统；
 3. 记录命令、事实与影响；
 4. 输出 `BLOCKED_AWAITING_OWNER_DECISION`。
+## Bounded N2B2 review-candidate addendum (2026-08-09)
+
+Also read `tasks/phase_n2b2_runtime_gpu_validation_and_s20_preparation.yaml`
+and `approvals/owner_n2b2_runtime_gpu_validation_receipt.yaml`. These permit
+synthetic GPU validation and S20 planning only; they do not change
+`PROJECT_STATE.json` or the production `N2B2=LOCKED` state.

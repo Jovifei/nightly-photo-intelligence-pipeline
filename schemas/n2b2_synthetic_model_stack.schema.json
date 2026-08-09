@@ -26,15 +26,18 @@
     "git_state"
   ],
   "properties": {
-    "schema_version": {"const": "1.0"},
+    "schema_version": {"const": "1.1"},
     "stage": {"const": "N2B2"},
     "result": {"type": "string", "enum": [
-      "N2B2_SYNTHETIC_MODEL_STACK_VALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW",
+      "N2B2_SYNTHETIC_SMOKE_VALIDATION_COMPLETE_AWAITING_OWNER_REVIEW",
+      "N2B2_S20_NOT_AUTHORIZED",
       "N2B2_EXECUTION_BLOCKED_N2B1P_NOT_APPROVED",
       "N2B2_LOCAL_QWEN_IDENTITY_MISMATCH",
       "N2B2_LOCAL_QWEN_VISION_CAPABILITY_MISSING",
-      "N2B2_SYNTHETIC_FIXTURE_CAPABILITY_INSUFFICIENT",
+      "N2B2_SYNTHETIC_FIXTURE_CAPABILITY_REQUIRES_DESIGN_REVIEW",
       "N2B2_GPU_LIMIT_EXCEEDED",
+      "N2B2_GPU_RUNTIME_UNAVAILABLE",
+      "N2B2_QWEN_GPU_USAGE_NOT_CONFIRMED",
       "N2B2_FACT_IMMUTABILITY_VIOLATION",
       "N2B2_QWEN_SCHEMA_OR_PROVENANCE_FAILED",
       "N2B2_MODEL_UNLOAD_FAILED",
@@ -46,21 +49,22 @@
     "torchvision_cache": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/cache_entry"}},
     "synthetic_fixture_gate": {"type": "object", "additionalProperties": false, "required": ["s3_passed", "s20_passed_or_honest_stop", "fixture_manifest_frozen"], "properties": {"s3_passed": {"type": "boolean"}, "s20_passed_or_honest_stop": {"type": "boolean"}, "fixture_manifest_frozen": {"type": "boolean"}}},
     "s3_smoke": {"type": "object", "additionalProperties": false, "required": ["case_count", "cases"], "properties": {"case_count": {"const": 3}, "cases": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "string"}}}},
-    "s20_validation": {"type": "object", "additionalProperties": false, "required": ["case_count", "cases", "completed_or_honest_stop"], "properties": {"case_count": {"const": 20}, "cases": {"type": "array"}, "completed_or_honest_stop": {"type": "boolean"}}},
+    "s20_validation": {"type": "object", "additionalProperties": false, "required": ["status", "case_count", "cases", "completed_or_honest_stop"], "properties": {"status": {"type": "string"}, "case_count": {"type": "integer", "minimum": 0, "maximum": 20}, "cases": {"type": "array"}, "completed_or_honest_stop": {"type": "boolean"}}},
     "fact_immutability": {"type": "object", "additionalProperties": false, "required": ["byte_identical_repeats", "fact_digest_stable"], "properties": {"byte_identical_repeats": {"type": "boolean"}, "fact_digest_stable": {"type": "boolean"}}},
-    "qwen_provenance": {"type": "object", "additionalProperties": false, "required": ["input_fact_digest_echoed", "all_fact_ids_valid", "forbidden_field_count"], "properties": {"input_fact_digest_echoed": {"type": "boolean"}, "all_fact_ids_valid": {"type": "boolean"}, "forbidden_field_count": {"const": 0}}},
+    "qwen_provenance": {"type": "object", "additionalProperties": false, "required": ["status", "input_fact_digest_echoed", "all_fact_ids_valid", "forbidden_field_count"], "properties": {"status": {"type": "string"}, "input_fact_digest_echoed": {"type": "boolean"}, "all_fact_ids_valid": {"type": "boolean"}, "forbidden_field_count": {"type": "integer", "minimum": 0}}},
     "repeatability": {"type": "object", "additionalProperties": false, "required": ["schema_pass", "story_type_set_consistent", "no_fact_conflict"], "properties": {"schema_pass": {"type": "boolean"}, "story_type_set_consistent": {"type": "boolean"}, "no_fact_conflict": {"type": "boolean"}}},
     "gpu_metrics": {"$ref": "#/$defs/gpu_metrics"},
     "unload_verification": {"type": "object", "additionalProperties": false, "required": ["api_ps_clear", "gpu_returned_to_baseline"], "properties": {"api_ps_clear": {"type": "boolean"}, "gpu_returned_to_baseline": {"type": "boolean"}}},
     "hard_counts": {"type": "object", "additionalProperties": false, "required": ["real_photo_read_count", "real_exif_read_count", "g1_source_access", "sqlite_write_count", "app_write_count", "obsidian_write_count"], "properties": {"real_photo_read_count": {"const": 0}, "real_exif_read_count": {"const": 0}, "g1_source_access": {"const": 0}, "sqlite_write_count": {"const": 0}, "app_write_count": {"const": 0}, "obsidian_write_count": {"const": 0}}},
     "model_download_bytes": {"const": 0},
-    "quality_gates": {"type": "object", "additionalProperties": false, "required": ["pytest_failed", "ruff_exit", "mypy_exit", "quality_pass", "sensitive_violations", "preflight_fail", "handoff_fail"], "properties": {"pytest_failed": {"const": 0}, "ruff_exit": {"const": 0}, "mypy_exit": {"const": 0}, "quality_pass": {"type": "integer", "minimum": 7}, "sensitive_violations": {"const": 0}, "preflight_fail": {"const": 0}, "handoff_fail": {"const": 0}}},
+    "quality_gates": {"type": "object", "additionalProperties": false, "required": ["status", "pytest", "ruff", "mypy", "sensitive_scan", "preflight", "handoff"], "properties": {"status": {"enum": ["NOT_PERFORMED", "PASS", "FAIL"]}, "pytest": {"$ref": "#/$defs/quality_gate"}, "ruff": {"$ref": "#/$defs/quality_gate"}, "mypy": {"$ref": "#/$defs/quality_gate"}, "sensitive_scan": {"$ref": "#/$defs/quality_gate"}, "preflight": {"$ref": "#/$defs/quality_gate"}, "handoff": {"$ref": "#/$defs/quality_gate"}}},
     "git_state": {"type": "object", "additionalProperties": false, "required": ["start_head", "final_head", "n2b1p_baseline", "n2b2_commit", "pushed", "merged"], "properties": {"start_head": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "final_head": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "n2b1p_baseline": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "n2b2_commit": {"type": ["string", "null"]}, "pushed": {"const": false}, "merged": {"const": false}}}
   },
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "model_identity": {"type": "object", "additionalProperties": false, "required": ["model_name", "full_local_digest", "size_bytes", "format", "family", "parameter_size", "quantization_level", "capabilities", "license", "modified_at", "ollama_version"], "properties": {"model_name": {"const": "qwen3.5:9b"}, "full_local_digest": {"type": "string", "minLength": 1}, "size_bytes": {"type": "integer", "minimum": 1}, "format": {"type": "string"}, "family": {"type": "string"}, "parameter_size": {"type": "string"}, "quantization_level": {"const": "Q4_K_M"}, "capabilities": {"type": "array", "contains": {"const": "vision"}}, "license": {"type": "string"}, "modified_at": {"type": "string", "format": "date-time"}, "ollama_version": {"type": "string"}}},
     "cache_entry": {"type": "object", "additionalProperties": false, "required": ["artifact_id", "role", "verification_status"], "properties": {"artifact_id": {"enum": ["torchvision-keypointrcnn-resnet50-fpn-coco-v1", "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1", "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1"]}, "role": {"enum": ["POSE_BASELINE_SMOKE", "SEGMENTATION_PRIMARY", "SEGMENTATION_QUALITY_COMPARATOR"]}, "verification_status": {"const": "CACHE_HIT"}}},
-    "gpu_metrics": {"type": "object", "additionalProperties": false, "required": ["gpu_baseline_mib", "gpu_peak_mib", "ollama_size_vram", "cpu_rss_peak", "cold_load_duration_s", "per_image_duration_s", "unload_duration_s"], "properties": {"gpu_baseline_mib": {"type": "integer", "minimum": 0}, "gpu_peak_mib": {"type": "integer", "maximum": 11500}, "ollama_size_vram": {"type": "integer", "minimum": 0}, "cpu_rss_peak": {"type": "integer", "minimum": 0}, "cold_load_duration_s": {"type": "number", "maximum": 180}, "per_image_duration_s": {"type": "number", "maximum": 120}, "unload_duration_s": {"type": "number", "minimum": 0}}}
+    "gpu_metrics": {"type": "object", "additionalProperties": true, "required": ["gpu_baseline_mib", "gpu_peak_mib", "gpu_after_torchvision_unload_mib", "ollama_size_vram", "cpu_rss_peak", "cold_load_duration_s", "per_image_duration_s", "unload_duration_s"], "properties": {"gpu_baseline_mib": {"type": "integer", "minimum": 0}, "gpu_peak_mib": {"type": "integer", "maximum": 11500}, "gpu_after_torchvision_unload_mib": {"type": "integer", "minimum": 0}, "ollama_size_vram": {"type": "integer", "minimum": 0}, "cpu_rss_peak": {"type": "integer", "minimum": 0}, "cold_load_duration_s": {"type": "number", "maximum": 180}, "per_image_duration_s": {"type": "number", "maximum": 120}, "unload_duration_s": {"type": "number", "minimum": 0}}},
+    "quality_gate": {"type": "object", "additionalProperties": false, "required": ["status", "exit_code", "detail"], "properties": {"status": {"enum": ["NOT_PERFORMED", "PASS", "FAIL"]}, "exit_code": {"type": ["integer", "null"]}, "detail": {"type": "string"}}}
   }
 }

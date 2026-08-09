@@ -43,3 +43,12 @@ G2/G3、主 App、OpenClaw、push、merge 和 release 仍须等待各自硬门�
 - 报告和停止条件。
 
 详见 `docs/31_agent_execution_playbook.md`。
+## Bounded N2B2 review-candidate addendum (2026-08-09)
+
+The Owner receipt `approvals/owner_n2b2_runtime_gpu_validation_receipt.yaml`
+authorizes only the named synthetic GPU validation and S20 preparation task.
+It does not alter `PROJECT_STATE.json`, does not unlock production N2B2, and
+does not authorize real-photo, G1, EXIF, SQLite, App, S20 execution, or later
+phases. The active bounded task is
+`tasks/phase_n2b2_runtime_gpu_validation_and_s20_preparation.yaml`; all
+production lock semantics remain enforced.

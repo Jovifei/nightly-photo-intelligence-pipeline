@@ -9,13 +9,15 @@ Hard gates (CODEX §4, §9, §10):
 * Images are sent as in-memory Base64; no absolute path is ever placed in a
   request or response.
 * Generation uses ``stream=false``, ``think=false``, a strict JSON Schema
-  ``format``, and ``keep_alive=0``; ``thinking`` is never persisted.
-* After generation the client polls ``/api/ps`` to confirm the model unloaded.
+  ``format``; the caller controls residency with ``keep_alive``.
+* The GPU validation path keeps the model alive while sampling ``/api/ps`` and
+  explicitly unloads it after the evidence window.
 """
 
 from __future__ import annotations
 
 import json
+import time
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -88,12 +90,18 @@ class OllamaClient:
         if entry is None:
             raise ValueError(f"{QWEN_MODEL} not found in Ollama; N2B2_LOCAL_QWEN_IDENTITY_MISMATCH")
         details = entry.get("details", {})
-        capabilities = details.get("capabilities", [])
+        # /api/tags does not reliably include capabilities; /api/show is the
+        # authoritative local identity and capability record.
+        shown = self._request("POST", "/api/show", {"name": QWEN_MODEL})
+        shown_details = shown.get("details", {})
+        capabilities = shown.get("capabilities", details.get("capabilities", []))
         if "vision" not in capabilities:
             raise ValueError(
                 "qwen3.5:9b lacks vision capability; N2B2_LOCAL_QWEN_VISION_CAPABILITY_MISSING"
             )
-        quantization = details.get("quantization_level", "")
+        quantization = shown_details.get(
+            "quantization_level", details.get("quantization_level", "")
+        )
         if quantization != QWEN_QUANTIZATION:
             raise ValueError(
                 f"quantization {quantization!r} != {QWEN_QUANTIZATION}; "
@@ -104,12 +112,12 @@ class OllamaClient:
             model_name=QWEN_MODEL,
             full_local_digest=entry.get("digest", ""),
             size_bytes=int(entry.get("size", 0)),
-            format=details.get("format", ""),
-            family=details.get("family", ""),
-            parameter_size=details.get("parameter_size", ""),
+            format=shown_details.get("format", details.get("format", "")),
+            family=shown_details.get("family", details.get("family", "")),
+            parameter_size=shown_details.get("parameter_size", details.get("parameter_size", "")),
             quantization_level=quantization,
             capabilities=list(capabilities),
-            license=details.get("license", "unknown"),
+            license=shown.get("license", details.get("license", "unknown")),
             modified_at=entry.get("modified_at", ""),
             ollama_version=str(version),
         )
@@ -120,6 +128,7 @@ class OllamaClient:
         *,
         image_b64: str,
         case_id: str,
+        vision_facts: dict[str, Any] | None = None,
         fact_digest: str,
         fact_ids: list[str],
         uncertainties: list[dict[str, Any]],
@@ -128,6 +137,7 @@ class OllamaClient:
         num_predict: int = 1200,
         temperature: float = 0.0,
         seed: int | None = None,
+        keep_alive: int | None = 0,
     ) -> dict[str, Any]:
         """Run one VLM reasoning pass and return the parsed JSON object.
 
@@ -136,7 +146,10 @@ class OllamaClient:
         """
 
         prompt = self._build_prompt(
-            fact_digest=fact_digest, fact_ids=fact_ids, uncertainties=uncertainties
+            vision_facts=vision_facts or {},
+            fact_digest=fact_digest,
+            fact_ids=fact_ids,
+            uncertainties=uncertainties,
         )
         payload: dict[str, Any] = {
             "model": QWEN_MODEL,
@@ -151,8 +164,9 @@ class OllamaClient:
                 "temperature": temperature,
                 **({"seed": seed} if seed is not None else {}),
             },
-            "keep_alive": 0,
         }
+        if keep_alive is not None:
+            payload["keep_alive"] = keep_alive
         out = self._request("POST", "/api/generate", payload)
         text = out.get("response", "")
         parsed = (
@@ -168,11 +182,17 @@ class OllamaClient:
 
     @staticmethod
     def _build_prompt(
-        *, fact_digest: str, fact_ids: list[str], uncertainties: list[dict[str, Any]]
+        *,
+        vision_facts: dict[str, Any],
+        fact_digest: str,
+        fact_ids: list[str],
+        uncertainties: list[dict[str, Any]],
     ) -> str:
+        facts_json = json.dumps(vision_facts, sort_keys=True, separators=(",", ":"))
         return (
             "You are a photography interpreter. Use ONLY the provided deterministic "
-            f"vision facts (fact_digest={fact_digest}). Referenced fact_ids: {fact_ids}. "
+            f"complete vision facts={facts_json}; fact_digest={fact_digest}. "
+            f"Referenced fact_ids: {fact_ids}. "
             f"Known uncertainties: {uncertainties}. "
             "Produce photographic_interpretation, story_candidates (safe/narrative/dynamic), "
             "director_prompts (standard/dramatic/plan_b/technical), and uncertainties. "
@@ -182,7 +202,54 @@ class OllamaClient:
         )
 
     # -- unload -----------------------------------------------------------
-    def verify_unloaded(self) -> bool:
+    def _ps_models(self) -> list[dict[str, Any]]:
         ps = self._request("GET", "/api/ps")
         models = ps.get("models", [])
-        return not any(m.get("name") == QWEN_MODEL for m in models)
+        return models if isinstance(models, list) else []
+
+    def ps_vram_mib(self) -> int:
+        """Return the local Ollama-reported VRAM size, if present."""
+
+        total = 0
+        for model in self._ps_models():
+            value = model.get("size_vram", model.get("size_vram_bytes", 0))
+            try:
+                total += int(value) // (1024 * 1024) if int(value) > 100000 else int(value)
+            except (TypeError, ValueError):
+                continue
+        return total
+
+    def ps_snapshot(self) -> list[dict[str, Any]]:
+        """Return a redacted local residency snapshot for runtime evidence."""
+
+        return [
+            {
+                "name": model.get("name"),
+                "size_vram": model.get("size_vram", model.get("size_vram_bytes", 0)),
+                "size": model.get("size", 0),
+            }
+            for model in self._ps_models()
+        ]
+
+    def unload(self) -> None:
+        """Request an explicit unload without sending an image or path."""
+
+        self._request(
+            "POST",
+            "/api/generate",
+            {
+                "model": QWEN_MODEL,
+                "prompt": "",
+                "stream": False,
+                "keep_alive": 0,
+            },
+        )
+
+    def verify_unloaded(self, timeout_s: float = 60.0) -> bool:
+        deadline = time.monotonic() + timeout_s
+        while True:
+            if not any(model.get("name") == QWEN_MODEL for model in self._ps_models()):
+                return True
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(1.0)

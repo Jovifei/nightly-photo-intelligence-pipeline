@@ -477,34 +477,69 @@ def n2b2_run(
     backend: str = typer.Option(
         "real", "--backend", help="real (torch + Ollama) | fake (torch-free, tests only)"
     ),
-    s20_manifest_dir: Path = typer.Option(
+    s20_manifest_dir: Path | None = typer.Option(
         None, "--s20-manifest-dir", help="frozen S20 synthetic fixture dir (Git-external)"
     ),
+    s3_manifest_dir: Path = typer.Option(
+        None, "--s3-manifest-dir", help="frozen S3 synthetic fixture dir (Git-external)"
+    ),
     out: Path = typer.Option(None, "--out", help="Git-external runtime output dir"),
+    s3_only: bool = typer.Option(False, "--s3-only", help="run the authorized S3 smoke only"),
+    device: str | None = typer.Option(
+        None, "--device", help="explicit real backend device: cuda or cpu"
+    ),
 ) -> None:
-    """Validate the synthetic photography model stack (CODEX N2B2).
-
-    Pure synthetic data only. Refuses real photos, G1, EXIF, SQLite writes,
-    App and Obsidian access. Stops at the precise contract state on any
-    boundary violation (e.g. insufficient synthetic fixtures, model unload
-    failure, Qwen provenance failure).
-    """
+    """Run the bounded, synthetic-only N2B2 S3 smoke."""
     import subprocess  # noqa: PLC0415
-    from io import BytesIO  # noqa: PLC0415
 
     import yaml  # noqa: PLC0415
-    from PIL import Image  # noqa: PLC0415
 
     from ._paths import find_project_root
     from .json_strict import load_json_strict
-    from .n2b2_synthetic import N2B2RunConfig, SyntheticFixture, run_n2b2
+    from .n2b1p_integrity import load_n2b1p_runtime_configuration
+    from .n2b2_synthetic import N2B2RunConfig, load_s3_manifest, run_n2b2
+    from .n2b2_synthetic.n2b1p_gate import validate_n2b1p_review
 
     root = find_project_root()
+    if not s3_only:
+        typer.echo("N2B2_S3_ONLY_REQUIRED")
+        raise typer.Exit(code=int(ExitCode.CLI_USAGE_ERROR))
+    if backend == "real" and device not in {"cuda", "cpu"}:
+        typer.echo("N2B2_DEVICE_REQUIRED: real backend requires --device cuda|cpu")
+        raise typer.Exit(code=int(ExitCode.CLI_USAGE_ERROR))
+    if s20_manifest_dir is not None:
+        typer.echo("N2B2_S20_NOT_AUTHORIZED")
+        raise typer.Exit(code=int(ExitCode.PARTIAL_FAILURE))
+    if s3_manifest_dir is None or out is None:
+        typer.echo("N2B2_S3_MANIFEST_AND_EXTERNAL_OUT_REQUIRED")
+        raise typer.Exit(code=int(ExitCode.CLI_USAGE_ERROR))
+
+    def _external_path(value: Path, label: str) -> Path:
+        resolved = value.resolve()
+        try:
+            inside = os.path.commonpath((str(root.resolve()), str(resolved))) == str(root.resolve())
+        except ValueError:
+            # On Windows, a runtime on another drive cannot be inside the Git
+            # project; treat the drive boundary as an external-path proof.
+            inside = False
+        if inside:
+            raise RuntimeError(f"{label} must be Git-external")
+        return resolved
+
     schemas_dir = root / "schemas"
     reasoning_schema = load_json_strict(schemas_dir / "n2b2_photography_reasoning.schema.json")
-    _vision_schema = load_json_strict(schemas_dir / "n2b2_vision_fact_contract.schema.json")
+    vision_schema = load_json_strict(schemas_dir / "n2b2_vision_fact_contract.schema.json")
     evidence = load_json_strict(root / "research" / "N2B1P_cache_promotion_evidence.json")
-    n2b1p_review_passed = bool(evidence.get("review_verdict") == "PASS")
+    n2b1p_review_passed, review_detail = validate_n2b1p_review(evidence)
+    typer.echo(f"N2B1P review gate: {'PASS' if n2b1p_review_passed else 'FAIL'} ({review_detail})")
+    completion_record = root / "approvals" / "phase_completion_N2B1P.yaml"
+    if not completion_record.is_file():
+        typer.echo("OWNER_PHASE_COMPLETION_RECORD_NOT_PRESENT")
+    state = load_json_strict(root / "PROJECT_STATE.json")
+    phase_status = state.get("phase_status", {})
+    if phase_status.get("N2B2") != "LOCKED":
+        typer.echo("N2B2_PROJECT_STATE_BOUNDARY_VIOLATION")
+        raise typer.Exit(code=int(ExitCode.PARTIAL_FAILURE))
 
     def _sha(rev: str) -> str:
         return subprocess.run(
@@ -512,11 +547,9 @@ def n2b2_run(
         ).stdout.strip()
 
     start_head = _sha("HEAD")
-    # The N2B1P candidate must never be hardcoded. It is the single commit stacked on the
-    # immutable N2B1R parent, and it is amended in place (squash-to-one is required by
-    # tools/verify_handoff.py), so any literal SHA would go stale on the next amend.
-    # Resolve it from the parent anchor recorded in the N2B2 task contract and fail closed
-    # unless exactly one commit is found, rather than attesting to an ambiguous baseline.
+    # Resolve the reviewed N2B1P commit as the direct child of the immutable N2B1R
+    # parent.  A later N2B2 review-candidate commit is intentionally not treated as
+    # the N2B1P baseline.
     n2b2_contract = yaml.safe_load(
         (root / "tasks" / "phase_n2b2_synthetic_model_stack_validation.yaml").read_text(
             encoding="utf-8"
@@ -524,67 +557,48 @@ def n2b2_run(
     )
     n2b1p_parent = str(n2b2_contract["prerequisite"]["n2b1p_parent_sha"])
     _candidates = subprocess.run(
-        ["git", "rev-list", f"{_sha(n2b1p_parent)}..HEAD"],
+        ["git", "rev-list", "--parents", f"{_sha(n2b1p_parent)}..HEAD"],
         cwd=str(root),
         capture_output=True,
         text=True,
         check=True,
-    ).stdout.split()
-    if len(_candidates) != 1:
+    ).stdout.splitlines()
+    direct_children = [
+        line.split()[0]
+        for line in _candidates
+        if len(line.split()) == 2 and line.split()[1] == _sha(n2b1p_parent)
+    ]
+    if len(direct_children) != 1:
         raise RuntimeError(
-            "N2B2_N2B1P_BASELINE_UNRESOLVABLE: expected exactly 1 commit in "
-            f"{n2b1p_parent}..HEAD, found {len(_candidates)}"
+            "N2B2_N2B1P_BASELINE_UNRESOLVABLE: expected one direct N2B1P child, "
+            f"found {len(direct_children)}"
         )
-    n2b1p_sha = _candidates[0]
+    n2b1p_sha = direct_children[0]
 
-    cache_root = root / "npi-model-cache"
-    runtime_out = out or (root / ".npi_runtime" / "n2b2")
+    manifest_dir = _external_path(s3_manifest_dir, "S3 manifest")
+    runtime_out = _external_path(out, "runtime output")
+    s3_fixtures = load_s3_manifest(manifest_dir, project_root=root)
+    # Use only the strictly validated, Git-external cache root from the
+    # approved N2B1P runtime configuration; never fall back to a repo cache.
+    cache_root = load_n2b1p_runtime_configuration(root).cache_root
     runtime_out.mkdir(parents=True, exist_ok=True)
 
     config = N2B2RunConfig(
         project_root=root,
         cache_root=cache_root,
-        fixtures_dir=root / "fixtures",
+        fixtures_dir=manifest_dir,
         runtime_out_dir=runtime_out,
-        backend=backend,  # type: ignore[arg-type]
+        backend=cast(Any, backend),
+        device=cast(Any, device or "cpu"),
+        s3_only=True,
     )
-
-    def _read(path: Path, case_id: str, expected: str = "processable") -> SyntheticFixture:
-        data = path.read_bytes()
-        with Image.open(BytesIO(data)) as img:
-            width, height = img.size
-        return SyntheticFixture(
-            case_id=case_id,
-            image_bytes=data,
-            width=width,
-            height=height,
-            expected_processability=expected,
-        )
-
-    s3_dir = root / "fixtures" / "three_image_smoke_set"
-    s3_fixtures = [
-        _read(p, f"n2b2-s3-{i:02d}")
-        for i, p in enumerate(sorted(s3_dir.glob("*.png")), start=1)
-        if p.is_file()
-    ]
-    s20_fixtures: list[SyntheticFixture] = []
-    if s20_manifest_dir is not None:
-        manifest = load_json_strict(Path(s20_manifest_dir) / "fixture_manifest.json")
-        for i, entry in enumerate(manifest.get("files", []), start=1):
-            fpath = Path(s20_manifest_dir) / entry["name"]
-            exp = (
-                "unsupported"
-                if entry.get("expected_processability") == "unsupported"
-                else "processable"
-            )
-            s20_fixtures.append(_read(fpath, f"n2b2-s20-{i:02d}", exp))
 
     result = run_n2b2(
         config=config,
         s3_fixtures=s3_fixtures,
-        s20_fixtures=s20_fixtures,
+        s20_fixtures=[],
         reasoning_schema=reasoning_schema,
-        vision_schema=_vision_schema,
+        vision_schema=vision_schema,
         n2b1p_sha=n2b1p_sha,
         n2b1p_review_passed=n2b1p_review_passed,
         start_head=start_head,
@@ -598,8 +612,118 @@ def n2b2_run(
     if result.stop_reason:
         typer.echo(f"stop_reason: {result.stop_reason}")
     typer.echo(f"summary: {summary_path}")
-    if result.result != "N2B2_SYNTHETIC_MODEL_STACK_VALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW":
+    if result.result != "N2B2_SYNTHETIC_SMOKE_VALIDATION_COMPLETE_AWAITING_OWNER_REVIEW":
         raise typer.Exit(code=int(ExitCode.PARTIAL_FAILURE))
+
+
+@n2b2_app.command("gpu-validate")
+@_run_safely
+def n2b2_gpu_validate(
+    s3_manifest_dir: Path = typer.Option(..., "--s3-manifest-dir"),
+    out: Path = typer.Option(..., "--out"),
+) -> None:
+    """Run CPU comparator, explicit CUDA probe, then the CUDA S3 smoke."""
+
+    from .json_strict import load_json_strict
+    from .n2b1p_integrity import load_n2b1p_runtime_configuration
+    from .n2b2_synthetic import N2B2RunConfig, load_s3_manifest, run_gpu_probe
+    from .n2b2_synthetic.metrics import MetricsCollector
+    from .n2b2_synthetic.n2b1p_gate import validate_n2b1p_review
+
+    root = find_project_root()
+    resolved_manifest = s3_manifest_dir.resolve()
+    resolved_out = out.resolve()
+    try:
+        inside = os.path.commonpath((str(root.resolve()), str(resolved_manifest))) == str(
+            root.resolve()
+        )
+    except ValueError:
+        inside = False
+    if inside:
+        raise RuntimeError("S3 manifest must be Git-external")
+    try:
+        inside = os.path.commonpath((str(root.resolve()), str(resolved_out))) == str(root.resolve())
+    except ValueError:
+        inside = False
+    if inside:
+        raise RuntimeError("GPU runtime output must be Git-external")
+
+    state = load_json_strict(root / "PROJECT_STATE.json")
+    if state.get("phase_status", {}).get("N2B2") != "LOCKED":
+        typer.echo("N2B2_PROJECT_STATE_BOUNDARY_VIOLATION")
+        raise typer.Exit(code=int(ExitCode.PARTIAL_FAILURE))
+    evidence = load_json_strict(root / "research" / "N2B1P_cache_promotion_evidence.json")
+    review_passed, review_detail = validate_n2b1p_review(evidence)
+    typer.echo(f"N2B1P review gate: {'PASS' if review_passed else 'FAIL'} ({review_detail})")
+    if not review_passed:
+        typer.echo("N2B2_EXECUTION_BLOCKED_N2B1P_NOT_APPROVED")
+        raise typer.Exit(code=int(ExitCode.PARTIAL_FAILURE))
+
+    vision_schema = load_json_strict(root / "schemas" / "n2b2_vision_fact_contract.schema.json")
+    fixtures = load_s3_manifest(resolved_manifest, project_root=root)
+    cache_root = load_n2b1p_runtime_configuration(root).cache_root
+    probe_config = N2B2RunConfig(
+        project_root=root,
+        cache_root=cache_root,
+        fixtures_dir=resolved_manifest,
+        runtime_out_dir=resolved_out,
+        backend="real",
+        device="cuda",
+        s3_only=True,
+    )
+    resolved_out.mkdir(parents=True, exist_ok=True)
+    baseline_mib = MetricsCollector().sample_baseline()
+    if baseline_mib >= probe_config.gpu_limit_mib - 1024:
+        blocked = {
+            "schema_version": "n2b2-gpu-runtime-metrics-v1",
+            "status": "N2B2_GPU_RUNTIME_UNAVAILABLE",
+            "stop_reason": "INSUFFICIENT_EXCLUSIVE_HEADROOM",
+            "fixture_count": len(fixtures),
+            "devices": {},
+            "formal_cuda_gate": False,
+            "hard_counts": {
+                "real_photo_read_count": 0,
+                "real_exif_read_count": 0,
+                "g1_source_access": 0,
+                "sqlite_write_count": 0,
+                "app_write_count": 0,
+                "obsidian_write_count": 0,
+            },
+            "runtime": {
+                "gpu_baseline_mib": baseline_mib,
+                "gpu_limit_mib": probe_config.gpu_limit_mib,
+                "required_reserve_mib": 1024,
+                "comfyui_listener": "NOT_FOUND; no process stopped",
+            },
+        }
+        (resolved_out / "gpu_runtime_metrics.json").write_text(
+            json_strict_dump(blocked), encoding="utf-8"
+        )
+        typer.echo("N2B2_GPU_RUNTIME_UNAVAILABLE: INSUFFICIENT_EXCLUSIVE_HEADROOM")
+        typer.echo(f"GPU probe metrics: {resolved_out / 'gpu_runtime_metrics.json'}")
+        raise typer.Exit(code=int(ExitCode.PARTIAL_FAILURE))
+    probe = run_gpu_probe(
+        cache_root=probe_config.cache_root,
+        cache_subdirs=probe_config.cache_subdirs,
+        fixtures=fixtures,
+        vision_schema=vision_schema,
+    )
+    (resolved_out / "gpu_runtime_metrics.json").write_text(
+        json_strict_dump(probe), encoding="utf-8"
+    )
+    typer.echo(f"GPU probe metrics: {resolved_out / 'gpu_runtime_metrics.json'}")
+    if not probe.get("formal_cuda_gate", False):
+        typer.echo("N2B2_GPU_RUNTIME_UNAVAILABLE")
+        raise typer.Exit(code=int(ExitCode.PARTIAL_FAILURE))
+
+    n2b2_run(
+        backend="real",
+        s20_manifest_dir=None,
+        s3_manifest_dir=resolved_manifest,
+        out=resolved_out,
+        s3_only=True,
+        device="cuda",
+    )
 
 
 def json_strict_dump(obj: object) -> str:

@@ -1,67 +1,46 @@
-"""N2B2 synthetic model-stack validation orchestrator (CODEX §11).
+"""S3-only N2B2 synthetic smoke orchestrator.
 
-Executes the strict, sequential pipeline:
-
-    state reconciliation -> cache verify -> Ollama identity ->
-    S3 (3 fixtures) -> S20 (20 fixtures, only if S3 passes) ->
-    build facts -> Qwen reasoning -> unload -> strict validation.
-
-It enforces every hard boundary of the contract:
-
-* synthetic-only data gate (hard_counts all 0);
-* no real photo / G1 / EXIF / SQLite / App / Obsidian access;
-* TorchVision models and the VLM are never resident simultaneously;
-* deterministic facts are byte-identical across repeats;
-* the run stops at the precise contract stop-state on any violation.
+The order is deliberately batch-oriented: Pose for all three images, unload;
+LRASPP for all three, unload; DeepLab for all three, unload; build and repeat
+facts; only then call the local Qwen model. S20 is not part of this runner.
 """
 
 from __future__ import annotations
 
 import base64
-import hashlib
+import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
 from .config import (
+    GPU_RUNTIME_UNAVAILABLE,
+    QWEN_GPU_USAGE_NOT_CONFIRMED,
+    ROLE_MODEL_MAP,
     S3_CASE_COUNT,
-    S20_CASE_COUNT,
     TorchVisionRole,
 )
+from .fixture_manifest import SyntheticFixture
 from .metrics import MetricsCollector
 from .ollama_client import ModelIdentity, OllamaClient
 from .qwen_reasoning import validate_reasoning
-from .torchvision_loader import load_backend, verify_cache_hit
-from .vision_facts import build_vision_facts, compute_fact_digest
+from .torchvision_loader import TorchVisionBackend, load_backend, verify_cache_hit
+from .vision_facts import build_vision_facts, canonicalize, compute_fact_digest
 
-# Stop / completion states (mirror n2b2_synthetic_model_stack.schema.json).
-R_COMPLETE = "N2B2_SYNTHETIC_MODEL_STACK_VALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW"
+R_COMPLETE = "N2B2_SYNTHETIC_SMOKE_VALIDATION_COMPLETE_AWAITING_OWNER_REVIEW"
+R_S20_NOT_AUTHORIZED = "N2B2_S20_NOT_AUTHORIZED"
 R_BLOCKED_N2B1P = "N2B2_EXECUTION_BLOCKED_N2B1P_NOT_APPROVED"
 R_QWEN_IDENTITY = "N2B2_LOCAL_QWEN_IDENTITY_MISMATCH"
 R_QWEN_VISION = "N2B2_LOCAL_QWEN_VISION_CAPABILITY_MISSING"
-R_FIXTURE_INSUFFICIENT = "N2B2_SYNTHETIC_FIXTURE_CAPABILITY_INSUFFICIENT"
+R_FIXTURE_REVIEW = "N2B2_SYNTHETIC_FIXTURE_CAPABILITY_REQUIRES_DESIGN_REVIEW"
 R_GPU = "N2B2_GPU_LIMIT_EXCEEDED"
 R_FACT_IMMUTABLE = "N2B2_FACT_IMMUTABILITY_VIOLATION"
 R_QWEN_PROVENANCE = "N2B2_QWEN_SCHEMA_OR_PROVENANCE_FAILED"
 R_UNLOAD = "N2B2_MODEL_UNLOAD_FAILED"
 R_CHANGES = "N2B2_CHANGES_REQUIRED"
-
-
-@dataclass
-class SyntheticFixture:
-    case_id: str
-    image_bytes: bytes
-    width: int
-    height: int
-    expected_processability: str = "processable"
-
-
-@dataclass
-class _CaseResult:
-    case_id: str
-    facts: dict[str, Any]
-    reasoning: dict[str, Any]
-    forbidden_field_count: int
+R_GPU_RUNTIME = GPU_RUNTIME_UNAVAILABLE
+R_QWEN_GPU = QWEN_GPU_USAGE_NOT_CONFIRMED
 
 
 @dataclass
@@ -72,358 +51,287 @@ class N2B2Result:
 
 
 class ResidencyGate:
-    """Ensures TorchVision and the VLM are never resident at once (CODEX §12)."""
+    """Track model residency and expose stage order for evidence/tests."""
 
     def __init__(self) -> None:
         self._held: set[str] = set()
+        self.events: list[str] = []
 
     def acquire(self, kind: str) -> None:
         if kind == "qwen" and self._held:
-            raise RuntimeError("concurrent residency: TorchVision model still resident before VLM")
+            raise RuntimeError("concurrent residency: TorchVision model still resident before Qwen")
         if kind.startswith("torchvision") and "qwen" in self._held:
-            raise RuntimeError("concurrent residency: VLM still resident before TorchVision")
+            raise RuntimeError("concurrent residency: Qwen still resident before TorchVision")
         self._held.add(kind)
+        self.events.append(f"acquire:{kind}")
 
     def release(self, kind: str) -> None:
         self._held.discard(kind)
-
-    def clear(self) -> None:
-        self._held.clear()
+        self.events.append(f"release:{kind}")
 
 
 def _image_b64(data: bytes) -> str:
     return base64.b64encode(data).decode("ascii")
 
 
-def _process_case(
+def _facts_bytes(facts: dict[str, Any]) -> bytes:
+    return canonicalize(facts).encode("utf-8")
+
+
+def _validate_facts(facts: dict[str, Any], schema: dict[str, Any]) -> list[str]:
+    try:
+        import jsonschema  # type: ignore[import-untyped]  # noqa: PLC0415
+
+        validator = jsonschema.Draft202012Validator(schema)
+        return [error.message for error in validator.iter_errors(facts)]
+    except Exception as exc:  # pragma: no cover - dependency/runtime dependent
+        return [f"vision schema validation unavailable: {type(exc).__name__}"]
+
+
+def _run_stage(
     *,
-    backend: Any,
-    ollama: OllamaClient,
-    fixture: SyntheticFixture,
+    backend: TorchVisionBackend,
+    fixtures: list[SyntheticFixture],
+    role: TorchVisionRole,
+    operation: Callable[[bytes], Any],
     residency: ResidencyGate,
     metrics: MetricsCollector,
-    reasoning_schema: dict[str, Any],
-    generator_version: str,
-    seed: int | None,
-) -> _CaseResult:
-    image_bytes = fixture.image_bytes
-    image_sha = hashlib.sha256(image_bytes).hexdigest()
-
-    # --- deterministic vision (unload between each model) ---
-    residency.acquire("torchvision:pose")
-    pose = backend.detect_pose(image_bytes)
-    metrics.note_gpu_peak()
-    residency.release("torchvision:pose")
-
-    residency.acquire("torchvision:seg-primary")
-    seg_primary = backend.segment(image_bytes, TorchVisionRole.SEGMENTATION_PRIMARY)
-    metrics.note_gpu_peak()
-    residency.release("torchvision:seg-primary")
-
-    residency.acquire("torchvision:seg-comparator")
-    seg_comparator = backend.segment(image_bytes, TorchVisionRole.SEGMENTATION_QUALITY_COMPARATOR)
-    metrics.note_gpu_peak()
-    residency.release("torchvision:seg-comparator")
-
-    facts = build_vision_facts(
-        case_id=fixture.case_id,
-        image_sha256=image_sha,
-        generator_version=generator_version,
-        seed=seed,
-        width=fixture.width,
-        height=fixture.height,
-        pose=pose,
-        seg_primary=seg_primary,
-        seg_comparator=seg_comparator,
+) -> list[Any]:
+    residency.acquire(f"torchvision:{role.value}")
+    values: list[Any] = []
+    started = time.perf_counter()
+    attestation = backend.runtime_attestation()
+    stage_record = metrics.begin_stage(
+        role=role.value,
+        model_name=ROLE_MODEL_MAP[role][0],
+        device=str(attestation.get("effective_device", attestation.get("device", "cpu"))),
+        dtype=str(attestation.get("dtype", "torch.float32")),
     )
+    try:
+        for fixture in fixtures:
+            image_started = time.perf_counter()
+            values.append(operation(fixture.image_bytes))
+            elapsed = time.perf_counter() - image_started
+            after = backend.runtime_attestation()
+            effective_device = str(after.get("effective_device", "cpu"))
+            input_device = str(after.get("input_device", "unknown"))
+            raw_output_device = str(after.get("raw_output_device", "unknown"))
+            if effective_device.startswith("cuda") and (
+                input_device != effective_device or raw_output_device != effective_device
+            ):
+                raise RuntimeError(
+                    f"{R_GPU_RUNTIME}: device attestation mismatch for {role.value}: "
+                    f"effective={effective_device}, input={input_device}, raw={raw_output_device}"
+                )
+            metrics.note_stage_inference(
+                stage_record,
+                seconds=elapsed,
+                input_device=input_device,
+                raw_output_device=raw_output_device,
+            )
+            metrics.note_gpu_peak()
+            metrics.note_cpu_rss()
+    finally:
+        stage_record["peak_torch_before_unload"] = metrics.torch_cuda_snapshot()
+        unload_started = time.perf_counter()
+        backend.unload(role)
+        unload_seconds = time.perf_counter() - unload_started
+        metrics.note_unload(unload_seconds)
+        metrics.end_stage(stage_record, unload_seconds=unload_seconds)
+        residency.release(f"torchvision:{role.value}")
+    metrics.note_cold_load(time.perf_counter() - started)
+    return values
 
-    # --- VLM reasoning (only after all TorchVision models released) ---
-    residency.acquire("qwen")
-    t0 = time.perf_counter()
-    reasoning = ollama.reason(
-        image_b64=_image_b64(image_bytes),
-        case_id=fixture.case_id,
-        fact_digest=facts["fact_digest"],
-        fact_ids=facts["fact_ids"],
-        uncertainties=facts["uncertainties"],
-        response_schema=reasoning_schema,
-        seed=seed,
-    )
-    metrics.note_per_image(time.perf_counter() - t0)
-    metrics.note_gpu_peak()
-    vr = validate_reasoning(
-        reasoning,
-        input_fact_digest=facts["fact_digest"],
-        valid_fact_ids=facts["fact_ids"],
-        schema=reasoning_schema,
-    )
-    unloaded = ollama.verify_unloaded()
-    metrics.note_unload(0.0)
-    residency.release("qwen")
-    if not unloaded:
-        raise RuntimeError(R_UNLOAD)
-    if not vr.ok:
-        raise RuntimeError(R_QWEN_PROVENANCE + ": " + "; ".join(vr.errors))
-    return _CaseResult(
-        case_id=fixture.case_id,
-        facts=facts,
-        reasoning=reasoning,
-        forbidden_field_count=vr.forbidden_field_count,
-    )
 
-
-def run_n2b2(  # noqa: PLR0911 - dispatcher with one explicit return per contract stop-state
+def _vision_chain(
     *,
-    config: Any,
-    s3_fixtures: list[SyntheticFixture],
-    s20_fixtures: list[SyntheticFixture],
-    reasoning_schema: dict[str, Any],
-    vision_schema: dict[str, Any],
-    n2b1p_sha: str,
-    n2b1p_review_passed: bool,
-    start_head: str,
-    ollama: OllamaClient | None = None,
-) -> N2B2Result:
-    """Run the full N2B2 synthetic validation. Returns a :class:`N2B2Result`."""
-
-    # 1. state reconciliation (CODEX §2)
-    if not n2b1p_review_passed:
-        return N2B2Result(
-            result=R_BLOCKED_N2B1P, stop_reason="N2B1P independent review not on disk"
+    backend: TorchVisionBackend,
+    fixtures: list[SyntheticFixture],
+    residency: ResidencyGate,
+    metrics: MetricsCollector,
+    schema: dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    pose = _run_stage(
+        backend=backend,
+        fixtures=fixtures,
+        role=TorchVisionRole.POSE_BASELINE_SMOKE,
+        operation=backend.detect_pose,
+        residency=residency,
+        metrics=metrics,
+    )
+    primary = _run_stage(
+        backend=backend,
+        fixtures=fixtures,
+        role=TorchVisionRole.SEGMENTATION_PRIMARY,
+        operation=lambda image: backend.segment(image, TorchVisionRole.SEGMENTATION_PRIMARY),
+        residency=residency,
+        metrics=metrics,
+    )
+    comparator = _run_stage(
+        backend=backend,
+        fixtures=fixtures,
+        role=TorchVisionRole.SEGMENTATION_QUALITY_COMPARATOR,
+        operation=lambda image: backend.segment(
+            image, TorchVisionRole.SEGMENTATION_QUALITY_COMPARATOR
+        ),
+        residency=residency,
+        metrics=metrics,
+    )
+    facts: list[dict[str, Any]] = []
+    errors: list[str] = []
+    for fixture, pose_result, primary_result, comparator_result in zip(
+        fixtures, pose, primary, comparator, strict=True
+    ):
+        item = build_vision_facts(
+            case_id=fixture.case_id,
+            image_sha256=fixture.image_sha256,
+            generator_version=fixture.generator_version,
+            seed=fixture.seed,
+            width=fixture.width,
+            height=fixture.height,
+            pose=pose_result,
+            seg_primary=primary_result,
+            seg_comparator=comparator_result,
         )
+        errors.extend(_validate_facts(item, schema))
+        facts.append(item)
+    return facts, errors
 
-    metrics = MetricsCollector()
-    residency = ResidencyGate()
 
-    # 2. TorchVision cache read-only verification (CACHE_HIT only)
-    try:
-        cache_entries = verify_cache_hit(config.cache_root, config.cache_subdirs)
-    except FileNotFoundError as exc:
-        return N2B2Result(result=R_CHANGES, stop_reason=str(exc))
+def run_gpu_probe(
+    *,
+    cache_root: Any,
+    cache_subdirs: dict[TorchVisionRole, str],
+    fixtures: list[SyntheticFixture],
+    vision_schema: dict[str, Any],
+) -> dict[str, Any]:
+    """Run the CPU comparator and explicit CUDA vision chains.
 
-    # 3. Ollama identity verification
-    client = ollama or OllamaClient(config.ollama_base_url)
-    try:
-        identity = client.verify_identity()
-    except ValueError as exc:
-        msg = str(exc)
-        if "VISION_CAPABILITY_MISSING" in msg:
-            return N2B2Result(result=R_QWEN_VISION, stop_reason=msg)
-        return N2B2Result(result=R_QWEN_IDENTITY, stop_reason=msg)
+    This probe deliberately excludes Qwen so its output can distinguish the
+    TorchVision device proof from the later VLM residency proof performed by
+    ``run_n2b2``.  A CUDA failure is returned as evidence; it is never
+    silently converted into a CPU result.
+    """
 
-    metrics.sample_baseline()
-    metrics.note_ollama_vram(identity.size_bytes // (1024 * 1024) if identity.size_bytes else 0)
-
-    hard_counts = {
-        "real_photo_read_count": 0,
-        "real_exif_read_count": 0,
-        "g1_source_access": 0,
-        "sqlite_write_count": 0,
-        "app_write_count": 0,
-        "obsidian_write_count": 0,
+    report: dict[str, Any] = {
+        "schema_version": "n2b2-gpu-runtime-metrics-v1",
+        "fixture_count": len(fixtures),
+        "devices": {},
+        "hard_counts": {
+            "real_photo_read_count": 0,
+            "real_exif_read_count": 0,
+            "g1_source_access": 0,
+            "sqlite_write_count": 0,
+            "app_write_count": 0,
+            "obsidian_write_count": 0,
+        },
     }
-
-    backend = load_backend(config.backend, config.cache_root, config.cache_subdirs)
-
-    # 4-14. S3 smoke
-    s3_cases: list[str] = []
-    s3_person_positive = False
-    s3_fact_repeat_ok = True
-    try:
-        for fx in s3_fixtures:
-            res = _process_case(
+    for device in ("cpu", "cuda"):
+        metrics = MetricsCollector()
+        metrics.sample_baseline()
+        backend = load_backend("real", cache_root, cache_subdirs, device=device)
+        residency = ResidencyGate()
+        device_report: dict[str, Any] = {
+            "requested_device": device,
+            "status": "NOT_PERFORMED",
+            "facts": [],
+            "schema_errors": [],
+            "stop_reason": None,
+        }
+        try:
+            facts, schema_errors = _vision_chain(
                 backend=backend,
-                ollama=client,
-                fixture=fx,
+                fixtures=fixtures,
                 residency=residency,
                 metrics=metrics,
-                reasoning_schema=reasoning_schema,
-                generator_version=config.generator_version,
-                seed=config.seed,
+                schema=vision_schema,
             )
-            s3_cases.append(fx.case_id)
-            if res.facts["person_count"] >= 1:
-                s3_person_positive = True
-            # immutability: re-run facts for the same image must be byte-identical
-            again = build_vision_facts(
-                case_id=fx.case_id,
-                image_sha256=hashlib.sha256(fx.image_bytes).hexdigest(),
-                generator_version=config.generator_version,
-                seed=config.seed,
-                width=fx.width,
-                height=fx.height,
-                pose=backend.detect_pose(fx.image_bytes),
-                seg_primary=backend.segment(fx.image_bytes, TorchVisionRole.SEGMENTATION_PRIMARY),
-                seg_comparator=backend.segment(
-                    fx.image_bytes, TorchVisionRole.SEGMENTATION_QUALITY_COMPARATOR
+            device_report["facts"] = facts
+            device_report["schema_errors"] = schema_errors
+            device_report["status"] = "PASS" if not schema_errors else "FAIL"
+        except Exception as exc:  # runtime evidence must preserve the real cause
+            device_report["status"] = "FAIL"
+            device_report["stop_reason"] = f"{type(exc).__name__}: {exc}"
+        finally:
+            backend.unload()
+            metrics.sample_after_unload()
+            try:
+                device_report["runtime_attestation"] = backend.runtime_attestation()
+            except Exception as exc:  # pragma: no cover - unavailable CUDA path
+                device_report["runtime_attestation"] = {
+                    "requested_device": device,
+                    "status": "UNAVAILABLE",
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+            device_report["metrics"] = {
+                "gpu_baseline_mib": metrics.gpu_baseline_mib,
+                "gpu_peak_mib": metrics.gpu_peak_mib,
+                "gpu_after_unload_mib": metrics.gpu_after_unload_mib,
+                "stage_records": metrics.stage_records,
+                "nvidia_samples": metrics.nvidia_samples,
+                "cpu_rss_peak": metrics.cpu_rss_peak,
+                "resident_roles_after_unload": sorted(
+                    role.value for role in backend.resident_roles
                 ),
-            )
-            if compute_fact_digest(again) != res.facts["fact_digest"]:
-                s3_fact_repeat_ok = False
-    except RuntimeError as exc:
-        return _error_result(
-            str(exc), metrics, hard_counts, n2b1p_sha, start_head, identity, cache_entries, config
+            }
+        report["devices"][device] = device_report
+    cuda = report["devices"]["cuda"]
+    cuda_stages = cuda["metrics"].get("stage_records", [])
+    cuda_stage_devices_ok = (
+        all(
+            record.get("device") == "cuda:0"
+            and all(device == "cuda:0" for device in record.get("input_devices", []))
+            and all(device == "cuda:0" for device in record.get("raw_output_devices", []))
+            and record.get("peak_torch_before_unload", {}).get("max_memory_allocated_mib", 0) > 0
+            for record in cuda_stages
         )
-
-    s3_passed = s3_person_positive and s3_fact_repeat_ok and len(s3_cases) == S3_CASE_COUNT
-    if not s3_passed:
-        reason = (
-            "no person-positive S3 fixture (synthetic fixture capability insufficient)"
-            if not s3_person_positive
-            else "S3 fact immutability violation"
-            if not s3_fact_repeat_ok
-            else f"S3 case count {len(s3_cases)} != {S3_CASE_COUNT}"
-        )
-        # §7.2: do not fabricate Pose success; stop honestly.
-        summary = _build_summary(
-            result=R_FIXTURE_INSUFFICIENT if not s3_person_positive else R_FACT_IMMUTABLE,
-            stop_reason=reason,
-            metrics=metrics,
-            hard_counts=hard_counts,
-            n2b1p_sha=n2b1p_sha,
-            start_head=start_head,
-            final_head=start_head,
-            identity=identity,
-            cache_entries=cache_entries,
-            config=config,
-            s3_cases=s3_cases,
-            s20_cases=[],
-            s3_passed=s3_passed,
-            s20_passed=False,
-            fact_immutable=s3_fact_repeat_ok,
-            forbidden_count=0,
-        )
-        return N2B2Result(result=summary["result"], summary=summary, stop_reason=reason)
-
-    # 15. only if S3 passes -> S20
-    s20_cases: list[str] = []
-    s20_ok = True
-    if s20_fixtures:
-        try:
-            for fx in s20_fixtures:
-                res = _process_case(
-                    backend=backend,
-                    ollama=client,
-                    fixture=fx,
-                    residency=residency,
-                    metrics=metrics,
-                    reasoning_schema=reasoning_schema,
-                    generator_version=config.generator_version,
-                    seed=config.seed,
-                )
-                s20_cases.append(fx.case_id)
-        except RuntimeError as exc:
-            return _error_result(
-                str(exc),
-                metrics,
-                hard_counts,
-                n2b1p_sha,
-                start_head,
-                identity,
-                cache_entries,
-                config,
-            )
-        s20_ok = len(s20_cases) == S20_CASE_COUNT
-    else:
-        # No frozen S20 synthetic fixture set available: honest stop, never a
-        # fabrication of the S20 stage.
-        summary = _build_summary(
-            result=R_FIXTURE_INSUFFICIENT,
-            stop_reason="no frozen S20 synthetic fixture set available",
-            metrics=metrics,
-            hard_counts=hard_counts,
-            n2b1p_sha=n2b1p_sha,
-            start_head=start_head,
-            final_head=start_head,
-            identity=identity,
-            cache_entries=cache_entries,
-            config=config,
-            s3_cases=s3_cases,
-            s20_cases=[],
-            s3_passed=True,
-            s20_passed=False,
-            fact_immutable=True,
-            forbidden_count=0,
-        )
-        return N2B2Result(
-            result=summary["result"],
-            summary=summary,
-            stop_reason="no frozen S20 synthetic fixture set available",
-        )
-
-    if metrics.gpu_peak_mib > config.gpu_limit_mib:
-        return _error_result(
-            R_GPU, metrics, hard_counts, n2b1p_sha, start_head, identity, cache_entries, config
-        )
-
-    unload_ok = client.verify_unloaded()
-    summary = _build_summary(
-        result=R_COMPLETE,
-        stop_reason=None,
-        metrics=metrics,
-        hard_counts=hard_counts,
-        n2b1p_sha=n2b1p_sha,
-        start_head=start_head,
-        final_head=start_head,
-        identity=identity,
-        cache_entries=cache_entries,
-        config=config,
-        s3_cases=s3_cases,
-        s20_cases=s20_cases,
-        s3_passed=True,
-        s20_passed=s20_ok,
-        fact_immutable=True,
-        forbidden_count=0,
-        unload_ok=unload_ok,
+        and len(cuda_stages) == 3
     )
-    return N2B2Result(result=R_COMPLETE, summary=summary)
+    report["formal_cuda_gate"] = bool(
+        cuda["status"] == "PASS"
+        and cuda.get("runtime_attestation", {}).get("effective_device") == "cuda:0"
+        and cuda.get("runtime_attestation", {}).get("fallback") is False
+        and cuda["metrics"]["gpu_peak_mib"] > 0
+        and cuda_stage_devices_ok
+    )
+    return report
 
 
-def _error_result(
-    stop: str,
+def _ollama_sampler(
+    client: OllamaClient,
     metrics: MetricsCollector,
-    hard_counts: dict[str, int],
-    n2b1p_sha: str,
-    start_head: str,
-    identity: ModelIdentity,
-    cache_entries: list[dict[str, str]],
-    config: Any,
-) -> N2B2Result:
-    summary = _build_summary(
-        result=stop if stop in _STOP_STATES else R_CHANGES,
-        stop_reason=stop,
-        metrics=metrics,
-        hard_counts=hard_counts,
-        n2b1p_sha=n2b1p_sha,
-        start_head=start_head,
-        final_head=start_head,
-        identity=identity,
-        cache_entries=cache_entries,
-        config=config,
-        s3_cases=[],
-        s20_cases=[],
-        s3_passed=False,
-        s20_passed=False,
-        fact_immutable=False,
-        forbidden_count=0,
-    )
-    return N2B2Result(result=summary["result"], summary=summary, stop_reason=stop)
+    stop_event: threading.Event,
+) -> None:
+    """Sample Ollama /api/ps and total GPU usage during a live request."""
+
+    while not stop_event.is_set():
+        try:
+            metrics.note_ollama_snapshot(client.ps_snapshot())
+            metrics.sample_nvidia("qwen:inference")
+        except Exception:
+            # The request itself remains authoritative; sampling failure is
+            # represented by absent samples and is checked by the caller.
+            pass
+        stop_event.wait(0.35)
 
 
-_STOP_STATES = {
-    R_BLOCKED_N2B1P,
-    R_QWEN_IDENTITY,
-    R_QWEN_VISION,
-    R_FIXTURE_INSUFFICIENT,
-    R_GPU,
-    R_FACT_IMMUTABLE,
-    R_QWEN_PROVENANCE,
-    R_UNLOAD,
-    R_CHANGES,
-}
+def _identity_dict(identity: ModelIdentity) -> dict[str, Any]:
+    return {
+        "model_name": identity.model_name,
+        "full_local_digest": identity.full_local_digest,
+        "size_bytes": identity.size_bytes,
+        "format": identity.format,
+        "family": identity.family,
+        "parameter_size": identity.parameter_size,
+        "quantization_level": identity.quantization_level,
+        "capabilities": identity.capabilities,
+        "license": identity.license,
+        "modified_at": identity.modified_at,
+        "ollama_version": identity.ollama_version,
+    }
 
 
-def _build_summary(
+def _summary(
     *,
     result: str,
     stop_reason: str | None,
@@ -431,20 +339,20 @@ def _build_summary(
     hard_counts: dict[str, int],
     n2b1p_sha: str,
     start_head: str,
-    final_head: str,
     identity: ModelIdentity,
     cache_entries: list[dict[str, str]],
-    config: Any,
-    s3_cases: list[str],
-    s20_cases: list[str],
-    s3_passed: bool,
-    s20_passed: bool,
-    fact_immutable: bool,
+    fixtures: list[SyntheticFixture],
+    facts: list[dict[str, Any]],
+    repeat_ok: bool,
+    qwen_status: str,
+    qwen_digest_ok: bool,
     forbidden_count: int,
-    unload_ok: bool = True,
+    unload_ok: bool,
+    stage_events: list[str],
+    runtime_attestation: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "stage": "N2B2",
         "result": result,
         "stop_reason": stop_reason,
@@ -459,75 +367,393 @@ def _build_summary(
             "n2b1p_review_passed": True,
             "three_cache_hit": True,
         },
-        "model_identity": {
-            "model_name": identity.model_name,
-            "full_local_digest": identity.full_local_digest,
-            "size_bytes": identity.size_bytes,
-            "format": identity.format,
-            "family": identity.family,
-            "parameter_size": identity.parameter_size,
-            "quantization_level": identity.quantization_level,
-            "capabilities": identity.capabilities,
-            "license": identity.license,
-            "modified_at": identity.modified_at,
-            "ollama_version": identity.ollama_version,
-        },
+        "model_identity": _identity_dict(identity),
         "torchvision_cache": [
-            {"artifact_id": e["artifact_id"], "role": e["role"], "verification_status": "CACHE_HIT"}
-            for e in cache_entries
+            {
+                "artifact_id": entry["artifact_id"],
+                "role": entry["role"],
+                "verification_status": "CACHE_HIT",
+            }
+            for entry in cache_entries
         ],
         "synthetic_fixture_gate": {
-            "s3_passed": s3_passed,
-            "s20_passed_or_honest_stop": s20_passed or not s20_cases,
-            "fixture_manifest_frozen": bool(s20_cases) or not s20_cases,
+            "s3_passed": result == R_COMPLETE,
+            "s20_passed_or_honest_stop": True,
+            "fixture_manifest_frozen": len(fixtures) == S3_CASE_COUNT,
         },
-        "s3_smoke": {"case_count": S3_CASE_COUNT, "cases": s3_cases},
+        "s3_smoke": {
+            "case_count": len(fixtures),
+            "cases": [fixture.case_id for fixture in fixtures],
+            "pose": [
+                {
+                    "case_id": fact["case_id"],
+                    "person_count": fact["person_count"],
+                    "keypoint_groups": len(fact["pose_keypoints"]),
+                }
+                for fact in facts
+            ],
+            "segmentation": [
+                {
+                    "case_id": fact["case_id"],
+                    "person_mask_ratio": fact["segmentation_person_ratio"],
+                    "comparator_person_mask_ratio": fact["segmentation_comparator_person_ratio"],
+                }
+                for fact in facts
+            ],
+            "stage_events": stage_events,
+        },
         "s20_validation": {
-            "case_count": S20_CASE_COUNT,
-            "cases": s20_cases,
-            "completed_or_honest_stop": s20_passed or not s20_cases,
+            "status": "NOT_PERFORMED_S3_ONLY",
+            "case_count": 0,
+            "cases": [],
+            "completed_or_honest_stop": True,
         },
         "fact_immutability": {
-            "byte_identical_repeats": fact_immutable,
-            "fact_digest_stable": fact_immutable,
+            "byte_identical_repeats": repeat_ok,
+            "fact_digest_stable": repeat_ok,
         },
         "qwen_provenance": {
-            "input_fact_digest_echoed": True,
-            "all_fact_ids_valid": True,
+            "status": qwen_status,
+            "input_fact_digest_echoed": qwen_digest_ok,
+            "all_fact_ids_valid": qwen_status == "PASS",
             "forbidden_field_count": forbidden_count,
         },
         "repeatability": {
-            "schema_pass": True,
-            "story_type_set_consistent": True,
-            "no_fact_conflict": True,
+            "schema_pass": qwen_status == "PASS",
+            "story_type_set_consistent": qwen_status == "PASS",
+            "no_fact_conflict": qwen_status == "PASS",
         },
         "gpu_metrics": {
             "gpu_baseline_mib": metrics.gpu_baseline_mib,
             "gpu_peak_mib": metrics.gpu_peak_mib,
+            "gpu_after_torchvision_unload_mib": metrics.gpu_after_unload_mib,
             "ollama_size_vram": metrics.ollama_size_vram,
             "cpu_rss_peak": metrics.cpu_rss_peak,
             "cold_load_duration_s": metrics.cold_load_duration_s,
             "per_image_duration_s": metrics.per_image_duration_s,
             "unload_duration_s": metrics.unload_duration_s,
+            "stage_records": metrics.stage_records,
+            "nvidia_samples": metrics.nvidia_samples,
+            "ollama_ps_samples": metrics.ollama_ps_samples,
+            "ollama_gpu_peak_mib": metrics.ollama_gpu_peak_mib,
+            "torchvision_runtime": runtime_attestation or {},
         },
-        "unload_verification": {"api_ps_clear": unload_ok, "gpu_returned_to_baseline": unload_ok},
+        "unload_verification": {
+            "api_ps_clear": unload_ok,
+            "gpu_returned_to_baseline": metrics.gpu_after_unload_mib
+            <= metrics.gpu_baseline_mib + 128,
+        },
         "hard_counts": hard_counts,
         "model_download_bytes": 0,
         "quality_gates": {
-            "pytest_failed": 0,
-            "ruff_exit": 0,
-            "mypy_exit": 0,
-            "quality_pass": 7,
-            "sensitive_violations": 0,
-            "preflight_fail": 0,
-            "handoff_fail": 0,
+            "status": "NOT_PERFORMED",
+            "pytest": {"status": "NOT_PERFORMED", "exit_code": None, "detail": "outside runtime"},
+            "ruff": {"status": "NOT_PERFORMED", "exit_code": None, "detail": "outside runtime"},
+            "mypy": {"status": "NOT_PERFORMED", "exit_code": None, "detail": "outside runtime"},
+            "sensitive_scan": {
+                "status": "NOT_PERFORMED",
+                "exit_code": None,
+                "detail": "outside runtime",
+            },
+            "preflight": {
+                "status": "NOT_PERFORMED",
+                "exit_code": None,
+                "detail": "outside runtime",
+            },
+            "handoff": {"status": "NOT_PERFORMED", "exit_code": None, "detail": "outside runtime"},
         },
         "git_state": {
             "start_head": start_head,
-            "final_head": final_head,
+            "final_head": start_head,
             "n2b1p_baseline": n2b1p_sha,
             "n2b2_commit": None,
             "pushed": False,
             "merged": False,
         },
     }
+
+
+def run_n2b2(  # noqa: PLR0911
+    *,
+    config: Any,
+    s3_fixtures: list[SyntheticFixture],
+    s20_fixtures: list[SyntheticFixture],
+    reasoning_schema: dict[str, Any],
+    vision_schema: dict[str, Any],
+    n2b1p_sha: str,
+    n2b1p_review_passed: bool,
+    start_head: str,
+    ollama: OllamaClient | None = None,
+) -> N2B2Result:
+    """Run exactly S3; a non-empty S20 input is an authorization failure."""
+
+    if not n2b1p_review_passed:
+        return N2B2Result(R_BLOCKED_N2B1P, stop_reason="N2B1P independent review gate failed")
+    if s20_fixtures or not getattr(config, "s3_only", True):
+        return N2B2Result(R_S20_NOT_AUTHORIZED, stop_reason="S3-only run cannot enter S20")
+    if len(s3_fixtures) != S3_CASE_COUNT:
+        return N2B2Result(
+            R_FIXTURE_REVIEW,
+            stop_reason="S3 manifest must contain exactly three fixtures",
+        )
+
+    metrics = MetricsCollector()
+    residency = ResidencyGate()
+    hard_counts = {
+        "real_photo_read_count": 0,
+        "real_exif_read_count": 0,
+        "g1_source_access": 0,
+        "sqlite_write_count": 0,
+        "app_write_count": 0,
+        "obsidian_write_count": 0,
+    }
+    try:
+        cache_entries = verify_cache_hit(config.cache_root, config.cache_subdirs)
+    except (FileNotFoundError, OSError) as exc:
+        return N2B2Result(R_CHANGES, stop_reason=str(exc))
+    client = ollama or OllamaClient(config.ollama_base_url)
+    try:
+        identity = client.verify_identity()
+    except ValueError as exc:
+        message = str(exc)
+        state = R_QWEN_VISION if "VISION_CAPABILITY_MISSING" in message else R_QWEN_IDENTITY
+        return N2B2Result(state, stop_reason=message)
+    except ConnectionError as exc:
+        return N2B2Result(R_CHANGES, stop_reason=str(exc))
+
+    metrics.sample_baseline()
+    backend = load_backend(
+        config.backend,
+        config.cache_root,
+        config.cache_subdirs,
+        device=getattr(config, "device", "cpu"),
+    )
+    try:
+        first_facts, schema_errors = _vision_chain(
+            backend=backend,
+            fixtures=s3_fixtures,
+            residency=residency,
+            metrics=metrics,
+            schema=vision_schema,
+        )
+        if schema_errors:
+            return N2B2Result(
+                R_FACT_IMMUTABLE,
+                summary=_summary(
+                    result=R_FACT_IMMUTABLE,
+                    stop_reason="; ".join(schema_errors),
+                    metrics=metrics,
+                    hard_counts=hard_counts,
+                    n2b1p_sha=n2b1p_sha,
+                    start_head=start_head,
+                    identity=identity,
+                    cache_entries=cache_entries,
+                    fixtures=s3_fixtures,
+                    facts=first_facts,
+                    repeat_ok=False,
+                    qwen_status="NOT_PERFORMED",
+                    qwen_digest_ok=False,
+                    forbidden_count=0,
+                    unload_ok=False,
+                    stage_events=residency.events,
+                    runtime_attestation=backend.runtime_attestation(),
+                ),
+                stop_reason="vision fact schema failed",
+            )
+        metrics.sample_after_unload()
+        second_facts, second_errors = _vision_chain(
+            backend=backend,
+            fixtures=s3_fixtures,
+            residency=residency,
+            metrics=metrics,
+            schema=vision_schema,
+        )
+        if second_errors:
+            return N2B2Result(R_FACT_IMMUTABLE, stop_reason="repeat vision fact schema failed")
+    except RuntimeError as exc:
+        if str(exc).startswith(R_GPU_RUNTIME):
+            return N2B2Result(R_GPU_RUNTIME, stop_reason=str(exc))
+        return N2B2Result(
+            R_CHANGES,
+            stop_reason=f"vision runtime failure: {type(exc).__name__}: {exc}",
+        )
+    except Exception as exc:  # model/runtime failures remain truthful
+        return N2B2Result(
+            R_CHANGES,
+            stop_reason=f"vision runtime failure: {type(exc).__name__}: {exc}",
+        )
+
+    repeat_ok = all(
+        _facts_bytes(left) == _facts_bytes(right)
+        and compute_fact_digest(left) == compute_fact_digest(right)
+        for left, right in zip(first_facts, second_facts, strict=True)
+    )
+    if not repeat_ok:
+        return N2B2Result(
+            R_FACT_IMMUTABLE,
+            summary=_summary(
+                result=R_FACT_IMMUTABLE,
+                stop_reason="canonical vision facts changed between repeated chains",
+                metrics=metrics,
+                hard_counts=hard_counts,
+                n2b1p_sha=n2b1p_sha,
+                start_head=start_head,
+                identity=identity,
+                cache_entries=cache_entries,
+                fixtures=s3_fixtures,
+                facts=first_facts,
+                repeat_ok=False,
+                qwen_status="NOT_PERFORMED",
+                qwen_digest_ok=False,
+                forbidden_count=0,
+                unload_ok=False,
+                stage_events=residency.events,
+                runtime_attestation=backend.runtime_attestation(),
+            ),
+            stop_reason="fact byte/digest repeat failed",
+        )
+    if getattr(config, "device", "cpu") == "cuda" and metrics.gpu_peak_mib > config.gpu_limit_mib:
+        return N2B2Result(
+            R_GPU,
+            stop_reason=f"GPU peak {metrics.gpu_peak_mib} MiB exceeds limit",
+        )
+
+    by_type = {
+        fixture.case_type: fact for fixture, fact in zip(s3_fixtures, first_facts, strict=True)
+    }
+    positives_ok = all(
+        by_type[case_type]["person_count"] > 0
+        and len(by_type[case_type]["person_boxes"])
+        == len(by_type[case_type]["pose_keypoints"])
+        == len(by_type[case_type]["pose_scores"])
+        and all(len(group) == 17 for group in by_type[case_type]["pose_keypoints"])
+        for case_type in ("single_person", "multi_person_or_occluded")
+    )
+    negative = by_type["negative_control"]
+    negative_ok = (
+        negative["person_count"] == 0
+        and not negative["pose_keypoints"]
+        and negative["segmentation_person_ratio"] == 0
+        and negative["segmentation_comparator_person_ratio"] == 0
+    )
+    mask_ok = any(
+        by_type[case_type]["segmentation_person_ratio"] > 0
+        for case_type in ("single_person", "multi_person_or_occluded")
+    )
+    if not positives_ok or not negative_ok or not mask_ok:
+        reason = (
+            f"fixture capability failed: positives={positives_ok}, "
+            f"negative={negative_ok}, person_mask={mask_ok}"
+        )
+        return N2B2Result(
+            R_FIXTURE_REVIEW,
+            summary=_summary(
+                result=R_FIXTURE_REVIEW,
+                stop_reason=reason,
+                metrics=metrics,
+                hard_counts=hard_counts,
+                n2b1p_sha=n2b1p_sha,
+                start_head=start_head,
+                identity=identity,
+                cache_entries=cache_entries,
+                fixtures=s3_fixtures,
+                facts=first_facts,
+                repeat_ok=True,
+                qwen_status="NOT_PERFORMED",
+                qwen_digest_ok=False,
+                forbidden_count=0,
+                unload_ok=False,
+                stage_events=residency.events,
+                runtime_attestation=backend.runtime_attestation(),
+            ),
+            stop_reason=reason,
+        )
+
+    forbidden_count = 0
+    qwen_digest_ok = True
+    try:
+        residency.acquire("qwen")
+        metrics.sample_nvidia("qwen:before")
+        sampler_stop = threading.Event()
+        sampler = threading.Thread(
+            target=_ollama_sampler,
+            args=(client, metrics, sampler_stop),
+            name="n2b2-ollama-gpu-sampler",
+            daemon=True,
+        )
+        sampler.start()
+        try:
+            for fixture, facts in zip(s3_fixtures, first_facts, strict=True):
+                started = time.perf_counter()
+                output = client.reason(
+                    image_b64=_image_b64(fixture.image_bytes),
+                    case_id=fixture.case_id,
+                    vision_facts=facts,
+                    fact_digest=facts["fact_digest"],
+                    fact_ids=facts["fact_ids"],
+                    uncertainties=facts["uncertainties"],
+                    response_schema=reasoning_schema,
+                    seed=fixture.seed,
+                    keep_alive=300,
+                )
+                metrics.note_per_image(time.perf_counter() - started)
+                validation = validate_reasoning(
+                    output,
+                    input_fact_digest=facts["fact_digest"],
+                    valid_fact_ids=facts["fact_ids"],
+                    schema=reasoning_schema,
+                )
+                if output.get("case_id") != fixture.case_id:
+                    validation.ok = False
+                    validation.errors.append("case_id does not match fixture")
+                forbidden_count += validation.forbidden_field_count
+                qwen_digest_ok = (
+                    qwen_digest_ok and output.get("input_fact_digest") == facts["fact_digest"]
+                )
+                if not validation.ok:
+                    raise RuntimeError(R_QWEN_PROVENANCE + ": " + "; ".join(validation.errors))
+        finally:
+            sampler_stop.set()
+            sampler.join(timeout=2.0)
+        metrics.note_ollama_snapshot(client.ps_snapshot())
+        metrics.sample_nvidia("qwen:after")
+        if getattr(config, "device", "cpu") == "cuda" and metrics.ollama_size_vram <= 0:
+            raise RuntimeError(R_QWEN_GPU + ": Ollama /api/ps reported size_vram=0")
+        client.unload()
+        unload_ok = client.verify_unloaded(timeout_s=60.0)
+        metrics.sample_after_unload()
+        residency.release("qwen")
+        if not unload_ok:
+            raise RuntimeError(R_UNLOAD)
+    except RuntimeError as exc:
+        residency.release("qwen")
+        message = str(exc)
+        if message.startswith(R_QWEN_PROVENANCE):
+            result = R_QWEN_PROVENANCE
+        elif message.startswith(R_QWEN_GPU):
+            result = R_QWEN_GPU
+        elif message.startswith(R_GPU_RUNTIME):
+            result = R_GPU_RUNTIME
+        else:
+            result = R_UNLOAD
+        return N2B2Result(result, stop_reason=str(exc))
+    summary = _summary(
+        result=R_COMPLETE,
+        stop_reason=None,
+        metrics=metrics,
+        hard_counts=hard_counts,
+        n2b1p_sha=n2b1p_sha,
+        start_head=start_head,
+        identity=identity,
+        cache_entries=cache_entries,
+        fixtures=s3_fixtures,
+        facts=first_facts,
+        repeat_ok=True,
+        qwen_status="PASS",
+        qwen_digest_ok=qwen_digest_ok,
+        forbidden_count=forbidden_count,
+        unload_ok=True,
+        stage_events=residency.events,
+        runtime_attestation=backend.runtime_attestation(),
+    )
+    return N2B2Result(R_COMPLETE, summary=summary)

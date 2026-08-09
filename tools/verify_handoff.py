@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify the current N2B1P governed handoff without performing work.
+"""Verify the current governed handoff without performing work.
 
 This verifier never opens a source photo, sends a network request, installs a
 wheel, or writes repository/runtime state.  It binds the exact local-research
@@ -21,6 +21,10 @@ sys.path.insert(0, str(ROOT / "src"))
 CURRENT_PHASE = "N2B1P"
 CURRENT_TASK = "tasks/phase_n2b1p_local_research_cache_promotion.yaml"
 CURRENT_CAPABILITY = "N2B1P_LOCAL_RESEARCH_CACHE_PROMOTION"
+N2B1R_SHA = "d3628e27334e819ba2d5944151447595e03f39f9"
+N2B1P_SHA = "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043"
+N2B2_REVIEW_TASK = "tasks/phase_n2b2_runtime_gpu_validation_and_s20_preparation.yaml"
+N2B2_REVIEW_RECEIPT = "approvals/owner_n2b2_runtime_gpu_validation_receipt.yaml"
 
 errors: list[str] = []
 passes: list[str] = []
@@ -123,6 +127,10 @@ def check_required_files() -> None:
         "schemas/n2b1p_cache_promotion_evidence_v1.schema.json",
         "schemas/n2b1p_runtime_configuration_v1_0.schema.json",
         "schemas/n2b1r_artifact_register_v1.schema.json",
+        N2B2_REVIEW_TASK,
+        N2B2_REVIEW_RECEIPT,
+        "schemas/n2b2_s20_fixture_manifest.schema.json",
+        "schemas/n2b2_gpu_runtime_metrics.schema.json",
     )
     missing = [rel for rel in required if not (ROOT / rel).is_file()]
     if missing:
@@ -327,6 +335,56 @@ def check_current_authorization() -> None:
         ok("N2B1P is promotion-only; inference and real-photo entry points remain locked")
 
 
+def check_bounded_n2b2_review_contract() -> None:
+    """Validate the direct Owner receipt without changing PROJECT_STATE."""
+
+    task = load_yaml(N2B2_REVIEW_TASK)
+    receipt = load_yaml(N2B2_REVIEW_RECEIPT)
+    index = load_json("tasks/index.json")
+    state = load_json("PROJECT_STATE.json")
+    candidate = next(
+        (
+            item
+            for item in index.get("review_candidates", [])
+            if isinstance(item, dict) and item.get("phase") == "N2B2_RUNTIME_GPU_VALIDATION"
+        ),
+        None,
+    )
+    phase = task.get("phase", {}) if isinstance(task, dict) else {}
+    authorization = task.get("owner_authorization", {}) if isinstance(task, dict) else {}
+    allowed = receipt.get("allowed", []) if isinstance(receipt, dict) else []
+    forbidden = receipt.get("not_allowed", []) if isinstance(receipt, dict) else []
+    valid = all(
+        (
+            isinstance(candidate, dict),
+            candidate.get("capability")
+            == "N2B2_RUNTIME_GPU_VALIDATION_AND_SYNTHETIC_S20_PREPARATION",
+            candidate.get("project_state") == "N2B2_LOCKED",
+            candidate.get("execution_status") == "SYNTHETIC_GPU_ONLY",
+            phase.get("status") == "AUTHORIZED_SYNTHETIC_RUNTIME_ONLY_REVIEW_CANDIDATE",
+            phase.get("project_state_status") == "N2B2_LOCKED",
+            authorization.get("reviewed_baseline") == N2B1P_SHA,
+            authorization.get("synthetic_only") is True,
+            authorization.get("cuda_runtime_validation") is True,
+            authorization.get("s20_execution") == "NOT_AUTHORIZED_THIS_RUN",
+            receipt.get("reviewed_baseline") == N2B1P_SHA,
+            receipt.get("mandatory_stop") is True,
+            "real photos" in forbidden,
+            "PROJECT_STATE mutation" in forbidden,
+            "S20 execution" in forbidden,
+            "explicit CUDA validation for cached TorchVision models" in allowed,
+            "qwen3.5:9b local GPU residency validation" in allowed,
+            "create S20 schema and validation plan only" in allowed,
+            state.get("phase_status", {}).get("N2B2") == "LOCKED",
+            state.get("phase_status", {}).get("N2B1P") == "AUTHORIZED",
+        )
+    )
+    if valid:
+        ok("bounded N2B2 synthetic GPU review receipt is valid; production N2B2 remains locked")
+    else:
+        fail("bounded N2B2 review-candidate receipt or lock boundary is invalid")
+
+
 def check_baselines() -> None:
     expected = {
         "n0-approved-2026-07-14": "72a81f5984838b74304d23263ac450ea4b5a3a9a",
@@ -343,17 +401,22 @@ def check_baselines() -> None:
         fail("immutable baseline tag mismatch: " + ", ".join(mismatched))
     elif git("merge-base", "--is-ancestor", expected["n2b0-7-approved-2026-07-29"], "HEAD")[0] != 0:
         fail("N2B0.7 approved baseline is not an ancestor of HEAD")
-    elif (
-        git("merge-base", "--is-ancestor", "d3628e27334e819ba2d5944151447595e03f39f9", "HEAD")[0]
-        != 0
-    ):
+    elif git("merge-base", "--is-ancestor", N2B1R_SHA, "HEAD")[0] != 0:
         fail("N2B1R evidence commit is not an ancestor of HEAD")
-    elif git("rev-list", "--count", "d3628e27334e819ba2d5944151447595e03f39f9..HEAD") != (0, "1"):
-        fail("current candidate does not contain exactly one N2B1P commit")
+    elif git("rev-parse", "HEAD") == (0, N2B1P_SHA) and git(
+        "rev-list", "--count", f"{N2B1R_SHA}..HEAD"
+    ) != (0, "1"):
+        fail("N2B1P baseline must contain exactly one post-N2B1R commit")
+    elif git("rev-parse", "HEAD") != (0, N2B1P_SHA) and not (
+        git("rev-parse", "HEAD^") == (0, N2B1P_SHA)
+        and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "2")
+        and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "1")
+    ):
+        fail("N2B2 review candidate must be exactly one direct child of N2B1P")
     elif git("rev-list", "--merges", "HEAD") != (0, ""):
         fail("current candidate contains a merge commit")
     else:
-        ok("all immutable approved tags and the no-merge ancestry are intact")
+        ok("all immutable approved tags and the bounded no-merge ancestry are intact")
 
 
 def check_manifest() -> None:
@@ -415,6 +478,7 @@ def main() -> int:
         return 2
     check_required_files()
     check_current_authorization()
+    check_bounded_n2b2_review_contract()
     check_baselines()
     check_manifest()
     check_sensitive_paths()
@@ -428,10 +492,16 @@ def main() -> int:
     if errors:
         print("HANDOFF_INVALID: current-stage work must not continue")
         return 1
-    print(
-        "HANDOFF_VALID: N2B1P local-research cache promotion only; "
-        "inference and photos remain locked"
-    )
+    if git("rev-parse", "HEAD") == (0, N2B1P_SHA):
+        print(
+            "HANDOFF_VALID: N2B1P local-research cache promotion only; "
+            "inference and photos remain locked"
+        )
+    else:
+        print(
+            "HANDOFF_VALID: bounded N2B2 synthetic GPU review candidate; "
+            "production N2B2 remains LOCKED"
+        )
     return 0
 
 

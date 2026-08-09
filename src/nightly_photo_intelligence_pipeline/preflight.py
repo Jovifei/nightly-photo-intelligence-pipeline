@@ -1029,7 +1029,9 @@ def _check_authorization() -> CheckResult:  # noqa: PLR0911
             evidence=(
                 f"phase={auth.phase_id}/{auth.phase_status} "
                 f"gate={auth.data_gate_id}/{auth.data_gate_status}; "
-                "schema+N1/G1/N2A/N2B0/N2B0.5 approval-chain+N2B0.6 research gate valid"
+                "schema+N1/G1/N2A/N2B0/N2B0.5 approval-chain+N2B0.6 research gate valid; "
+                "production model execution and source-photo access remain denied; "
+                "bounded N2B2 synthetic GPU review is separately receipt-bound"
             ),
         )
     except DuplicateJsonMemberError:
@@ -1073,6 +1075,17 @@ def _check_git_baselines() -> CheckResult:
         n2b0_6 = "eb2eaeb61f1c21923d131a115d63edbcdebd8cb2"
         n2b0_7 = "f2b1c38301d71da52b855f73de8a67908cb525ef"
         n2b1r = "d3628e27334e819ba2d5944151447595e03f39f9"
+        n2b1p = "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043"
+        head = git("rev-parse", "HEAD")[1]
+        candidate_topology = (
+            git("rev-parse", "HEAD^") == (0, n2b1p)
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "1")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "2")
+        )
+        baseline_topology = head == n2b1p and git("rev-list", "--count", f"{n2b1r}..HEAD") == (
+            0,
+            "1",
+        )
         checks = [
             git("rev-parse", "n0-approved-2026-07-14") == (0, n0),
             git("rev-parse", "n1-approved-2026-07-14") == (0, n1),
@@ -1084,16 +1097,17 @@ def _check_git_baselines() -> CheckResult:
             git("merge-base", "--is-ancestor", n2b0_7, "HEAD")[0] == 0,
             git("rev-list", "--count", f"{n2b0_6}..{n2b0_7}") == (0, "1"),
             git("rev-list", "--count", f"{n2b0_7}..{n2b1r}") == (0, "1"),
-            git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "1"),
+            baseline_topology or candidate_topology,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),
         ]
         return result(
             checks,
-            failure_notes="Git baseline or N2B1P cache-promotion commit topology mismatch",
+            failure_notes="Git baseline or bounded N2B2 review-candidate topology mismatch",
             pass_evidence=(
                 "N0/N1/G1/N2A/N2B0/N2B0.5/N2B0.6/N2B0.7 tags intact; "
-                "one N2B1R and one N2B1P commit; no merge; worktree clean"
+                "one N2B1R and one N2B1P commit, or one direct N2B2 review candidate; "
+                "no merge; worktree clean"
             ),
         )
 
@@ -1174,6 +1188,68 @@ def _check_git_baselines() -> CheckResult:
     )
 
 
+def _check_bounded_n2b2_review_candidate() -> CheckResult:
+    """Validate the synthetic GPU review contract without phase promotion."""
+
+    root = find_project_root()
+    try:
+        task = yaml.safe_load(
+            (
+                root / "tasks" / "phase_n2b2_runtime_gpu_validation_and_s20_preparation.yaml"
+            ).read_text(encoding="utf-8")
+        )
+        receipt = yaml.safe_load(
+            (root / "approvals" / "owner_n2b2_runtime_gpu_validation_receipt.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        index = load_json_strict(root / "tasks" / "index.json")
+        state = load_json_strict(root / "PROJECT_STATE.json")
+        candidate = next(
+            (
+                item
+                for item in index.get("review_candidates", [])
+                if item.get("phase") == "N2B2_RUNTIME_GPU_VALIDATION"
+            ),
+            None,
+        )
+        phase = task.get("phase", {})
+        owner = task.get("owner_authorization", {})
+        candidate_dict = candidate if isinstance(candidate, dict) else {}
+        valid = all(
+            (
+                bool(candidate_dict),
+                candidate_dict.get("project_state") == "N2B2_LOCKED",
+                candidate_dict.get("execution_status") == "SYNTHETIC_GPU_ONLY",
+                phase.get("status") == "AUTHORIZED_SYNTHETIC_RUNTIME_ONLY_REVIEW_CANDIDATE",
+                phase.get("project_state_status") == "N2B2_LOCKED",
+                owner.get("reviewed_baseline") == "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043",
+                owner.get("synthetic_only") is True,
+                owner.get("cuda_runtime_validation") is True,
+                owner.get("s20_execution") == "NOT_AUTHORIZED_THIS_RUN",
+                receipt.get("reviewed_baseline") == "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043",
+                receipt.get("mandatory_stop") is True,
+                "real photos" in receipt.get("not_allowed", []),
+                "S20 execution" in receipt.get("not_allowed", []),
+                state.get("phase_status", {}).get("N2B2") == "LOCKED",
+            )
+        )
+        return CheckResult(
+            name="bounded_n2b2_review_candidate",
+            status=PASS if valid else FAIL,
+            evidence="synthetic GPU validation authorized; production N2B2 remains LOCKED"
+            if valid
+            else "",
+            notes="review receipt/task/index or lock boundary mismatch" if not valid else "",
+        )
+    except Exception:  # noqa: BLE001 - preflight must report a stable result
+        return CheckResult(
+            name="bounded_n2b2_review_candidate",
+            status=FAIL,
+            notes="bounded N2B2 review contract unavailable or invalid",
+        )
+
+
 def _check_source_runtime_separation() -> CheckResult:
     root = find_project_root()
     try:
@@ -1247,6 +1323,7 @@ _BASE_CHECKS: tuple[Callable[[], CheckResult], ...] = (
     _check_handoff,
     _check_schema_version,
     _check_authorization,
+    _check_bounded_n2b2_review_candidate,
     _check_git_baselines,
 )
 

@@ -165,3 +165,58 @@
   phase, evidence level, blocker, and next action. Before each task, add a
   checkable plan; after each task, update its review and Obsidian note without
   exposing source paths, filenames, images, identities, or model payloads.
+
+## 2026-08-09 Owner authorization correction
+
+- When the Owner explicitly authorizes continuation after a prior stop, record
+  the correction and re-read current disk state before acting. Do not infer
+  approval for adjacent phases or real-photo access; execute only the named
+  synthetic task and preserve every independent data and phase gate.
+
+## 2026-08-09 N2B1P evidence-layer correction
+
+- Independent-review evidence and the Owner phase-completion record are
+  separate evidence layers. Do not invent a new hard stop for a missing
+  phase-completion file when the authorized continuation contract gates on
+  independently reviewed N2B1P evidence; record the missing record as an
+  informational state and keep N2B2 locked.
+
+## 2026-08-09 N2B2 ComfyUI port and external-runtime correction
+
+- A fixed localhost port is an execution parameter, not a phase gate. Check
+  Windows IPv4/IPv6 excluded ranges and perform a real temporary bind before
+  starting a local service; `8188` and `8199` were both reserved here, while
+  `7865` was available.
+- On Windows, `os.path.commonpath` raises `ValueError` for paths on different
+  drives. A validated runtime on another drive is external to the Git root;
+  handle that case explicitly in both the CLI guard and manifest loader while
+  retaining traversal, symlink, and same-drive project rejection.
+- Separate the model-serving interpreter from the quality-test interpreter
+  without installing dependencies: use the existing ComfyUI Torch environment
+  for real inference and the repository environment for contract tooling, and
+  record that separation in evidence.
+- Never infer GPU analysis from a GPU machine or GPU generation alone. If the
+  actual loader does not move models to CUDA, report GPU residency as
+  `NOT_EVIDENCED` rather than changing the model implementation inside a
+  fixture-remediation task.
+
+## 2026-08-09 N2B2 GPU runtime validation correction
+
+- Solve GPU headroom and the bounded Git topology before the execution tail;
+  a known governance conflict must not be deferred until commit creation.
+- CPU inference cannot be promoted to CUDA proof because the host has a GPU;
+  require model, input, raw output, nonzero CUDA allocation and no fallback.
+- Qwen `/api/ps` after unload is not residency evidence. Keep the model alive,
+  sample `/api/ps` and `nvidia-smi` during inference, require `size_vram > 0`,
+  then unload explicitly and verify the empty state.
+- A review-candidate task may authorize bounded synthetic GPU work while
+  `PROJECT_STATE.json` remains byte-identical and `N2B2=LOCKED`; this is not a
+  phase-completion approval or production unlock.
+
+## 2026-08-09 N2B2 runtime evidence closure correction
+
+- A runtime PASS is not reviewable until its external evidence hashes, report
+  state, frozen fixture hashes, and Git candidate parent are bound together.
+- Historical Git topology and MANIFEST gates must be handled by one exact
+  candidate tree; never delete or weaken the hardcoded-count assertions to
+  make a dirty worktree appear valid.

@@ -25,6 +25,7 @@ N2B0_6_TAG = "n2b0-6-approved-2026-07-29"
 N2B0_7_BASELINE = "f2b1c38301d71da52b855f73de8a67908cb525ef"
 N2B0_7_TAG = "n2b0-7-approved-2026-07-29"
 N2B1R_BASELINE = "d3628e27334e819ba2d5944151447595e03f39f9"
+N2B1P_BASELINE = "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043"
 
 SENSITIVE_SUFFIXES = (
     ".db",
@@ -92,12 +93,18 @@ def test_git_approved_tags_and_ancestry_are_exact(project_root: Path) -> None:
 
 
 def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root: Path) -> None:
-    assert int(_git(project_root, "rev-list", "--count", "HEAD").stdout.strip()) == 10
-    assert (
-        int(_git(project_root, "rev-list", "--count", f"{N1_BASELINE}..HEAD").stdout.strip()) == 8
+    head = _git(project_root, "rev-parse", "HEAD").stdout.strip()
+    candidate_offset = 0 if head == N2B1P_BASELINE else 1
+    assert int(_git(project_root, "rev-list", "--count", "HEAD").stdout.strip()) == (
+        10 + candidate_offset
     )
     assert (
-        int(_git(project_root, "rev-list", "--count", f"{G1_BASELINE}..HEAD").stdout.strip()) == 7
+        int(_git(project_root, "rev-list", "--count", f"{N1_BASELINE}..HEAD").stdout.strip())
+        == 8 + candidate_offset
+    )
+    assert (
+        int(_git(project_root, "rev-list", "--count", f"{G1_BASELINE}..HEAD").stdout.strip())
+        == 7 + candidate_offset
     )
     assert (
         int(
@@ -107,10 +114,19 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
         )
         == 1
     )
-    assert (
-        int(_git(project_root, "rev-list", "--count", f"{N2B1R_BASELINE}..HEAD").stdout.strip())
-        == 1
+    post_n2b1r = int(
+        _git(project_root, "rev-list", "--count", f"{N2B1R_BASELINE}..HEAD").stdout.strip()
     )
+    assert post_n2b1r == 1 + candidate_offset
+    if candidate_offset == 0:
+        assert post_n2b1r == 1
+    else:
+        assert post_n2b1r == 2
+        assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE
+        assert (
+            int(_git(project_root, "rev-list", "--count", f"{N2B1P_BASELINE}..HEAD").stdout.strip())
+            == 1
+        )
     assert (
         int(
             _git(
@@ -121,7 +137,7 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
     )
     assert (
         int(_git(project_root, "rev-list", "--count", f"{N2B0_7_BASELINE}..HEAD").stdout.strip())
-        == 2
+        == 2 + candidate_offset
     )
     assert _git(project_root, "rev-list", "--merges", "HEAD").stdout.strip() == ""
 
@@ -146,7 +162,12 @@ def test_n2b1p_candidate_is_resolved_not_hardcoded(project_root: Path) -> None:
     assert prerequisite["n2b1p_parent_sha"] == N2B1R_BASELINE
     assert _git(project_root, "merge-base", "--is-ancestor", N2B1R_BASELINE, "HEAD").returncode == 0
     resolved = _git(project_root, "rev-list", f"{N2B1R_BASELINE}..HEAD").stdout.split()
-    assert len(resolved) == 1, f"candidate must resolve to exactly 1 commit, got {len(resolved)}"
+    expected_count = (
+        1 if _git(project_root, "rev-parse", "HEAD").stdout.strip() == N2B1P_BASELINE else 2
+    )
+    assert len(resolved) == expected_count, (
+        f"candidate must resolve to exactly {expected_count} commits, got {len(resolved)}"
+    )
     for literal in prerequisite["n2b1p_sha_superseded_literals"]:
         assert _git(project_root, "merge-base", "--is-ancestor", literal, "HEAD").returncode != 0, (
             f"{literal} is recorded as superseded but is still reachable from HEAD"

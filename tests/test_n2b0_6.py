@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import subprocess
+import sys
 from collections.abc import Callable
 from pathlib import Path
 
@@ -472,7 +473,7 @@ def test_public_entrypoints_reject_duplicate_json_and_partial_list_bypass(
 
 def test_archival_n0_mode_is_explicitly_not_a_current_stage_pass(project_root: Path) -> None:
     result = subprocess.run(
-        [".venv\\Scripts\\python.exe", "tools\\verify_handoff.py", "--archival-n0"],
+        [sys.executable, "tools\\verify_handoff.py", "--archival-n0"],
         cwd=project_root,
         check=False,
         capture_output=True,

@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.2",
+  "contract_version": "1.3",
   "completed": [
     {
       "phase": "N0",
@@ -83,6 +83,17 @@
       "approval_record": "approvals/owner_n2b1p_cache_promotion.yaml"
     }
   ],
+  "review_candidates": [
+    {
+      "kind": "BOUNDED_RUNTIME_REVIEW_CANDIDATE",
+      "phase": "N2B2_RUNTIME_GPU_VALIDATION",
+      "file": "phase_n2b2_runtime_gpu_validation_and_s20_preparation.yaml",
+      "capability": "N2B2_RUNTIME_GPU_VALIDATION_AND_SYNTHETIC_S20_PREPARATION",
+      "approval_record": "approvals/owner_n2b2_runtime_gpu_validation_receipt.yaml",
+      "project_state": "N2B2_LOCKED",
+      "execution_status": "SYNTHETIC_GPU_ONLY"
+    }
+  ],
   "locked": [
     {"phase": "N2B1", "file": "phase_n2_pose_and_segmentation.yaml", "capability": "N2B1_MODEL_DOWNLOAD"},
     {"phase": "N2B1_Q", "file": "phase_n2_pose_and_segmentation.yaml", "capability": "N2B1_Q_QUARANTINE_DOWNLOAD"},
@@ -96,5 +107,5 @@
     {"phase": "N7", "file": "phase_n7_app_bundle_integration.yaml"},
     {"phase": "N8", "file": "phase_n8_nightly_scheduler_openclaw.yaml"}
   ],
-  "rule": "N0, N1, G1, N2A, N2B0, N2B0.5, N2B0.6, and N2B0.7 are immutable approved baselines. N2B1R acquisition is complete. N2B1P is a bounded local-research cache-promotion phase only; model execution, real-photo analysis, G2/G3, and N3-N8 remain locked until their own gates pass."
+  "rule": "N0, N1, G1, N2A, N2B0, N2B0.5, N2B0.6, and N2B0.7 are immutable approved baselines. N2B1R acquisition is complete. N2B1P remains the governed cache-promotion baseline. The N2B2 runtime entry is only a bounded synthetic GPU review candidate; PROJECT_STATE and the production N2B2 lock remain unchanged."
 }

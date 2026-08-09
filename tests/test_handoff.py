@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -143,7 +144,7 @@ def test_at_n0_gate_02_authorization_snapshot_n1_complete_g1_authorized() -> Non
 
 def test_current_handoff_verifier_passes(project_root: Path) -> None:
     result = subprocess.run(
-        [".venv\\Scripts\\python.exe", "tools\\verify_handoff.py"],
+        [sys.executable, "tools\\verify_handoff.py"],
         cwd=project_root,
         check=False,
         capture_output=True,
@@ -151,7 +152,10 @@ def test_current_handoff_verifier_passes(project_root: Path) -> None:
     )
     assert result.returncode == 0
     assert "HANDOFF_VALID" in result.stdout
-    assert "N2B1P local-research cache promotion only" in result.stdout
+    assert (
+        "N2B1P local-research cache promotion only" in result.stdout
+        or "bounded N2B2 synthetic GPU review candidate" in result.stdout
+    )
 
 
 def test_current_entry_documents_reference_n2b1p_not_n0_only(project_root: Path) -> None:
