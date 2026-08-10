@@ -27,6 +27,7 @@ from urllib.parse import urlparse
 
 from ..domain.errors import NPI_SECURITY_BOUNDARY
 from .config import LOOPBACK_HOST, LOOPBACK_PORT, OLLAMA_BASE_URL, QWEN_MODEL, QWEN_QUANTIZATION
+from .qwen_fact_binding import make_bound_request, sha256_json
 
 
 @dataclass(frozen=True)
@@ -66,6 +67,7 @@ class OllamaClient:
         assert_loopback(base_url)
         self.base_url = base_url.rstrip("/")
         self._opener = opener or (lambda req: urllib.request.urlopen(req, timeout=200))
+        self.last_call_evidence: dict[str, Any] = {}
 
     # -- low-level HTTP ---------------------------------------------------
     def _request(self, method: str, path: str, body: dict[str, Any] | None = None) -> Any:
@@ -146,10 +148,18 @@ class OllamaClient:
         """
 
         prompt = self._build_prompt(
+            case_id=case_id,
             vision_facts=vision_facts or {},
             fact_digest=fact_digest,
             fact_ids=fact_ids,
             uncertainties=uncertainties,
+        )
+        bound = make_bound_request(
+            response_schema,
+            case_id=case_id,
+            fact_digest=fact_digest,
+            fact_ids=fact_ids,
+            prompt=prompt,
         )
         payload: dict[str, Any] = {
             "model": QWEN_MODEL,
@@ -157,7 +167,7 @@ class OllamaClient:
             "images": [image_b64],  # in-memory only; never an absolute path
             "stream": False,
             "think": False,
-            "format": response_schema,
+            "format": bound.schema,
             "options": {
                 "num_ctx": num_ctx,
                 "num_predict": num_predict,
@@ -167,6 +177,7 @@ class OllamaClient:
         }
         if keep_alive is not None:
             payload["keep_alive"] = keep_alive
+        started = time.perf_counter()
         out = self._request("POST", "/api/generate", payload)
         text = out.get("response", "")
         parsed = (
@@ -174,15 +185,24 @@ class OllamaClient:
             if isinstance(text, str) and text.strip()
             else (text if isinstance(text, dict) else {})
         )
+        raw_response_hash = sha256_json(parsed)
         # Defensive: never persist a thinking trace even if the server returns one.
         parsed.pop("thinking", None)
         parsed.pop("done", None)
         parsed.pop("done_reason", None)
+        self.last_call_evidence = {
+            "case_id": case_id,
+            "bound_response_schema_sha256": bound.schema_sha256,
+            "prompt_sha256": bound.prompt_sha256,
+            "raw_response_sha256": raw_response_hash,
+            "response_time_ms": round((time.perf_counter() - started) * 1000, 3),
+        }
         return parsed
 
     @staticmethod
     def _build_prompt(
         *,
+        case_id: str = "",
         vision_facts: dict[str, Any],
         fact_digest: str,
         fact_ids: list[str],
@@ -191,7 +211,7 @@ class OllamaClient:
         facts_json = json.dumps(vision_facts, sort_keys=True, separators=(",", ":"))
         return (
             "You are a photography interpreter. Use ONLY the provided deterministic "
-            f"complete vision facts={facts_json}; fact_digest={fact_digest}. "
+            f"case_id={case_id}; complete vision facts={facts_json}; fact_digest={fact_digest}. "
             f"Referenced fact_ids: {fact_ids}. "
             f"Known uncertainties: {uncertainties}. "
             "Produce photographic_interpretation, story_candidates (safe/narrative/dynamic), "

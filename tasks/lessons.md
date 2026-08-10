@@ -220,3 +220,63 @@
 - Historical Git topology and MANIFEST gates must be handled by one exact
   candidate tree; never delete or weaken the hardcoded-count assertions to
   make a dirty worktree appear valid.
+
+## 2026-08-09 N2B2 S20 continuation
+
+- A conditional Owner authorization must bind the exact review-record SHA and
+  reviewed commit at the S20 entrypoint; a chat statement alone is not enough
+  for a resumable batch run.
+- S20 synthetic validation bundles are a separate validation artifact set, not
+  a production Bundle v1 release and not an App import authorization.
+- Batch stages must checkpoint only after a complete model stage or case, and
+  resume must reject drift in review, manifest, runtime-source, or model
+  identity bindings.
+- Generate fixed synthetic cases once. If a strict case fails its declared
+  capability, preserve the failure and stop instead of changing seed, prompt,
+  threshold, or model.
+
+## 2026-08-10 N2B2 S20 Case 17 remediation and Qwen contract failure
+
+- A bounded fixture remediation may replace only the explicitly authorized
+  failed case. Preserve all other fixture bytes and keep the original failure
+  evidence as historical evidence.
+- Passing the visual facts chain does not authorize Qwen to alter immutable
+  fact references. An `input_fact_digest` echo mismatch is a Qwen contract
+  failure, not a fixture failure; do not coerce the returned digest or rerun by
+  changing the fixture, prompt, threshold or model.
+- When the same non-fixture contract error reproduces in two clean runs, stop
+  the batch, retain diagnostics and cleanup evidence, and require design review
+  before another model execution. Do not create a candidate commit from a
+  failed S20 runtime.
+- A request-bound Qwen schema must bind the exact case ID, authoritative fact
+  digest and allowed fact IDs before the request; validating only a generic
+  format schema is insufficient.
+- The artifact schema must be tested against the actual reasoning contract.
+  The v3 run exposed a stale `analysis.json` array requirement for a Qwen
+  `{safe,narrative,dynamic}` story object; preserve that failure and add a
+  bundle-level regression test before retrying model execution.
+- Separate quality tooling from model execution tooling on Windows: use the
+  repository `.venv` for pytest/ruff/mypy/quality gates and the existing
+  ComfyUI Torch environment plus repository site-packages for CUDA inference;
+  do not install or download dependencies to bridge the environments.
+- A completed S20 runtime is still only a synthetic review candidate. Bundle
+  count, no-op resume and Obsidian sync do not change `PROJECT_STATE.json` or
+  unlock `N2B2=LOCKED`.
+
+## 2026-08-11 N2B2 S20 terminal-artifact correction
+
+- Byte-valid checksums do not prove a coherent result. A COMPLETE synthetic
+  S20 release must contain exactly its success artifact set and must reject a
+  retained `failure_summary.json`, intermediate-only diagnostics, unexpected
+  files, missing rows or mismatched bytes.
+- A no-op resume is a verification operation: recompute the release checksum
+  set, validate the COMPLETE checkpoint and recheck the local Qwen identity
+  before returning success. Presence of `CHECKSUMS.sha256` alone is not proof.
+- Bind the Qwen identity hash into every primary, repeat and preflight binding
+  record; an opaque checkpoint hash by itself does not let an independent
+  reviewer connect responses to the verified local model identity.
+- For a v2 fixture-baseline comparison, the CLI argument must name the
+  directory that directly contains the frozen `fixture_manifest.json`, not its
+  surrounding runtime directory. Verify that input boundary before allocating
+  CUDA or starting any local model service; the corrected v4 invocation made
+  no model load or output write before this check.

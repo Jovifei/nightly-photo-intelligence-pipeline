@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.3",
+  "contract_version": "1.4",
   "completed": [
     {
       "phase": "N0",
@@ -92,6 +92,33 @@
       "approval_record": "approvals/owner_n2b2_runtime_gpu_validation_receipt.yaml",
       "project_state": "N2B2_LOCKED",
       "execution_status": "SYNTHETIC_GPU_ONLY"
+    },
+    {
+      "kind": "BOUNDED_S20_REVIEW_CANDIDATE",
+      "phase": "N2B2_S20_SYNTHETIC_VALIDATION",
+      "file": "phase_n2b2_s20_synthetic_validation.yaml",
+      "capability": "N2B2_S20_SYNTHETIC_VALIDATION",
+      "approval_record": "approvals/owner_n2b2_s20_synthetic_validation_receipt.yaml",
+      "project_state": "N2B2_LOCKED",
+      "execution_status": "CONDITIONAL_SYNTHETIC_ONLY"
+    },
+    {
+      "kind": "BOUNDED_QWEN_FACT_BINDING_REVIEW_CANDIDATE",
+      "phase": "N2B2_QWEN_FACT_BINDING_CONTRACT_REMEDIATION",
+      "file": "phase_n2b2_qwen_fact_binding_remediation.yaml",
+      "capability": "N2B2_QWEN_FACT_BINDING_CONTRACT_REMEDIATION_AND_S20_V3_RESUME",
+      "approval_record": "approvals/owner_n2b2_qwen_fact_binding_remediation_receipt.yaml",
+      "project_state": "N2B2_LOCKED",
+      "execution_status": "SYNTHETIC_QWEN_CONTRACT_ONLY"
+    },
+    {
+      "kind": "BOUNDED_S20_ARTIFACT_INTEGRITY_REVIEW_CANDIDATE",
+      "phase": "N2B2_S20_ARTIFACT_INTEGRITY_REMEDIATION",
+      "file": "phase_n2b2_s20_artifact_integrity_remediation.yaml",
+      "capability": "N2B2_S20_ARTIFACT_INTEGRITY_REMEDIATION_AND_EXTERNAL_REVIEW",
+      "approval_record": "approvals/owner_n2b2_s20_artifact_integrity_remediation_receipt.yaml",
+      "project_state": "N2B2_LOCKED",
+      "execution_status": "SYNTHETIC_ARTIFACT_INTEGRITY_ONLY"
     }
   ],
   "locked": [

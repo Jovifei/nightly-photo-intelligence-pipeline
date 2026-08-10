@@ -123,9 +123,17 @@ def test_s20_schema_has_exactly_twenty_case_contract() -> None:
                     "steps": 30,
                     "cfg": 6.0,
                     "denoise": 1.0,
+                    "checkpoint": "sd_xl_base_1.0.safetensors",
+                    "checkpoint_sha256": "b" * 64,
+                    "vae": "sdxl_vae.safetensors",
+                    "vae_sha256": "c" * 64,
+                    "comfyui_version": "0.19.5",
+                    "port": 7865,
+                    "prompt_id": "test-prompt",
                 },
                 "expected_processability": "unsupported" if number == 19 else "processable",
                 "expected_person_count": 0 if number == 19 else 1,
+                "acceptance_profile": "negative" if number == 19 else "strict",
                 "tags": ["synthetic"],
             }
         )

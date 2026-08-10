@@ -52,3 +52,16 @@ does not authorize real-photo, G1, EXIF, SQLite, App, S20 execution, or later
 phases. The active bounded task is
 `tasks/phase_n2b2_runtime_gpu_validation_and_s20_preparation.yaml`; all
 production lock semantics remain enforced.
+
+## N2B2 S20 artifact-integrity remediation addendum (2026-08-11)
+
+The only active bounded S20 execution authority is
+`tasks/phase_n2b2_s20_artifact_integrity_remediation.yaml`, bound to
+`approvals/owner_n2b2_s20_artifact_integrity_remediation_receipt.yaml`.
+It permits exactly one fresh, synthetic-only replacement run from the frozen
+20-case v2 manifest in order to correct the contradictory v3 completion
+artifact set. A successful set must contain no terminal failure summary and
+must pass exact file-set, checksum, checkpoint, Qwen-identity and no-op-resume
+verification before any independent review. This addendum does not change
+`PROJECT_STATE.json`, production `N2B2=LOCKED`, or any real-photo/G1/EXIF/
+SQLite/App boundary.

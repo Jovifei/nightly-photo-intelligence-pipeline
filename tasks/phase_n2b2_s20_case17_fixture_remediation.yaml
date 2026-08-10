@@ -1,0 +1,30 @@
+contract_version: "1.0"
+phase:
+  id: "N2B2_S20_CASE17_FIXTURE_REMEDIATION"
+  title: "Bounded replacement of the failed strict Case 17 synthetic fixture"
+  status: "AUTHORIZED_SYNTHETIC_RETRY"
+  project_state_status: "N2B2_LOCKED"
+prerequisite:
+  reviewed_commit: "49e653b27884f9ba09d15ca17682e496687dc59f"
+  source_manifest_sha256: "34d1ef3146b05982254d0613da5a5e6f0ca323d6f8f727fb1ae7cb17a30e64c6"
+  owner_receipt: "approvals/owner_n2b2_s20_case17_remediation_receipt.yaml"
+scope:
+  synthetic_only: true
+  replace_case17_only: true
+  preserve_other_cases: 19
+  candidate_seed_count: 4
+  pose_score_threshold: 0.5
+  qwen_requires_visual_acceptance: true
+forbidden:
+  - "real photos"
+  - "EXIF"
+  - "G1 source access"
+  - "SQLite ingest"
+  - "PROJECT_STATE mutation"
+  - "N2B2 unlock"
+  - "model download or replacement"
+  - "S20 external review or phase completion"
+stop_conditions:
+  evidence_drift: "N2B2_S20_FAILURE_EVIDENCE_DRIFT"
+  no_strict_candidate: "N2B2_S20_CASE17_FIXTURE_REMEDIATION_REQUIRES_DESIGN_REVIEW"
+  source_change: "N2B2_S20_RUNTIME_SOURCE_REVALIDATION_REQUIRED"

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b2_s20_director_prompt.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "case_id", "input_fact_digest", "reasoning_based_on_fact_ids", "director_prompts"],
+  "properties": {
+    "schema_version": {"const": "n2b2-s20-director-prompt-v1"},
+    "case_id": {"pattern": "^n2b2-s20-(0[1-9]|1[0-9]|20)$"},
+    "input_fact_digest": {"$ref": "#/$defs/sha256"},
+    "reasoning_based_on_fact_ids": {"type": "array", "items": {"pattern": "^fact-[a-z0-9-]+$"}},
+    "director_prompts": {"type": ["array", "string", "object", "null"]}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b2_s20_analysis.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "case_id", "input_fact_digest", "processing_disposition", "photographic_interpretation", "story_candidates", "uncertainties", "provenance"],
+  "properties": {
+    "schema_version": {"const": "n2b2-s20-analysis-v1"},
+    "case_id": {"pattern": "^n2b2-s20-(0[1-9]|1[0-9]|20)$"},
+    "input_fact_digest": {"$ref": "#/$defs/sha256"},
+    "processing_disposition": {"enum": ["STRICT_VALIDATION", "QUALITY_OBSERVATION_NOT_PHASE_FAILURE", "NEGATIVE_CONTROL", "UNSUPPORTED_CONTROL_OBSERVATION"]},
+    "photographic_interpretation": {"type": "object", "additionalProperties": false, "required": ["scene_value", "composition_notes", "lighting_notes", "tone_notes"], "properties": {"scene_value": {"enum": ["high", "medium", "low", "unsupported"]}, "composition_notes": {"type": "string", "minLength": 1, "maxLength": 500}, "lighting_notes": {"type": "string", "minLength": 1, "maxLength": 500}, "tone_notes": {"type": "string", "minLength": 1, "maxLength": 500}}},
+    "story_candidates": {"type": "object", "additionalProperties": false, "required": ["safe", "narrative", "dynamic"], "properties": {"safe": {"type": "string", "minLength": 1, "maxLength": 1000}, "narrative": {"type": "string", "minLength": 1, "maxLength": 1000}, "dynamic": {"type": "string", "minLength": 1, "maxLength": 1000}}},
+    "uncertainties": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["description", "related_fact_ids"], "properties": {"description": {"type": "string", "minLength": 1, "maxLength": 500}, "related_fact_ids": {"type": "array", "items": {"type": "string", "pattern": "^fact-[a-z0-9-]+$"}}}}},
+    "provenance": {"type": "object", "additionalProperties": false, "required": ["qwen_model", "forbidden_field_count"], "properties": {"qwen_model": {"const": "qwen3.5:9b"}, "forbidden_field_count": {"const": 0}}}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

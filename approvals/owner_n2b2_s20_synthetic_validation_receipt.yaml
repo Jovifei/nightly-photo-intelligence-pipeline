@@ -1,0 +1,30 @@
+schema_version: "1.0"
+receipt_type: "OWNER_CONDITIONAL_SYNTHETIC_S20_AUTHORIZATION"
+status: "RECORDED_FOR_REVIEW_CANDIDATE"
+owner_id: "Jovi"
+issued_at_utc: "2026-08-09"
+task: "N2B2_S20_SYNTHETIC_VALIDATION"
+reviewed_commit: "49e653b27884f9ba09d15ca17682e496687dc59f"
+review_verdict: "PASS_FOR_OWNER_REVIEW"
+review_record_sha256: "fe9fa1066e65db7df3256d103b5dc1b43a0635d54111a6bf834b02992f367262"
+s20_execution: "CONDITIONAL_OWNER_AUTHORIZED"
+project_state_mutation: false
+production_n2b2_unlock: false
+synthetic_only: true
+allowed:
+  - "fixed 20-case synthetic fixture generation"
+  - "CUDA-only S20 validation"
+  - "synthetic validation bundles and external evidence"
+  - "post-run Obsidian knowledge synchronization"
+not_allowed:
+  - "real photos"
+  - "EXIF"
+  - "G1 source access"
+  - "SQLite ingest"
+  - "PROJECT_STATE mutation"
+  - "N2B2 unlock"
+  - "production Bundle v1 release"
+  - "App import"
+  - "push merge PR release"
+mandatory_stop: true
+success: "N2B2_S20_SYNTHETIC_VALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW"

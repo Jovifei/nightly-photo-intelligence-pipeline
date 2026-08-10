@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b2_qwen_fact_binding_evidence.schema.json",
+  "title": "N2B2 Qwen fact binding evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "case_id",
+    "authoritative_fact_digest",
+    "bound_response_schema_sha256",
+    "prompt_sha256",
+    "raw_response_sha256",
+    "model_identity_sha256",
+    "echoed_fact_digest",
+    "echo_match",
+    "fact_reference_valid",
+    "forbidden_field_count",
+    "validation_status",
+    "errors"
+  ],
+  "properties": {
+    "schema_version": {"const": "n2b2-qwen-fact-binding-evidence-v1"},
+    "case_id": {"type": "string", "pattern": "^n2b2-s20-[0-9]{2}$"},
+    "authoritative_fact_digest": {"$ref": "#/$defs/sha256"},
+    "bound_response_schema_sha256": {"$ref": "#/$defs/sha256"},
+    "prompt_sha256": {"$ref": "#/$defs/sha256"},
+    "raw_response_sha256": {"$ref": "#/$defs/sha256"},
+    "model_identity_sha256": {"$ref": "#/$defs/sha256"},
+    "echoed_fact_digest": {"$ref": "#/$defs/sha256"},
+    "echo_match": {"type": "boolean"},
+    "fact_reference_valid": {"type": "boolean"},
+    "forbidden_field_count": {"type": "integer", "minimum": 0},
+    "validation_status": {"enum": ["PASS", "FAIL"]},
+    "response_time_ms": {"type": "number", "minimum": 0},
+    "errors": {"type": "array", "items": {"type": "string"}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

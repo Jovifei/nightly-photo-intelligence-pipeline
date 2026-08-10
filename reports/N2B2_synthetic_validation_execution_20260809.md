@@ -44,6 +44,23 @@ OBSIDIAN_WRITE_COUNT=0
 MODEL_DOWNLOAD_BYTES=0
 ```
 
+## S20 continuation attempt — 2026-08-09
+
+- Result: `N2B2_S20_SYNTHETIC_VALIDATION_FAILED`.
+- The fixed 20-case external manifest was generated and strict-loaded. Each
+  case was submitted exactly once; no seed, prompt, threshold, or model retry
+  occurred.
+- CUDA visual processing completed its repeated facts work, then stopped at
+  strict acceptance for `n2b2-s20-17`: expected one person, detected two.
+- Qwen, per-case bundles, top-level bundle index, and production Bundle v1 were
+  not created after this strict failure.
+- Qwen was not entered; the Luna-owned Ollama service was explicitly checked
+  and stopped during cleanup. The independent ComfyUI service was also closed.
+- Failure evidence is retained externally and redacted in the S20 report.
+- `REAL_PHOTO_READ_COUNT=0`, `REAL_EXIF_READ_COUNT=0`, `G1_SOURCE_ACCESS=0`,
+  `SQLITE_WRITE_COUNT=0`, `APP_WRITE_COUNT=0`, `OBSIDIAN_WRITE_COUNT=0`,
+  `MODEL_DOWNLOAD_BYTES=0`, `N2B2=LOCKED`.
+
 Qwen schema/provenance checks in the bounded repository-fixture attempt had
 zero forbidden fields and valid fact-digest/fact-id checks. That does not
 override the failed person-positive S3 gate.
@@ -170,6 +187,80 @@ No PROJECT_STATE, phase lock, model, threshold, verifier, or historical
 N2B1P commit was amended. No S20, G1 renewal, RTMW, SAM2, App, SQLite ingest,
 push, merge, release, or real-photo access was performed.
 
+## N2B2 S20 Case 17 remediation and v2 continuation — 2026-08-10
+
+The first v1 S20 attempt remains historical evidence: strict Case 17 expected
+one person and detected two, so Qwen and bundle generation were correctly not
+entered. That evidence was not deleted or reinterpreted.
+
+### Remediation result
+
+- Four and only four predeclared Case 17 seeds were evaluated in seed order.
+- Seed `2026082117` was selected as the first strict PASS candidate.
+- Selected Case 17 SHA-256:
+  `87ee6ca18ba273dddba0f0f23af588fc01fc18e4f3ba1063c0e20dfd8dc80e99`.
+- The v2 manifest retained the other 19 fixture bytes exactly; only Case 17
+  was replaced. The v2 manifest digest is recorded in Git-external evidence.
+- The model, score threshold `0.5`, prompts, and strict acceptance semantics
+  were not relaxed.
+
+### v2 S20 execution result
+
+The CUDA visual chain completed for all 20 cases in both deterministic rounds.
+Case 17 passed its strict person/keypoint/segmentation checks. Case 19 remained
+the negative control and Case 20 remained an unsupported observation. Canonical
+facts were written before Qwen admission and the visual evidence was retained.
+
+Two clean Qwen attempts then stopped at `n2b2-s20-03` with the same immutable
+fact-contract error: the model returned an `input_fact_digest` different from
+the supplied vision-facts digest. The implementation did not coerce or rewrite
+the digest. Because the Qwen contract failed, the run correctly produced no
+Reference Bundles and did not create a production bundle.
+
+```text
+N2B2_S20_SYNTHETIC_VALIDATION_FAILED
+FAILURE_CLASS=QWEN_FACT_DIGEST_ECHO_MISMATCH
+VISUAL_CHAIN_20_CASES=PASS
+CASE17_REMEDIATION=PASS
+QWEN_SCHEMA=FAIL_AT_CASE_n2b2-s20-03
+BUNDLE_COUNT=0
+NO_OP_RESUME=NOT_PERFORMED_INCOMPLETE_RUN
+N2B2_STATE=LOCKED
+```
+
+### Cleanup and hard boundaries
+
+- Retry GPU peak: approximately `9594 MiB`; post-unload sample: approximately
+  `2347 MiB`.
+- The Luna-owned Ollama process and listener were stopped; no user ComfyUI
+  process was stopped or modified. TorchVision resident roles were empty.
+- `REAL_PHOTO_READ_COUNT=0`, `REAL_EXIF_READ_COUNT=0`,
+  `G1_SOURCE_ACCESS=0`, `SQLITE_WRITE_COUNT=0`, `APP_WRITE_COUNT=0`,
+  `OBSIDIAN_WRITE_COUNT=0`, `S20_RUNTIME_OBSIDIAN_WRITE_COUNT=0`,
+  `MODEL_DOWNLOAD_BYTES=0`.
+- No S20 candidate commit was created; main and the GPU review branch were not
+  moved. `PROJECT_STATE.json` remains unchanged and `N2B2=LOCKED`.
+
+### Final verification record
+
+```text
+FOCUSED_TESTS=46 passed, exit=0
+PYTEST_FULL=518 passed / 3 governance failures, exit=1
+RUFF_CHECK=PASS, exit=0
+RUFF_FORMAT=PASS, exit=0
+MYPY=PASS, 66 source files, exit=0
+SENSITIVE_SCAN=0 violations, exit=0
+RUN_QUALITY=5 PASS / 2 FAIL, exit=1
+PREFLIGHT=15 PASS / 0 FAIL, exit=0
+HANDOFF=5 PASS / 1 FAIL, exit=1 (MANIFEST only)
+GIT_DIFF_CHECK=PASS, exit=0
+COMMIT=NOT_CREATED
+```
+
+The governance failures are reported as failures, not converted to PASS: the
+worktree contains the post-run report/task updates and `MANIFEST.sha256` was
+not rebuilt because the failed S20 run is not eligible for a candidate commit.
+
 ## N2B2 GPU runtime continuation — 2026-08-09
 
 - The explicit CUDA admission command ran against the frozen v3 selected
@@ -248,8 +339,66 @@ APP_WRITE_COUNT=0
 OBSIDIAN_WRITE_COUNT=0
 MODEL_DOWNLOAD_BYTES=0
 S20_TECHNICAL_PREPARATION=READY
-S20_EXECUTION_STATUS=NOT_PERFORMED
-S20_FIXTURE_MANIFEST_INSTANCE=NOT_CREATED
+S20_EXECUTION_STATUS=FAILED_STRICT_ACCEPTANCE
+S20_FIXTURE_MANIFEST_INSTANCE=CREATED_EXTERNAL_ONLY
 S20_EXTERNAL_REVIEW_AND_OWNER_APPROVAL_REQUIRED=true
 N2B2_STATE=LOCKED
 ```
+## N2B2 Qwen fact-binding remediation and S20 v3 — 2026-08-10
+
+The prior Case 17 and Qwen digest-mismatch evidence remains unchanged. The
+bounded Qwen remediation introduced request-bound response schemas and
+per-case binding evidence. During the first v3 bundle attempt, the repository
+`analysis.json` schema was found to require an array while the established
+Qwen contract emits a `{safe,narrative,dynamic}` story object. That real
+artifact-contract error was preserved; the schema was corrected and covered
+by a regression test before a new fixed-source candidate was created.
+
+### Runtime result
+
+```text
+N2B2_S20_SYNTHETIC_VALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW
+```
+
+- Runtime-source candidate: `9e50f0057171f62af5cfccc4f8a539453fef14c4`.
+- Candidate parent: `49e653b27884f9ba09d15ca17682e496687dc59f`.
+- The external v2 manifest was used unchanged; Case 17 remained the bounded
+  replacement and the other 19 fixture bytes remained unchanged.
+- Pose, LRASPP and DeepLab completed 20 cases in each of two full visual
+  rounds. Canonical facts were byte-identical and digest-identical for all 20.
+- Qwen processed all 20 cases and the deterministic five-case repeat set.
+  Request-bound schema, digest echo, allowed fact IDs and forbidden fields
+  passed for every case.
+- 20 case directories contain `analysis.json`, `vision_facts.json`,
+  `director_prompt.json` and `reference_bundle.json`; the top-level index and
+  `CHECKSUMS.sha256` cover all 142 release files.
+- `--resume` returned exit `0`; before/after hashes were identical and no
+  model service was running during the no-op check.
+
+### Runtime metrics and boundaries
+
+```text
+GPU_BASELINE_MIB=2517
+GPU_PEAK_MIB=9702
+GPU_AFTER_UNLOAD_MIB=2779
+OLLAMA_PEAK_MIB=5607
+BUNDLE_COUNT=20
+QWEN_REPEAT_CASE_COUNT=5
+REAL_PHOTO_READ_COUNT=0
+REAL_EXIF_READ_COUNT=0
+G1_SOURCE_ACCESS=0
+SQLITE_WRITE_COUNT=0
+APP_WRITE_COUNT=0
+OBSIDIAN_WRITE_COUNT=0
+S20_RUNTIME_OBSIDIAN_WRITE_COUNT=0
+MODEL_DOWNLOAD_BYTES=0
+N2B2_STATE=LOCKED
+PRODUCTION_BUNDLE_RELEASE=NOT_CREATED
+S20_EXTERNAL_REVIEW_REQUIRED=true
+```
+
+The Luna-owned Ollama service was stopped after the run and GPU usage returned
+to the pre-run baseline. No user ComfyUI process was stopped. The successful
+runtime result still requires the separate S20 candidate commit and external
+Reviewer; it is not phase completion, a production bundle, a G1 renewal or
+real-photo authorization.

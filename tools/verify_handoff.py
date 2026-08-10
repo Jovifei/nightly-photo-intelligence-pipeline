@@ -25,6 +25,12 @@ N2B1R_SHA = "d3628e27334e819ba2d5944151447595e03f39f9"
 N2B1P_SHA = "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043"
 N2B2_REVIEW_TASK = "tasks/phase_n2b2_runtime_gpu_validation_and_s20_preparation.yaml"
 N2B2_REVIEW_RECEIPT = "approvals/owner_n2b2_runtime_gpu_validation_receipt.yaml"
+N2B2_S20_TASK = "tasks/phase_n2b2_s20_synthetic_validation.yaml"
+N2B2_S20_RECEIPT = "approvals/owner_n2b2_s20_synthetic_validation_receipt.yaml"
+N2B2_QWEN_TASK = "tasks/phase_n2b2_qwen_fact_binding_remediation.yaml"
+N2B2_QWEN_RECEIPT = "approvals/owner_n2b2_qwen_fact_binding_remediation_receipt.yaml"
+N2B2_S20_INTEGRITY_TASK = "tasks/phase_n2b2_s20_artifact_integrity_remediation.yaml"
+N2B2_S20_INTEGRITY_RECEIPT = "approvals/owner_n2b2_s20_artifact_integrity_remediation_receipt.yaml"
 
 errors: list[str] = []
 passes: list[str] = []
@@ -129,7 +135,14 @@ def check_required_files() -> None:
         "schemas/n2b1r_artifact_register_v1.schema.json",
         N2B2_REVIEW_TASK,
         N2B2_REVIEW_RECEIPT,
+        N2B2_S20_TASK,
+        N2B2_S20_RECEIPT,
+        N2B2_QWEN_TASK,
+        N2B2_QWEN_RECEIPT,
+        N2B2_S20_INTEGRITY_TASK,
+        N2B2_S20_INTEGRITY_RECEIPT,
         "schemas/n2b2_s20_fixture_manifest.schema.json",
+        "schemas/n2b2_s20_independent_review.schema.json",
         "schemas/n2b2_gpu_runtime_metrics.schema.json",
     )
     missing = [rel for rel in required if not (ROOT / rel).is_file()]
@@ -379,10 +392,108 @@ def check_bounded_n2b2_review_contract() -> None:
             state.get("phase_status", {}).get("N2B1P") == "AUTHORIZED",
         )
     )
-    if valid:
+    candidate_is_s20 = git("rev-parse", "HEAD^")[1] == "49e653b27884f9ba09d15ca17682e496687dc59f"
+    if valid and not candidate_is_s20:
         ok("bounded N2B2 synthetic GPU review receipt is valid; production N2B2 remains locked")
     else:
-        fail("bounded N2B2 review-candidate receipt or lock boundary is invalid")
+        s20_task = load_yaml(N2B2_S20_TASK)
+        s20_receipt = load_yaml(N2B2_S20_RECEIPT)
+        qwen_task = load_yaml(N2B2_QWEN_TASK)
+        qwen_receipt = load_yaml(N2B2_QWEN_RECEIPT)
+        integrity_task = load_yaml(N2B2_S20_INTEGRITY_TASK)
+        integrity_receipt = load_yaml(N2B2_S20_INTEGRITY_RECEIPT)
+        s20_candidate = next(
+            (
+                item
+                for item in index.get("review_candidates", [])
+                if isinstance(item, dict) and item.get("phase") == "N2B2_S20_SYNTHETIC_VALIDATION"
+            ),
+            None,
+        )
+        qwen_candidate = next(
+            (
+                item
+                for item in index.get("review_candidates", [])
+                if isinstance(item, dict)
+                and item.get("phase") == "N2B2_QWEN_FACT_BINDING_CONTRACT_REMEDIATION"
+            ),
+            None,
+        )
+        integrity_candidate = next(
+            (
+                item
+                for item in index.get("review_candidates", [])
+                if isinstance(item, dict)
+                and item.get("phase") == "N2B2_S20_ARTIFACT_INTEGRITY_REMEDIATION"
+            ),
+            None,
+        )
+        s20_phase = s20_task.get("phase", {}) if isinstance(s20_task, dict) else {}
+        s20_prerequisite = s20_task.get("prerequisite", {}) if isinstance(s20_task, dict) else {}
+        s20_valid = all(
+            (
+                isinstance(s20_candidate, dict),
+                s20_candidate.get("project_state") == "N2B2_LOCKED",
+                s20_candidate.get("execution_status") == "CONDITIONAL_SYNTHETIC_ONLY",
+                s20_phase.get("status") == "AUTHORIZED_SYNTHETIC_S20_REVIEW_CANDIDATE",
+                s20_phase.get("project_state_status") == "N2B2_LOCKED",
+                s20_prerequisite.get("reviewed_commit")
+                == "49e653b27884f9ba09d15ca17682e496687dc59f",
+                s20_prerequisite.get("review_verdict") == "PASS_FOR_OWNER_REVIEW",
+                s20_receipt.get("reviewed_commit") == "49e653b27884f9ba09d15ca17682e496687dc59f",
+                s20_receipt.get("review_verdict") == "PASS_FOR_OWNER_REVIEW",
+                s20_receipt.get("s20_execution") == "CONDITIONAL_OWNER_AUTHORIZED",
+                s20_receipt.get("project_state_mutation") is False,
+                s20_receipt.get("production_n2b2_unlock") is False,
+                isinstance(qwen_candidate, dict),
+                qwen_candidate.get("project_state") == "N2B2_LOCKED",
+                qwen_candidate.get("execution_status") == "SYNTHETIC_QWEN_CONTRACT_ONLY",
+                isinstance(qwen_task, dict),
+                qwen_task.get("phase", {}).get("status")
+                == "AUTHORIZED_SYNTHETIC_REMEDIATION_REVIEW_CANDIDATE",
+                qwen_task.get("phase", {}).get("project_state_status") == "N2B2_LOCKED",
+                isinstance(qwen_receipt, dict),
+                qwen_receipt.get("status") == "AUTHORIZED_FOR_BOUNDED_SYNTHETIC_RETRY",
+                qwen_receipt.get("reviewed_commit") == "49e653b27884f9ba09d15ca17682e496687dc59f",
+                qwen_receipt.get("project_state_mutation") is False,
+                qwen_receipt.get("production_n2b2_unlock") is False,
+                state.get("phase_status", {}).get("N2B2") == "LOCKED",
+            )
+        )
+        if s20_valid:
+            integrity_valid = all(
+                (
+                    isinstance(integrity_candidate, dict),
+                    integrity_candidate.get("project_state") == "N2B2_LOCKED",
+                    integrity_candidate.get("execution_status")
+                    == "SYNTHETIC_ARTIFACT_INTEGRITY_ONLY",
+                    isinstance(integrity_task, dict),
+                    integrity_task.get("phase", {}).get("status")
+                    == "AUTHORIZED_SYNTHETIC_REMEDIATION_REVIEW_CANDIDATE",
+                    integrity_task.get("phase", {}).get("project_state_status") == "N2B2_LOCKED",
+                    integrity_task.get("prerequisite", {}).get("required_final_parent")
+                    == "49e653b27884f9ba09d15ca17682e496687dc59f",
+                    isinstance(integrity_receipt, dict),
+                    integrity_receipt.get("receipt_type")
+                    == "OWNER_S20_ARTIFACT_INTEGRITY_REMEDIATION",
+                    integrity_receipt.get("status") == "AUTHORIZED_FOR_BOUNDED_SYNTHETIC_RETRY",
+                    integrity_receipt.get("required_final_parent")
+                    == "49e653b27884f9ba09d15ca17682e496687dc59f",
+                    integrity_receipt.get("fixture_manifest_sha256")
+                    == "b59446550e81499aaac9be17bebfd675f403869767a16318ce1a1a8904e4eec0",
+                    integrity_receipt.get("project_state_mutation") is False,
+                    integrity_receipt.get("production_n2b2_unlock") is False,
+                )
+            )
+            if integrity_valid:
+                ok(
+                    "bounded N2B2 S20 artifact-integrity review receipt is valid; "
+                    "production N2B2 remains locked"
+                )
+            else:
+                fail("bounded N2B2 S20 artifact-integrity receipt or lock boundary is invalid")
+        else:
+            fail("bounded N2B2 review-candidate receipt or lock boundary is invalid")
 
 
 def check_baselines() -> None:
@@ -408,13 +519,25 @@ def check_baselines() -> None:
     ) != (0, "1"):
         fail("N2B1P baseline must contain exactly one post-N2B1R commit")
     elif git("rev-parse", "HEAD") != (0, N2B1P_SHA) and not (
-        git("rev-parse", "HEAD^") == (0, N2B1P_SHA)
-        and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "2")
-        and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "1")
+        (
+            git("rev-parse", "HEAD^") == (0, N2B1P_SHA)
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "2")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "1")
+        )
+        or (
+            git("rev-parse", "HEAD^") == (0, "49e653b27884f9ba09d15ca17682e496687dc59f")
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "3")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "2")
+        )
     ):
         fail("N2B2 review candidate must be exactly one direct child of N2B1P")
     elif git("rev-list", "--merges", "HEAD") != (0, ""):
         fail("current candidate contains a merge commit")
+    elif git("rev-parse", "HEAD^") == (0, "49e653b27884f9ba09d15ca17682e496687dc59f"):
+        print(
+            "HANDOFF_VALID: bounded N2B2 S20 artifact-integrity review candidate; "
+            "production N2B2 remains LOCKED"
+        )
     else:
         ok("all immutable approved tags and the bounded no-merge ancestry are intact")
 
@@ -499,7 +622,7 @@ def main() -> int:
         )
     else:
         print(
-            "HANDOFF_VALID: bounded N2B2 synthetic GPU review candidate; "
+            "HANDOFF_VALID: bounded N2B2 S20 artifact-integrity review candidate; "
             "production N2B2 remains LOCKED"
         )
     return 0

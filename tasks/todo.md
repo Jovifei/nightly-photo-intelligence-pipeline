@@ -1472,8 +1472,9 @@ out of scope.
   paths or process details in Git reports.
 - [x] Tighten Git candidate-count assertions and add report/state binding
   tests for the CUDA result, v2 hashes, S3 result and S20 lock.
-- [ ] Run the focused/static matrix on the updated worktree and rebuild the
-  exact candidate MANIFEST.
+- [x] Run the focused/static matrix on the updated worktree; focused tests
+  passed (`40 passed`), ruff/format/mypy/sensitive scan and diff-check passed.
+  Candidate MANIFEST was not rebuilt because S20 strict acceptance failed.
 - [ ] Validate one detached candidate commit with the complete quality matrix.
 - [ ] Atomically advance only the remediation review branch after all gates
   pass; keep `main` at the N2B1P baseline.
@@ -1488,3 +1489,154 @@ out of scope.
   and no S20 instance or run exists.
 - `PROJECT_STATE.json` remains unchanged, `N2B2=LOCKED`, and no commit has yet
   been created in this closure step.
+
+## N2B2 Review to S20 Synthetic Validation — 2026-08-09
+
+- [x] Freeze reviewed `49e653b` in a detached read-only worktree and preserve
+  child-review timeout evidence without claiming it as an external PASS.
+- [x] Record the parent fallback review result and bind its review hash to the
+  conditional Owner S20 receipt.
+- [x] Add the strict twenty-case manifest loader, checkpoint binding, bundle
+  writers, S20 contract, and CUDA-only CLI boundary.
+- [x] Generate the fixed twenty synthetic fixtures exactly once through the
+  isolated local ComfyUI service.
+- [x] Run CUDA S20 visual stages and preserve the strict acceptance failure;
+  Qwen, bundle writing, and resume were not entered after the hard stop.
+- [ ] Run the complete quality matrix and validate one detached S20 candidate
+  commit before advancing only the S20 review branch.
+- [x] Synchronize redacted milestone knowledge to Obsidian after runtime
+  cleanup; six notes were updated or added and no runtime Obsidian write
+  occurred.
+
+### Review
+
+- Current implementation worktree: `codex/n2b2-s20-synthetic-validation`.
+- Production state remains `N2B2=LOCKED`; no phase-completion approval is created.
+- S20 runtime output, fixtures, model/cache files, and raw process evidence remain
+  Git-external by contract.
+- Child review dispatch was unavailable after three bounded attempts; the parent
+  fallback review is recorded as a distinct evidence layer and must not be
+  described as a separate external Reviewer identity.
+- S20 stop: `N2B2_S20_SYNTHETIC_VALIDATION_FAILED`; strict case
+  `n2b2-s20-17` expected one person and detected two. Fixed fixtures and
+  external failure evidence are retained; no retry or candidate commit was made.
+- Full quality attempt recorded honestly: `512 passed / 3 governance failures`;
+  `run_quality.py` reported `5 pass / 2 fail` because the uncommitted worktree
+  cannot satisfy clean-tree and MANIFEST/handoff gates. No S20 candidate was
+  created.
+
+## N2B2 S20 Case 17 fixture remediation and v2 continuation - 2026-08-10
+
+### Plan
+
+- [x] Reverify the v1 review, manifest, Case 17 image and failure evidence.
+- [x] Generate exactly four predeclared Case 17 candidates and select the first
+  strict PASS without changing model, threshold or acceptance semantics.
+- [x] Build the v2 manifest with 19 byte-preserved v1 fixtures and one Case 17
+  replacement; retain all v1 runtime evidence.
+- [x] Validate the 20-case CUDA visual chain twice and preserve diagnostic facts
+  before the Qwen stage.
+- [x] Run a clean bounded Qwen attempt and one identical retry; stop after the
+  same contract error reproduced.
+- [x] Verify Qwen unload, GPU recovery, zero sensitive counts and no user
+  process termination.
+- [ ] Produce Reference Bundles, checksums and a successful no-op resume; these
+  remain not performed because Qwen fact-contract validation failed.
+- [ ] Create or advance an S20 candidate commit; prohibited after failed S20.
+
+### Review
+
+- Case 17 remediation: `PASS`; selected seed `2026082117`; selected image hash
+  is retained in external evidence only.
+- Visual chain: `PASS` for all 20 cases in both rounds. Case 17 strict
+  acceptance passed; Case 19 and Case 20 retained their declared semantics.
+- Qwen: `FAIL`, deterministic `input_fact_digest` echo mismatch on
+  `n2b2-s20-03` in both clean attempts. No digest coercion was performed.
+- Bundles: `0`; no production Bundle v1; no S20 candidate commit; no no-op
+  resume because the run was incomplete.
+- Final runtime state: `N2B2_S20_SYNTHETIC_VALIDATION_FAILED` with
+  `FAILURE_CLASS=QWEN_FACT_DIGEST_ECHO_MISMATCH`; `PROJECT_STATE.json` is
+  unchanged and `N2B2=LOCKED`.
+- Final verification: focused `46 passed`; full pytest `518 passed / 3
+  governance failures`; `run_quality.py` `5 PASS / 2 FAIL`; Ruff, format,
+  mypy, sensitive scan, preflight and diff-check passed; handoff `5 PASS / 1
+  FAIL` only because post-run report/task edits were not in MANIFEST.
+
+## N2B2 Qwen fact binding contract remediation plan - 2026-08-10
+
+- [x] Diagnose the next live blocker from repository and external evidence:
+  Qwen copied a format-valid but incorrect fact digest twice on Case 03.
+- [x] Record the closed implementation plan in
+  `tasks/plans/2026-08-10-n2b2-qwen-fact-binding-contract-remediation-and-s20-resume.md`.
+- [x] Jovi explicitly authorized implementation; the Qwen fact-binding Owner
+  receipt and task contract were created without changing PROJECT_STATE.
+## N2B2 Qwen fact-binding remediation and S20 v3 continuation — 2026-08-10
+
+- [x] Preserve the v2 Qwen digest-echo failure and add the bounded Owner
+  receipt/task contract without changing `PROJECT_STATE.json`.
+- [x] Add request-bound Qwen schemas, per-case binding evidence and regression
+  coverage; do not coerce Qwen facts or digest values.
+- [x] Correct the S20 analysis artifact schema to match the established Qwen
+  reasoning object and add a bundle-schema regression test.
+- [x] Build fixed-source candidate `9e50f0057171f62af5cfccc4f8a539453fef14c4`
+  from parent `49e653b27884f9ba09d15ca17682e496687dc59f`; full quality gates
+  passed before model execution.
+- [x] Run Case03 Qwen fact-binding probe: two validation passes, positive
+  residency, legal fact references and successful unload.
+- [x] Run full CUDA S20 v3: 20 visual cases in two rounds, 20 Qwen cases,
+  fixed five-case repeat, 20 bundles, index and checksums.
+- [x] Execute no-op resume: exit `0`, no model load and no file hash changes.
+- [x] Build and validate the single final S20 review-candidate commit with
+  parent `49e653b27884f9ba09d15ca17682e496687dc59f`; branch advanced only
+  after the clean candidate passed every quality gate.
+- [ ] Wait for independent external Reviewer; do not unlock N2B2 or enter G1,
+  real photos, production Bundle v1 or App work.
+
+### Review
+
+- Runtime result: `N2B2_S20_SYNTHETIC_VALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW`.
+- S20 bundle count: `20`; production bundle release: `NOT_CREATED`.
+- Facts repeat: 20/20 byte-identical and digest-identical.
+- Qwen: 20/20 contract PASS plus fixed 5-case repeat; forbidden fields `0`.
+- GPU: baseline `2517 MiB`, peak `9702 MiB`, after unload `2779 MiB`, Ollama
+  peak `5607 MiB`; all below the `11500 MiB` ceiling.
+- Hard counters: real photo/EXIF/G1/SQLite/App/Obsidian runtime/model download
+  counts all `0`; `N2B2=LOCKED`.
+- Historical v1 Case17 strict failure, v2 Qwen digest mismatch and v3 schema
+  mismatch are retained as failure evidence; none were rewritten as PASS.
+- Final Git state: one reachable S20 candidate child of `49e653b`; main and
+  the GPU review branch remain unchanged.
+
+## N2B2 S20 completion-artifact integrity remediation - 2026-08-11
+
+### Plan
+
+- [x] Freeze the contradictory v3 release set and record the independent audit
+  finding: checksum coverage alone cannot reconcile COMPLETE with a retained
+  terminal failure artifact.
+- [x] Add strict success-layout validation, exact checksum verification,
+  identity-bound Qwen evidence, terminal-failure refusal and a meaningful
+  no-op-resume gate.
+- [x] Bind the replacement run to the artifact-integrity Owner receipt without
+  changing `PROJECT_STATE.json` or the N2B2 lock.
+- [x] Create immutable runtime-source candidate `22c044f` and complete its
+  full clean-tree quality matrix (532 tests plus static, quality, preflight and
+  handoff gates).
+- [x] Run exactly one fresh CUDA S20 v4 against the frozen external v2
+  manifest; no fixture, prompt, threshold or model was changed.
+- [x] Validate the coherent external set and execute no-op resume: twenty
+  bundles, 148 release checksums, byte-identical visual facts and zero file
+  changes on resume. A final review candidate and independent review record
+  remain pending.
+- [ ] Synchronize only redacted completed-state knowledge to Obsidian after
+  GPU cleanup and the external review verdict.
+
+### Review
+
+- Current state: v4 runtime result is
+  `N2B2_S20_SYNTHETIC_VALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW`. The v3
+  runtime remains historical and is not reviewable as a successful release.
+- v4 evidence records all 20 bundles, coherent checksums, strict COMPLETE
+  layout, Qwen identity-bound evidence and a verified no-op resume. No
+  real-photo access, G1, EXIF, SQLite, App, production bundle release, phase
+  completion or branch advancement has occurred in this remediation entry.

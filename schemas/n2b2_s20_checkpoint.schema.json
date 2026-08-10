@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b2_s20_checkpoint.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "reviewed_commit",
+    "review_record_sha256",
+    "manifest_sha256",
+    "runtime_source_sha256",
+    "qwen_receipt_sha256",
+    "artifact_integrity_receipt_sha256",
+    "model_identity",
+    "run_started_at_utc",
+    "completed_stages",
+    "completed_cases",
+    "qwen_case_records",
+    "qwen_repeat_case_ids",
+    "bundle_count",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {"const": "n2b2-s20-checkpoint-v2"},
+    "reviewed_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "review_record_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "runtime_source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "qwen_receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact_integrity_receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "model_identity": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "run_started_at_utc": {"type": "string", "format": "date-time"},
+    "completed_stages": {
+      "type": "array",
+      "uniqueItems": true,
+      "const": ["vision_first", "vision_repeat", "vision_acceptance", "qwen", "bundles"]
+    },
+    "completed_cases": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 20,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^n2b2-s20-(0[1-9]|1[0-9]|20)$"}
+    },
+    "qwen_case_records": {
+      "type": "object",
+      "minProperties": 20,
+      "maxProperties": 20,
+      "propertyNames": {"pattern": "^n2b2-s20-(0[1-9]|1[0-9]|20)$"},
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["raw_response_sha256", "binding_evidence_sha256", "validation_status"],
+        "properties": {
+          "raw_response_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "binding_evidence_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "validation_status": {"const": "PASS"}
+        }
+      }
+    },
+    "qwen_repeat_case_ids": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^n2b2-s20-(0[1-9]|1[0-9]|20)$"}
+    },
+    "bundle_count": {"const": 20},
+    "status": {"const": "COMPLETE"}
+  }
+}

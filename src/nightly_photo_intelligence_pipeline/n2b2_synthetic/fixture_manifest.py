@@ -36,6 +36,7 @@ class SyntheticFixture:
     generation_parameters: dict[str, Any] = field(default_factory=dict)
     expected_processability: str = "processable"
     person_expectation: str = "not_declared"
+    acceptance_profile: str = "strict"
 
     def __post_init__(self) -> None:
         if not self.case_type:

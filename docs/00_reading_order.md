@@ -58,3 +58,16 @@ Also read `tasks/phase_n2b2_runtime_gpu_validation_and_s20_preparation.yaml`
 and `approvals/owner_n2b2_runtime_gpu_validation_receipt.yaml`. These permit
 synthetic GPU validation and S20 planning only; they do not change
 `PROJECT_STATE.json` or the production `N2B2=LOCKED` state.
+
+## N2B2 S20 completion-artifact integrity addendum (2026-08-11)
+
+Before any synthetic S20 remediation work, additionally read:
+
+1. `tasks/phase_n2b2_s20_artifact_integrity_remediation.yaml`
+2. `approvals/owner_n2b2_s20_artifact_integrity_remediation_receipt.yaml`
+3. `schemas/n2b2_s20_checkpoint.schema.json`
+4. `schemas/n2b2_s20_independent_review.schema.json`
+
+This is a replacement-run contract for the frozen synthetic set only. It
+requires one unambiguous terminal outcome and external review after a clean
+candidate; it does not unlock N2B2 or authorize real data.

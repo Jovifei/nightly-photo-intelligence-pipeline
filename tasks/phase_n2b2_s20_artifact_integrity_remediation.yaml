@@ -1,0 +1,39 @@
+contract_version: "1.0"
+phase:
+  id: "N2B2_S20_ARTIFACT_INTEGRITY_REMEDIATION"
+  title: "Repair synthetic S20 completion-artifact integrity and obtain external review"
+  status: "AUTHORIZED_SYNTHETIC_REMEDIATION_REVIEW_CANDIDATE"
+  project_state_status: "N2B2_LOCKED"
+  capability: "N2B2_S20_ARTIFACT_INTEGRITY_REMEDIATION_AND_EXTERNAL_REVIEW"
+prerequisite:
+  prior_candidate: "6dbc40accb513fec35586f565dcd95a3d84f15b4"
+  required_final_parent: "49e653b27884f9ba09d15ca17682e496687dc59f"
+  owner_receipt: "approvals/owner_n2b2_s20_artifact_integrity_remediation_receipt.yaml"
+  plan_sha256: "a9ae192eaa6a2eadf80bc592cbcee1aaeab99d24a0bc1798b529b3f25e1e8c85"
+  source_manifest_sha256: "b59446550e81499aaac9be17bebfd675f403869767a16318ce1a1a8904e4eec0"
+scope:
+  synthetic_only: true
+  fixed_case_count: 20
+  device: "cuda"
+  completion_artifact_integrity_only: true
+  fixture_regeneration: false
+  production_bundle_release: false
+  app_import_authorized: false
+forbidden:
+  - "real photos"
+  - "EXIF"
+  - "G1 source access"
+  - "SQLite ingest"
+  - "PROJECT_STATE mutation"
+  - "N2B2 unlock"
+  - "fixture or prompt changes"
+  - "threshold change"
+  - "model download or replacement"
+  - "phase completion or main merge"
+  - "push merge PR release"
+mandatory_stop:
+  runtime_integrity_failure: "N2B2_S20_COMPLETE_ARTIFACT_INTEGRITY_MISMATCH"
+  source_drift: "N2B2_S20_RUNTIME_SOURCE_REVALIDATION_REQUIRED"
+  review_changes: "N2B2_S20_EXTERNAL_REVIEW_CHANGES_REQUIRED"
+  review_inconclusive: "N2B2_S20_EXTERNAL_REVIEW_INCONCLUSIVE"
+  success: "N2B2_S20_EXTERNAL_REVIEW_PASS_AWAITING_OWNER_DECISION"

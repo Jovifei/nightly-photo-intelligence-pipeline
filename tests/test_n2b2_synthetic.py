@@ -484,11 +484,16 @@ def test_reference_bundle_checksum():
         "case_id": "n2b2-s3-01",
         "image_sha256": "0" * 64,
         "vision_facts": {"fact_digest": "a" * 64, "fact_ids": ["fact-person-count"]},
-        "photographic_reasoning": {"input_fact_digest": "a" * 64, "reasoning_model": "qwen3.5:9b"},
+        "photographic_reasoning": {
+            "input_fact_digest": "a" * 64,
+            "reasoning_model": "qwen3.5:9b",
+            "qwen_echo_verified": True,
+            "qwen_echoed_fact_digest": "a" * 64,
+        },
         "checksums": {
             "vision_facts_sha256": "b" * 64,
             "reasoning_sha256": "c" * 64,
-            "bundle_sha256": "d" * 64,
+            "director_prompt_sha256": "d" * 64,
         },
         "provenance": {
             "data_gate": "SYNTHETIC_ONLY_DATA_GATE",

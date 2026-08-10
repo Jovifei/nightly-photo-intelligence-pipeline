@@ -155,6 +155,7 @@ def test_current_handoff_verifier_passes(project_root: Path) -> None:
     assert (
         "N2B1P local-research cache promotion only" in result.stdout
         or "bounded N2B2 synthetic GPU review candidate" in result.stdout
+        or "bounded N2B2 S20 artifact-integrity review candidate" in result.stdout
     )
 
 
