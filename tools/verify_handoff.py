@@ -21,6 +21,10 @@ sys.path.insert(0, str(ROOT / "src"))
 CURRENT_PHASE = "N2B1P"
 CURRENT_TASK = "tasks/phase_n2b1p_local_research_cache_promotion.yaml"
 CURRENT_CAPABILITY = "N2B1P_LOCAL_RESEARCH_CACHE_PROMOTION"
+N2B1R_COMMIT = "d3628e27334e819ba2d5944151447595e03f39f9"
+N2B1P_BASELINE = "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043"
+PORTABILITY_RECORD = "research/N2B1P_manifest_portability_remediation.json"
+PORTABILITY_SCHEMA = "schemas/n2b1p_manifest_portability_remediation_v1.schema.json"
 
 errors: list[str] = []
 passes: list[str] = []
@@ -40,6 +44,22 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def sha256_index_file(rel: str) -> str | None:
+    """Hash the canonical Git-index bytes, independent of checkout EOLs."""
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(ROOT), "cat-file", "blob", f":{rel}"],
+            capture_output=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    return hashlib.sha256(result.stdout).hexdigest()
 
 
 def _reject_duplicate_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -83,6 +103,35 @@ def git(*args: str) -> tuple[int, str]:
     except (OSError, subprocess.TimeoutExpired) as exc:
         return -1, type(exc).__name__
     return result.returncode, result.stdout.strip()
+
+
+def is_portability_candidate() -> bool:
+    return git("rev-parse", "HEAD^") == (0, N2B1P_BASELINE) and git(
+        "rev-list", "--count", f"{N2B1P_BASELINE}..HEAD"
+    ) == (0, "1")
+
+
+def check_portability_record() -> bool:
+    if not is_portability_candidate():
+        return True
+    record = load_json(PORTABILITY_RECORD)
+    if not _validate(PORTABILITY_SCHEMA, record):
+        fail("N2B1P portability candidate record failed schema validation")
+        return False
+    expected = {
+        "base_commit": N2B1P_BASELINE,
+        "parent_commit": N2B1P_BASELINE,
+        "n2b1r_commit": N2B1R_COMMIT,
+        "project_state_sha256": sha256(ROOT / "PROJECT_STATE.json"),
+        "project_state_unchanged": True,
+        "n2b2_state": "LOCKED",
+        "status": "AWAITING_EXTERNAL_REVIEW",
+    }
+    if any(record.get(key) != value for key, value in expected.items()):
+        fail("N2B1P portability candidate record is not bound to the immutable baseline")
+        return False
+    ok("bounded N2B1P manifest-portability review candidate is contract-bound")
+    return True
 
 
 def _validate(schema_rel: str, value: object) -> bool:
@@ -343,17 +392,25 @@ def check_baselines() -> None:
         fail("immutable baseline tag mismatch: " + ", ".join(mismatched))
     elif git("merge-base", "--is-ancestor", expected["n2b0-7-approved-2026-07-29"], "HEAD")[0] != 0:
         fail("N2B0.7 approved baseline is not an ancestor of HEAD")
-    elif (
-        git("merge-base", "--is-ancestor", "d3628e27334e819ba2d5944151447595e03f39f9", "HEAD")[0]
-        != 0
-    ):
+    elif git("merge-base", "--is-ancestor", N2B1R_COMMIT, "HEAD")[0] != 0:
         fail("N2B1R evidence commit is not an ancestor of HEAD")
-    elif git("rev-list", "--count", "d3628e27334e819ba2d5944151447595e03f39f9..HEAD") != (0, "1"):
+    elif is_portability_candidate() and not check_portability_record():
+        pass
+    elif not is_portability_candidate() and git(
+        "rev-list", "--count", f"{N2B1R_COMMIT}..HEAD"
+    ) != (0, "1"):
         fail("current candidate does not contain exactly one N2B1P commit")
+    elif is_portability_candidate() and git(
+        "rev-list", "--count", f"{N2B1R_COMMIT}..HEAD"
+    ) != (0, "2"):
+        fail("bounded N2B1P portability candidate has unexpected ancestry")
     elif git("rev-list", "--merges", "HEAD") != (0, ""):
         fail("current candidate contains a merge commit")
     else:
-        ok("all immutable approved tags and the no-merge ancestry are intact")
+        if is_portability_candidate():
+            ok("all immutable approved tags and bounded no-merge candidate ancestry are intact")
+        else:
+            ok("all immutable approved tags and the no-merge ancestry are intact")
 
 
 def check_manifest() -> None:
@@ -374,7 +431,7 @@ def check_manifest() -> None:
     if rc != 0 or set(listed) != tracked:
         fail("MANIFEST.sha256 does not bind exactly the tracked current-stage file set")
         return
-    mismatches = [rel for rel, digest in listed.items() if sha256(ROOT / rel) != digest]
+    mismatches = [rel for rel, digest in listed.items() if sha256_index_file(rel) != digest]
     if mismatches:
         fail("MANIFEST.sha256 hash mismatch: " + ", ".join(sorted(mismatches)))
     elif git("status", "--porcelain", "--untracked-files=all") != (0, ""):
@@ -428,10 +485,16 @@ def main() -> int:
     if errors:
         print("HANDOFF_INVALID: current-stage work must not continue")
         return 1
-    print(
-        "HANDOFF_VALID: N2B1P local-research cache promotion only; "
-        "inference and photos remain locked"
-    )
+    if is_portability_candidate():
+        print(
+            "HANDOFF_VALID: bounded N2B1P manifest-portability review candidate; "
+            "inference and photos remain locked"
+        )
+    else:
+        print(
+            "HANDOFF_VALID: N2B1P local-research cache promotion only; "
+            "inference and photos remain locked"
+        )
     return 0
 
 

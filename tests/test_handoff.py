@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -24,6 +25,16 @@ def _read_manifest(root: Path) -> dict[str, str]:
     return listed
 
 
+def _index_sha256(root: Path, rel: str) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(root), "cat-file", "blob", f":{rel}"],
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    return hashlib.sha256(result.stdout).hexdigest()
+
+
 def test_current_stage_manifest_binds_every_tracked_file(project_root: Path) -> None:
     """The current stage hashes every tracked file, including governance."""
     listed = _read_manifest(project_root)
@@ -39,7 +50,7 @@ def test_current_stage_manifest_binds_every_tracked_file(project_root: Path) -> 
     for rel, digest in listed.items():
         p = project_root / rel
         assert p.is_file(), f"manifest file missing: {rel}"
-        actual = hashlib.sha256(p.read_bytes()).hexdigest()
+        actual = _index_sha256(project_root, rel)
         assert actual == digest, f"manifest hash mismatch: {rel}"
 
 
@@ -143,7 +154,7 @@ def test_at_n0_gate_02_authorization_snapshot_n1_complete_g1_authorized() -> Non
 
 def test_current_handoff_verifier_passes(project_root: Path) -> None:
     result = subprocess.run(
-        [".venv\\Scripts\\python.exe", "tools\\verify_handoff.py"],
+        [sys.executable, "tools\\verify_handoff.py"],
         cwd=project_root,
         check=False,
         capture_output=True,
@@ -151,7 +162,10 @@ def test_current_handoff_verifier_passes(project_root: Path) -> None:
     )
     assert result.returncode == 0
     assert "HANDOFF_VALID" in result.stdout
-    assert "N2B1P local-research cache promotion only" in result.stdout
+    assert (
+        "N2B1P local-research cache promotion only" in result.stdout
+        or "bounded N2B1P manifest-portability review candidate" in result.stdout
+    )
 
 
 def test_current_entry_documents_reference_n2b1p_not_n0_only(project_root: Path) -> None:

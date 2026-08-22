@@ -165,3 +165,22 @@
   phase, evidence level, blocker, and next action. Before each task, add a
   checkable plan; after each task, update its review and Obsidian note without
   exposing source paths, filenames, images, identities, or model payloads.
+
+## 2026-08-22 N2B1P portability review correction
+
+- A MANIFEST that hashes raw Windows worktree bytes can pass locally while
+  failing in a normalized LF checkout; bind it to canonical Git-index bytes.
+- Acceptance tests must use `sys.executable` rather than assuming a local
+  `.venv` exists in every linked worktree.
+- Historical model caches outside the current authorization are not silently
+  adopted or deleted; identify the exact model and runtime ownership first,
+  then remove only a clearly obsolete, non-running asset through a recoverable
+  operation.
+
+## 2026-08-22 preflight schema-gate correction
+
+- When a candidate record is bound to a JSON Schema, preflight must validate
+  the complete record with that same schema; checking selected fields alone
+  can let preflight pass while handoff rejects the same malformed record.
+- Keep historical test/quality counts labeled as historical and append the
+  latest measured counts rather than silently replacing evidence.

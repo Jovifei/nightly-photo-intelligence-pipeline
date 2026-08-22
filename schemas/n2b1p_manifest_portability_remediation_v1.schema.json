@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nightly-photo-intelligence-pipeline.local/schema/n2b1p-manifest-portability-remediation-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "candidate_kind",
+    "status",
+    "base_commit",
+    "parent_commit",
+    "n2b1r_commit",
+    "project_state_sha256",
+    "project_state_unchanged",
+    "n2b2_state",
+    "source_photo_content_read",
+    "source_photo_exif_read",
+    "model_execution",
+    "sqlite_ingest_write",
+    "scope",
+    "created_from_review"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "candidate_kind": {"const": "N2B1P_MANIFEST_PORTABILITY_REMEDIATION"},
+    "status": {"const": "AWAITING_EXTERNAL_REVIEW"},
+    "base_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "parent_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "n2b1r_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "project_state_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "project_state_unchanged": {"const": true},
+    "n2b2_state": {"const": "LOCKED"},
+    "source_photo_content_read": {"const": "NOT_AUTHORIZED"},
+    "source_photo_exif_read": {"const": "NOT_AUTHORIZED"},
+    "model_execution": {"const": "NOT_AUTHORIZED"},
+    "sqlite_ingest_write": {"const": "NOT_AUTHORIZED"},
+    "scope": {
+      "type": "array",
+      "const": [
+        "CANONICAL_INDEX_MANIFEST_HASHES",
+        "EXECUTABLE_PROVENANCE_IN_HANDOFF_TEST",
+        "BOUNDED_N2B1P_REVIEW_TOPOLOGY"
+      ]
+    },
+    "created_from_review": {"const": "N2B1P_EXTERNAL_REVIEW_CHANGES_REQUIRED"}
+  }
+}

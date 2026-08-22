@@ -72,6 +72,33 @@ def test_disk_preflight_fails_closed_below_safety_floor(monkeypatch: pytest.Monk
     assert "1 GiB safety floor" in result.notes
 
 
+def test_portability_candidate_preflight_rejects_missing_schema_required_field(
+    project_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    record_path = project_root / "research" / "N2B1P_manifest_portability_remediation.json"
+    load_json_strict = preflight_module.load_json_strict
+
+    def load_record(path: Path):
+        record = load_json_strict(path)
+        if path == record_path:
+            record.pop("scope", None)
+        return record
+
+    monkeypatch.setattr(preflight_module, "load_json_strict", load_record)
+    run = preflight_module._run
+
+    def run_with_clean_test_status(cmd: list[str], *, timeout: int = 10) -> tuple[int, str]:
+        if cmd[-2:] == ["--porcelain", "--untracked-files=all"]:
+            return 0, ""
+        return run(cmd, timeout=timeout)
+
+    monkeypatch.setattr(preflight_module, "_run", run_with_clean_test_status)
+
+    result = preflight_module._check_git_baselines()
+
+    assert result.status == "FAIL"
+
+
 def _prepare_synthetic_current_stage(
     project_root: Path, tmp_path: Path
 ) -> tuple[Path, Path, Path, Path, str]:

@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "candidate_kind": "N2B1P_MANIFEST_PORTABILITY_REMEDIATION",
+  "status": "AWAITING_EXTERNAL_REVIEW",
+  "base_commit": "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043",
+  "parent_commit": "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043",
+  "n2b1r_commit": "d3628e27334e819ba2d5944151447595e03f39f9",
+  "project_state_sha256": "2d60dd76584da60a876db975a3954feffb2566797910c19d6403627f584a1f2a",
+  "project_state_unchanged": true,
+  "n2b2_state": "LOCKED",
+  "source_photo_content_read": "NOT_AUTHORIZED",
+  "source_photo_exif_read": "NOT_AUTHORIZED",
+  "model_execution": "NOT_AUTHORIZED",
+  "sqlite_ingest_write": "NOT_AUTHORIZED",
+  "scope": [
+    "CANONICAL_INDEX_MANIFEST_HASHES",
+    "EXECUTABLE_PROVENANCE_IN_HANDOFF_TEST",
+    "BOUNDED_N2B1P_REVIEW_TOPOLOGY"
+  ],
+  "created_from_review": "N2B1P_EXTERNAL_REVIEW_CHANGES_REQUIRED"
+}

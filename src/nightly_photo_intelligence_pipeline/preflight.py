@@ -261,7 +261,20 @@ def _check_handoff() -> CheckResult:
         if not p.is_file():
             missing.append(rel)
             continue
-        actual = hashlib.sha256(p.read_bytes()).hexdigest()
+        try:
+            result = subprocess.run(
+                ["git", "-C", str(root), "cat-file", "blob", f":{rel}"],
+                capture_output=True,
+                check=False,
+                timeout=_TIMEOUT,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            mismatched.append(rel)
+            continue
+        if result.returncode != 0:
+            mismatched.append(rel)
+            continue
+        actual = hashlib.sha256(result.stdout).hexdigest()
         if actual != digest:
             mismatched.append(rel)
     if missing or mismatched:
@@ -1073,6 +1086,32 @@ def _check_git_baselines() -> CheckResult:
         n2b0_6 = "eb2eaeb61f1c21923d131a115d63edbcdebd8cb2"
         n2b0_7 = "f2b1c38301d71da52b855f73de8a67908cb525ef"
         n2b1r = "d3628e27334e819ba2d5944151447595e03f39f9"
+        n2b1p_base = "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043"
+        portability_candidate = git("rev-parse", "HEAD^") == (0, n2b1p_base) and git(
+            "rev-list", "--count", f"{n2b1p_base}..HEAD"
+        ) == (0, "1")
+        portability_record_ok = True
+        if portability_candidate:
+            record_path = root / "research" / "N2B1P_manifest_portability_remediation.json"
+            schema_path = root / "schemas" / "n2b1p_manifest_portability_remediation_v1.schema.json"
+            try:
+                record = load_json_strict(record_path)
+                schema = load_json_strict(schema_path)
+                state_sha = hashlib.sha256((root / "PROJECT_STATE.json").read_bytes()).hexdigest()
+                portability_record_ok = not _validate_schema(schema, record) and all(
+                    (
+                        record.get("candidate_kind") == "N2B1P_MANIFEST_PORTABILITY_REMEDIATION",
+                        record.get("status") == "AWAITING_EXTERNAL_REVIEW",
+                        record.get("base_commit") == n2b1p_base,
+                        record.get("parent_commit") == n2b1p_base,
+                        record.get("n2b1r_commit") == n2b1r,
+                        record.get("project_state_sha256") == state_sha,
+                        record.get("project_state_unchanged") is True,
+                        record.get("n2b2_state") == "LOCKED",
+                    )
+                )
+            except Exception:  # noqa: BLE001 - preflight reports a hard failure
+                portability_record_ok = False
         checks = [
             git("rev-parse", "n0-approved-2026-07-14") == (0, n0),
             git("rev-parse", "n1-approved-2026-07-14") == (0, n1),
@@ -1084,16 +1123,23 @@ def _check_git_baselines() -> CheckResult:
             git("merge-base", "--is-ancestor", n2b0_7, "HEAD")[0] == 0,
             git("rev-list", "--count", f"{n2b0_6}..{n2b0_7}") == (0, "1"),
             git("rev-list", "--count", f"{n2b0_7}..{n2b1r}") == (0, "1"),
-            git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "1"),
+            git("rev-list", "--count", f"{n2b1r}..HEAD")
+            == (0, "2" if portability_candidate else "1"),
+            portability_record_ok,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),
         ]
         return result(
             checks,
-            failure_notes="Git baseline or N2B1P cache-promotion commit topology mismatch",
+            failure_notes="Git baseline or bounded N2B1P commit topology mismatch",
             pass_evidence=(
                 "N0/N1/G1/N2A/N2B0/N2B0.5/N2B0.6/N2B0.7 tags intact; "
-                "one N2B1R and one N2B1P commit; no merge; worktree clean"
+                + (
+                    "one N2B1R and one bounded N2B1P portability candidate; "
+                    if portability_candidate
+                    else "one N2B1R and one N2B1P commit; "
+                )
+                + "no merge; worktree clean"
             ),
         )
 

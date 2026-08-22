@@ -65,6 +65,21 @@ directories only.
 These are local verification results, not an independent Reviewer conclusion or
 an Owner authorization for N2B2.
 
+## 2026-08-22 bounded portability remediation candidate
+
+The independent N2B1P review identified that the original MANIFEST values for
+seven text files were computed from a CRLF Windows worktree, while a clean LF
+checkout materialized different bytes. This candidate binds MANIFEST entries to
+the canonical Git-index bytes and makes the acceptance test use the invoking
+Python interpreter instead of a worktree-local `.venv` path. It does not change
+PROJECT_STATE, authorization, model policy, data scope, or the N2B2 lock.
+
+The candidate is deliberately one child of the reviewed `9b3d5a1` baseline and
+remains `AWAITING_EXTERNAL_REVIEW`. No model, photo, EXIF, SQLite, network, or
+runtime operation was performed. The external cache audit also removed only a
+historical, non-running Qwen3-VL cache; the three approved TorchVision payloads
+remain separately verified outside Git and runtime.
+
 ## Deferred, out-of-scope items
 
 - `DEFERRED_POST_N2B1P_NON_BLOCKING_TOOLING_DRIFT`:
@@ -76,3 +91,23 @@ an Owner authorization for N2B2.
 N2B2, model loading/inference, CUDA, real-photo/EXIF access, SQLite ingest
 writes, derivative creation, push, merge, release, and external review approval
 remain outside this remediation.
+
+## 2026-08-22 portability candidate revalidation continuation
+
+The first independent review of the bounded portability candidate returned
+`CHANGES_REQUIRED`: preflight did not validate the remediation record against
+its existing Draft 2020-12 schema, so preflight and handoff were not equally
+fail-closed. The candidate was not promoted to the main branch. A minimal
+schema-validation check and regression test were added in the isolated
+candidate worktree; the missing-required-field case now returns a preflight
+failure.
+
+The historical verification figures above remain historical. The current
+candidate revalidation uses the actual results from the latest run: focused
+tests passed after the fix, the full suite passed with `497 passed`, the
+unified quality gate passed `7/7`, preflight passed `15/0`, handoff passed
+`6/0`, and the sensitive scan reported `0` violations. These results are
+candidate evidence only and still require a fresh independent review.
+
+No model, photo, EXIF, SQLite, network, N2B2, or Real20 operation was
+performed. `PROJECT_STATE.json` and `N2B2=LOCKED` remain unchanged.
