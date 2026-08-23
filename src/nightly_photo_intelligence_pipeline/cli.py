@@ -490,6 +490,7 @@ def n2b2_run(
     ),
 ) -> None:
     """Run the bounded, synthetic-only N2B2 S3 smoke."""
+    import hashlib  # noqa: PLC0415
     import subprocess  # noqa: PLC0415
 
     import yaml  # noqa: PLC0415
@@ -498,7 +499,10 @@ def n2b2_run(
     from .json_strict import load_json_strict
     from .n2b1p_integrity import load_n2b1p_runtime_configuration
     from .n2b2_synthetic import N2B2RunConfig, load_s3_manifest, run_n2b2
-    from .n2b2_synthetic.n2b1p_gate import validate_n2b1p_review
+    from .n2b2_synthetic.n2b1p_gate import (
+        validate_bounded_synthetic_authorization,
+        validate_n2b1p_review,
+    )
 
     root = find_project_root()
     if not s3_only:
@@ -532,13 +536,31 @@ def n2b2_run(
     evidence = load_json_strict(root / "research" / "N2B1P_cache_promotion_evidence.json")
     n2b1p_review_passed, review_detail = validate_n2b1p_review(evidence)
     typer.echo(f"N2B1P review gate: {'PASS' if n2b1p_review_passed else 'FAIL'} ({review_detail})")
-    completion_record = root / "approvals" / "phase_completion_N2B1P.yaml"
-    if not completion_record.is_file():
-        typer.echo("OWNER_PHASE_COMPLETION_RECORD_NOT_PRESENT")
     state = load_json_strict(root / "PROJECT_STATE.json")
     phase_status = state.get("phase_status", {})
     if phase_status.get("N2B2") != "LOCKED":
         typer.echo("N2B2_PROJECT_STATE_BOUNDARY_VIOLATION")
+        raise typer.Exit(code=int(ExitCode.PARTIAL_FAILURE))
+    completion_record = root / "approvals" / "phase_completion_N2B1P.yaml"
+    owner_synthetic_receipt = (
+        root / "approvals" / "owner_n2b2_synthetic_model_stack_validation.yaml"
+    )
+    if not completion_record.is_file() or not owner_synthetic_receipt.is_file():
+        typer.echo("N2B2_OWNER_AUTHORIZATION_REQUIRED")
+        raise typer.Exit(code=int(ExitCode.PARTIAL_FAILURE))
+    completion = yaml.safe_load(completion_record.read_text(encoding="utf-8"))
+    owner_receipt = yaml.safe_load(owner_synthetic_receipt.read_text(encoding="utf-8"))
+    authorization_ok, authorization_detail = validate_bounded_synthetic_authorization(
+        completion,
+        owner_receipt,
+        state,
+        hashlib.sha256(completion_record.read_bytes()).hexdigest(),
+    )
+    typer.echo(
+        f"N2B2 owner authorization: {'PASS' if authorization_ok else 'FAIL'} "
+        f"({authorization_detail})"
+    )
+    if not authorization_ok:
         raise typer.Exit(code=int(ExitCode.PARTIAL_FAILURE))
 
     def _sha(rev: str) -> str:
@@ -624,11 +646,18 @@ def n2b2_gpu_validate(
 ) -> None:
     """Run CPU comparator, explicit CUDA probe, then the CUDA S3 smoke."""
 
+    import hashlib
+
+    import yaml
+
     from .json_strict import load_json_strict
     from .n2b1p_integrity import load_n2b1p_runtime_configuration
     from .n2b2_synthetic import N2B2RunConfig, load_s3_manifest, run_gpu_probe
     from .n2b2_synthetic.metrics import MetricsCollector
-    from .n2b2_synthetic.n2b1p_gate import validate_n2b1p_review
+    from .n2b2_synthetic.n2b1p_gate import (
+        validate_bounded_synthetic_authorization,
+        validate_n2b1p_review,
+    )
 
     root = find_project_root()
     resolved_manifest = s3_manifest_dir.resolve()
@@ -651,6 +680,27 @@ def n2b2_gpu_validate(
     state = load_json_strict(root / "PROJECT_STATE.json")
     if state.get("phase_status", {}).get("N2B2") != "LOCKED":
         typer.echo("N2B2_PROJECT_STATE_BOUNDARY_VIOLATION")
+        raise typer.Exit(code=int(ExitCode.PARTIAL_FAILURE))
+    completion_record = root / "approvals" / "phase_completion_N2B1P.yaml"
+    owner_synthetic_receipt = (
+        root / "approvals" / "owner_n2b2_synthetic_model_stack_validation.yaml"
+    )
+    if not completion_record.is_file() or not owner_synthetic_receipt.is_file():
+        typer.echo("N2B2_OWNER_AUTHORIZATION_REQUIRED")
+        raise typer.Exit(code=int(ExitCode.PARTIAL_FAILURE))
+    completion = yaml.safe_load(completion_record.read_text(encoding="utf-8"))
+    owner_receipt = yaml.safe_load(owner_synthetic_receipt.read_text(encoding="utf-8"))
+    authorization_ok, authorization_detail = validate_bounded_synthetic_authorization(
+        completion,
+        owner_receipt,
+        state,
+        hashlib.sha256(completion_record.read_bytes()).hexdigest(),
+    )
+    typer.echo(
+        f"N2B2 owner authorization: {'PASS' if authorization_ok else 'FAIL'} "
+        f"({authorization_detail})"
+    )
+    if not authorization_ok:
         raise typer.Exit(code=int(ExitCode.PARTIAL_FAILURE))
     evidence = load_json_strict(root / "research" / "N2B1P_cache_promotion_evidence.json")
     review_passed, review_detail = validate_n2b1p_review(evidence)
@@ -803,9 +853,14 @@ def n2b2_s20_validate(
 ) -> None:
     """Run the separately authorized CUDA-only S20 synthetic validation."""
 
+    import hashlib
+
+    import yaml
+
     from .json_strict import load_json_strict
     from .n2b1p_integrity import load_n2b1p_runtime_configuration
     from .n2b2_synthetic import N2B2RunConfig, load_s20_manifest
+    from .n2b2_synthetic.n2b1p_gate import validate_bounded_synthetic_authorization
     from .n2b2_synthetic.s20_orchestrator import S20_COMPLETE, run_s20
 
     root = find_project_root()
@@ -834,6 +889,23 @@ def n2b2_s20_validate(
     state = load_json_strict(root / "PROJECT_STATE.json")
     if state.get("phase_status", {}).get("N2B2") != "LOCKED":
         typer.echo("N2B2_PROJECT_STATE_BOUNDARY_VIOLATION")
+        raise typer.Exit(code=int(ExitCode.PARTIAL_FAILURE))
+    completion_record = root / "approvals" / "phase_completion_N2B1P.yaml"
+    bounded_receipt = root / "approvals" / "owner_n2b2_synthetic_model_stack_validation.yaml"
+    if not completion_record.is_file() or not bounded_receipt.is_file():
+        typer.echo("N2B2_OWNER_AUTHORIZATION_REQUIRED")
+        raise typer.Exit(code=int(ExitCode.PARTIAL_FAILURE))
+    authorization_ok, authorization_detail = validate_bounded_synthetic_authorization(
+        yaml.safe_load(completion_record.read_text(encoding="utf-8")),
+        yaml.safe_load(bounded_receipt.read_text(encoding="utf-8")),
+        state,
+        hashlib.sha256(completion_record.read_bytes()).hexdigest(),
+    )
+    typer.echo(
+        f"N2B2 owner authorization: {'PASS' if authorization_ok else 'FAIL'} "
+        f"({authorization_detail})"
+    )
+    if not authorization_ok:
         raise typer.Exit(code=int(ExitCode.PARTIAL_FAILURE))
     review_payload = json.loads(resolved_review.read_text(encoding="utf-8"))
     reviewed_commit = review_payload.get("reviewed_commit")

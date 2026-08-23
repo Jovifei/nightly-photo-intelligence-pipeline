@@ -27,6 +27,7 @@ N2B0_7_TAG = "n2b0-7-approved-2026-07-29"
 N2B1R_BASELINE = "d3628e27334e819ba2d5944151447595e03f39f9"
 N2B1P_BASELINE = "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043"
 N2B2_GPU_REVIEW_CANDIDATE = "49e653b27884f9ba09d15ca17682e496687dc59f"
+N2B2_S20_REVIEW_CANDIDATE = "c1008132654d32e7ac6a2032eb5d3a2c7e07cdb6"
 
 SENSITIVE_SUFFIXES = (
     ".db",
@@ -100,8 +101,9 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         candidate_offset = 1
     else:
-        assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B2_GPU_REVIEW_CANDIDATE
-        candidate_offset = 2
+        parent = _git(project_root, "rev-parse", "HEAD^").stdout.strip()
+        assert parent in {N2B2_GPU_REVIEW_CANDIDATE, N2B2_S20_REVIEW_CANDIDATE}
+        candidate_offset = 2 if parent == N2B2_GPU_REVIEW_CANDIDATE else 3
     assert int(_git(project_root, "rev-list", "--count", "HEAD").stdout.strip()) == (
         10 + candidate_offset
     )
@@ -135,11 +137,12 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
             == 1
         )
     else:
-        assert post_n2b1r == 3
-        assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B2_GPU_REVIEW_CANDIDATE
+        assert post_n2b1r == 1 + candidate_offset
+        parent = _git(project_root, "rev-parse", "HEAD^").stdout.strip()
+        assert parent in {N2B2_GPU_REVIEW_CANDIDATE, N2B2_S20_REVIEW_CANDIDATE}
         assert (
             int(_git(project_root, "rev-list", "--count", f"{N2B1P_BASELINE}..HEAD").stdout.strip())
-            == 2
+            == candidate_offset
         )
     assert (
         int(
@@ -182,8 +185,15 @@ def test_n2b1p_candidate_is_resolved_not_hardcoded(project_root: Path) -> None:
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         expected_count = 2
     else:
-        assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B2_GPU_REVIEW_CANDIDATE
-        expected_count = 3
+        assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() in {
+            N2B2_GPU_REVIEW_CANDIDATE,
+            N2B2_S20_REVIEW_CANDIDATE,
+        }
+        expected_count = (
+            3
+            if _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B2_GPU_REVIEW_CANDIDATE
+            else 4
+        )
     assert len(resolved) == expected_count, (
         f"candidate must resolve to exactly {expected_count} commits, got {len(resolved)}"
     )

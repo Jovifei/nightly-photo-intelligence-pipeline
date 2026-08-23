@@ -54,3 +54,13 @@ sensitive file scan
 ## 证据
 
 报告必须给命令、环境、开始/结束时间、退出码、摘要、失败详情和是否真实运行。截图不是唯一证据；首选文本输出和机器可读结果。
+
+## N2B2 synthetic candidate 的已验证质量门
+
+对本轮 runtime-source candidate 的最终本地验证使用当前 Python 质量环境执行：pytest `540 passed`、Ruff
+check/format PASS、mypy PASS（68 source files）、统一质量 `7 PASS / 0 FAIL`、
+preflight `16/0`、handoff `7/0`、sensitive scan `0`。这些结果只证明该 candidate 的
+本地质量；独立 Review 与 Owner 决策仍是单独的阶段门。
+
+模型验证还额外要求 runtime evidence：S3 A/B/C=`1/2/0`、20-case facts 两轮 byte/digest
+一致、Qwen forbidden fields=`0`、GPU 峰值不超过合同阈值，以及 no-op resume 零文件变化。

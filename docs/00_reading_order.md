@@ -71,3 +71,23 @@ Before any synthetic S20 remediation work, additionally read:
 This is a replacement-run contract for the frozen synthetic set only. It
 requires one unambiguous terminal outcome and external review after a clean
 candidate; it does not unlock N2B2 or authorize real data.
+
+## Owner-authorized synthetic continuation (2026-08-23)
+
+For this bounded continuation also read:
+
+1. `approvals/phase_completion_N2B1P.yaml`
+2. `approvals/owner_n2b2_synthetic_model_stack_validation.yaml`
+3. `tasks/phase_n2b2_authorized_synthetic_validation_20260823.yaml`
+4. `schemas/phase_completion_n2b1p_v1_0.schema.json`
+5. `schemas/owner_n2b2_synthetic_model_stack_v1_0.schema.json`
+
+These records authorize only synthetic/GPU/S3/S20 validation and preserve the
+production `N2B2=LOCKED` boundary.
+
+## N2B2 synthetic validation status (2026-08-23)
+
+Before using the bounded candidate or preparing review, read
+`docs/38_n2b2_synthetic_validation_status.md`. It is the current redacted
+summary of S3/S20 runtime evidence, local quality gates, locked production
+state, and the independent-review stop condition.

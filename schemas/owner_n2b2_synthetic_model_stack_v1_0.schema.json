@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/owner_n2b2_synthetic_model_stack_v1_0.schema.json",
+  "title": "Owner bounded N2B2 synthetic model-stack authorization",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "receipt_type", "status", "owner_id", "issued_at_utc", "task", "n2b1p_completion_sha256", "reviewed_candidate", "review_record_sha256", "scope", "boundaries", "production_state", "owner_statement"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "receipt_type": {"const": "OWNER_DIRECT_BOUNDED_SYNTHETIC_AUTHORIZATION"},
+    "status": {"const": "APPROVED"},
+    "owner_id": {"const": "Jovi"},
+    "issued_at_utc": {"type": "string", "pattern": "^2026-08-23T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+    "task": {"const": "N2B2_SYNTHETIC_MODEL_STACK_VALIDATION"},
+    "n2b1p_completion_sha256": {"pattern": "^[0-9a-f]{64}$"},
+    "reviewed_candidate": {"const": "c1008132654d32e7ac6a2032eb5d3a2c7e07cdb6"},
+    "review_record_sha256": {"const": "5c1fd018b8ad463c8455aefef1f1077eab57228136fe769bf6a8e3e5ebf4ba80"},
+    "scope": {"const": "SYNTHETIC_GPU_S3_S20_ONLY"},
+    "boundaries": {
+      "type": "object", "additionalProperties": false,
+      "required": ["real_photo", "real_exif", "g1_source", "sqlite", "real20", "project_state_mutation", "production_bundle"],
+      "properties": {"real_photo": {"const": false}, "real_exif": {"const": false}, "g1_source": {"const": false}, "sqlite": {"const": false}, "real20": {"const": false}, "project_state_mutation": {"const": false}, "production_bundle": {"const": false}}
+    },
+    "production_state": {"type": "object", "additionalProperties": false, "required": ["project_state_n2b2", "production_unlock", "external_review_required"], "properties": {"project_state_n2b2": {"const": "LOCKED"}, "production_unlock": {"const": false}, "external_review_required": {"const": true}}},
+    "owner_statement": {"type": "string", "minLength": 1}
+  }
+}

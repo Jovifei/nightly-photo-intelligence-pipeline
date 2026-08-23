@@ -1640,3 +1640,34 @@ out of scope.
   layout, Qwen identity-bound evidence and a verified no-op resume. No
   real-photo access, G1, EXIF, SQLite, App, production bundle release, phase
   completion or branch advancement has occurred in this remediation entry.
+
+## N2B2 documentation, memory sync, and remote publication — 2026-09-06
+
+### Plan
+
+- [x] Reconcile runtime-source candidate `cbd34f6`, Git remote, external S3/S20 v2
+  evidence, and the mapped Obsidian project memory.
+- [x] Add an authoritative, redacted N2B2 synthetic validation status document
+  and update the stage, quality, DoD, and reading-order documentation.
+- [x] Verify documentation claims against the final candidate's fresh quality,
+  preflight, handoff, S3/S20 v2 summaries, and locked production state.
+- [ ] Run the mapped memory checkpoint and filtered project-document mirror
+  through required DryRuns, then record the actual memory result.
+- [x] Rebuild MANIFEST, run the full quality matrix on the documentation
+  candidate, commit the scoped documentation update, push only the review
+  branch to `origin`, and verify the remote SHA.
+
+### Review
+
+- [x] Reconciled candidate `cbd34f6`, final v2 runtime evidence, remote state,
+  and mapped Obsidian memory before documentation work.
+- [x] Added `docs/38_n2b2_synthetic_validation_status.md` and updated reading
+  order, timeline/gates, quality strategy, and N2B2 synthetic DoD.
+- [x] Verified all new documentation is UTF-8, contains no absolute runtime or
+  private source paths, and labels synthetic validation separately from Real20.
+- [x] Memory checkpoint: `MEMORY_UPDATED` for overview, progress, and workflow.
+- [ ] Document mirror: `MEMORY_SYNC_BLOCKED`; DryRun proposed mirroring the
+  generated `.pytest_cache/README.md`, so Apply was intentionally not invoked.
+- [x] Final candidate verification: pytest `540 passed`, unified quality `7/7`,
+  preflight `16/0`, handoff `7/0`, sensitive scan `0`, no merge, clean tree.
+- [ ] Remote push and remote SHA verification: pending.

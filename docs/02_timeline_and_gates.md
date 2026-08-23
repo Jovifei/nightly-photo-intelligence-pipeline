@@ -52,3 +52,12 @@
 ## 停止点
 
 每阶段完成后默认停止。只有 Owner 更新 `PROJECT_STATE.json` 并放入有效批准记录，智能体才可继续。
+
+## 当前 N2B2 synthetic review candidate
+
+N2B2 的 production phase 仍为 `LOCKED`。但在独立、受限的 review branch 上，Owner
+已授权 synthetic/GPU/S3/S20 验证；该 candidate 已完成 S3、S20、CUDA、Qwen facts 和
+20 个 synthetic validation bundles。本地质量门通过后仍默认停止于独立外部 Review。
+
+这是一条 capability evidence 路径，不是数据放量：G1、G2、G3 的状态不变，Real20、
+真实照片、SQLite ingest 和生产 Bundle 仍不可执行。

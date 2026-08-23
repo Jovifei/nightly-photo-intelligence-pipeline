@@ -263,6 +263,16 @@
   count, no-op resume and Obsidian sync do not change `PROJECT_STATE.json` or
   unlock `N2B2=LOCKED`.
 
+## 2026-09-06 Documentation mirror boundary
+
+- A documentation-mirror DryRun that includes generated cache files is a
+  policy failure, even when the file is harmless Markdown. Do not invoke the
+  mirror Apply path; preserve the verified repository docs, record
+  `MEMORY_SYNC_BLOCKED`, and keep the durable checkpoint separate.
+- Runtime-source evidence and documentation commits must remain distinguishable.
+  When a topology gate permits only one candidate child, squash documentation
+  updates into that unpushed candidate instead of adding a second child.
+
 ## 2026-08-11 N2B2 S20 terminal-artifact correction
 
 - Byte-valid checksums do not prove a coherent result. A COMPLETE synthetic

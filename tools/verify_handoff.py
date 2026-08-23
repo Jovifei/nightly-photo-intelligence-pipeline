@@ -31,6 +31,10 @@ N2B2_QWEN_TASK = "tasks/phase_n2b2_qwen_fact_binding_remediation.yaml"
 N2B2_QWEN_RECEIPT = "approvals/owner_n2b2_qwen_fact_binding_remediation_receipt.yaml"
 N2B2_S20_INTEGRITY_TASK = "tasks/phase_n2b2_s20_artifact_integrity_remediation.yaml"
 N2B2_S20_INTEGRITY_RECEIPT = "approvals/owner_n2b2_s20_artifact_integrity_remediation_receipt.yaml"
+N2B2_S20_REVIEW_CANDIDATE_SHA = "c1008132654d32e7ac6a2032eb5d3a2c7e07cdb6"
+N2B2_OWNER_AUTH_TASK = "tasks/phase_n2b2_authorized_synthetic_validation_20260823.yaml"
+N2B2_OWNER_AUTH_RECEIPT = "approvals/owner_n2b2_synthetic_model_stack_validation.yaml"
+N2B1P_PHASE_COMPLETION = "approvals/phase_completion_N2B1P.yaml"
 
 errors: list[str] = []
 passes: list[str] = []
@@ -496,6 +500,35 @@ def check_bounded_n2b2_review_contract() -> None:
             fail("bounded N2B2 review-candidate receipt or lock boundary is invalid")
 
 
+def check_owner_authorized_synthetic_contract() -> None:
+    """Validate the optional current Owner authorization without unlocking production N2B2."""
+
+    if not (ROOT / N2B1P_PHASE_COMPLETION).is_file():
+        return
+    completion = load_yaml(N2B1P_PHASE_COMPLETION)
+    receipt = load_yaml(N2B2_OWNER_AUTH_RECEIPT)
+    task = load_yaml(N2B2_OWNER_AUTH_TASK)
+    state = load_json("PROJECT_STATE.json")
+    valid = all(
+        (
+            _validate("schemas/phase_completion_n2b1p_v1_0.schema.json", completion),
+            _validate("schemas/owner_n2b2_synthetic_model_stack_v1_0.schema.json", receipt),
+            isinstance(task, dict),
+            task.get("phase", {}).get("status") == "AUTHORIZED_SYNTHETIC_ONLY_REVIEW_CANDIDATE",
+            task.get("authorization", {}).get("production_project_state") == "N2B2_LOCKED",
+            task.get("authorization", {}).get("production_unlock") is False,
+            isinstance(state.get("phase_status"), dict),
+            state.get("phase_status", {}).get("N2B2") == "LOCKED",
+            receipt.get("n2b1p_completion_sha256") == sha256(ROOT / N2B1P_PHASE_COMPLETION),
+            receipt.get("reviewed_candidate") == N2B2_S20_REVIEW_CANDIDATE_SHA,
+        )
+    )
+    if valid:
+        ok("Owner-authorized N2B2 synthetic scope is bound; production N2B2 remains LOCKED")
+    else:
+        fail("Owner-authorized N2B2 synthetic record or lock boundary is invalid")
+
+
 def check_baselines() -> None:
     expected = {
         "n0-approved-2026-07-14": "72a81f5984838b74304d23263ac450ea4b5a3a9a",
@@ -528,6 +561,11 @@ def check_baselines() -> None:
             git("rev-parse", "HEAD^") == (0, "49e653b27884f9ba09d15ca17682e496687dc59f")
             and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "3")
             and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "2")
+        )
+        or (
+            git("rev-parse", "HEAD^") == (0, N2B2_S20_REVIEW_CANDIDATE_SHA)
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "4")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "3")
         )
     ):
         fail("N2B2 review candidate must be exactly one direct child of N2B1P")
@@ -602,6 +640,7 @@ def main() -> int:
     check_required_files()
     check_current_authorization()
     check_bounded_n2b2_review_contract()
+    check_owner_authorized_synthetic_contract()
     check_baselines()
     check_manifest()
     check_sensitive_paths()

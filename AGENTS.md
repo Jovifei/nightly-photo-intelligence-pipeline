@@ -65,3 +65,14 @@ must pass exact file-set, checksum, checkpoint, Qwen-identity and no-op-resume
 verification before any independent review. This addendum does not change
 `PROJECT_STATE.json`, production `N2B2=LOCKED`, or any real-photo/G1/EXIF/
 SQLite/App boundary.
+
+## Owner-authorized N2B2 synthetic validation addendum (2026-08-23)
+
+The Owner's current bounded authorization is recorded by
+`approvals/phase_completion_N2B1P.yaml` and
+`approvals/owner_n2b2_synthetic_model_stack_validation.yaml`, with the task
+contract `tasks/phase_n2b2_authorized_synthetic_validation_20260823.yaml`.
+It permits only synthetic fixtures, GPU evidence, S3 and fixed S20 validation.
+It does not modify `PROJECT_STATE.json`, does not unlock production N2B2, and
+does not authorize real photos, EXIF, G1, SQLite, Real20, App or production
+Bundle output.

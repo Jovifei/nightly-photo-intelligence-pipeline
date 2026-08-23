@@ -1077,6 +1077,7 @@ def _check_git_baselines() -> CheckResult:
         n2b1r = "d3628e27334e819ba2d5944151447595e03f39f9"
         n2b1p = "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043"
         n2b2_gpu_candidate = "49e653b27884f9ba09d15ca17682e496687dc59f"
+        n2b2_s20_candidate = "c1008132654d32e7ac6a2032eb5d3a2c7e07cdb6"
         head = git("rev-parse", "HEAD")[1]
         n2b2_gpu_topology = (
             git("rev-parse", "HEAD^") == (0, n2b1p)
@@ -1087,6 +1088,11 @@ def _check_git_baselines() -> CheckResult:
             git("rev-parse", "HEAD^") == (0, n2b2_gpu_candidate)
             and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "2")
             and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "3")
+        )
+        authorized_synthetic_topology = (
+            git("rev-parse", "HEAD^") == (0, n2b2_s20_candidate)
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "3")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "4")
         )
         baseline_topology = head == n2b1p and git("rev-list", "--count", f"{n2b1r}..HEAD") == (
             0,
@@ -1103,7 +1109,10 @@ def _check_git_baselines() -> CheckResult:
             git("merge-base", "--is-ancestor", n2b0_7, "HEAD")[0] == 0,
             git("rev-list", "--count", f"{n2b0_6}..{n2b0_7}") == (0, "1"),
             git("rev-list", "--count", f"{n2b0_7}..{n2b1r}") == (0, "1"),
-            baseline_topology or n2b2_gpu_topology or s20_candidate_topology,
+            baseline_topology
+            or n2b2_gpu_topology
+            or s20_candidate_topology
+            or authorized_synthetic_topology,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),
         ]
@@ -1113,7 +1122,8 @@ def _check_git_baselines() -> CheckResult:
             pass_evidence=(
                 "N0/N1/G1/N2A/N2B0/N2B0.5/N2B0.6/N2B0.7 tags intact; "
                 "one N2B1R and one N2B1P commit, one direct N2B2 GPU candidate, "
-                "or one direct S20 candidate after 49e653b; "
+                "one direct S20 candidate after 49e653b, or one bounded synthetic "
+                "authorization candidate after c100813; "
                 "no merge; worktree clean"
             ),
         )
