@@ -26,6 +26,9 @@ N2B0_7_BASELINE = "f2b1c38301d71da52b855f73de8a67908cb525ef"
 N2B0_7_TAG = "n2b0-7-approved-2026-07-29"
 N2B1R_BASELINE = "d3628e27334e819ba2d5944151447595e03f39f9"
 N2B1P_BASELINE = "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043"
+N2B1P_PORTABILITY_CANDIDATE = "0fef0a8f6a2f2b2f75ce2fba3e3eef1e764037b8"
+N2B2_GPU_REVIEW_CANDIDATE = "49e653b27884f9ba09d15ca17682e496687dc59f"
+N2B2_S20_REVIEW_CANDIDATE = "c1008132654d32e7ac6a2032eb5d3a2c7e07cdb6"
 
 SENSITIVE_SUFFIXES = (
     ".db",
@@ -64,10 +67,10 @@ def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _is_portability_candidate(project_root: Path) -> bool:
+def _is_main_integration_candidate(project_root: Path) -> bool:
     parent = _git(project_root, "rev-parse", "HEAD^").stdout.strip()
     count = _git(project_root, "rev-list", "--count", f"{N2B1P_BASELINE}..HEAD")
-    return parent == N2B1P_BASELINE and count.stdout.strip() == "1"
+    return parent == N2B1P_PORTABILITY_CANDIDATE and count.stdout.strip() == "2"
 
 
 def test_git_approved_tags_and_ancestry_are_exact(project_root: Path) -> None:
@@ -99,10 +102,19 @@ def test_git_approved_tags_and_ancestry_are_exact(project_root: Path) -> None:
 
 
 def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root: Path) -> None:
-    candidate_offset = 1 if _is_portability_candidate(project_root) else 0
-    assert (
-        int(_git(project_root, "rev-list", "--count", "HEAD").stdout.strip())
-        == 10 + candidate_offset
+    head = _git(project_root, "rev-parse", "HEAD").stdout.strip()
+    if head == N2B1P_BASELINE:
+        candidate_offset = 0
+    elif _is_main_integration_candidate(project_root):
+        candidate_offset = 2
+    elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
+        candidate_offset = 1
+    else:
+        parent = _git(project_root, "rev-parse", "HEAD^").stdout.strip()
+        assert parent in {N2B2_GPU_REVIEW_CANDIDATE, N2B2_S20_REVIEW_CANDIDATE}
+        candidate_offset = 2 if parent == N2B2_GPU_REVIEW_CANDIDATE else 3
+    assert int(_git(project_root, "rev-list", "--count", "HEAD").stdout.strip()) == (
+        10 + candidate_offset
     )
     assert (
         int(_git(project_root, "rev-list", "--count", f"{N1_BASELINE}..HEAD").stdout.strip())
@@ -120,10 +132,33 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
         )
         == 1
     )
-    assert (
-        int(_git(project_root, "rev-list", "--count", f"{N2B1R_BASELINE}..HEAD").stdout.strip())
-        == 1 + candidate_offset
+    post_n2b1r = int(
+        _git(project_root, "rev-list", "--count", f"{N2B1R_BASELINE}..HEAD").stdout.strip()
     )
+    assert post_n2b1r == 1 + candidate_offset
+    if candidate_offset == 0:
+        assert post_n2b1r == 1
+    elif candidate_offset == 1:
+        assert post_n2b1r == 2
+        assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE
+        assert (
+            int(_git(project_root, "rev-list", "--count", f"{N2B1P_BASELINE}..HEAD").stdout.strip())
+            == 1
+        )
+    elif _is_main_integration_candidate(project_root):
+        assert post_n2b1r == 3
+        assert (
+            _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_PORTABILITY_CANDIDATE
+        )
+        assert (project_root / "research" / "N2B1P_manifest_portability_remediation.json").is_file()
+    else:
+        assert post_n2b1r == 1 + candidate_offset
+        parent = _git(project_root, "rev-parse", "HEAD^").stdout.strip()
+        assert parent in {N2B2_GPU_REVIEW_CANDIDATE, N2B2_S20_REVIEW_CANDIDATE}
+        assert (
+            int(_git(project_root, "rev-list", "--count", f"{N2B1P_BASELINE}..HEAD").stdout.strip())
+            == candidate_offset
+        )
     assert (
         int(
             _git(
@@ -136,9 +171,6 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
         int(_git(project_root, "rev-list", "--count", f"{N2B0_7_BASELINE}..HEAD").stdout.strip())
         == 2 + candidate_offset
     )
-    if candidate_offset:
-        assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE
-        assert (project_root / "research" / "N2B1P_manifest_portability_remediation.json").is_file()
     assert _git(project_root, "rev-list", "--merges", "HEAD").stdout.strip() == ""
 
 
@@ -162,9 +194,25 @@ def test_n2b1p_candidate_is_resolved_not_hardcoded(project_root: Path) -> None:
     assert prerequisite["n2b1p_parent_sha"] == N2B1R_BASELINE
     assert _git(project_root, "merge-base", "--is-ancestor", N2B1R_BASELINE, "HEAD").returncode == 0
     resolved = _git(project_root, "rev-list", f"{N2B1R_BASELINE}..HEAD").stdout.split()
-    expected_count = 2 if _is_portability_candidate(project_root) else 1
+    head = _git(project_root, "rev-parse", "HEAD").stdout.strip()
+    if head == N2B1P_BASELINE:
+        expected_count = 1
+    elif _is_main_integration_candidate(project_root):
+        expected_count = 3
+    elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
+        expected_count = 2
+    else:
+        assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() in {
+            N2B2_GPU_REVIEW_CANDIDATE,
+            N2B2_S20_REVIEW_CANDIDATE,
+        }
+        expected_count = (
+            3
+            if _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B2_GPU_REVIEW_CANDIDATE
+            else 4
+        )
     assert len(resolved) == expected_count, (
-        f"candidate must resolve to exactly {expected_count} commit(s), got {len(resolved)}"
+        f"candidate must resolve to exactly {expected_count} commits, got {len(resolved)}"
     )
     for literal in prerequisite["n2b1p_sha_superseded_literals"]:
         assert _git(project_root, "merge-base", "--is-ancestor", literal, "HEAD").returncode != 0, (

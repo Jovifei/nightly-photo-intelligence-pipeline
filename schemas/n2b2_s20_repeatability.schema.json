@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b2_s20_repeatability.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["visual_bytes_identical", "visual_digest_identical", "qwen_repeat_case_ids"],
+  "properties": {
+    "visual_bytes_identical": {"const": true},
+    "visual_digest_identical": {"const": true},
+    "qwen_repeat_case_ids": {"type": "array", "minItems": 5, "maxItems": 5, "uniqueItems": true}
+  }
+}

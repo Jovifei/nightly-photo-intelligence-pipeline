@@ -78,25 +78,24 @@ def build_vision_facts(
     fact_ids = [
         "fact-person-count",
         "fact-pose-keypoints",
-        "fact-seg-fg-ratio",
+        "fact-seg-person-ratio",
+        "fact-seg-comparator-person-ratio",
         "fact-subject-centroid",
         "fact-frame-contact",
         "fact-negative-space",
     ]
-    # The comparator provides an independent foreground estimate for QA only;
-    # it is not a separate authoritative fact but is recorded in provenance.
     uncertainties: list[dict[str, Any]] = []
-    if abs(seg_primary.foreground_ratio - seg_comparator.foreground_ratio) > 0.25:
+    if abs(seg_primary.person_mask_ratio - seg_comparator.person_mask_ratio) > 0.25:
         uncertainties.append(
             {
-                "fact_id": "fact-seg-fg-ratio",
-                "description": "LRASPP and DeepLab foreground estimates diverge beyond 0.25",
+                "fact_id": "fact-seg-person-ratio",
+                "description": "LRASPP and DeepLab VOC person-mask estimates diverge beyond 0.25",
                 "severity": "medium",
             }
         )
 
     payload: dict[str, Any] = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "case_id": case_id,
         "image_sha256": image_sha256,
         "provenance": {
@@ -110,7 +109,8 @@ def build_vision_facts(
         "person_boxes": [dict(b) for b in pose.person_boxes],
         "pose_keypoints": [[dict(k) for k in kp] for kp in pose.pose_keypoints],
         "pose_scores": [round(float(s), 4) for s in pose.pose_scores],
-        "segmentation_foreground_ratio": _finite(seg_primary.foreground_ratio),
+        "segmentation_person_ratio": _finite(seg_primary.person_mask_ratio),
+        "segmentation_comparator_person_ratio": _finite(seg_comparator.person_mask_ratio),
         "subject_centroids": [_centroid(b) for b in pose.person_boxes],
         "frame_contact_flags": (
             _frame_contact(pose.person_boxes[0], width, height)

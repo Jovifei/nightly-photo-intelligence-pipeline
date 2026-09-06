@@ -1,0 +1,59 @@
+schema_version: "1.0"
+receipt_type: "OWNER_QWEN_FACT_BINDING_REMEDIATION"
+status: "AUTHORIZED_FOR_BOUNDED_SYNTHETIC_RETRY"
+owner_id: "Jovi"
+issued_at_utc: "2026-08-10"
+task: "N2B2_QWEN_FACT_BINDING_CONTRACT_REMEDIATION_AND_S20_V3_RESUME"
+plan_sha256: "9fbeeeb0f935f7e46e060069758aa6a47ecbbbdbbfcca31491e4ca85240bcc72"
+reviewed_commit: "49e653b27884f9ba09d15ca17682e496687dc59f"
+runtime_source_candidate_parent: "49e653b27884f9ba09d15ca17682e496687dc59f"
+prior_runtime_source_candidate: "f67251a6cbc55e804a16c2e84d589fab7ecff90b"
+source_manifest_sha256: "b59446550e81499aaac9be17bebfd675f403869767a16318ce1a1a8904e4eec0"
+prior_failure_evidence:
+  validation_summary_sha256: "4c001bd7112d75f058eb08a1025e45a207c76201a1e8d4cfaa4804b2e6a7d3fe"
+  failure_summary_sha256: "dc96c340c237a20eb5865caa5a4b869ba1c0ccabbaf364634f6d7da20ec7171f"
+  cleanup_evidence_sha256: "cd49afa556b43a0b30a06f501e98665777e84142c375f1b094690860e43a173c"
+  checkpoint_sha256: "dbc228439765a5d1efe4fa7d1668fdd9a15d850690c0d41c0f73f23a4f5c4526"
+  repeatability_sha256: "0df4d0027c3739316acc7daab5d7d2fbf9ca2dd460c205c1e3801d220ee18700"
+failure_signature:
+  class: "QWEN_FACT_DIGEST_ECHO_MISMATCH"
+  case_id: "n2b2-s20-03"
+  expected_digest: "84d8f256d2be56dedb36101a8e5805185cc3a175fe6f540dc643e1493b66c0b5"
+  echoed_digest: "84d8f256d2be56dedb36101a8e580175fe6f540dc643e1493b66c0b505185cc3"
+scope:
+  synthetic_only: true
+  preserve_frozen_20_case_fixture_set: true
+  preserve_visual_facts_and_pose_seg_models: true
+  preserve_qwen_model_identity: true
+  qwen_contract_only: true
+  qwen_probe_before_full_s20: true
+  s20_v3_resume_only_after_probe: true
+  pose_threshold: 0.5
+  production_bundle_release: false
+forbidden:
+  - "real photos"
+  - "EXIF"
+  - "G1 source access"
+  - "SQLite ingest"
+  - "PROJECT_STATE mutation"
+  - "N2B2 unlock"
+  - "model download or replacement"
+  - "fixture regeneration or replacement"
+  - "threshold change"
+  - "S20 external review or phase completion"
+  - "push merge PR release"
+mandatory_stop:
+  probe_failure: "N2B2_QWEN_FACT_BINDING_CONTRACT_PROBE_FAILED"
+  qwen_contract_failure: "N2B2_QWEN_FACT_BINDING_CONTRACT_FAILED"
+  source_drift: "N2B2_S20_RUNTIME_SOURCE_REVALIDATION_REQUIRED"
+  resume_binding_mismatch: "N2B2_S20_RESUME_BINDING_MISMATCH"
+  success: "N2B2_S20_SYNTHETIC_VALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW"
+project_state_mutation: false
+production_n2b2_unlock: false
+real_photo_read_count: 0
+real_exif_read_count: 0
+g1_source_access: 0
+sqlite_write_count: 0
+app_write_count: 0
+obsidian_runtime_write_count: 0
+model_download_bytes: 0

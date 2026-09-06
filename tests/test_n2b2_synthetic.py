@@ -30,6 +30,7 @@ from nightly_photo_intelligence_pipeline.n2b2_synthetic.qwen_reasoning import va
 from nightly_photo_intelligence_pipeline.n2b2_synthetic.torchvision_loader import (
     FakeTorchVisionBackend,
     RawPoseDetections,
+    RawSegmentation,
     verify_cache_hit,
 )
 from nightly_photo_intelligence_pipeline.n2b2_synthetic.vision_facts import (
@@ -93,7 +94,6 @@ class FakeOllamaOpener:
         data = getattr(req, "data", None)
         body = json.loads(data) if data else {}
         self.paths.append(url)
-        self.generate_bodies.append(body)
         if url.endswith("/api/tags"):
             return _Resp(
                 {
@@ -118,15 +118,18 @@ class FakeOllamaOpener:
         if url.endswith("/api/version"):
             return _Resp({"version": "0.4.0"})
         if url.endswith("/api/generate"):
+            self.generate_bodies.append(body)
             if self.leak_path:
                 body["images"] = ["/abs/path/to/photo.png"]
             m = re.search(r"fact_digest=([0-9a-f]{64})", body.get("prompt", ""))
             fd = m.group(1) if m else "0" * 64
+            case_match = re.search(r'"case_id":"(n2b2-s3-[0-9]{2})"', body.get("prompt", ""))
+            case_id = case_match.group(1) if case_match else "n2b2-s3-01"
             # Realistic Ollama shape: the structured object is returned as a
             # JSON string inside the ``response`` field. ``reason()`` parses it.
             reasoning = {
                 "schema_version": "1.0",
-                "case_id": "n2b2-s3-01",
+                "case_id": case_id,
                 "input_fact_digest": fd,
                 "reasoning_based_on_fact_ids": ["fact-person-count"],
                 "photographic_interpretation": {
@@ -152,13 +155,14 @@ class FakeOllamaOpener:
         return _Resp({})
 
 
-def _config(backend: str = "fake", gpu_limit: int = 11500) -> N2B2RunConfig:
+def _config(backend: str = "fake", gpu_limit: int = 11500, device: str = "cpu") -> N2B2RunConfig:
     return N2B2RunConfig(
         project_root=ROOT,
         cache_root=Path("npi-model-cache"),
         fixtures_dir=ROOT / "fixtures",
         runtime_out_dir=ROOT / ".npi_runtime" / "n2b2_test",
         backend=backend,  # type: ignore[arg-type]
+        device=device,  # type: ignore[arg-type]
         gpu_limit_mib=gpu_limit,
     )
 
@@ -480,11 +484,16 @@ def test_reference_bundle_checksum():
         "case_id": "n2b2-s3-01",
         "image_sha256": "0" * 64,
         "vision_facts": {"fact_digest": "a" * 64, "fact_ids": ["fact-person-count"]},
-        "photographic_reasoning": {"input_fact_digest": "a" * 64, "reasoning_model": "qwen3.5:9b"},
+        "photographic_reasoning": {
+            "input_fact_digest": "a" * 64,
+            "reasoning_model": "qwen3.5:9b",
+            "qwen_echo_verified": True,
+            "qwen_echoed_fact_digest": "a" * 64,
+        },
         "checksums": {
             "vision_facts_sha256": "b" * 64,
             "reasoning_sha256": "c" * 64,
-            "bundle_sha256": "d" * 64,
+            "director_prompt_sha256": "d" * 64,
         },
         "provenance": {
             "data_gate": "SYNTHETIC_ONLY_DATA_GATE",
@@ -503,32 +512,11 @@ def test_reference_bundle_checksum():
 
 
 def _s3_person_positive_fixtures() -> list[SyntheticFixture]:
-    backend = FakeTorchVisionBackend()
+    def _one_person(case_id: str, color: tuple[int, int, int]) -> SyntheticFixture:
+        data, w, h = _make_png_bytes(color)
+        return SyntheticFixture(case_id=case_id, image_bytes=data, width=w, height=h)
 
-    def _one_person(image_bytes: bytes, case_id: str) -> SyntheticFixture:
-        data, w, h = _make_png_bytes((200, 50, 50))
-        fx = SyntheticFixture(case_id=case_id, image_bytes=data, width=w, height=h)
-        # Force a positive person detection for S3 coverage.
-        fx._forced = True  # type: ignore[attr-defined]
-        return fx
-
-    out = [_one_person(b"", f"n2b2-s3-{i + 1:02d}") for i in range(3)]
-    # Make the fake backend return 1 person for the first fixture's bytes.
-    orig = backend.detect_pose
-
-    def _patched(image_bytes: bytes) -> RawPoseDetections:
-        if image_bytes == out[0].image_bytes:
-            return RawPoseDetections(
-                person_boxes=[{"x_min": 10, "y_min": 10, "x_max": 50, "y_max": 50}],
-                pose_keypoints=[[{"x": 20 + k, "y": 20 + k, "score": 0.9} for k in range(17)]],
-                pose_scores=[0.9],
-            )
-        return orig(image_bytes)
-
-    backend.detect_pose = _patched  # type: ignore[method-assign]
-    # Attach backend so the test can pass it; orchestrator builds its own, so
-    # instead we monkeypatch the loader entry via the config backend factory.
-    return out
+    return [_one_person(f"n2b2-s3-{i + 1:02d}", (200, 50 + i, 50)) for i in range(3)]
 
 
 def test_n2b2_happy_complete(monkeypatch):
@@ -538,24 +526,27 @@ def test_n2b2_happy_complete(monkeypatch):
         _fake_cache_entries,
     )
     s3 = _s3_person_positive_fixtures()
-    # Build 20 S20 fixtures (synthetic, distinct).
-    s20 = [
-        SyntheticFixture(
-            case_id=f"n2b2-s20-{i + 1:02d}",
-            image_bytes=_make_png_bytes((i, i, 255))[0],
-            width=64,
-            height=48,
-        )
-        for i in range(20)
-    ]
-    # Force the fake backend to always return 1 person (so S20 passes too).
+    negative_bytes = s3[2].image_bytes
+    original_segment = FakeTorchVisionBackend.segment
+    monkeypatch.setattr(
+        FakeTorchVisionBackend,
+        "segment",
+        lambda self, b, role: (
+            RawSegmentation() if b == negative_bytes else original_segment(self, b, role)
+        ),
+    )
+    # Force the fake backend to return a complete person for all three S3 cases.
     monkeypatch.setattr(
         FakeTorchVisionBackend,
         "detect_pose",
-        lambda self, b: RawPoseDetections(
-            person_boxes=[{"x_min": 1, "y_min": 1, "x_max": 20, "y_max": 20}],
-            pose_keypoints=[[{"x": float(k), "y": float(k), "score": 0.9} for k in range(17)]],
-            pose_scores=[0.9],
+        lambda self, b: (
+            RawPoseDetections()
+            if b == negative_bytes
+            else RawPoseDetections(
+                person_boxes=[{"x_min": 1, "y_min": 1, "x_max": 20, "y_max": 20}],
+                pose_keypoints=[[{"x": float(k), "y": float(k), "score": 0.9} for k in range(17)]],
+                pose_scores=[0.9],
+            )
         ),
     )
     opener = FakeOllamaOpener()
@@ -563,7 +554,7 @@ def test_n2b2_happy_complete(monkeypatch):
     result = run_n2b2(
         config=config,
         s3_fixtures=s3,
-        s20_fixtures=s20,
+        s20_fixtures=[],
         reasoning_schema=REASONING_SCHEMA,
         vision_schema=VISION_SCHEMA,
         n2b1p_sha="a" * 40,
@@ -571,9 +562,7 @@ def test_n2b2_happy_complete(monkeypatch):
         start_head="b" * 40,
         ollama=client,
     )
-    assert (
-        result.result == "N2B2_SYNTHETIC_MODEL_STACK_VALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW"
-    )
+    assert result.result == "N2B2_SYNTHETIC_SMOKE_VALIDATION_COMPLETE_AWAITING_OWNER_REVIEW"
     hc = result.summary["hard_counts"]
     assert hc["real_photo_read_count"] == 0
     assert hc["real_exif_read_count"] == 0
@@ -628,39 +617,43 @@ def test_n2b2_s3_fixture_insufficient(monkeypatch):
         start_head="b" * 40,
         ollama=OllamaClient(opener=FakeOllamaOpener()),
     )
-    assert result.result == "N2B2_SYNTHETIC_FIXTURE_CAPABILITY_INSUFFICIENT"
+    assert result.result == "N2B2_SYNTHETIC_FIXTURE_CAPABILITY_REQUIRES_DESIGN_REVIEW"
 
 
 def test_n2b2_gpu_threshold_exceeded(monkeypatch):
-    config = _config(gpu_limit=100)
+    config = _config(gpu_limit=100, device="cuda")
     monkeypatch.setattr(
         "nightly_photo_intelligence_pipeline.n2b2_synthetic.orchestrator.verify_cache_hit",
         _fake_cache_entries,
     )
     monkeypatch.setattr(MetricsCollector, "_gpu_allocated_mib", lambda self: 20000)
     s3 = _s3_person_positive_fixtures()
-    s20 = [
-        SyntheticFixture(
-            case_id=f"n2b2-s20-{i + 1:02d}",
-            image_bytes=_make_png_bytes((i, i, 255))[0],
-            width=64,
-            height=48,
-        )
-        for i in range(20)
-    ]
+    negative_bytes = s3[2].image_bytes
+    original_segment = FakeTorchVisionBackend.segment
+    monkeypatch.setattr(
+        FakeTorchVisionBackend,
+        "segment",
+        lambda self, b, role: (
+            RawSegmentation() if b == negative_bytes else original_segment(self, b, role)
+        ),
+    )
     monkeypatch.setattr(
         FakeTorchVisionBackend,
         "detect_pose",
-        lambda self, b: RawPoseDetections(
-            person_boxes=[{"x_min": 1, "y_min": 1, "x_max": 20, "y_max": 20}],
-            pose_keypoints=[[{"x": float(k), "y": float(k), "score": 0.9} for k in range(17)]],
-            pose_scores=[0.9],
+        lambda self, b: (
+            RawPoseDetections()
+            if b == negative_bytes
+            else RawPoseDetections(
+                person_boxes=[{"x_min": 1, "y_min": 1, "x_max": 20, "y_max": 20}],
+                pose_keypoints=[[{"x": float(k), "y": float(k), "score": 0.9} for k in range(17)]],
+                pose_scores=[0.9],
+            )
         ),
     )
     result = run_n2b2(
         config=config,
         s3_fixtures=s3,
-        s20_fixtures=s20,
+        s20_fixtures=[],
         reasoning_schema=REASONING_SCHEMA,
         vision_schema=VISION_SCHEMA,
         n2b1p_sha="a" * 40,

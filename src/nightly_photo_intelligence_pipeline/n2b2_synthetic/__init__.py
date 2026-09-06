@@ -33,7 +33,9 @@ from .config import (
     N2B2RunConfig,
     TorchVisionRole,
 )
-from .orchestrator import N2B2Result, SyntheticFixture, run_n2b2
+from .fixture_manifest import SyntheticFixture, load_s3_manifest
+from .orchestrator import N2B2Result, run_gpu_probe, run_n2b2
+from .s20_manifest import S20_CASE_MATRIX, S20CaseSpec, load_s20_manifest
 
 __all__ = [
     "GPU_LIMIT_MIB",
@@ -46,5 +48,10 @@ __all__ = [
     "TorchVisionRole",
     "N2B2Result",
     "SyntheticFixture",
+    "load_s3_manifest",
+    "S20CaseSpec",
+    "S20_CASE_MATRIX",
+    "load_s20_manifest",
     "run_n2b2",
+    "run_gpu_probe",
 ]

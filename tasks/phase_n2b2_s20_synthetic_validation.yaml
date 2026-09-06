@@ -1,0 +1,34 @@
+contract_version: "1.0"
+phase:
+  id: "N2B2_S20_SYNTHETIC_VALIDATION"
+  title: "N2B2 fixed synthetic twenty-case validation and bundle-set preparation"
+  status: "AUTHORIZED_SYNTHETIC_S20_REVIEW_CANDIDATE"
+  project_state_status: "N2B2_LOCKED"
+  capability: "N2B2_S20_SYNTHETIC_VALIDATION"
+prerequisite:
+  reviewed_commit: "49e653b27884f9ba09d15ca17682e496687dc59f"
+  review_record: "EXTERNAL_RUNTIME_WORK/review_result.json"
+  review_verdict: "PASS_FOR_OWNER_REVIEW"
+  owner_receipt: "approvals/owner_n2b2_s20_synthetic_validation_receipt.yaml"
+  production_phase_completion: false
+scope:
+  synthetic_only: true
+  fixed_case_count: 20
+  device: "cuda"
+  production_bundle_release: false
+  app_import_authorized: false
+forbidden:
+  - "real photos"
+  - "EXIF"
+  - "G1 source access"
+  - "SQLite ingest"
+  - "PROJECT_STATE mutation"
+  - "N2B2 unlock"
+  - "model download or replacement"
+  - "S20 external review or phase completion"
+  - "push merge PR release"
+mandatory_stop:
+  success: "N2B2_S20_SYNTHETIC_VALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW"
+  review_mismatch: "N2B2_S20_NOT_AUTHORIZED"
+  resume_mismatch: "N2B2_S20_RESUME_BINDING_MISMATCH"
+  execution_status: "S20_EXTERNAL_REVIEW_REQUIRED"

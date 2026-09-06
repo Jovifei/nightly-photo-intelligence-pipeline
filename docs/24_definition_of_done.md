@@ -41,3 +41,21 @@
 - 后续命令以“占位成功”返回；
 - N1 已开始；
 - Owner 尚未审核却更新为 N1 authorized。
+
+## N2B2 synthetic review candidate 完成定义
+
+以下全部满足时，可记录
+`N2B2_SYNTHETIC_MODEL_STACK_VALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW`：
+
+- [x] N2B1P completion record 与 Owner synthetic-only receipt 绑定；
+- [x] production `N2B2=LOCKED` 未改变；
+- [x] S3 A/B/C Pose、Seg、facts 和 Qwen 合同通过；
+- [x] S20 固定 20 case、20 bundles、checksums、checkpoint 和 no-op resume 通过；
+- [x] GPU/Qwen residency 与显式 unload 有证据；
+- [x] 真实照片、EXIF、G1、SQLite、App、模型下载计数为 0；
+- [x] pytest、Ruff、mypy、统一质量、preflight、handoff 和敏感扫描通过；
+- [ ] 精确 candidate 的独立外部 Review PASS；
+- [ ] Owner 后续 phase decision。
+
+上述状态不是 `N2B2_COMPLETE`。在最后两项完成前，不得进入 Real20、生产 Bundle、
+App 或任何真实照片处理。

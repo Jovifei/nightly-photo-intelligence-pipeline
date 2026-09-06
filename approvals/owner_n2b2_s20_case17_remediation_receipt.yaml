@@ -1,0 +1,30 @@
+schema_version: "1.0"
+receipt_type: "OWNER_CASE17_SYNTHETIC_FIXTURE_REMEDIATION"
+status: "AUTHORIZED_FOR_BOUNDED_RETRY"
+owner_id: "Jovi"
+task: "N2B2_S20_CASE17_FIXTURE_REMEDIATION"
+reviewed_commit: "49e653b27884f9ba09d15ca17682e496687dc59f"
+source_manifest_sha256: "34d1ef3146b05982254d0613da5a5e6f0ca323d6f8f727fb1ae7cb17a30e64c6"
+failure_summary_sha256: "3113f49e64c4dc1a17dc251ee437c3762eac5a097bff6df1d5d610bf565dfe68"
+cleanup_evidence_sha256: "a3dd736187b49f1d53304d035994942fc4abc41ff660f0a8236b713a37aab1bb"
+checkpoint_sha256: "e21a1e446f0bf09bf215f6f8f9d524ac6a8dbc4ac7a94aa3f35fe97618f69243"
+scope:
+  synthetic_only: true
+  replace_case17_only: true
+  preserve_other_case_count: 19
+  candidate_seeds: [2026082117, 2026082118, 2026082119, 2026082120]
+  pose_threshold: 0.5
+  model_identity_unchanged: true
+  qwen_after_visual_acceptance_only: true
+forbidden:
+  - "real photos"
+  - "EXIF"
+  - "G1 source access"
+  - "SQLite ingest"
+  - "PROJECT_STATE mutation"
+  - "N2B2 unlock"
+  - "model download or replacement"
+  - "S20 external review or phase completion"
+mandatory_stop:
+  no_candidate: "N2B2_S20_CASE17_FIXTURE_REMEDIATION_REQUIRES_DESIGN_REVIEW"
+  evidence_drift: "N2B2_S20_FAILURE_EVIDENCE_DRIFT"

@@ -19,6 +19,12 @@ QWEN_QUANTIZATION = "Q4_K_M"
 # Hard GPU ceiling (CODEX §12).
 GPU_LIMIT_MIB = 11500
 
+# The real runtime must choose the device explicitly.  ``cpu`` remains
+# available only for the controlled comparator; formal N2B2 execution uses
+# ``cuda`` and fails closed if CUDA cannot be used.
+GPU_RUNTIME_UNAVAILABLE = "N2B2_GPU_RUNTIME_UNAVAILABLE"
+QWEN_GPU_USAGE_NOT_CONFIRMED = "N2B2_QWEN_GPU_USAGE_NOT_CONFIRMED"
+
 # Fixed stage seed for Qwen repeatability (CODEX §13).
 STAGE_SEED = 20260805
 
@@ -42,11 +48,17 @@ class TorchVisionRole(str, Enum):
 
 # role -> (canonical model id, expected weights filename in the cache)
 ROLE_MODEL_MAP: dict[TorchVisionRole, tuple[str, str]] = {
-    TorchVisionRole.POSE_BASELINE_SMOKE: (KEYPOINT_MODEL_ID, "keypointrcnn_resnet50_fpn_coco.pth"),
-    TorchVisionRole.SEGMENTATION_PRIMARY: (LRASPP_MODEL_ID, "lraspp_mobilenet_v3_large_coco.pth"),
+    TorchVisionRole.POSE_BASELINE_SMOKE: (
+        KEYPOINT_MODEL_ID,
+        "keypointrcnn_resnet50_fpn_coco-fc266e95.pth",
+    ),
+    TorchVisionRole.SEGMENTATION_PRIMARY: (
+        LRASPP_MODEL_ID,
+        "lraspp_mobilenet_v3_large-d234d4ea.pth",
+    ),
     TorchVisionRole.SEGMENTATION_QUALITY_COMPARATOR: (
         DEEPLAB_MODEL_ID,
-        "deeplabv3_mobilenet_v3_large_coco.pth",
+        "deeplabv3_mobilenet_v3_large-fc3c493d.pth",
     ),
 }
 
@@ -68,6 +80,8 @@ class N2B2RunConfig:
     seed: int | None = STAGE_SEED
     stage_seed: int = STAGE_SEED
     backend: Literal["real", "fake"] = "fake"
+    device: Literal["cpu", "cuda"] = "cpu"
+    s3_only: bool = True
     ollama_base_url: str = OLLAMA_BASE_URL
     gpu_limit_mib: int = GPU_LIMIT_MIB
     # role -> content-addressed cache sub-directory name (sha256)
@@ -76,6 +90,6 @@ class N2B2RunConfig:
             # Content-addressed cache sub-directory names (sha256) — immutable, so noqa on length.
             TorchVisionRole.POSE_BASELINE_SMOKE: "fc266e953d2b302cdcbb9ae66f71f6b0d4649928bf02dc573961e361e4918926",  # noqa: E501
             TorchVisionRole.SEGMENTATION_PRIMARY: "d234d4eae9d55d5f76de18b77cf0dc62c66fe5c5482758209d00f950c92bb280",  # noqa: E501
-            TorchVisionRole.SEGMENTATION_QUALITY_COMPARATOR: "6aa7571eda2286cc622cfa6370680cdb943ce524e029aa579ac643eb4fa528dc",  # noqa: E501
+            TorchVisionRole.SEGMENTATION_QUALITY_COMPARATOR: "fc3c493d68e89cc31ef488c803d5d7dd2f3190fb570598faa49fef69be8e5e70",  # noqa: E501
         }
     )

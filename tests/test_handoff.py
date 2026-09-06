@@ -25,16 +25,6 @@ def _read_manifest(root: Path) -> dict[str, str]:
     return listed
 
 
-def _index_sha256(root: Path, rel: str) -> str:
-    result = subprocess.run(
-        ["git", "-C", str(root), "cat-file", "blob", f":{rel}"],
-        capture_output=True,
-        check=False,
-    )
-    assert result.returncode == 0, result.stderr.decode(errors="replace")
-    return hashlib.sha256(result.stdout).hexdigest()
-
-
 def test_current_stage_manifest_binds_every_tracked_file(project_root: Path) -> None:
     """The current stage hashes every tracked file, including governance."""
     listed = _read_manifest(project_root)
@@ -50,7 +40,7 @@ def test_current_stage_manifest_binds_every_tracked_file(project_root: Path) -> 
     for rel, digest in listed.items():
         p = project_root / rel
         assert p.is_file(), f"manifest file missing: {rel}"
-        actual = _index_sha256(project_root, rel)
+        actual = hashlib.sha256(p.read_bytes()).hexdigest()
         assert actual == digest, f"manifest hash mismatch: {rel}"
 
 
@@ -164,7 +154,9 @@ def test_current_handoff_verifier_passes(project_root: Path) -> None:
     assert "HANDOFF_VALID" in result.stdout
     assert (
         "N2B1P local-research cache promotion only" in result.stdout
-        or "bounded N2B1P manifest-portability review candidate" in result.stdout
+        or "bounded N2B2 synthetic GPU review candidate" in result.stdout
+        or "bounded N2B2 S20 artifact-integrity review candidate" in result.stdout
+        or "linear N2B1P portability plus bounded N2B2 synthetic review candidate" in result.stdout
     )
 
 

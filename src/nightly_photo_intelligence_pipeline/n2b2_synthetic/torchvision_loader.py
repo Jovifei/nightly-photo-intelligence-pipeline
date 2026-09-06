@@ -1,29 +1,17 @@
-"""TorchVision model loading and deterministic detection backends for N2B2.
-
-Two backends implement the same protocol:
-
-* :class:`RealTorchVisionBackend` lazily imports ``torch``/``torchvision`` and
-  loads each model **only** from its content-addressed cache path. It never
-  triggers a download.
-* :class:`FakeTorchVisionBackend` produces deterministic, schema-shaped
-  detections without torch — used by the test-suite so the full pipeline can
-  be exercised in the managed ``.venv``.
-
-Both backends return plain ``bytes``-in / structured-out data; no absolute
-paths or source images are persisted.
-"""
+"""Offline TorchVision backends for the N2B2 synthetic smoke contract."""
 
 from __future__ import annotations
 
+import gc
 import hashlib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
-from .config import (
-    ROLE_MODEL_MAP,
-    TorchVisionRole,
-)
+from .config import ROLE_MODEL_MAP, TorchVisionRole
+
+POSE_SCORE_THRESHOLD = 0.5
+VOC_PERSON_CLASS_ID = 15
 
 
 @dataclass
@@ -35,15 +23,26 @@ class RawPoseDetections:
 
 @dataclass
 class RawSegmentation:
-    foreground_ratio: float = 0.0
+    person_mask_ratio: float = 0.0
+
+    @property
+    def foreground_ratio(self) -> float:
+        """Compatibility alias; facts must use the VOC person semantics."""
+
+        return self.person_mask_ratio
 
 
 class TorchVisionBackend(Protocol):
-    """Common interface implemented by both backends."""
-
     def detect_pose(self, image_bytes: bytes) -> RawPoseDetections: ...
 
     def segment(self, image_bytes: bytes, role: TorchVisionRole) -> RawSegmentation: ...
+
+    def unload(self, role: TorchVisionRole | None = None) -> None: ...
+
+    @property
+    def resident_roles(self) -> set[TorchVisionRole]: ...
+
+    def runtime_attestation(self) -> dict[str, Any]: ...
 
 
 def _sha256_hex(data: bytes) -> str:
@@ -51,78 +50,122 @@ def _sha256_hex(data: bytes) -> str:
 
 
 class FakeTorchVisionBackend:
-    """Deterministic, torch-free backend derived purely from the image hash.
-
-    The mapping is stable: ``image_sha256`` modulo 3 selects 0/1/2 persons so
-    that a batch of distinct fixtures exercises both the no-person negative
-    control and the single/multi-person happy paths.
-    """
+    """Deterministic test backend with the same lifecycle and data shape."""
 
     def detect_pose(self, image_bytes: bytes) -> RawPoseDetections:
-        digest = _sha256_hex(image_bytes)
-        bucket = int(digest[:8], 16) % 3
-        persons = bucket  # 0, 1 or 2
+        bucket = int(_sha256_hex(image_bytes)[:8], 16) % 3
         boxes: list[dict[str, float]] = []
         keypoints: list[list[dict[str, float]]] = []
         scores: list[float] = []
-        for i in range(persons):
+        for i in range(bucket):
             boxes.append(
                 {"x_min": 40.0 + i * 10, "y_min": 30.0, "x_max": 200.0 + i * 10, "y_max": 300.0}
             )
-            kps = [
-                {"x": 100.0 + i * 10 + k, "y": 120.0 + k * 2.0, "score": 0.91 - (k % 5) * 0.01}
-                for k in range(17)
-            ]
-            keypoints.append(kps)
+            keypoints.append(
+                [
+                    {"x": 100.0 + i * 10 + k, "y": 120.0 + k * 2.0, "score": 0.91 - (k % 5) * 0.01}
+                    for k in range(17)
+                ]
+            )
             scores.append(round(0.88 - i * 0.02, 4))
-        return RawPoseDetections(person_boxes=boxes, pose_keypoints=keypoints, pose_scores=scores)
+        return RawPoseDetections(boxes, keypoints, scores)
 
     def segment(self, image_bytes: bytes, role: TorchVisionRole) -> RawSegmentation:
-        digest = _sha256_hex(image_bytes)
-        # Stable pseudo-ratio in (0, 1) derived from the hash.
-        ratio = (int(digest[8:16], 16) % 1000) / 1000.0
-        return RawSegmentation(foreground_ratio=round(ratio, 6))
+        del role
+        ratio = (int(_sha256_hex(image_bytes)[8:16], 16) % 1000) / 1000.0
+        return RawSegmentation(person_mask_ratio=round(ratio, 6))
+
+    def unload(self, role: TorchVisionRole | None = None) -> None:
+        del role
+
+    @property
+    def resident_roles(self) -> set[TorchVisionRole]:
+        return set()
+
+    def runtime_attestation(self) -> dict[str, Any]:
+        return {
+            "device": "cpu",
+            "dtype": "float32",
+            "cuda_available": False,
+            "fallback": False,
+        }
 
 
 class RealTorchVisionBackend:
-    """Lazy torch/torchvision backend that loads from the local cache only.
+    """Load only exact approved cache payloads; no constructor can download."""
 
-    Raises :class:`FileNotFoundError` (never a download) if a cached weight
-    file is absent, and raises :class:`RuntimeError` if ``torch`` is not
-    importable in the active interpreter.
-    """
-
-    def __init__(self, cache_root: Path, subdirs: dict[TorchVisionRole, str]) -> None:
+    def __init__(
+        self,
+        cache_root: Path,
+        subdirs: dict[TorchVisionRole, str],
+        *,
+        device: str = "cpu",
+    ) -> None:
         self._cache_root = Path(cache_root)
         self._subdirs = subdirs
         self._models: dict[TorchVisionRole, Any] = {}
         self._torch: Any = None
         self._tv: Any = None
+        if device not in {"cpu", "cuda"}:
+            raise ValueError(f"unsupported TorchVision device: {device!r}")
+        self._requested_device = device
+        self._device: Any = None
+        self._fallback = False
+        self._last_input_device = "unknown"
+        self._last_output_device = "unknown"
 
     def _ensure_torch(self) -> tuple[Any, Any]:
         if self._torch is not None:
+            if self._requested_device == "cuda":
+                if not self._torch.cuda.is_available() or self._torch.cuda.device_count() < 1:
+                    raise RuntimeError("N2B2_GPU_RUNTIME_UNAVAILABLE: CUDA is unavailable")
+                if self._device is None:
+                    self._device = self._torch.device("cuda:0")
             return self._torch, self._tv
         try:
             import torch  # noqa: PLC0415
             import torchvision  # noqa: PLC0415
-        except Exception as exc:  # pragma: no cover - env dependent
-            raise RuntimeError(
-                "torch/torchvision not available in this interpreter; "
-                "N2B2 real execution requires them in the active environment"
-            ) from exc
+        except Exception as exc:  # pragma: no cover - environment dependent
+            raise RuntimeError("torch/torchvision unavailable for N2B2 real execution") from exc
         self._torch = torch
         self._tv = torchvision
+        if self._requested_device == "cuda":
+            if not torch.cuda.is_available():
+                raise RuntimeError("N2B2_GPU_RUNTIME_UNAVAILABLE: CUDA is unavailable")
+            if torch.cuda.device_count() < 1:
+                raise RuntimeError("N2B2_GPU_RUNTIME_UNAVAILABLE: no CUDA device")
+            self._device = torch.device("cuda:0")
+        else:
+            self._device = torch.device("cpu")
         return torch, torchvision
+
+    @property
+    def resident_roles(self) -> set[TorchVisionRole]:
+        return set(self._models)
+
+    def runtime_attestation(self) -> dict[str, Any]:
+        torch, _ = self._ensure_torch()
+        cuda_available = bool(torch.cuda.is_available())
+        return {
+            "requested_device": self._requested_device,
+            "effective_device": str(self._device),
+            "dtype": "torch.float32",
+            "torch_version": str(getattr(torch, "__version__", "unknown")),
+            "torchvision_version": str(getattr(self._tv, "__version__", "unknown")),
+            "cuda_available": cuda_available,
+            "cuda_device_name": (torch.cuda.get_device_name(0) if cuda_available else None),
+            "fallback": self._fallback,
+            "input_device": self._last_input_device,
+            "raw_output_device": self._last_output_device,
+            "serialization_device": "cpu",
+        }
 
     def _weight_path(self, role: TorchVisionRole) -> Path:
         _, filename = ROLE_MODEL_MAP[role]
-        subdir = self._subdirs[role]
-        path = self._cache_root / subdir / filename
+        path = self._cache_root / self._subdirs[role] / filename
         if not path.is_file():
-            # Hard rule: never download. Refuse and surface CACHE_MISS clearly.
             raise FileNotFoundError(
-                f"TorchVision cache miss for {role.value} ({filename}) at {path}; "
-                "N2B2 must not download weights."
+                f"TorchVision CACHE_MISS for {role.value}: {filename}; downloads are forbidden"
             )
         return path
 
@@ -131,35 +174,69 @@ class RealTorchVisionBackend:
             return self._models[role]
         torch, torchvision = self._ensure_torch()
         path = self._weight_path(role)
-        weights_path = str(path)
         if role is TorchVisionRole.POSE_BASELINE_SMOKE:
             model = torchvision.models.detection.keypointrcnn_resnet50_fpn(
-                weights=None, weights_path=weights_path
+                weights=None, weights_backbone=None
             )
         elif role is TorchVisionRole.SEGMENTATION_PRIMARY:
             model = torchvision.models.segmentation.lraspp_mobilenet_v3_large(
-                weights=None, weights_path=weights_path
+                weights=None, weights_backbone=None
             )
         else:
             model = torchvision.models.segmentation.deeplabv3_mobilenet_v3_large(
-                weights=None, weights_path=weights_path
+                weights=None, weights_backbone=None, aux_loss=True
             )
+        state_dict = torch.load(path, map_location="cpu", weights_only=True)
+        if isinstance(state_dict, dict) and "state_dict" in state_dict:
+            state_dict = state_dict["state_dict"]
+        model.load_state_dict(state_dict)
         model.eval()
+        model.to(self._device)
+        if any(parameter.device != self._device for parameter in model.parameters()):
+            raise RuntimeError(
+                "N2B2_GPU_RUNTIME_UNAVAILABLE: model parameters did not move to requested device"
+            )
         self._models[role] = model
         return model
+
+    def unload(self, role: TorchVisionRole | None = None) -> None:
+        if role is None:
+            self._models.clear()
+        else:
+            self._models.pop(role, None)
+        gc.collect()
+        if self._torch is not None and self._torch.cuda.is_available():
+            self._torch.cuda.synchronize()
+            self._torch.cuda.empty_cache()
+            self._torch.cuda.synchronize()
 
     def detect_pose(self, image_bytes: bytes) -> RawPoseDetections:
         torch, _ = self._ensure_torch()
         model = self._load(TorchVisionRole.POSE_BASELINE_SMOKE)
-        tensor = self._decode_image(torch, image_bytes)
+        tensor = self._decode_image(torch, image_bytes, self._device)
+        self._last_input_device = str(tensor.device)
         with torch.no_grad():
             out = model([tensor])[0]
-        boxes = out["boxes"].tolist()
-        kps = out.get("keypoints", torch.empty(0)).tolist()
-        scores = out.get("scores", torch.empty(0)).tolist()
+        if self._device.type == "cuda":
+            torch.cuda.synchronize()
+        raw_device = str(out["boxes"].device)
+        boxes = out["boxes"].detach().cpu().tolist()
+        scores = out.get("scores", torch.empty(0, device=self._device)).detach().cpu().tolist()
+        keypoints = (
+            out.get("keypoints", torch.empty((0, 17, 3), device=self._device))
+            .detach()
+            .cpu()
+            .tolist()
+        )
+        self._last_output_device = raw_device
         detections = RawPoseDetections()
-        for box, score in zip(boxes, scores, strict=False):
-            if score < 0.5:
+        # Filter all three arrays by the same source index. Incomplete keypoint
+        # groups are not emitted as detections, so counts can never diverge.
+        for index, (box, score) in enumerate(zip(boxes, scores, strict=False)):
+            if float(score) < POSE_SCORE_THRESHOLD or index >= len(keypoints):
+                continue
+            person_kps = keypoints[index]
+            if len(person_kps) != 17:
                 continue
             detections.person_boxes.append(
                 {
@@ -170,11 +247,10 @@ class RealTorchVisionBackend:
                 }
             )
             detections.pose_scores.append(round(float(score), 4))
-        for person_kps in kps:
             detections.pose_keypoints.append(
                 [
-                    {"x": float(p[0]), "y": float(p[1]), "score": round(float(p[2]), 4)}
-                    for p in person_kps
+                    {"x": float(point[0]), "y": float(point[1]), "score": round(float(point[2]), 4)}
+                    for point in person_kps
                 ]
             )
         return detections
@@ -182,45 +258,52 @@ class RealTorchVisionBackend:
     def segment(self, image_bytes: bytes, role: TorchVisionRole) -> RawSegmentation:
         torch, _ = self._ensure_torch()
         model = self._load(role)
-        tensor = self._decode_image(torch, image_bytes)
+        tensor = self._decode_image(torch, image_bytes, self._device)
+        self._last_input_device = str(tensor.device)
         with torch.no_grad():
-            out = model(tensor.unsqueeze(0))["out"][0]
-        fg = (out.argmax(0) > 0).float().mean().item()
-        return RawSegmentation(foreground_ratio=round(float(fg), 6))
+            output = model(tensor.unsqueeze(0))["out"][0]
+        if self._device.type == "cuda":
+            torch.cuda.synchronize()
+        self._last_output_device = str(output.device)
+        person_ratio = (
+            (output.argmax(0) == VOC_PERSON_CLASS_ID).float().mean().detach().cpu().item()
+        )
+        return RawSegmentation(person_mask_ratio=round(float(person_ratio), 6))
 
     @staticmethod
-    def _decode_image(_torch: Any, image_bytes: bytes) -> Any:
+    def _decode_image(torch: Any, image_bytes: bytes, device: Any) -> Any:
         from io import BytesIO  # noqa: PLC0415
 
         from PIL import Image  # noqa: PLC0415
 
-        img = Image.open(BytesIO(image_bytes)).convert("RGB")
-        import torchvision.transforms as T  # noqa: PLC0415
+        image = Image.open(BytesIO(image_bytes)).convert("RGB")
+        from torchvision import transforms  # noqa: PLC0415
 
-        return T.ToTensor()(img)
+        return transforms.ToTensor()(image).to(device)
 
 
 def verify_cache_hit(cache_root: Path, subdirs: dict[TorchVisionRole, str]) -> list[dict[str, str]]:
-    """Confirm all three cached weight files exist. Never downloads.
-
-    Returns one entry per role with ``artifact_id``, ``role`` and the resolved
-    cache path. Raises :class:`FileNotFoundError` if any weight is missing.
-    """
+    """Confirm all exact payload names exist without invoking download code."""
 
     entries: list[dict[str, str]] = []
+    root = Path(cache_root).resolve(strict=True)
     for role, (artifact_id, filename) in ROLE_MODEL_MAP.items():
-        path = Path(cache_root) / subdirs[role] / filename
-        if not path.is_file():
+        path = root / subdirs[role] / filename
+        if not path.is_file() or path.is_symlink():
             raise FileNotFoundError(f"TorchVision CACHE_MISS for {artifact_id} at {path}")
         entries.append({"artifact_id": artifact_id, "role": role.value, "path": str(path)})
     return entries
 
 
 def load_backend(
-    backend: str, cache_root: Path, subdirs: dict[TorchVisionRole, str]
+    backend: str,
+    cache_root: Path,
+    subdirs: dict[TorchVisionRole, str],
+    *,
+    device: str = "cpu",
 ) -> TorchVisionBackend:
     if backend == "fake":
         return FakeTorchVisionBackend()
     if backend == "real":
-        return RealTorchVisionBackend(cache_root, subdirs)
+        return RealTorchVisionBackend(cache_root, subdirs, device=device)
     raise ValueError(f"unknown backend: {backend!r}")

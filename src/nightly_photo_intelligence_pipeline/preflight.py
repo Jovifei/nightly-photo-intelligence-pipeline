@@ -261,20 +261,7 @@ def _check_handoff() -> CheckResult:
         if not p.is_file():
             missing.append(rel)
             continue
-        try:
-            result = subprocess.run(
-                ["git", "-C", str(root), "cat-file", "blob", f":{rel}"],
-                capture_output=True,
-                check=False,
-                timeout=_TIMEOUT,
-            )
-        except (OSError, subprocess.TimeoutExpired):
-            mismatched.append(rel)
-            continue
-        if result.returncode != 0:
-            mismatched.append(rel)
-            continue
-        actual = hashlib.sha256(result.stdout).hexdigest()
+        actual = hashlib.sha256(p.read_bytes()).hexdigest()
         if actual != digest:
             mismatched.append(rel)
     if missing or mismatched:
@@ -1042,7 +1029,9 @@ def _check_authorization() -> CheckResult:  # noqa: PLR0911
             evidence=(
                 f"phase={auth.phase_id}/{auth.phase_status} "
                 f"gate={auth.data_gate_id}/{auth.data_gate_status}; "
-                "schema+N1/G1/N2A/N2B0/N2B0.5 approval-chain+N2B0.6 research gate valid"
+                "schema+N1/G1/N2A/N2B0/N2B0.5 approval-chain+N2B0.6 research gate valid; "
+                "production model execution and source-photo access remain denied; "
+                "bounded N2B2 synthetic GPU review is separately receipt-bound"
             ),
         )
     except DuplicateJsonMemberError:
@@ -1086,12 +1075,22 @@ def _check_git_baselines() -> CheckResult:
         n2b0_6 = "eb2eaeb61f1c21923d131a115d63edbcdebd8cb2"
         n2b0_7 = "f2b1c38301d71da52b855f73de8a67908cb525ef"
         n2b1r = "d3628e27334e819ba2d5944151447595e03f39f9"
-        n2b1p_base = "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043"
-        portability_candidate = git("rev-parse", "HEAD^") == (0, n2b1p_base) and git(
-            "rev-list", "--count", f"{n2b1p_base}..HEAD"
-        ) == (0, "1")
+        n2b1p = "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043"
+        n2b1p_portability = "0fef0a8f6a2f2b2f75ce2fba3e3eef1e764037b8"
+        n2b2_gpu_candidate = "49e653b27884f9ba09d15ca17682e496687dc59f"
+        n2b2_s20_candidate = "c1008132654d32e7ac6a2032eb5d3a2c7e07cdb6"
+        head = git("rev-parse", "HEAD")[1]
+        portability_candidate = head == n2b1p_portability and git("rev-parse", "HEAD^") == (
+            0,
+            n2b1p,
+        )
+        main_integration_topology = (
+            git("rev-parse", "HEAD^") == (0, n2b1p_portability)
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "2")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "3")
+        )
         portability_record_ok = True
-        if portability_candidate:
+        if portability_candidate or main_integration_topology:
             record_path = root / "research" / "N2B1P_manifest_portability_remediation.json"
             schema_path = root / "schemas" / "n2b1p_manifest_portability_remediation_v1.schema.json"
             try:
@@ -1102,8 +1101,8 @@ def _check_git_baselines() -> CheckResult:
                     (
                         record.get("candidate_kind") == "N2B1P_MANIFEST_PORTABILITY_REMEDIATION",
                         record.get("status") == "AWAITING_EXTERNAL_REVIEW",
-                        record.get("base_commit") == n2b1p_base,
-                        record.get("parent_commit") == n2b1p_base,
+                        record.get("base_commit") == n2b1p,
+                        record.get("parent_commit") == n2b1p,
                         record.get("n2b1r_commit") == n2b1r,
                         record.get("project_state_sha256") == state_sha,
                         record.get("project_state_unchanged") is True,
@@ -1112,6 +1111,25 @@ def _check_git_baselines() -> CheckResult:
                 )
             except Exception:  # noqa: BLE001 - preflight reports a hard failure
                 portability_record_ok = False
+        n2b2_gpu_topology = (
+            git("rev-parse", "HEAD^") == (0, n2b1p)
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "1")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "2")
+        )
+        s20_candidate_topology = (
+            git("rev-parse", "HEAD^") == (0, n2b2_gpu_candidate)
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "2")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "3")
+        )
+        authorized_synthetic_topology = (
+            git("rev-parse", "HEAD^") == (0, n2b2_s20_candidate)
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "3")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "4")
+        )
+        baseline_topology = head == n2b1p and git("rev-list", "--count", f"{n2b1r}..HEAD") == (
+            0,
+            "1",
+        )
         checks = [
             git("rev-parse", "n0-approved-2026-07-14") == (0, n0),
             git("rev-parse", "n1-approved-2026-07-14") == (0, n1),
@@ -1123,23 +1141,25 @@ def _check_git_baselines() -> CheckResult:
             git("merge-base", "--is-ancestor", n2b0_7, "HEAD")[0] == 0,
             git("rev-list", "--count", f"{n2b0_6}..{n2b0_7}") == (0, "1"),
             git("rev-list", "--count", f"{n2b0_7}..{n2b1r}") == (0, "1"),
-            git("rev-list", "--count", f"{n2b1r}..HEAD")
-            == (0, "2" if portability_candidate else "1"),
+            baseline_topology
+            or main_integration_topology
+            or n2b2_gpu_topology
+            or s20_candidate_topology
+            or authorized_synthetic_topology,
             portability_record_ok,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),
         ]
         return result(
             checks,
-            failure_notes="Git baseline or bounded N2B1P commit topology mismatch",
+            failure_notes="Git baseline or bounded N2B2 review-candidate topology mismatch",
             pass_evidence=(
                 "N0/N1/G1/N2A/N2B0/N2B0.5/N2B0.6/N2B0.7 tags intact; "
-                + (
-                    "one N2B1R and one bounded N2B1P portability candidate; "
-                    if portability_candidate
-                    else "one N2B1R and one N2B1P commit; "
-                )
-                + "no merge; worktree clean"
+                "one N2B1R and one N2B1P commit, a portability-plus-N2B2 integration, "
+                "one direct N2B2 GPU candidate, "
+                "one direct S20 candidate after 49e653b, or one bounded synthetic "
+                "authorization candidate after c100813; "
+                "no merge; worktree clean"
             ),
         )
 
@@ -1220,6 +1240,173 @@ def _check_git_baselines() -> CheckResult:
     )
 
 
+def _check_bounded_n2b2_review_candidate() -> CheckResult:
+    """Validate the bounded synthetic GPU or S20 review contract."""
+
+    root = find_project_root()
+    try:
+        task = yaml.safe_load(
+            (
+                root / "tasks" / "phase_n2b2_runtime_gpu_validation_and_s20_preparation.yaml"
+            ).read_text(encoding="utf-8")
+        )
+        receipt = yaml.safe_load(
+            (root / "approvals" / "owner_n2b2_runtime_gpu_validation_receipt.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        s20_task_path = root / "tasks" / "phase_n2b2_s20_synthetic_validation.yaml"
+        s20_receipt_path = root / "approvals" / "owner_n2b2_s20_synthetic_validation_receipt.yaml"
+        s20_task = (
+            yaml.safe_load(s20_task_path.read_text(encoding="utf-8"))
+            if s20_task_path.is_file()
+            else {}
+        )
+        s20_receipt = (
+            yaml.safe_load(s20_receipt_path.read_text(encoding="utf-8"))
+            if s20_receipt_path.is_file()
+            else {}
+        )
+        integrity_task_path = root / "tasks" / "phase_n2b2_s20_artifact_integrity_remediation.yaml"
+        integrity_receipt_path = (
+            root / "approvals" / "owner_n2b2_s20_artifact_integrity_remediation_receipt.yaml"
+        )
+        integrity_task = (
+            yaml.safe_load(integrity_task_path.read_text(encoding="utf-8"))
+            if integrity_task_path.is_file()
+            else {}
+        )
+        integrity_receipt = (
+            yaml.safe_load(integrity_receipt_path.read_text(encoding="utf-8"))
+            if integrity_receipt_path.is_file()
+            else {}
+        )
+        index = load_json_strict(root / "tasks" / "index.json")
+        state = load_json_strict(root / "PROJECT_STATE.json")
+        candidate = next(
+            (
+                item
+                for item in index.get("review_candidates", [])
+                if item.get("phase") == "N2B2_RUNTIME_GPU_VALIDATION"
+            ),
+            None,
+        )
+        s20_candidate = next(
+            (
+                item
+                for item in index.get("review_candidates", [])
+                if item.get("phase") == "N2B2_S20_SYNTHETIC_VALIDATION"
+            ),
+            None,
+        )
+        integrity_candidate = next(
+            (
+                item
+                for item in index.get("review_candidates", [])
+                if item.get("phase") == "N2B2_S20_ARTIFACT_INTEGRITY_REMEDIATION"
+            ),
+            None,
+        )
+        phase = task.get("phase", {})
+        owner = task.get("owner_authorization", {})
+        candidate_dict = candidate if isinstance(candidate, dict) else {}
+        valid = all(
+            (
+                bool(candidate_dict),
+                candidate_dict.get("project_state") == "N2B2_LOCKED",
+                candidate_dict.get("execution_status") == "SYNTHETIC_GPU_ONLY",
+                phase.get("status") == "AUTHORIZED_SYNTHETIC_RUNTIME_ONLY_REVIEW_CANDIDATE",
+                phase.get("project_state_status") == "N2B2_LOCKED",
+                owner.get("reviewed_baseline") == "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043",
+                owner.get("synthetic_only") is True,
+                owner.get("cuda_runtime_validation") is True,
+                owner.get("s20_execution") == "NOT_AUTHORIZED_THIS_RUN",
+                receipt.get("reviewed_baseline") == "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043",
+                receipt.get("mandatory_stop") is True,
+                "real photos" in receipt.get("not_allowed", []),
+                "S20 execution" in receipt.get("not_allowed", []),
+                state.get("phase_status", {}).get("N2B2") == "LOCKED",
+            )
+        )
+        s20_phase = s20_task.get("phase", {}) if isinstance(s20_task, dict) else {}
+        s20_prerequisite = s20_task.get("prerequisite", {}) if isinstance(s20_task, dict) else {}
+        s20_candidate_dict = s20_candidate if isinstance(s20_candidate, dict) else {}
+        s20_valid = all(
+            (
+                bool(s20_candidate_dict),
+                s20_candidate_dict.get("project_state") == "N2B2_LOCKED",
+                s20_candidate_dict.get("execution_status") == "CONDITIONAL_SYNTHETIC_ONLY",
+                s20_phase.get("status") == "AUTHORIZED_SYNTHETIC_S20_REVIEW_CANDIDATE",
+                s20_phase.get("project_state_status") == "N2B2_LOCKED",
+                s20_prerequisite.get("reviewed_commit")
+                == "49e653b27884f9ba09d15ca17682e496687dc59f",
+                s20_prerequisite.get("review_verdict") == "PASS_FOR_OWNER_REVIEW",
+                s20_receipt.get("reviewed_commit") == "49e653b27884f9ba09d15ca17682e496687dc59f",
+                s20_receipt.get("review_verdict") == "PASS_FOR_OWNER_REVIEW",
+                s20_receipt.get("s20_execution") == "CONDITIONAL_OWNER_AUTHORIZED",
+                s20_receipt.get("project_state_mutation") is False,
+                s20_receipt.get("production_n2b2_unlock") is False,
+                state.get("phase_status", {}).get("N2B2") == "LOCKED",
+            )
+        )
+        integrity_phase = (
+            integrity_task.get("phase", {}) if isinstance(integrity_task, dict) else {}
+        )
+        integrity_prerequisite = (
+            integrity_task.get("prerequisite", {}) if isinstance(integrity_task, dict) else {}
+        )
+        integrity_candidate_dict = (
+            integrity_candidate if isinstance(integrity_candidate, dict) else {}
+        )
+        integrity_valid = all(
+            (
+                s20_valid,
+                bool(integrity_candidate_dict),
+                integrity_candidate_dict.get("project_state") == "N2B2_LOCKED",
+                integrity_candidate_dict.get("execution_status")
+                == "SYNTHETIC_ARTIFACT_INTEGRITY_ONLY",
+                integrity_phase.get("status")
+                == "AUTHORIZED_SYNTHETIC_REMEDIATION_REVIEW_CANDIDATE",
+                integrity_phase.get("project_state_status") == "N2B2_LOCKED",
+                integrity_prerequisite.get("required_final_parent")
+                == "49e653b27884f9ba09d15ca17682e496687dc59f",
+                isinstance(integrity_receipt, dict),
+                integrity_receipt.get("receipt_type") == "OWNER_S20_ARTIFACT_INTEGRITY_REMEDIATION",
+                integrity_receipt.get("status") == "AUTHORIZED_FOR_BOUNDED_SYNTHETIC_RETRY",
+                integrity_receipt.get("required_final_parent")
+                == "49e653b27884f9ba09d15ca17682e496687dc59f",
+                integrity_receipt.get("fixture_manifest_sha256")
+                == "b59446550e81499aaac9be17bebfd675f403869767a16318ce1a1a8904e4eec0",
+                integrity_receipt.get("project_state_mutation") is False,
+                integrity_receipt.get("production_n2b2_unlock") is False,
+            )
+        )
+        return CheckResult(
+            name="bounded_n2b2_review_candidate",
+            status=PASS if valid or s20_valid or integrity_valid else FAIL,
+            evidence=(
+                "bounded S20 artifact-integrity review candidate authorized; "
+                "production N2B2 remains LOCKED"
+                if integrity_valid
+                else "bounded S20 synthetic review candidate authorized; "
+                "production N2B2 remains LOCKED"
+                if s20_valid
+                else "synthetic GPU validation authorized; production N2B2 remains LOCKED"
+            )
+            if valid or s20_valid or integrity_valid
+            else "",
+            notes="review receipt/task/index or lock boundary mismatch"
+            if not (valid or s20_valid or integrity_valid)
+            else "",
+        )
+    except Exception:  # noqa: BLE001 - preflight must report a stable result
+        return CheckResult(
+            name="bounded_n2b2_review_candidate",
+            status=FAIL,
+            notes="bounded N2B2 review contract unavailable or invalid",
+        )
+
+
 def _check_source_runtime_separation() -> CheckResult:
     root = find_project_root()
     try:
@@ -1293,6 +1480,7 @@ _BASE_CHECKS: tuple[Callable[[], CheckResult], ...] = (
     _check_handoff,
     _check_schema_version,
     _check_authorization,
+    _check_bounded_n2b2_review_candidate,
     _check_git_baselines,
 )
 

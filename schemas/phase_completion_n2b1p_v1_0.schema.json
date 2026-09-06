@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/phase_completion_n2b1p_v1_0.schema.json",
+  "title": "N2B1P bounded Owner phase-completion record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "approval_type", "status", "phase_id", "owner_id", "approved_at_utc", "baseline", "independent_review", "cache_evidence_sha256", "quality_at_approval", "boundaries", "owner_statement"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "approval_type": {"const": "PHASE_COMPLETION"},
+    "status": {"const": "APPROVED"},
+    "phase_id": {"const": "N2B1P"},
+    "owner_id": {"const": "Jovi"},
+    "approved_at_utc": {"type": "string", "pattern": "^2026-08-23T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+    "baseline": {
+      "type": "object", "additionalProperties": false,
+      "required": ["candidate_commit", "parent_commit", "project_state_sha256", "manifest_sha256", "immutable"],
+      "properties": {
+        "candidate_commit": {"const": "0fef0a8f6a2f2b2f75ce2fba3e3eef1e764037b8"},
+        "parent_commit": {"const": "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043"},
+        "project_state_sha256": {"pattern": "^[0-9a-f]{64}$"},
+        "manifest_sha256": {"pattern": "^[0-9a-f]{64}$"},
+        "immutable": {"const": true}
+      }
+    },
+    "independent_review": {
+      "type": "object", "additionalProperties": false,
+      "required": ["verdict", "reviewed_commit", "reviewer_identity", "review_artifact_reference", "fresh_revalidation"],
+      "properties": {
+        "verdict": {"const": "PASS_FOR_OWNER_REVIEW"},
+        "reviewed_commit": {"const": "0fef0a8f6a2f2b2f75ce2fba3e3eef1e764037b8"},
+        "reviewer_identity": {"type": "string", "minLength": 1},
+        "review_artifact_reference": {"type": "string", "minLength": 1},
+        "fresh_revalidation": {"enum": ["PASS", "INCONCLUSIVE_TOOLING_ONLY"]}
+      }
+    },
+    "cache_evidence_sha256": {"pattern": "^[0-9a-f]{64}$"},
+    "quality_at_approval": {
+      "type": "object", "additionalProperties": false,
+      "required": ["candidate_evidence", "current_revalidation"],
+      "properties": {
+        "candidate_evidence": {"type": "object", "additionalProperties": false, "required": ["pytest", "unified_quality", "preflight", "handoff", "sensitive_scan"], "properties": {"pytest": {"type": "string"}, "unified_quality": {"type": "string"}, "preflight": {"type": "string"}, "handoff": {"type": "string"}, "sensitive_scan": {"type": "string"}}},
+        "current_revalidation": {"type": "object", "additionalProperties": false, "required": ["status", "pytest", "preflight", "handoff", "ruff_mypy"], "properties": {"status": {"const": "INCONCLUSIVE_TOOLING_ONLY"}, "pytest": {"type": "string"}, "preflight": {"type": "string"}, "handoff": {"type": "string"}, "ruff_mypy": {"const": "NOT_AVAILABLE_NO_INSTALL_AUTHORIZED"}}}
+      }
+    },
+    "boundaries": {
+      "type": "object", "additionalProperties": false,
+      "required": ["n2b2_production_unlock", "real_photo", "real_exif", "sqlite", "real20"],
+      "properties": {"n2b2_production_unlock": {"const": false}, "real_photo": {"const": false}, "real_exif": {"const": false}, "sqlite": {"const": false}, "real20": {"const": false}}
+    },
+    "owner_statement": {"type": "string", "minLength": 1}
+  }
+}

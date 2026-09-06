@@ -166,21 +166,137 @@
   checkable plan; after each task, update its review and Obsidian note without
   exposing source paths, filenames, images, identities, or model payloads.
 
-## 2026-08-22 N2B1P portability review correction
+## 2026-08-09 Owner authorization correction
 
-- A MANIFEST that hashes raw Windows worktree bytes can pass locally while
-  failing in a normalized LF checkout; bind it to canonical Git-index bytes.
-- Acceptance tests must use `sys.executable` rather than assuming a local
-  `.venv` exists in every linked worktree.
-- Historical model caches outside the current authorization are not silently
-  adopted or deleted; identify the exact model and runtime ownership first,
-  then remove only a clearly obsolete, non-running asset through a recoverable
-  operation.
+- When the Owner explicitly authorizes continuation after a prior stop, record
+  the correction and re-read current disk state before acting. Do not infer
+  approval for adjacent phases or real-photo access; execute only the named
+  synthetic task and preserve every independent data and phase gate.
 
-## 2026-08-22 preflight schema-gate correction
+## 2026-08-09 N2B1P evidence-layer correction
 
-- When a candidate record is bound to a JSON Schema, preflight must validate
-  the complete record with that same schema; checking selected fields alone
-  can let preflight pass while handoff rejects the same malformed record.
-- Keep historical test/quality counts labeled as historical and append the
-  latest measured counts rather than silently replacing evidence.
+- Independent-review evidence and the Owner phase-completion record are
+  separate evidence layers. Do not invent a new hard stop for a missing
+  phase-completion file when the authorized continuation contract gates on
+  independently reviewed N2B1P evidence; record the missing record as an
+  informational state and keep N2B2 locked.
+
+## 2026-08-09 N2B2 ComfyUI port and external-runtime correction
+
+- A fixed localhost port is an execution parameter, not a phase gate. Check
+  Windows IPv4/IPv6 excluded ranges and perform a real temporary bind before
+  starting a local service; `8188` and `8199` were both reserved here, while
+  `7865` was available.
+- On Windows, `os.path.commonpath` raises `ValueError` for paths on different
+  drives. A validated runtime on another drive is external to the Git root;
+  handle that case explicitly in both the CLI guard and manifest loader while
+  retaining traversal, symlink, and same-drive project rejection.
+- Separate the model-serving interpreter from the quality-test interpreter
+  without installing dependencies: use the existing ComfyUI Torch environment
+  for real inference and the repository environment for contract tooling, and
+  record that separation in evidence.
+- Never infer GPU analysis from a GPU machine or GPU generation alone. If the
+  actual loader does not move models to CUDA, report GPU residency as
+  `NOT_EVIDENCED` rather than changing the model implementation inside a
+  fixture-remediation task.
+
+## 2026-08-09 N2B2 GPU runtime validation correction
+
+- Solve GPU headroom and the bounded Git topology before the execution tail;
+  a known governance conflict must not be deferred until commit creation.
+- CPU inference cannot be promoted to CUDA proof because the host has a GPU;
+  require model, input, raw output, nonzero CUDA allocation and no fallback.
+- Qwen `/api/ps` after unload is not residency evidence. Keep the model alive,
+  sample `/api/ps` and `nvidia-smi` during inference, require `size_vram > 0`,
+  then unload explicitly and verify the empty state.
+- A review-candidate task may authorize bounded synthetic GPU work while
+  `PROJECT_STATE.json` remains byte-identical and `N2B2=LOCKED`; this is not a
+  phase-completion approval or production unlock.
+
+## 2026-08-09 N2B2 runtime evidence closure correction
+
+- A runtime PASS is not reviewable until its external evidence hashes, report
+  state, frozen fixture hashes, and Git candidate parent are bound together.
+- Historical Git topology and MANIFEST gates must be handled by one exact
+  candidate tree; never delete or weaken the hardcoded-count assertions to
+  make a dirty worktree appear valid.
+
+## 2026-08-09 N2B2 S20 continuation
+
+- A conditional Owner authorization must bind the exact review-record SHA and
+  reviewed commit at the S20 entrypoint; a chat statement alone is not enough
+  for a resumable batch run.
+- S20 synthetic validation bundles are a separate validation artifact set, not
+  a production Bundle v1 release and not an App import authorization.
+- Batch stages must checkpoint only after a complete model stage or case, and
+  resume must reject drift in review, manifest, runtime-source, or model
+  identity bindings.
+- Generate fixed synthetic cases once. If a strict case fails its declared
+  capability, preserve the failure and stop instead of changing seed, prompt,
+  threshold, or model.
+
+## 2026-08-10 N2B2 S20 Case 17 remediation and Qwen contract failure
+
+- A bounded fixture remediation may replace only the explicitly authorized
+  failed case. Preserve all other fixture bytes and keep the original failure
+  evidence as historical evidence.
+- Passing the visual facts chain does not authorize Qwen to alter immutable
+  fact references. An `input_fact_digest` echo mismatch is a Qwen contract
+  failure, not a fixture failure; do not coerce the returned digest or rerun by
+  changing the fixture, prompt, threshold or model.
+- When the same non-fixture contract error reproduces in two clean runs, stop
+  the batch, retain diagnostics and cleanup evidence, and require design review
+  before another model execution. Do not create a candidate commit from a
+  failed S20 runtime.
+- A request-bound Qwen schema must bind the exact case ID, authoritative fact
+  digest and allowed fact IDs before the request; validating only a generic
+  format schema is insufficient.
+- The artifact schema must be tested against the actual reasoning contract.
+  The v3 run exposed a stale `analysis.json` array requirement for a Qwen
+  `{safe,narrative,dynamic}` story object; preserve that failure and add a
+  bundle-level regression test before retrying model execution.
+- Separate quality tooling from model execution tooling on Windows: use the
+  repository `.venv` for pytest/ruff/mypy/quality gates and the existing
+  ComfyUI Torch environment plus repository site-packages for CUDA inference;
+  do not install or download dependencies to bridge the environments.
+- A completed S20 runtime is still only a synthetic review candidate. Bundle
+  count, no-op resume and Obsidian sync do not change `PROJECT_STATE.json` or
+  unlock `N2B2=LOCKED`.
+
+## 2026-09-06 Documentation mirror boundary
+
+- A documentation-mirror DryRun that includes generated cache files is a
+  policy failure, even when the file is harmless Markdown. Do not invoke the
+  mirror Apply path; preserve the verified repository docs, record
+  `MEMORY_SYNC_BLOCKED`, and keep the durable checkpoint separate.
+- Runtime-source evidence and documentation commits must remain distinguishable.
+  When a topology gate permits only one candidate child, squash documentation
+  updates into that unpushed candidate instead of adding a second child.
+
+## 2026-09-06 linear-mainline integration correction
+
+- When a verified synthetic candidate and a checkout-portability remediation
+  diverge from the same baseline, do not create a merge commit or overwrite
+  either governance rule. Build one isolated linear integration candidate,
+  require both receipts, and rerun the complete quality matrix.
+- A user-owned working-tree edit to `AGENTS.md` is not integration input unless
+  explicitly requested. Keep the integration tree's `AGENTS.md` at the mainline
+  version so a later fast-forward does not overwrite or stage the user edit.
+
+## 2026-08-11 N2B2 S20 terminal-artifact correction
+
+- Byte-valid checksums do not prove a coherent result. A COMPLETE synthetic
+  S20 release must contain exactly its success artifact set and must reject a
+  retained `failure_summary.json`, intermediate-only diagnostics, unexpected
+  files, missing rows or mismatched bytes.
+- A no-op resume is a verification operation: recompute the release checksum
+  set, validate the COMPLETE checkpoint and recheck the local Qwen identity
+  before returning success. Presence of `CHECKSUMS.sha256` alone is not proof.
+- Bind the Qwen identity hash into every primary, repeat and preflight binding
+  record; an opaque checkpoint hash by itself does not let an independent
+  reviewer connect responses to the verified local model identity.
+- For a v2 fixture-baseline comparison, the CLI argument must name the
+  directory that directly contains the frozen `fixture_manifest.json`, not its
+  surrounding runtime directory. Verify that input boundary before allocating
+  CUDA or starting any local model service; the corrected v4 invocation made
+  no model load or output write before this check.

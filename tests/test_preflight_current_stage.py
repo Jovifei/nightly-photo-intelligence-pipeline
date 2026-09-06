@@ -72,7 +72,7 @@ def test_disk_preflight_fails_closed_below_safety_floor(monkeypatch: pytest.Monk
     assert "1 GiB safety floor" in result.notes
 
 
-def test_portability_candidate_preflight_rejects_missing_schema_required_field(
+def test_portability_record_preflight_rejects_missing_schema_required_field(
     project_root: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     record_path = project_root / "research" / "N2B1P_manifest_portability_remediation.json"

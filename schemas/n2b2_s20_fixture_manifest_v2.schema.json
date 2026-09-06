@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b2_s20_fixture_manifest_v2.schema.json",
+  "title": "N2B2 S20 synthetic fixture manifest v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "fixture_set", "fixture_set_version",
+    "source_manifest_sha256", "case17_remediation_record_sha256", "fixtures"
+  ],
+  "properties": {
+    "schema_version": {"const": "n2b2-s20-fixture-manifest-v2"},
+    "fixture_set": {"const": "N2B2_S20_SYNTHETIC"},
+    "fixture_set_version": {"const": "N2B2_S20_SYNTHETIC_V2"},
+    "source_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "case17_remediation_record_sha256": {"$ref": "#/$defs/sha256"},
+    "fixtures": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 20,
+      "items": {"$ref": "#/$defs/fixture"}
+    }
+  },
+  "$defs": {
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id", "case_type", "filename", "synthetic", "image_sha256",
+        "width", "height", "seed", "generator_version",
+        "generation_parameters", "expected_processability",
+        "expected_person_count", "acceptance_profile", "tags"
+      ],
+      "properties": {
+        "case_id": {"type": "string", "pattern": "^n2b2-s20-(0[1-9]|1[0-9]|20)$"},
+        "case_type": {"type": "string", "minLength": 1},
+        "filename": {
+          "type": "string",
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/|\\\\)\\.\\.(?:/|\\\\|$)).+\\.png$"
+        },
+        "synthetic": {"const": true},
+        "image_sha256": {"$ref": "#/$defs/sha256"},
+        "width": {"type": "integer", "minimum": 1},
+        "height": {"type": "integer", "minimum": 1},
+        "seed": {"type": "integer", "minimum": 0},
+        "generator_version": {"type": "string", "minLength": 1},
+        "generation_parameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "prompt", "negative_prompt", "sampler", "scheduler", "steps",
+            "cfg", "denoise", "checkpoint", "checkpoint_sha256", "vae",
+            "vae_sha256", "comfyui_version", "port", "prompt_id"
+          ],
+          "properties": {
+            "prompt": {"type": "string", "minLength": 1},
+            "negative_prompt": {"type": "string", "minLength": 1},
+            "sampler": {"type": "string", "minLength": 1},
+            "scheduler": {"type": "string", "minLength": 1},
+            "steps": {"type": "integer", "minimum": 1},
+            "cfg": {"type": "number", "exclusiveMinimum": 0},
+            "denoise": {"type": "number", "minimum": 0, "maximum": 1},
+            "checkpoint": {"const": "sd_xl_base_1.0.safetensors"},
+            "checkpoint_sha256": {"$ref": "#/$defs/sha256"},
+            "vae": {"const": "sdxl_vae.safetensors"},
+            "vae_sha256": {"$ref": "#/$defs/sha256"},
+            "comfyui_version": {"const": "0.19.5"},
+            "port": {"const": 7865},
+            "prompt_id": {"type": "string", "minLength": 1}
+          }
+        },
+        "expected_processability": {"enum": ["processable", "unsupported"]},
+        "expected_person_count": {"type": "integer", "minimum": 0},
+        "acceptance_profile": {"enum": ["strict", "observation", "negative", "unsupported"]},
+        "tags": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

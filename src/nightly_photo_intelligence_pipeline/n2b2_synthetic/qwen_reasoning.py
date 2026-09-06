@@ -45,6 +45,7 @@ class ReasoningValidation:
 def validate_reasoning(
     output: dict[str, Any],
     *,
+    case_id: str | None = None,
     input_fact_digest: str,
     valid_fact_ids: list[str],
     schema: dict[str, Any],
@@ -73,11 +74,28 @@ def validate_reasoning(
             f"input_fact_digest mismatch: echoed={echoed!r} expected={input_fact_digest!r}"
         )
 
+    if case_id is not None and output.get("case_id") != case_id:
+        result.ok = False
+        result.errors.append(
+            f"case_id mismatch: echoed={output.get('case_id')!r} expected={case_id!r}"
+        )
+
     referenced = output.get("reasoning_based_on_fact_ids", [])
     valid_set = set(valid_fact_ids)
     unknown = [fid for fid in referenced if fid not in valid_set]
     if unknown:
         result.ok = False
         result.errors.append(f"unknown fact_ids referenced: {unknown}")
+
+    uncertainty_unknown: list[str] = []
+    for uncertainty in output.get("uncertainties", []):
+        uncertainty_unknown.extend(
+            fid for fid in uncertainty.get("related_fact_ids", []) if fid not in valid_set
+        )
+    if uncertainty_unknown:
+        result.ok = False
+        result.errors.append(
+            f"unknown uncertainty fact_ids referenced: {sorted(set(uncertainty_unknown))}"
+        )
 
     return result
