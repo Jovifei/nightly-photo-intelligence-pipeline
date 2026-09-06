@@ -38,6 +38,7 @@ from nightly_photo_intelligence_pipeline.n2b2_synthetic.s20_manifest import (
 )
 from nightly_photo_intelligence_pipeline.n2b2_synthetic.s20_orchestrator import (
     _canonical,
+    _enforce_gpu_limit,
     _identity_dict,
     _repeat_cases,
     _validate_case,
@@ -45,6 +46,12 @@ from nightly_photo_intelligence_pipeline.n2b2_synthetic.s20_orchestrator import 
     _write_visual_diagnostics,
     run_s20,
 )
+
+
+def test_s20_gpu_peak_hard_gate_rejects_over_limit() -> None:
+    with pytest.raises(ValueError, match="N2B2_GPU_LIMIT_EXCEEDED"):
+        _enforce_gpu_limit(11501, 11500)
+    _enforce_gpu_limit(11500, 11500)
 
 
 def _write_manifest(root: Path) -> None:

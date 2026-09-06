@@ -38,7 +38,15 @@ S20_FAILED = "N2B2_S20_SYNTHETIC_VALIDATION_FAILED"
 S20_RESUME_MISMATCH = "N2B2_S20_RESUME_BINDING_MISMATCH"
 S20_TERMINAL_FAILURE_REQUIRES_NEW_OUTPUT = "N2B2_S20_TERMINAL_FAILURE_REQUIRES_NEW_OUTPUT"
 S20_COMPLETE_ARTIFACT_INTEGRITY_MISMATCH = "N2B2_S20_COMPLETE_ARTIFACT_INTEGRITY_MISMATCH"
+S20_GPU_LIMIT_EXCEEDED = "N2B2_GPU_LIMIT_EXCEEDED"
 QWEN_BINDING_FAILED = "N2B2_QWEN_FACT_BINDING_CONTRACT_FAILED"
+
+
+def _enforce_gpu_limit(peak_mib: int, limit_mib: int) -> None:
+    """Stop the S20 run before publishing success above the approved ceiling."""
+
+    if peak_mib > limit_mib:
+        raise ValueError(f"{S20_GPU_LIMIT_EXCEEDED}: {peak_mib} MiB exceeds {limit_mib} MiB")
 
 
 def _canonical(value: object) -> bytes:
@@ -57,6 +65,7 @@ _RUNTIME_SOURCE_FILES = (
     "src/nightly_photo_intelligence_pipeline/n2b2_synthetic/qwen_fact_binding.py",
     "src/nightly_photo_intelligence_pipeline/n2b2_synthetic/qwen_probe.py",
     "src/nightly_photo_intelligence_pipeline/n2b2_synthetic/qwen_reasoning.py",
+    "src/nightly_photo_intelligence_pipeline/n2b2_synthetic/runtime_identity_revalidation.py",
     "src/nightly_photo_intelligence_pipeline/n2b2_synthetic/s20_orchestrator.py",
     "src/nightly_photo_intelligence_pipeline/n2b2_synthetic/s20_bundle.py",
     "src/nightly_photo_intelligence_pipeline/n2b2_synthetic/s20_checkpoint.py",
@@ -590,6 +599,8 @@ def run_s20(
         )
         raise ValueError(f"{S20_FAILED}: acceptance errors: {case_errors}")
 
+    _enforce_gpu_limit(metrics.gpu_peak_mib, config.gpu_limit_mib)
+
     # Do not contact Ollama until the entire deterministic visual chain and
     # strict acceptance have passed.
     client = ollama or OllamaClient(config.ollama_base_url)
@@ -783,6 +794,7 @@ def run_s20(
             residency.release("qwen")
     if not qwen_unloaded:
         raise ValueError(f"{S20_FAILED}: qwen unload failed")
+    _enforce_gpu_limit(metrics.gpu_peak_mib, config.gpu_limit_mib)
     if qwen_errors:
         _write_qwen_failure_evidence(
             out,

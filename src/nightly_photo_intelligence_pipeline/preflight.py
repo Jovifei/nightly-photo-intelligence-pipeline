@@ -1079,6 +1079,7 @@ def _check_git_baselines() -> CheckResult:
         n2b1p_portability = "0fef0a8f6a2f2b2f75ce2fba3e3eef1e764037b8"
         n2b2_gpu_candidate = "49e653b27884f9ba09d15ca17682e496687dc59f"
         n2b2_s20_candidate = "c1008132654d32e7ac6a2032eb5d3a2c7e07cdb6"
+        n2b2_review_control_plane = "d83f96271f754763d61cedcc314fc725c840c86f"
         head = git("rev-parse", "HEAD")[1]
         portability_candidate = head == n2b1p_portability and git("rev-parse", "HEAD^") == (
             0,
@@ -1089,8 +1090,17 @@ def _check_git_baselines() -> CheckResult:
             and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "2")
             and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "3")
         )
+        runtime_identity_revalidation_topology = (
+            git("rev-parse", "HEAD^") == (0, n2b2_review_control_plane)
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "3")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "4")
+        )
         portability_record_ok = True
-        if portability_candidate or main_integration_topology:
+        if (
+            portability_candidate
+            or main_integration_topology
+            or runtime_identity_revalidation_topology
+        ):
             record_path = root / "research" / "N2B1P_manifest_portability_remediation.json"
             schema_path = root / "schemas" / "n2b1p_manifest_portability_remediation_v1.schema.json"
             try:
@@ -1145,7 +1155,8 @@ def _check_git_baselines() -> CheckResult:
             or main_integration_topology
             or n2b2_gpu_topology
             or s20_candidate_topology
-            or authorized_synthetic_topology,
+            or authorized_synthetic_topology
+            or runtime_identity_revalidation_topology,
             portability_record_ok,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),
@@ -1158,7 +1169,8 @@ def _check_git_baselines() -> CheckResult:
                 "one N2B1R and one N2B1P commit, a portability-plus-N2B2 integration, "
                 "one direct N2B2 GPU candidate, "
                 "one direct S20 candidate after 49e653b, or one bounded synthetic "
-                "authorization candidate after c100813; "
+                "authorization candidate after c100813, or one direct Ollama runtime-identity "
+                "revalidation candidate after d83f962; "
                 "no merge; worktree clean"
             ),
         )

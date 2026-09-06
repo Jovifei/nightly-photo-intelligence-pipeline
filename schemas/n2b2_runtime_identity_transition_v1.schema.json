@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b2_runtime_identity_transition_v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "base_candidate", "remediation_candidate", "external_review_sha256", "old_identity", "new_identity", "old_identity_sha256", "new_identity_sha256", "identity_diff_fields", "old_evidence_mutation_count", "forbidden_counters"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "base_candidate": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "remediation_candidate": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "external_review_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "old_identity": {"type": "object"},
+    "new_identity": {"type": "object"},
+    "old_identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "new_identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "identity_diff_fields": {"const": ["ollama_version"]},
+    "old_evidence_mutation_count": {"const": 0},
+    "forbidden_counters": {"type": "object", "additionalProperties": {"const": 0}}
+  }
+}

@@ -59,3 +59,14 @@
 
 上述状态不是 `N2B2_COMPLETE`。在最后两项完成前，不得进入 Real20、生产 Bundle、
 App 或任何真实照片处理。
+
+## N2B2 Ollama runtime-identity revalidation 完成定义
+
+仅当 Owner receipt 精确绑定 `d83f9627`、已接受的 `INCONCLUSIVE` review、旧版本
+`0.32.15` 与当前 `0.33.3`，并且模型 digest、大小、量化和 vision capability 完全不变时，
+允许一轮新的 synthetic S3/S20。新 output 必须位于 Git 外，旧 evidence 不得修改。
+
+成功还要求新 S20 COMPLETE checkpoint 的同 identity `--resume` 返回
+`ALREADY_COMPLETE_VERIFIED`，且所有 release 文件字节不变。成功停止于
+`N2B2_OLLAMA_0_33_3_SYNTHETIC_REVALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW`；它不
+解锁 production N2B2、Real20 或任何真实照片路径。

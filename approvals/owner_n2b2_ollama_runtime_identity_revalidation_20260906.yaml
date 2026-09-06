@@ -1,0 +1,44 @@
+schema_version: "1.0"
+receipt_type: "OWNER_N2B2_OLLAMA_RUNTIME_IDENTITY_REVALIDATION"
+status: "APPROVED"
+owner_id: "Jovi"
+issued_at_utc: "2026-09-06T00:00:00Z"
+task: "N2B2_OLLAMA_RUNTIME_IDENTITY_REVALIDATION_20260906"
+base_candidate: "d83f96271f754763d61cedcc314fc725c840c86f"
+external_review_sha256: "5fbd960ed55982a31c310320981545d91618e4c8052c07c43468f9ebc645f826"
+accepted_verdict: "INCONCLUSIVE"
+accepted_blocker: "N2B2_S20_RESUME_BINDING_MISMATCH: model_identity"
+old_identity:
+  model_name: "qwen3.5:9b"
+  full_local_digest: "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+  size_bytes: 6594474711
+  quantization_level: "Q4_K_M"
+  capabilities: ["completion", "thinking", "tools", "vision"]
+  ollama_version: "0.32.15"
+  canonical_identity_sha256: "3f23f44c5f67dbebe1fb342c45cd96f01507c985b19564548a6e2bfc0c1d2c05"
+authorized_identity:
+  model_name: "qwen3.5:9b"
+  full_local_digest: "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+  size_bytes: 6594474711
+  quantization_level: "Q4_K_M"
+  capabilities: ["completion", "thinking", "tools", "vision"]
+  ollama_version: "0.33.3"
+  canonical_identity_sha256: "7e5c4ebb622ed54398249b5fd37f29fd85cf9414f8f7769eb79c437a856742d4"
+project_state_sha256: "2d60dd76584da60a876db975a3954feffb2566797910c19d6403627f584a1f2a"
+project_state_n2b2: "LOCKED"
+production_unlock: false
+boundaries:
+  real_photo: false
+  real_exif: false
+  g1_source: false
+  sqlite: false
+  real20: false
+  app: false
+  production_bundle: false
+  model_download: false
+  model_replacement: false
+max_fresh_s3_runs: 1
+max_fresh_s20_runs: 1
+new_output_required: true
+old_evidence_mutation: false
+mandatory_external_review: true

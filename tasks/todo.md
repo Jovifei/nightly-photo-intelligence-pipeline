@@ -1306,6 +1306,45 @@ access. No push, merge, or release.
   PASS_FOR_EXTERNAL_REVIEW is on disk, execute the deferred state changes and
   proceed with N2B2 model execution per the plan.
 
+## N2B2 Ollama runtime-identity revalidation — 2026-09-06
+
+Scope: `N2B2_OLLAMA_RUNTIME_IDENTITY_REVALIDATION_20260906` only. Owner has
+accepted the `INCONCLUSIVE` review of `d83f9627` and authorized exactly one
+fresh synthetic S3/S20 revalidation using the existing `qwen3.5:9b` under
+Ollama `0.33.3`. Production N2B2, real photos/EXIF, G1, SQLite ingest,
+Real20, App work, production Bundle, downloads, system changes, merge, and
+main updates remain forbidden.
+
+### Plan
+
+- [ ] Preserve and re-hash the primary-worktree `AGENTS.md`; work only in the
+  dedicated branch rooted at `d83f9627`.
+- [ ] Verify the accepted external review SHA, old S20 immutability, and prove
+  current model artifact identity differs only by Ollama version `0.32.15` to
+  `0.33.3`.
+- [ ] Add a receipt-bound fail-closed revalidation gate, schemas, task, tests,
+  and a narrow CLI that cannot reuse or mutate historical evidence.
+- [ ] Use test-first coverage for every listed rejection boundary and for the
+  same-identity no-op resume path.
+- [ ] Build a single direct remediation commit with a Git-index-byte manifest.
+- [ ] Run the full quality matrix on the clean commit.
+- [ ] Run one fresh S3 and one fresh S20 into new Git-external outputs, then
+  run one same-identity no-op resume and compare all output bytes.
+- [ ] Write redacted external revalidation evidence, verify the old evidence
+  remains unchanged, push only this remediation branch if every hard gate
+  passes, update Issue #1 if possible, then stop for external review.
+
+### First fresh runtime attempt — failed and retained
+
+- Fresh S3 passed and fresh S20 produced a complete synthetic output with a
+  same-identity no-op resume, but the measured S20 GPU peak was `11553 MiB`,
+  above the immutable `11500 MiB` ceiling.
+- The output is retained as failed evidence and is not eligible for push or
+  review PASS. The runner lacked a hard peak check; the next remediation adds
+  that check before success publication and in complete-release verification.
+- The next run must use a new empty external output; historical v1/v2 output
+  and checkpoint bytes remain untouched.
+
 ## N2B2 synthetic model-stack execution — 2026-08-09
 
 Owner Jovi explicitly authorized continuation for the named

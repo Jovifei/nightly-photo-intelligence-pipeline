@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/owner_n2b2_ollama_runtime_identity_revalidation_v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "receipt_type", "status", "owner_id", "issued_at_utc", "task", "base_candidate", "external_review_sha256", "accepted_verdict", "accepted_blocker", "old_identity", "authorized_identity", "project_state_sha256", "project_state_n2b2", "production_unlock", "boundaries", "max_fresh_s3_runs", "max_fresh_s20_runs", "new_output_required", "old_evidence_mutation", "mandatory_external_review"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "receipt_type": {"const": "OWNER_N2B2_OLLAMA_RUNTIME_IDENTITY_REVALIDATION"},
+    "status": {"const": "APPROVED"},
+    "owner_id": {"const": "Jovi"},
+    "issued_at_utc": {"type": "string", "format": "date-time"},
+    "task": {"const": "N2B2_OLLAMA_RUNTIME_IDENTITY_REVALIDATION_20260906"},
+    "base_candidate": {"const": "d83f96271f754763d61cedcc314fc725c840c86f"},
+    "external_review_sha256": {"const": "5fbd960ed55982a31c310320981545d91618e4c8052c07c43468f9ebc645f826"},
+    "accepted_verdict": {"const": "INCONCLUSIVE"},
+    "accepted_blocker": {"const": "N2B2_S20_RESUME_BINDING_MISMATCH: model_identity"},
+    "old_identity": {"$ref": "#/$defs/oldIdentity"},
+    "authorized_identity": {"$ref": "#/$defs/newIdentity"},
+    "project_state_sha256": {"const": "2d60dd76584da60a876db975a3954feffb2566797910c19d6403627f584a1f2a"},
+    "project_state_n2b2": {"const": "LOCKED"},
+    "production_unlock": {"const": false},
+    "boundaries": {"$ref": "#/$defs/boundaries"},
+    "max_fresh_s3_runs": {"const": 1},
+    "max_fresh_s20_runs": {"const": 1},
+    "new_output_required": {"const": true},
+    "old_evidence_mutation": {"const": false},
+    "mandatory_external_review": {"const": true}
+  },
+  "$defs": {
+    "identity": {"type": "object", "additionalProperties": false, "required": ["model_name", "full_local_digest", "size_bytes", "quantization_level", "capabilities", "ollama_version", "canonical_identity_sha256"], "properties": {"model_name": {"const": "qwen3.5:9b"}, "full_local_digest": {"const": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"}, "size_bytes": {"const": 6594474711}, "quantization_level": {"const": "Q4_K_M"}, "capabilities": {"type": "array", "const": ["completion", "thinking", "tools", "vision"]}, "ollama_version": {"type": "string"}, "canonical_identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}},
+    "oldIdentity": {"allOf": [{"$ref": "#/$defs/identity"}, {"properties": {"ollama_version": {"const": "0.32.15"}, "canonical_identity_sha256": {"const": "3f23f44c5f67dbebe1fb342c45cd96f01507c985b19564548a6e2bfc0c1d2c05"}}}]},
+    "newIdentity": {"allOf": [{"$ref": "#/$defs/identity"}, {"properties": {"ollama_version": {"const": "0.33.3"}, "canonical_identity_sha256": {"const": "7e5c4ebb622ed54398249b5fd37f29fd85cf9414f8f7769eb79c437a856742d4"}}}]},
+    "boundaries": {"type": "object", "additionalProperties": false, "required": ["real_photo", "real_exif", "g1_source", "sqlite", "real20", "app", "production_bundle", "model_download", "model_replacement"], "properties": {"real_photo": {"const": false}, "real_exif": {"const": false}, "g1_source": {"const": false}, "sqlite": {"const": false}, "real20": {"const": false}, "app": {"const": false}, "production_bundle": {"const": false}, "model_download": {"const": false}, "model_replacement": {"const": false}}}
+  }
+}

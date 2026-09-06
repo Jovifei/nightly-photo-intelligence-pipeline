@@ -119,6 +119,15 @@
       "approval_record": "approvals/owner_n2b2_s20_artifact_integrity_remediation_receipt.yaml",
       "project_state": "N2B2_LOCKED",
       "execution_status": "SYNTHETIC_ARTIFACT_INTEGRITY_ONLY"
+    },
+    {
+      "kind": "BOUNDED_OLLAMA_RUNTIME_IDENTITY_REVALIDATION",
+      "phase": "N2B2_OLLAMA_RUNTIME_IDENTITY_REVALIDATION",
+      "file": "phase_n2b2_ollama_runtime_identity_revalidation_20260906.yaml",
+      "capability": "N2B2_OLLAMA_RUNTIME_IDENTITY_REVALIDATION_20260906",
+      "approval_record": "approvals/owner_n2b2_ollama_runtime_identity_revalidation_20260906.yaml",
+      "project_state": "N2B2_LOCKED",
+      "execution_status": "SYNTHETIC_OLLAMA_0_33_3_REVALIDATION_ONLY"
     }
   ],
   "locked": [

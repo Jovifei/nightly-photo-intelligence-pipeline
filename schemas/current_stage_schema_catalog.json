@@ -36,6 +36,8 @@
     {"file": "task_contract_n2b1p_v1_0.schema.json", "purpose": "current N2B1P local-research cache-promotion contract"},
     {"file": "n2b1p_cache_promotion_evidence_v1.schema.json", "purpose": "redacted N2B1P cache-promotion completion evidence"},
     {"file": "n2b1p_runtime_configuration_v1_0.schema.json", "purpose": "validated N2B1P runtime and cache-root configuration"},
-    {"file": "project_state_v1_7.schema.json", "purpose": "current N2B1P state; model execution and real-photo stages remain locked"}
+    {"file": "project_state_v1_7.schema.json", "purpose": "current N2B1P state; model execution and real-photo stages remain locked"},
+    {"file": "owner_n2b2_ollama_runtime_identity_revalidation_v1.schema.json", "purpose": "one-shot Owner authorization for the exact Ollama runtime identity transition"},
+    {"file": "n2b2_runtime_identity_transition_v1.schema.json", "purpose": "redacted external identity transition evidence"}
   ]
 }

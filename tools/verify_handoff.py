@@ -38,6 +38,11 @@ N2B2_S20_REVIEW_CANDIDATE_SHA = "c1008132654d32e7ac6a2032eb5d3a2c7e07cdb6"
 N2B2_OWNER_AUTH_TASK = "tasks/phase_n2b2_authorized_synthetic_validation_20260823.yaml"
 N2B2_OWNER_AUTH_RECEIPT = "approvals/owner_n2b2_synthetic_model_stack_validation.yaml"
 N2B1P_PHASE_COMPLETION = "approvals/phase_completion_N2B1P.yaml"
+N2B2_RUNTIME_REVALIDATION_TASK = "tasks/phase_n2b2_ollama_runtime_identity_revalidation_20260906.yaml"
+N2B2_RUNTIME_REVALIDATION_RECEIPT = (
+    "approvals/owner_n2b2_ollama_runtime_identity_revalidation_20260906.yaml"
+)
+N2B2_REVIEW_CONTROL_PLANE_SHA = "d83f96271f754763d61cedcc314fc725c840c86f"
 
 errors: list[str] = []
 passes: list[str] = []
@@ -196,6 +201,10 @@ def check_required_files() -> None:
         "schemas/n2b2_s20_fixture_manifest.schema.json",
         "schemas/n2b2_s20_independent_review.schema.json",
         "schemas/n2b2_gpu_runtime_metrics.schema.json",
+        N2B2_RUNTIME_REVALIDATION_TASK,
+        N2B2_RUNTIME_REVALIDATION_RECEIPT,
+        "schemas/owner_n2b2_ollama_runtime_identity_revalidation_v1.schema.json",
+        "schemas/n2b2_runtime_identity_transition_v1.schema.json",
     )
     missing = [rel for rel in required if not (ROOT / rel).is_file()]
     if missing:
@@ -577,6 +586,45 @@ def check_owner_authorized_synthetic_contract() -> None:
         fail("Owner-authorized N2B2 synthetic record or lock boundary is invalid")
 
 
+def check_runtime_identity_revalidation_contract() -> None:
+    """Validate the one-shot receipt without changing production state."""
+
+    task = load_yaml(N2B2_RUNTIME_REVALIDATION_TASK)
+    receipt = load_yaml(N2B2_RUNTIME_REVALIDATION_RECEIPT)
+    index = load_json("tasks/index.json")
+    state = load_json("PROJECT_STATE.json")
+    candidate = next(
+        (
+            item
+            for item in index.get("review_candidates", [])
+            if isinstance(item, dict)
+            and item.get("phase") == "N2B2_OLLAMA_RUNTIME_IDENTITY_REVALIDATION"
+        ),
+        None,
+    )
+    valid = all(
+        (
+            _validate("schemas/owner_n2b2_ollama_runtime_identity_revalidation_v1.schema.json", receipt),
+            isinstance(task, dict),
+            task.get("phase", {}).get("status") == "AUTHORIZED_SYNTHETIC_REVALIDATION_ONLY",
+            task.get("authorization", {}).get("base_candidate") == N2B2_REVIEW_CONTROL_PLANE_SHA,
+            receipt.get("base_candidate") == N2B2_REVIEW_CONTROL_PLANE_SHA,
+            receipt.get("accepted_verdict") == "INCONCLUSIVE",
+            receipt.get("accepted_blocker") == "N2B2_S20_RESUME_BINDING_MISMATCH: model_identity",
+            receipt.get("project_state_n2b2") == "LOCKED",
+            receipt.get("production_unlock") is False,
+            isinstance(state.get("phase_status"), dict),
+            state.get("phase_status", {}).get("N2B2") == "LOCKED",
+            isinstance(candidate, dict),
+            candidate.get("approval_record") == N2B2_RUNTIME_REVALIDATION_RECEIPT,
+        )
+    )
+    if valid:
+        ok("one-shot Ollama runtime-identity revalidation is bound; production N2B2 remains locked")
+    else:
+        fail("Ollama runtime-identity revalidation receipt or lock boundary is invalid")
+
+
 def check_baselines() -> None:
     expected = {
         "n0-approved-2026-07-14": "72a81f5984838b74304d23263ac450ea4b5a3a9a",
@@ -628,6 +676,11 @@ def check_baselines() -> None:
         )
         or (
             git("rev-parse", "HEAD^") == (0, N2B2_S20_REVIEW_CANDIDATE_SHA)
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "4")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "3")
+        )
+        or (
+            git("rev-parse", "HEAD^") == (0, N2B2_REVIEW_CONTROL_PLANE_SHA)
             and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "4")
             and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "3")
         )
@@ -705,6 +758,7 @@ def main() -> int:
     check_current_authorization()
     check_bounded_n2b2_review_contract()
     check_owner_authorized_synthetic_contract()
+    check_runtime_identity_revalidation_contract()
     check_baselines()
     check_manifest()
     check_sensitive_paths()
@@ -726,6 +780,11 @@ def main() -> int:
     elif git("rev-parse", "HEAD^") == (0, N2B1P_PORTABILITY_CANDIDATE_SHA):
         print(
             "HANDOFF_VALID: linear N2B1P portability plus bounded N2B2 synthetic review candidate; "
+            "production N2B2 remains LOCKED"
+        )
+    elif git("rev-parse", "HEAD^") == (0, N2B2_REVIEW_CONTROL_PLANE_SHA):
+        print(
+            "HANDOFF_VALID: one-shot Ollama runtime-identity revalidation candidate; "
             "production N2B2 remains LOCKED"
         )
     else:

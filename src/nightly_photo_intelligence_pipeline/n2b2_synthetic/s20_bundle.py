@@ -208,6 +208,9 @@ def _actual_release_files(root: Path) -> set[str]:
 def _validate_complete_layout(root: Path, payload: dict[str, Any]) -> None:
     if payload.get("result") != S20_COMPLETE:
         raise _integrity_error("validation summary is not COMPLETE")
+    gpu = payload.get("gpu")
+    if isinstance(gpu, dict) and isinstance(gpu.get("peak_mib"), int) and gpu["peak_mib"] > 11500:
+        raise _integrity_error("validation summary exceeds the GPU ceiling")
     if (root / "failure_summary.json").exists():
         raise _integrity_error("successful release contains failure_summary.json")
 

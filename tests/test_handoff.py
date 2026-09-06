@@ -157,6 +157,7 @@ def test_current_handoff_verifier_passes(project_root: Path) -> None:
         or "bounded N2B2 synthetic GPU review candidate" in result.stdout
         or "bounded N2B2 S20 artifact-integrity review candidate" in result.stdout
         or "linear N2B1P portability plus bounded N2B2 synthetic review candidate" in result.stdout
+        or "one-shot Ollama runtime-identity revalidation candidate" in result.stdout
     )
 
 

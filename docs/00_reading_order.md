@@ -91,3 +91,18 @@ Before using the bounded candidate or preparing review, read
 `docs/38_n2b2_synthetic_validation_status.md`. It is the current redacted
 summary of S3/S20 runtime evidence, local quality gates, locked production
 state, and the independent-review stop condition.
+
+## Owner-authorized Ollama runtime identity revalidation (2026-09-06)
+
+Before this one-shot synthetic revalidation, additionally read:
+
+1. `tasks/phase_n2b2_ollama_runtime_identity_revalidation_20260906.yaml`
+2. `approvals/owner_n2b2_ollama_runtime_identity_revalidation_20260906.yaml`
+3. `schemas/owner_n2b2_ollama_runtime_identity_revalidation_v1.schema.json`
+4. `schemas/n2b2_runtime_identity_transition_v1.schema.json`
+
+This narrowly accepts only the recorded `INCONCLUSIVE` review and the exact
+Ollama `0.32.15` to `0.33.3` transition with unchanged model artifact identity.
+It permits one fresh S3 and one fresh S20 into new Git-external outputs, then a
+same-identity no-op resume. It does not alter `PROJECT_STATE.json`, unlock
+production N2B2, or authorize any real-photo path.

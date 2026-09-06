@@ -1,0 +1,35 @@
+contract_version: "1.0"
+phase:
+  id: "N2B2"
+  title: "Ollama runtime identity revalidation"
+  status: "AUTHORIZED_SYNTHETIC_REVALIDATION_ONLY"
+  capability: "N2B2_OLLAMA_RUNTIME_IDENTITY_REVALIDATION_20260906"
+authorization:
+  receipt: "approvals/owner_n2b2_ollama_runtime_identity_revalidation_20260906.yaml"
+  accepted_review_verdict: "INCONCLUSIVE"
+  accepted_blocker: "N2B2_S20_RESUME_BINDING_MISMATCH: model_identity"
+  base_candidate: "d83f96271f754763d61cedcc314fc725c840c86f"
+scope:
+  synthetic_only: true
+  fixed_s3_runs: 1
+  fixed_s20_runs: 1
+  required_identity_transition: "0.32.15 -> 0.33.3"
+  new_external_outputs_only: true
+forbidden:
+  - "historical_evidence_mutation"
+  - "checkpoint_identity_rewrite"
+  - "identity_gate_weakening"
+  - "real_photo_or_exif_read"
+  - "g1_source_access"
+  - "sqlite_ingest_write"
+  - "real20"
+  - "app_or_production_bundle"
+  - "model_download_or_replacement"
+  - "system_or_ollama_configuration_change"
+  - "project_state_mutation"
+  - "merge_or_main_update"
+mandatory_stop:
+  success: "N2B2_OLLAMA_0_33_3_SYNTHETIC_REVALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW"
+  failure: "N2B2_OLLAMA_RUNTIME_IDENTITY_REVALIDATION_FAILED"
+  blocked: "N2B2_OLLAMA_RUNTIME_IDENTITY_REVALIDATION_BLOCKED"
+  external_review_required: true
