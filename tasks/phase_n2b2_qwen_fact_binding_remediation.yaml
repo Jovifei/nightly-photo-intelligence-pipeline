@@ -1,0 +1,52 @@
+contract_version: "1.0"
+phase:
+  id: "N2B2_QWEN_FACT_BINDING_CONTRACT_REMEDIATION"
+  title: "Bind Qwen responses to immutable synthetic vision facts and resume S20"
+  status: "AUTHORIZED_SYNTHETIC_REMEDIATION_REVIEW_CANDIDATE"
+  project_state_status: "N2B2_LOCKED"
+  capability: "N2B2_QWEN_FACT_BINDING_CONTRACT_REMEDIATION_AND_S20_V3_RESUME"
+prerequisite:
+  reviewed_commit: "49e653b27884f9ba09d15ca17682e496687dc59f"
+  prior_runtime_source_candidate: "f67251a6cbc55e804a16c2e84d589fab7ecff90b"
+  owner_receipt: "approvals/owner_n2b2_qwen_fact_binding_remediation_receipt.yaml"
+  plan_sha256: "9fbeeeb0f935f7e46e060069758aa6a47ecbbbdbbfcca31491e4ca85240bcc72"
+  source_manifest_sha256: "b59446550e81499aaac9be17bebfd675f403869767a16318ce1a1a8904e4eec0"
+  failure_class: "QWEN_FACT_DIGEST_ECHO_MISMATCH"
+  probe_case_id: "n2b2-s20-03"
+scope:
+  synthetic_only: true
+  fixed_case_count: 20
+  device: "cuda"
+  qwen_contract_remediation_only: true
+  fixture_regeneration: false
+  production_bundle_release: false
+  app_import_authorized: false
+  runtime_obsidian_write_count: 0
+forbidden:
+  - "real photos"
+  - "EXIF"
+  - "G1 source access"
+  - "SQLite ingest"
+  - "PROJECT_STATE mutation"
+  - "N2B2 unlock"
+  - "fixture regeneration or replacement"
+  - "threshold change"
+  - "model download or replacement"
+  - "S20 external review or phase completion"
+  - "push merge PR release"
+mandatory_stop:
+  not_authorized: "N2B2_QWEN_BINDING_NOT_AUTHORIZED"
+  probe_failure: "N2B2_QWEN_FACT_BINDING_CONTRACT_PROBE_FAILED"
+  qwen_failure: "N2B2_QWEN_FACT_BINDING_CONTRACT_FAILED"
+  source_drift: "N2B2_S20_RUNTIME_SOURCE_REVALIDATION_REQUIRED"
+  resume_mismatch: "N2B2_S20_RESUME_BINDING_MISMATCH"
+  success: "N2B2_S20_SYNTHETIC_VALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW"
+success:
+  qwen_probe: "PASS"
+  visual_facts_repeat: "PASS"
+  qwen_cases: 20
+  qwen_repeats: 5
+  synthetic_bundles: 20
+  no_op_resume: "ALREADY_COMPLETE_VERIFIED"
+  external_review_required: true
+  project_state_remains_locked: true

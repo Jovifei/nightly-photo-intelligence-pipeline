@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b2_s20_independent_review.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "reviewed_commit", "reviewed_parent", "reviewer_identity", "independent", "verdict", "checks", "evidence_hashes", "findings"],
+  "properties": {
+    "schema_version": {"const": "n2b2-s20-independent-review-v1"},
+    "reviewed_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "reviewed_parent": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "reviewer_identity": {"type": "string", "minLength": 1},
+    "reviewed_at_utc": {"type": "string", "format": "date-time"},
+    "independent": {"const": true},
+    "verdict": {"enum": ["PASS_FOR_OWNER_REVIEW", "CHANGES_REQUIRED", "INCONCLUSIVE"]},
+    "checks": {"type": "object", "minProperties": 1, "additionalProperties": {"enum": ["PASS", "FAIL", "INCONCLUSIVE"]}},
+    "evidence_hashes": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
+    "findings": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["severity", "code", "detail"], "properties": {"severity": {"enum": ["INFO", "MINOR", "IMPORTANT", "CRITICAL"]}, "code": {"type": "string", "minLength": 1}, "detail": {"type": "string", "minLength": 1}}}}
+  }
+}

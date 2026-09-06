@@ -1,0 +1,38 @@
+contract_version: "1.0"
+phase:
+  id: "N2B2_RUNTIME_GPU_VALIDATION"
+  title: "N2B2 GPU runtime validation and synthetic S20 preparation"
+  status: "AUTHORIZED_SYNTHETIC_RUNTIME_ONLY_REVIEW_CANDIDATE"
+  project_state_status: "N2B2_LOCKED"
+  capability: "N2B2_RUNTIME_GPU_VALIDATION_AND_SYNTHETIC_S20_PREPARATION"
+owner_authorization:
+  owner_id: "Jovi"
+  source: "direct task authorization"
+  issued_at_utc: "2026-08-09"
+  reviewed_baseline: "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043"
+  synthetic_only: true
+  cuda_runtime_validation: true
+  s20_execution: "NOT_AUTHORIZED_THIS_RUN"
+data_gate:
+  real_photo_read_count: 0
+  real_exif_read_count: 0
+  g1_source_access: 0
+  sqlite_write_count: 0
+  app_write_count: 0
+  obsidian_write_count: 0
+forbidden:
+  - "PROJECT_STATE mutation"
+  - "N2B2 unlock"
+  - "real photo or EXIF access"
+  - "G1 source access"
+  - "SQLite ingest"
+  - "model download or Ollama pull"
+  - "S20 execution"
+  - "RTMW RTMDet SAM2 App Obsidian"
+  - "push merge pull-request release"
+mandatory_stop:
+  value: true
+  success: "N2B2_GPU_RUNTIME_VALIDATION_COMPLETE_AWAITING_OWNER_REVIEW"
+  cuda_failure: "N2B2_GPU_RUNTIME_UNAVAILABLE"
+  qwen_gpu_failure: "N2B2_QWEN_GPU_USAGE_NOT_CONFIRMED"
+  s20_status: "READY_FOR_S20_EXECUTION_BUT_NOT_PERFORMED"

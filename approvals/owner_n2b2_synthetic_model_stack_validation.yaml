@@ -1,0 +1,28 @@
+schema_version: "1.0"
+receipt_type: "OWNER_DIRECT_BOUNDED_SYNTHETIC_AUTHORIZATION"
+status: "APPROVED"
+owner_id: "Jovi"
+issued_at_utc: "2026-08-23T00:00:00Z"
+task: "N2B2_SYNTHETIC_MODEL_STACK_VALIDATION"
+n2b1p_completion_sha256: "d57215a5ba8357eaddc58d398d0d3f8d840e4b4b172a19c8aa3f8847bea2aa65"
+reviewed_candidate: "c1008132654d32e7ac6a2032eb5d3a2c7e07cdb6"
+review_record_sha256: "5c1fd018b8ad463c8455aefef1f1077eab57228136fe769bf6a8e3e5ebf4ba80"
+scope: "SYNTHETIC_GPU_S3_S20_ONLY"
+boundaries:
+  real_photo: false
+  real_exif: false
+  g1_source: false
+  sqlite: false
+  real20: false
+  project_state_mutation: false
+  production_bundle: false
+production_state:
+  project_state_n2b2: "LOCKED"
+  production_unlock: false
+  external_review_required: true
+owner_statement: >
+  I authorize the bounded N2B2 synthetic model-stack validation using the
+  existing local cached TorchVision stack and qwen3.5:9b only. The scope is
+  synthetic fixtures, GPU evidence, S3 smoke and fixed S20 validation. Real
+  photos, EXIF, G1, SQLite, Real20, App, production Bundle and PROJECT_STATE
+  mutation remain prohibited.

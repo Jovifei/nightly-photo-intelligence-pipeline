@@ -52,3 +52,42 @@ VERIFY_HANDOFF
 2. 不尝试“自动修复”系统；
 3. 记录命令、事实与影响；
 4. 输出 `BLOCKED_AWAITING_OWNER_DECISION`。
+## Bounded N2B2 review-candidate addendum (2026-08-09)
+
+Also read `tasks/phase_n2b2_runtime_gpu_validation_and_s20_preparation.yaml`
+and `approvals/owner_n2b2_runtime_gpu_validation_receipt.yaml`. These permit
+synthetic GPU validation and S20 planning only; they do not change
+`PROJECT_STATE.json` or the production `N2B2=LOCKED` state.
+
+## N2B2 S20 completion-artifact integrity addendum (2026-08-11)
+
+Before any synthetic S20 remediation work, additionally read:
+
+1. `tasks/phase_n2b2_s20_artifact_integrity_remediation.yaml`
+2. `approvals/owner_n2b2_s20_artifact_integrity_remediation_receipt.yaml`
+3. `schemas/n2b2_s20_checkpoint.schema.json`
+4. `schemas/n2b2_s20_independent_review.schema.json`
+
+This is a replacement-run contract for the frozen synthetic set only. It
+requires one unambiguous terminal outcome and external review after a clean
+candidate; it does not unlock N2B2 or authorize real data.
+
+## Owner-authorized synthetic continuation (2026-08-23)
+
+For this bounded continuation also read:
+
+1. `approvals/phase_completion_N2B1P.yaml`
+2. `approvals/owner_n2b2_synthetic_model_stack_validation.yaml`
+3. `tasks/phase_n2b2_authorized_synthetic_validation_20260823.yaml`
+4. `schemas/phase_completion_n2b1p_v1_0.schema.json`
+5. `schemas/owner_n2b2_synthetic_model_stack_v1_0.schema.json`
+
+These records authorize only synthetic/GPU/S3/S20 validation and preserve the
+production `N2B2=LOCKED` boundary.
+
+## N2B2 synthetic validation status (2026-08-23)
+
+Before using the bounded candidate or preparing review, read
+`docs/38_n2b2_synthetic_validation_status.md`. It is the current redacted
+summary of S3/S20 runtime evidence, local quality gates, locked production
+state, and the independent-review stop condition.

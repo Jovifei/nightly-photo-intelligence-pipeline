@@ -1,0 +1,23 @@
+schema_version: "1.0"
+receipt_type: "OWNER_DIRECT_BOUNDED_RUNTIME_AUTHORIZATION"
+status: "RECORDED_FOR_REVIEW_CANDIDATE"
+owner_id: "Jovi"
+issued_at_utc: "2026-08-09"
+task: "N2B2_RUNTIME_GPU_VALIDATION_AND_SYNTHETIC_S20_PREPARATION"
+reviewed_baseline: "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043"
+allowed:
+  - "explicit CUDA validation for cached TorchVision models"
+  - "qwen3.5:9b local GPU residency validation"
+  - "repeat the existing three-case synthetic S3"
+  - "create S20 schema and validation plan only"
+not_allowed:
+  - "real photos"
+  - "EXIF"
+  - "G1 snapshot"
+  - "SQLite ingest"
+  - "PROJECT_STATE mutation"
+  - "N2B2 unlock"
+  - "S20 execution"
+  - "model download or model replacement"
+  - "push merge PR release"
+mandatory_stop: true

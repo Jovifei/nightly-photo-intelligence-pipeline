@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b2_s20_bundle_index.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "bundle_type", "reviewed_commit", "review_record_sha256", "manifest_sha256", "runtime_source_sha256", "bundle_count", "production_release", "app_import_authorized", "cases"],
+  "properties": {
+    "schema_version": {"const": "n2b2-s20-synthetic-bundle-index-v1"},
+    "bundle_type": {"const": "N2B2_S20_SYNTHETIC_VALIDATION_SET"},
+    "reviewed_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "review_record_sha256": {"$ref": "#/$defs/sha256"},
+    "manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "runtime_source_sha256": {"$ref": "#/$defs/sha256"},
+    "bundle_count": {"const": 20},
+    "production_release": {"const": false},
+    "app_import_authorized": {"const": false},
+    "cases": {"type": "array", "minItems": 20, "maxItems": 20, "items": {"$ref": "#/$defs/case"}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "case": {"type": "object", "additionalProperties": false, "required": ["case_id", "reference_bundle", "files"], "properties": {"case_id": {"pattern": "^n2b2-s20-(0[1-9]|1[0-9]|20)$"}, "reference_bundle": {"pattern": "^cases/n2b2-s20-(0[1-9]|1[0-9]|20)/reference_bundle\\.json$"}, "files": {"type": "object", "additionalProperties": {"$ref": "#/$defs/sha256"}}}}
+  }
+}

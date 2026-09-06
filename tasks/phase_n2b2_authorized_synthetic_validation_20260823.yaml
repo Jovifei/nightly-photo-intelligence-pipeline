@@ -1,0 +1,31 @@
+contract_version: "1.0"
+phase:
+  id: "N2B2"
+  title: "Owner-authorized synthetic model-stack validation"
+  status: "AUTHORIZED_SYNTHETIC_ONLY_REVIEW_CANDIDATE"
+  capability: "N2B2_SYNTHETIC_MODEL_STACK_VALIDATION"
+authorization:
+  n2b1p_completion: "approvals/phase_completion_N2B1P.yaml"
+  owner_receipt: "approvals/owner_n2b2_synthetic_model_stack_validation.yaml"
+  production_project_state: "N2B2_LOCKED"
+  production_unlock: false
+scope:
+  - "synthetic fixtures"
+  - "GPU runtime evidence"
+  - "S3 smoke"
+  - "fixed S20 synthetic validation"
+forbidden:
+  - "real photos"
+  - "EXIF"
+  - "G1 source access"
+  - "SQLite ingest"
+  - "Real20"
+  - "App"
+  - "production Bundle"
+  - "PROJECT_STATE mutation"
+  - "model download or replacement"
+  - "push merge PR release"
+mandatory_stop:
+  value: true
+  success: "N2B2_SYNTHETIC_MODEL_STACK_VALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW"
+  rule: "Keep production N2B2 LOCKED and stop before external review, Owner phase completion, Real20, G1 renewal, or App work."

@@ -1,0 +1,53 @@
+schema_version: "1.0"
+receipt_type: "OWNER_S20_ARTIFACT_INTEGRITY_REMEDIATION"
+status: "AUTHORIZED_FOR_BOUNDED_SYNTHETIC_RETRY"
+owner_id: "Jovi"
+issued_at_utc: "2026-08-11"
+task: "N2B2_S20_ARTIFACT_INTEGRITY_REMEDIATION_AND_EXTERNAL_REVIEW"
+plan_sha256: "a9ae192eaa6a2eadf80bc592cbcee1aaeab99d24a0bc1798b529b3f25e1e8c85"
+review_candidate: "6dbc40accb513fec35586f565dcd95a3d84f15b4"
+required_final_parent: "49e653b27884f9ba09d15ca17682e496687dc59f"
+fixture_manifest_sha256: "b59446550e81499aaac9be17bebfd675f403869767a16318ce1a1a8904e4eec0"
+v3_evidence:
+  validation_summary_sha256: "1c615baf8ca8001e9b6984dba36ef2fc383e5fca41b060e683002a811a6103a5"
+  checkpoint_sha256: "a48a9dd7a973e9536061636545635b3119f808d19bbff334d59a73f2eb03eca9"
+  bundle_index_sha256: "3ac69ceaf83dc9b07b6b73584829870d458b9c9738fbfc173f41a6df1486ea7d"
+  checksums_sha256: "a02e62a4aec9a1b42c153d0482d4baabc45f0338056d443b9778031b68d2e573"
+  contradictory_failure_summary_sha256: "ef432583fb373395cdf48f534a11c0133a87afb1725bb735b66fd0a206d3a0a1"
+scope:
+  synthetic_only: true
+  fixed_case_count: 20
+  fixture_regeneration: false
+  device: "cuda"
+  model_identity_unchanged: true
+  pose_threshold: 0.5
+  production_bundle_release: false
+  independent_review_required: true
+forbidden:
+  - "real photos"
+  - "EXIF"
+  - "G1 source access"
+  - "SQLite ingest"
+  - "PROJECT_STATE mutation"
+  - "N2B2 unlock"
+  - "fixture or prompt changes"
+  - "model download or replacement"
+  - "threshold change"
+  - "phase completion or main merge"
+  - "push merge PR release"
+mandatory_stop:
+  evidence_drift: "N2B2_S20_V3_EVIDENCE_DRIFT"
+  runtime_integrity_failure: "N2B2_S20_COMPLETE_ARTIFACT_INTEGRITY_MISMATCH"
+  source_drift: "N2B2_S20_RUNTIME_SOURCE_REVALIDATION_REQUIRED"
+  review_changes: "N2B2_S20_EXTERNAL_REVIEW_CHANGES_REQUIRED"
+  review_inconclusive: "N2B2_S20_EXTERNAL_REVIEW_INCONCLUSIVE"
+  success: "N2B2_S20_EXTERNAL_REVIEW_PASS_AWAITING_OWNER_DECISION"
+project_state_mutation: false
+production_n2b2_unlock: false
+real_photo_read_count: 0
+real_exif_read_count: 0
+g1_source_access: 0
+sqlite_write_count: 0
+app_write_count: 0
+obsidian_runtime_write_count: 0
+model_download_bytes: 0

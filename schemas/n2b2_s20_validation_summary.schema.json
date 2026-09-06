@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b2_s20_validation_summary.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "result", "reviewed_commit", "review_verdict", "bundle_count", "strict_cases", "observation_cases", "negative_cases", "unsupported_cases", "facts_repeat", "qwen", "gpu", "hard_counts", "s20_execution_status", "production_bundle_release", "s20_external_review_required"],
+  "properties": {
+    "schema_version": {"const": "n2b2-s20-validation-summary-v1"},
+    "result": {"const": "N2B2_S20_SYNTHETIC_VALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW"},
+    "reviewed_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "review_verdict": {"const": "PASS_FOR_OWNER_REVIEW"},
+    "bundle_count": {"const": 20},
+    "strict_cases": {"type": "array"},
+    "observation_cases": {"type": "array"},
+    "negative_cases": {"type": "array"},
+    "unsupported_cases": {"type": "array"},
+    "facts_repeat": {"type": "object", "required": ["bytes_identical", "digest_identical", "cases"], "properties": {"bytes_identical": {"const": true}, "digest_identical": {"const": true}, "cases": {"type": "array", "minItems": 20, "maxItems": 20}}},
+    "qwen": {"type": "object", "required": ["schema_pass", "fact_digest_echo", "unknown_fact_ids", "forbidden_fields"], "properties": {"schema_pass": {"const": true}, "fact_digest_echo": {"const": true}, "unknown_fact_ids": {"const": 0}, "forbidden_fields": {"const": 0}}},
+    "gpu": {"type": "object"},
+    "hard_counts": {"type": "object", "additionalProperties": {"const": 0}},
+    "s20_execution_status": {"const": "PERFORMED_SYNTHETIC_ONLY"},
+    "production_bundle_release": {"const": "NOT_CREATED"},
+    "s20_external_review_required": {"const": true}
+  }
+}

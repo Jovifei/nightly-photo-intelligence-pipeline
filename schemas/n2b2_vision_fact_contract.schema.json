@@ -14,7 +14,8 @@
     "person_boxes",
     "pose_keypoints",
     "pose_scores",
-    "segmentation_foreground_ratio",
+    "segmentation_person_ratio",
+    "segmentation_comparator_person_ratio",
     "subject_centroids",
     "frame_contact_flags",
     "negative_space_metrics",
@@ -23,7 +24,7 @@
     "fact_digest"
   ],
   "properties": {
-    "schema_version": {"const": "1.0"},
+    "schema_version": {"const": "1.1"},
     "case_id": {"type": "string", "pattern": "^n2b2-s(3|20)-[0-9]{2}$"},
     "image_sha256": {"$ref": "#/$defs/sha256"},
     "provenance": {"type": "object", "additionalProperties": false, "required": ["pose_model", "segmentation_model", "comparator_model", "generator_version", "seed"], "properties": {"pose_model": {"const": "torchvision-keypointrcnn-resnet50-fpn-coco-v1"}, "segmentation_model": {"const": "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1"}, "comparator_model": {"const": "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1"}, "generator_version": {"type": "string"}, "seed": {"type": ["integer", "null"]}}},
@@ -31,7 +32,8 @@
     "person_boxes": {"type": "array", "items": {"$ref": "#/$defs/bbox"}},
     "pose_keypoints": {"type": "array", "items": {"$ref": "#/$defs/keypoints"}},
     "pose_scores": {"type": "array", "items": {"type": "number", "minimum": 0, "maximum": 1}},
-    "segmentation_foreground_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+    "segmentation_person_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+    "segmentation_comparator_person_ratio": {"type": "number", "minimum": 0, "maximum": 1},
     "subject_centroids": {"type": "array", "items": {"$ref": "#/$defs/point2d"}},
     "frame_contact_flags": {"type": "object", "additionalProperties": false, "required": ["top", "bottom", "left", "right"], "properties": {"top": {"type": "boolean"}, "bottom": {"type": "boolean"}, "left": {"type": "boolean"}, "right": {"type": "boolean"}}},
     "negative_space_metrics": {"type": "object", "additionalProperties": false, "required": ["left_ratio", "right_ratio", "top_ratio", "bottom_ratio", "total_negative_ratio"], "properties": {"left_ratio": {"type": "number", "minimum": 0, "maximum": 1}, "right_ratio": {"type": "number", "minimum": 0, "maximum": 1}, "top_ratio": {"type": "number", "minimum": 0, "maximum": 1}, "bottom_ratio": {"type": "number", "minimum": 0, "maximum": 1}, "total_negative_ratio": {"type": "number", "minimum": 0, "maximum": 1}}},
