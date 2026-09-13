@@ -42,7 +42,7 @@ def test_current_stage_manifest_binds_every_tracked_file(project_root: Path) -> 
     tracked = _tracked_files(project_root) - {"MANIFEST.sha256"}
     overlay_manifest = "review_tools/MANIFEST.sha256"
     overlay_tracked = {rel for rel in tracked if rel.startswith("review_tools/")}
-    assert set(listed) == tracked - overlay_tracked
+    assert set(listed) == tracked
     for rel, digest in listed.items():
         p = project_root / rel
         assert p.is_file(), f"manifest file missing: {rel}"
@@ -174,6 +174,7 @@ def test_current_handoff_verifier_passes(project_root: Path) -> None:
         or "linear N2B1P portability plus bounded N2B2 synthetic review candidate" in result.stdout
         or "one-shot Ollama runtime-identity revalidation candidate" in result.stdout
         or "F1-F6 code-remediation candidate after the review-tooling overlay" in result.stdout
+        or "engineering repair candidate after the F1-F6 remediation" in result.stdout
     )
 
 

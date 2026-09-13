@@ -1716,3 +1716,25 @@ out of scope.
   edit, rebuilds `MANIFEST.sha256`, and passes the full quality matrix.
 - [ ] Fast-forward `main` and push only after the integration candidate passes;
   this does not grant Real20 or production authorization.
+
+## N2B2 engineering repair A — 2026-09-13
+
+### Plan
+
+- [x] Verify the repair package, its payload manifest, the supplied baseline, and
+  the fetched target branch without changing the primary worktree.
+- [x] Apply F0/F1/F5 and v1.2 vision-schema references while retaining v1.1 history.
+- [x] Integrate F2/F3/F4/F6 into the controlled synthetic-entry adapter and add
+  fake/mock tests; do not run a model or alter `PROJECT_STATE.json`.
+- [ ] Run the supported-Python component checks, experimental 3.14 checks, and
+  the available full quality gates; record unavailable gates explicitly.
+- [ ] Rebuild the complete tracked-file manifest, commit one direct child of the
+  fetched candidate, verify the candidate, and push only the named review branch.
+
+### Review
+
+- Package SHA-256 and all 28 internal SHA entries passed; payload manifest 16/16 passed.
+- The fetched target was `ed8e3d9`; the supplied `3b453ef` baseline was preserved as
+  history and used only for the package's exact-base check/apply worktree.
+- No model, Ollama process, real photo, EXIF, Real20, App, production Bundle, or
+  `PROJECT_STATE.json` mutation has occurred in this repair.

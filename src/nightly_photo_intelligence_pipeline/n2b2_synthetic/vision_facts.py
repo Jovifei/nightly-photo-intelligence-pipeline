@@ -42,64 +42,11 @@ def _frame_contact(box: dict[str, float], width: int, height: int) -> dict[str, 
     }
 
 
-def _union_area(boxes: list[tuple[float, float, float, float]]) -> float:
-    xs = sorted({x for box in boxes for x in (box[0], box[2])})
-    slabs: list[float] = []
-    for left, right in zip(xs, xs[1:], strict=False):
-        intervals = sorted((y0, y1) for x0, y0, x1, y1 in boxes if x0 < right and x1 > left)
-        occupied = 0.0
-        if intervals:
-            start, end = intervals[0]
-            for low, high in intervals[1:]:
-                if low > end:
-                    occupied += end - start
-                    start, end = low, high
-                else:
-                    end = max(end, high)
-            occupied += end - start
-        slabs.append((right - left) * occupied)
-    return math.fsum(slabs)
-
-
 def _negative_space(boxes: list[dict[str, float]], width: int, height: int) -> dict[str, Any]:
-    if width <= 0 or height <= 0 or len(boxes) > 256:
-        raise ValueError("invalid negative-space frame")
-    normalized: list[tuple[float, float, float, float]] = []
-    for box in boxes:
-        try:
-            x0, y0, x1, y1 = (float(box[key]) for key in ("x_min", "y_min", "x_max", "y_max"))
-        except (KeyError, TypeError, ValueError) as exc:
-            raise ValueError("invalid negative-space box") from exc
-        if not all(math.isfinite(value) for value in (x0, y0, x1, y1)):
-            raise ValueError("invalid negative-space box")
-        if x0 > x1 or y0 > y1:
-            raise ValueError("inverted negative-space box")
-        x0, x1 = max(0.0, min(float(width), x0)), max(0.0, min(float(width), x1))
-        y0, y1 = max(0.0, min(float(height), y0)), max(0.0, min(float(height), y1))
-        if x0 < x1 and y0 < y1:
-            normalized.append((x0 / width, y0 / height, x1 / width, y1 / height))
+    """Versioned bbox-union empty-area proxy, not aesthetic negative space."""
+    from ..engineering.geometry import measure_bbox_empty_area
 
-    def empty(region: tuple[float, float, float, float]) -> float:
-        rx0, ry0, rx1, ry1 = region
-        clipped = [
-            (max(x0, rx0), max(y0, ry0), min(x1, rx1), min(y1, ry1))
-            for x0, y0, x1, y1 in normalized
-        ]
-        occupied = _union_area([box for box in clipped if box[0] < box[2] and box[1] < box[3]])
-        area = (rx1 - rx0) * (ry1 - ry0)
-        return _finite(max(0.0, min(1.0, 1.0 - occupied / area)))
-
-    return {
-        "method": "bbox-union-half-frame-empty-area-v1",
-        "measurement_kind": "BBOX_EMPTY_AREA_PROXY_NOT_AESTHETIC_NEGATIVE_SPACE",
-        "coordinate_system": "pixel_edges",
-        "directional_denominator": "corresponding_half_frame_area",
-        "left_ratio": empty((0.0, 0.0, 0.5, 1.0)),
-        "right_ratio": empty((0.5, 0.0, 1.0, 1.0)),
-        "top_ratio": empty((0.0, 0.0, 1.0, 0.5)),
-        "bottom_ratio": empty((0.0, 0.5, 1.0, 1.0)),
-        "total_negative_ratio": empty((0.0, 0.0, 1.0, 1.0)),
-    }
+    return measure_bbox_empty_area(boxes, width, height)
 
 
 def build_vision_facts(
@@ -114,7 +61,7 @@ def build_vision_facts(
     seg_primary: RawSegmentation,
     seg_comparator: RawSegmentation,
 ) -> dict[str, Any]:
-    """Return a dict conforming to ``n2b2_vision_fact_contract.schema.json``."""
+    """Return a dict conforming to ``n2b2_vision_fact_contract_v1_2.schema.json``."""
 
     person_count = len(pose.person_boxes)
     fact_ids = [
@@ -124,9 +71,18 @@ def build_vision_facts(
         "fact-seg-comparator-person-ratio",
         "fact-subject-centroid",
         "fact-frame-contact",
-        "fact-negative-space",
+        "fact-bbox-empty-area",
     ]
-    uncertainties: list[dict[str, Any]] = []
+    uncertainties: list[dict[str, Any]] = [
+        {
+            "fact_id": "fact-bbox-empty-area",
+            "description": (
+                "Person-box empty-area proxy only; other objects, saliency and "
+                "aesthetic negative space are not measured."
+            ),
+            "severity": "medium",
+        }
+    ]
     if abs(seg_primary.person_mask_ratio - seg_comparator.person_mask_ratio) > 0.25:
         uncertainties.append(
             {
@@ -137,7 +93,7 @@ def build_vision_facts(
         )
 
     payload: dict[str, Any] = {
-        "schema_version": "1.1",
+        "schema_version": "1.2",
         "case_id": case_id,
         "image_sha256": image_sha256,
         "provenance": {
@@ -170,7 +126,9 @@ def build_vision_facts(
 def canonicalize(payload: dict[str, Any]) -> str:
     """Deterministic canonical JSON string (sorted keys, no whitespace)."""
 
-    return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
+    )
 
 
 def compute_fact_digest(payload: dict[str, Any]) -> str:

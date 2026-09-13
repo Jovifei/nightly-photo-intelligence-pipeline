@@ -48,6 +48,7 @@ N2B2_REVIEW_CONTROL_PLANE_SHA = "d83f96271f754763d61cedcc314fc725c840c86f"
 N2B2_RUNTIME_REVALIDATION_SHA = "da638bab6a61fe6fc466521cc60abcacfea9120a"
 REVIEW_TOOLING_OVERLAY_SHA = "3b453efed300dbe4d9e7f410697da1fb2d797f70"
 REVIEW_TOOLING_MANIFEST = "review_tools/MANIFEST.sha256"
+ENGINEERING_REPAIR_BASE_SHA = "ed8e3d9eb750505ee3cf501f6adfe91aab03fea8"
 
 errors: list[str] = []
 passes: list[str] = []
@@ -67,6 +68,23 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def sha256_git_file(ref: str, rel: str) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(ROOT), "show", f"{ref}:{rel}"],
+            capture_output=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return sha256_bytes(result.stdout) if result.returncode == 0 else None
 
 
 def sha256_index_file(rel: str) -> str | None:
@@ -210,6 +228,8 @@ def check_required_files() -> None:
         N2B2_RUNTIME_REVALIDATION_RECEIPT,
         "schemas/owner_n2b2_ollama_runtime_identity_revalidation_v1.schema.json",
         "schemas/n2b2_runtime_identity_transition_v1.schema.json",
+        "schemas/n2b2_vision_fact_contract_v1_2.schema.json",
+        "src/nightly_photo_intelligence_pipeline/engineering/controlled_entry.py",
     )
     missing = [rel for rel in required if not (ROOT / rel).is_file()]
     if missing:
@@ -633,6 +653,46 @@ def check_runtime_identity_revalidation_contract() -> None:
         fail("Ollama runtime-identity revalidation receipt or lock boundary is invalid")
 
 
+def check_engineering_repair_profile() -> None:
+    """Validate the code-only child without changing old state or approvals."""
+
+    if git("rev-parse", "HEAD^") != (0, ENGINEERING_REPAIR_BASE_SHA):
+        return
+    changed = git("diff", "--name-only", f"{ENGINEERING_REPAIR_BASE_SHA}..HEAD")
+    changed_paths = set(changed[1].splitlines()) if changed[0] == 0 else set()
+    protected = {"PROJECT_STATE.json", N2B2_RUNTIME_REVALIDATION_RECEIPT}
+    if changed[0] != 0:
+        fail("engineering repair profile cannot inspect its parent diff")
+        return
+    if protected & changed_paths or any(path.startswith("approvals/") for path in changed_paths):
+        fail("code-only engineering profile changed protected state or approval files")
+        return
+    state_hash = sha256(ROOT / "PROJECT_STATE.json")
+    approval_hash = sha256(ROOT / N2B2_RUNTIME_REVALIDATION_RECEIPT)
+    if state_hash != sha256_git_file(
+        ENGINEERING_REPAIR_BASE_SHA, "PROJECT_STATE.json"
+    ) or approval_hash != sha256_git_file(
+        ENGINEERING_REPAIR_BASE_SHA, N2B2_RUNTIME_REVALIDATION_RECEIPT
+    ):
+        fail("code-only engineering profile changed the bound state or old approval")
+        return
+    state = load_json("PROJECT_STATE.json")
+    draft = load_json("templates/synthetic_execution_lease_v2.DRAFT.json")
+    valid = (
+        state.get("phase_status", {}).get("N2B2") == "LOCKED"
+        and draft.get("status") == "DRAFT"
+        and draft.get("production_unlock") is False
+        and git("merge-base", "--is-ancestor", REVIEW_TOOLING_OVERLAY_SHA, "HEAD")[0] == 0
+    )
+    if valid:
+        ok(
+            "code-only engineering profile preserves locked state and old approval; "
+            "lease remains DRAFT"
+        )
+    else:
+        fail("code-only engineering profile state, ancestry, or DRAFT lease binding is invalid")
+
+
 def check_baselines() -> None:
     expected = {
         "n0-approved-2026-07-14": "72a81f5984838b74304d23263ac450ea4b5a3a9a",
@@ -677,6 +737,11 @@ def check_baselines() -> None:
         or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "5")
     ):
         fail("F1-F6 remediation must be one direct child of the review-tooling overlay")
+    elif git("rev-parse", "HEAD^") == (0, ENGINEERING_REPAIR_BASE_SHA) and (
+        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "7")
+        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "6")
+    ):
+        fail("engineering repair must be one direct child of the F1-F6 remediation candidate")
     elif git("rev-parse", "HEAD") != (0, N2B1P_SHA) and not (
         (
             git("rev-parse", "HEAD^") == (0, N2B1P_SHA)
@@ -714,6 +779,11 @@ def check_baselines() -> None:
             and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "6")
             and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "5")
         )
+        or (
+            git("rev-parse", "HEAD^") == (0, ENGINEERING_REPAIR_BASE_SHA)
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "7")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "6")
+        )
     ):
         fail("N2B2 review candidate must be exactly one direct child of N2B1P")
     elif git("rev-list", "--merges", "HEAD") != (0, ""):
@@ -748,7 +818,7 @@ def check_manifest() -> None:
     tracked = {rel for rel in tracked_text.splitlines() if rel and rel != "MANIFEST.sha256"}
     overlay_manifest = "review_tools/MANIFEST.sha256"
     overlay_tracked = {rel for rel in tracked if rel.startswith("review_tools/")}
-    if rc != 0 or set(listed) != tracked - overlay_tracked:
+    if rc != 0 or set(listed) != tracked:
         fail("MANIFEST.sha256 does not bind exactly the tracked current-stage file set")
         return
     mismatches = [rel for rel, digest in listed.items() if sha256_index_file(rel) != digest]
@@ -816,6 +886,7 @@ def main() -> int:
     check_bounded_n2b2_review_contract()
     check_owner_authorized_synthetic_contract()
     check_runtime_identity_revalidation_contract()
+    check_engineering_repair_profile()
     check_baselines()
     check_manifest()
     check_sensitive_paths()
@@ -852,6 +923,11 @@ def main() -> int:
     elif git("rev-parse", "HEAD^") == (0, REVIEW_TOOLING_OVERLAY_SHA):
         print(
             "HANDOFF_VALID: F1-F6 code-remediation candidate after the review-tooling overlay; "
+            "production N2B2 remains LOCKED"
+        )
+    elif git("rev-parse", "HEAD^") == (0, ENGINEERING_REPAIR_BASE_SHA):
+        print(
+            "HANDOFF_VALID: engineering repair candidate after the F1-F6 remediation; "
             "production N2B2 remains LOCKED"
         )
     else:

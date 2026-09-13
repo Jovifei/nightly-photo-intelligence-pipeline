@@ -41,7 +41,7 @@ from nightly_photo_intelligence_pipeline.n2b2_synthetic.vision_facts import (
 
 ROOT = Path(__file__).resolve().parents[1]
 REASONING_SCHEMA = load_json_strict(ROOT / "schemas" / "n2b2_photography_reasoning.schema.json")
-VISION_SCHEMA = load_json_strict(ROOT / "schemas" / "n2b2_vision_fact_contract.schema.json")
+VISION_SCHEMA = load_json_strict(ROOT / "schemas" / "n2b2_vision_fact_contract_v1_2.schema.json")
 BUNDLE_SCHEMA = load_json_strict(ROOT / "schemas" / "reference_bundle_v1_synthetic.schema.json")
 
 

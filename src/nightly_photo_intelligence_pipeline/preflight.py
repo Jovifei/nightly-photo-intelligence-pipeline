@@ -75,6 +75,17 @@ def _run(cmd: list[str], *, timeout: int = _TIMEOUT) -> tuple[int, str]:
 
 
 def _check_python() -> CheckResult:
+    from .engineering.readiness import python_check
+
+    version = (sys.version_info[0], sys.version_info[1], sys.version_info[2])
+    support = python_check(version)
+    if support["status"] != PASS:
+        return CheckResult(
+            name="python",
+            status=FAIL,
+            evidence=f"{sys.version.split()[0]} on {sys.platform}",
+            notes="NPI_UNSUPPORTED_PYTHON: requires >=3.11,<3.13",
+        )
     return CheckResult(
         name="python",
         status=PASS,
@@ -1082,6 +1093,7 @@ def _check_git_baselines() -> CheckResult:
         n2b2_review_control_plane = "d83f96271f754763d61cedcc314fc725c840c86f"
         n2b2_runtime_candidate = "da638bab6a61fe6fc466521cc60abcacfea9120a"
         review_tooling_overlay = "3b453efed300dbe4d9e7f410697da1fb2d797f70"
+        engineering_repair_base = "ed8e3d9eb750505ee3cf501f6adfe91aab03fea8"
         head = git("rev-parse", "HEAD")[1]
         portability_candidate = head == n2b1p_portability and git("rev-parse", "HEAD^") == (
             0,
@@ -1108,6 +1120,11 @@ def _check_git_baselines() -> CheckResult:
             and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "5")
             and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "6")
         )
+        engineering_repair_topology = (
+            git("rev-parse", "HEAD^") == (0, engineering_repair_base)
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "6")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "7")
+        )
         portability_record_ok = True
         if (
             portability_candidate
@@ -1115,6 +1132,7 @@ def _check_git_baselines() -> CheckResult:
             or runtime_identity_revalidation_topology
             or tooling_overlay_topology
             or runtime_remediation_topology
+            or engineering_repair_topology
         ):
             record_path = root / "research" / "N2B1P_manifest_portability_remediation.json"
             schema_path = root / "schemas" / "n2b1p_manifest_portability_remediation_v1.schema.json"
@@ -1173,7 +1191,8 @@ def _check_git_baselines() -> CheckResult:
             or authorized_synthetic_topology
             or runtime_identity_revalidation_topology
             or tooling_overlay_topology
-            or runtime_remediation_topology,
+            or runtime_remediation_topology
+            or engineering_repair_topology,
             portability_record_ok,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),
@@ -1188,7 +1207,7 @@ def _check_git_baselines() -> CheckResult:
                 "one direct S20 candidate after 49e653b, or one bounded synthetic "
                 "authorization candidate after c100813, or one direct Ollama runtime-identity "
                 "revalidation candidate after d83f962, followed by the review-tooling overlay "
-                "and code-remediation candidate; "
+                "and code-remediation candidate, followed by the engineering repair candidate; "
                 "no merge; worktree clean"
             ),
         )

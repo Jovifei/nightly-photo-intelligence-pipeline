@@ -76,7 +76,7 @@ _RUNTIME_SOURCE_FILES = (
     "src/nightly_photo_intelligence_pipeline/n2b2_synthetic/metrics.py",
     "schemas/n2b2_photography_reasoning.schema.json",
     "schemas/n2b2_qwen_fact_binding_evidence.schema.json",
-    "schemas/n2b2_vision_fact_contract.schema.json",
+    "schemas/n2b2_vision_fact_contract_v1_2.schema.json",
     "schemas/reference_bundle_v1_synthetic.schema.json",
 )
 
@@ -830,7 +830,8 @@ def run_s20(
         case_dir = cases_root / fixture.case_id
         validate_artifact(case_dir / "analysis.json", schemas_dir / "n2b2_s20_analysis.schema.json")
         validate_artifact(
-            case_dir / "vision_facts.json", schemas_dir / "n2b2_vision_fact_contract.schema.json"
+            case_dir / "vision_facts.json",
+            schemas_dir / "n2b2_vision_fact_contract_v1_2.schema.json",
         )
         validate_artifact(
             case_dir / "director_prompt.json", schemas_dir / "n2b2_s20_director_prompt.schema.json"

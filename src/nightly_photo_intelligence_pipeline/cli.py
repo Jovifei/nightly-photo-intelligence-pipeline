@@ -552,7 +552,7 @@ def n2b2_run(
 
     schemas_dir = root / "schemas"
     reasoning_schema = load_json_strict(schemas_dir / "n2b2_photography_reasoning.schema.json")
-    vision_schema = load_json_strict(schemas_dir / "n2b2_vision_fact_contract.schema.json")
+    vision_schema = load_json_strict(schemas_dir / "n2b2_vision_fact_contract_v1_2.schema.json")
     evidence = load_json_strict(root / "research" / "N2B1P_cache_promotion_evidence.json")
     n2b1p_review_passed, review_detail = validate_n2b1p_review(evidence)
     typer.echo(f"N2B1P review gate: {'PASS' if n2b1p_review_passed else 'FAIL'} ({review_detail})")
@@ -729,7 +729,9 @@ def n2b2_gpu_validate(
         typer.echo("N2B2_EXECUTION_BLOCKED_N2B1P_NOT_APPROVED")
         raise typer.Exit(code=int(ExitCode.PARTIAL_FAILURE))
 
-    vision_schema = load_json_strict(root / "schemas" / "n2b2_vision_fact_contract.schema.json")
+    vision_schema = load_json_strict(
+        root / "schemas" / "n2b2_vision_fact_contract_v1_2.schema.json"
+    )
     fixtures = load_s3_manifest(resolved_manifest, project_root=root)
     cache_root = load_n2b1p_runtime_configuration(root).cache_root
     probe_config = N2B2RunConfig(
@@ -949,7 +951,7 @@ def n2b2_s20_validate(
     )
     schemas_dir = root / "schemas"
     reasoning_schema = load_json_strict(schemas_dir / "n2b2_photography_reasoning.schema.json")
-    vision_schema = load_json_strict(schemas_dir / "n2b2_vision_fact_contract.schema.json")
+    vision_schema = load_json_strict(schemas_dir / "n2b2_vision_fact_contract_v1_2.schema.json")
     cache_root = load_n2b1p_runtime_configuration(root).cache_root
     config = N2B2RunConfig(
         project_root=root,
@@ -1181,7 +1183,7 @@ def n2b2_runtime_identity_revalidate(
     baseline_manifest_before = snapshot_tree(baseline_manifest)
 
     schemas = root / "schemas"
-    vision_schema = load_json_strict(schemas / "n2b2_vision_fact_contract.schema.json")
+    vision_schema = load_json_strict(schemas / "n2b2_vision_fact_contract_v1_2.schema.json")
     reasoning_schema = load_json_strict(schemas / "n2b2_photography_reasoning.schema.json")
     s3_fixtures = load_s3_manifest(s3_manifest, project_root=root)
     s20_fixtures = load_s20_manifest(
