@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import shutil
 from pathlib import Path
 from types import SimpleNamespace
@@ -496,7 +497,12 @@ def _write_complete_release(root: Path) -> None:
         encoding="utf-8",
     )
     (root / "validation_summary.json").write_text(
-        json.dumps({"result": "N2B2_S20_SYNTHETIC_VALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW"}),
+        json.dumps(
+            {
+                "result": "N2B2_S20_SYNTHETIC_VALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW",
+                "gpu": {"peak_mib": 100},
+            }
+        ),
         encoding="utf-8",
     )
     for name in (
@@ -544,6 +550,20 @@ def _write_complete_release(root: Path) -> None:
         encoding="utf-8",
     )
     write_checksums(root)
+
+
+@pytest.mark.parametrize("peak", [None, True, "100", -1, 0, math.nan, math.inf, 11500.1, 11501])
+def test_complete_release_rejects_invalid_gpu_peak_type_or_value(
+    tmp_path: Path, peak: object
+) -> None:
+    _write_complete_release(tmp_path)
+    summary_path = tmp_path / "validation_summary.json"
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary["gpu"] = {"peak_mib": peak}
+    summary_path.write_text(json.dumps(summary, allow_nan=True), encoding="utf-8")
+    write_checksums(tmp_path)
+    with pytest.raises(ValueError, match="N2B2_S20_COMPLETE_ARTIFACT_INTEGRITY_MISMATCH"):
+        verify_release_checksums(tmp_path)
 
 
 def test_complete_release_rejects_stale_failure_summary(tmp_path: Path) -> None:

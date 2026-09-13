@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b2_runtime_revalidation_evidence_v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "candidate", "git_tree", "identity_observations", "commands", "artifacts", "resume", "forbidden_counters", "counter_evidence"],
+  "properties": {
+    "schema_version": {"const": "n2b2-runtime-revalidation-evidence-v1"},
+    "candidate": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "git_tree": {"$ref": "#/$defs/gitTree"},
+    "identity_observations": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/identity"}},
+    "commands": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/command"}},
+    "artifacts": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
+    "resume": {"$ref": "#/$defs/resume"},
+    "forbidden_counters": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "counter_evidence": {"const": "DECLARED_BY_RUNNER_NOT_INDEPENDENT_OS_TELEMETRY"}
+  },
+  "$defs": {
+    "gitTree": {"type": "object", "additionalProperties": false, "required": ["schema_version", "git_head", "git_tree", "tree_sha256", "file_count"], "properties": {"schema_version": {"const": "n2b2-git-tree-binding-v1"}, "git_head": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "git_tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "tree_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "file_count": {"type": "integer", "minimum": 1}}},
+    "identity": {"type": "object", "additionalProperties": false, "required": ["model_name", "full_local_digest", "size_bytes", "quantization_level", "capabilities", "ollama_version"], "properties": {"model_name": {"type": "string", "minLength": 1}, "full_local_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "size_bytes": {"type": "integer", "minimum": 1}, "quantization_level": {"type": "string", "minLength": 1}, "capabilities": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}, "ollama_version": {"type": "string", "minLength": 1}}},
+    "command": {"type": "object", "additionalProperties": false, "required": ["name", "exit_code", "status"], "properties": {"name": {"type": "string", "minLength": 1}, "exit_code": {"type": "integer"}, "status": {"type": "string", "minLength": 1}}},
+    "resume": {"type": "object", "additionalProperties": false, "required": ["status", "exit_code", "added", "changed", "removed"], "properties": {"status": {"type": "string", "minLength": 1}, "exit_code": {"type": "integer"}, "added": {"type": "integer", "minimum": 0}, "changed": {"type": "integer", "minimum": 0}, "removed": {"type": "integer", "minimum": 0}}}
+  }
+}

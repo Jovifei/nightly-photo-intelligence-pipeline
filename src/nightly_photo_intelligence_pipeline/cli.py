@@ -17,6 +17,7 @@ from __future__ import annotations
 import functools
 import json
 import os
+import platform
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TypeVar, cast
@@ -123,16 +124,35 @@ F = TypeVar("F", bound=Callable[..., Any])
 def _run_safely(func: F) -> F:
     """Decorator: map NpiError to a redacted stderr message + stable exit code."""
 
+    def finalize_reservation(status: str) -> None:
+        from .n2b2_synthetic.runtime_identity_revalidation import (
+            clear_active_one_shot_authorization,
+            finalize_active_one_shot_authorization,
+        )
+
+        try:
+            finalize_active_one_shot_authorization(status=status)  # type: ignore[arg-type]
+        except Exception:
+            if status == "COMPLETE":
+                raise
+        finally:
+            clear_active_one_shot_authorization()
+
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
-            return func(*args, **kwargs)
+            result = func(*args, **kwargs)
+            finalize_reservation("COMPLETE")
+            return result
         except NpiError as exc:
+            finalize_reservation("FAILED")
             _emit_error(exc)
             raise typer.Exit(code=int(exc.exit_code)) from None
         except typer.Exit:
+            finalize_reservation("FAILED")
             raise
         except Exception as exc:  # noqa: BLE001 - last-resort guard
+            finalize_reservation("FAILED")
             typer.echo("error_code: NPI_INTERNAL_ERROR", err=True)
             typer.echo(f"exit_code: {int(ExitCode.INTERNAL_ERROR)}", err=True)
             typer.echo(f"message: internal error ({type(exc).__name__})", err=True)
@@ -966,6 +986,7 @@ def n2b2_s20_validate(
 @_run_safely
 def n2b2_runtime_identity_revalidate(
     review_artifact: Path = typer.Option(..., "--review-artifact"),
+    execution_lease: Path = typer.Option(..., "--execution-lease"),
     prior_s20_review_record: Path = typer.Option(..., "--prior-s20-review-record"),
     old_s3_runtime: Path = typer.Option(..., "--old-s3-runtime"),
     old_s20_runtime: Path = typer.Option(..., "--old-s20-runtime"),
@@ -990,24 +1011,35 @@ def n2b2_runtime_identity_revalidate(
     from .n2b2_synthetic.ollama_client import ModelIdentity, OllamaClient
     from .n2b2_synthetic.runtime_identity_revalidation import (
         BASE_CANDIDATE,
+        EVIDENCE_SCHEMA_VERSION,
         RevalidationGateError,
+        activate_one_shot_authorization,
         assert_identity_stable,
+        build_revalidation_evidence,
+        canonical_identity,
+        git_tree_binding,
+        reserve_one_shot_authorization,
         snapshot_tree,
+        validate_external_path,
         validate_fresh_output,
-        validate_revalidation_authorization,
+        validate_root_set,
+        validate_source_bound_execution_lease,
     )
-    from .n2b2_synthetic.s20_bundle import write_checksums, write_json
-    from .n2b2_synthetic.s20_orchestrator import S20_COMPLETE, run_s20
+    from .n2b2_synthetic.s20_bundle import validate_artifact, write_checksums, write_json
+    from .n2b2_synthetic.s20_orchestrator import S20_COMPLETE, _source_digest, run_s20
 
     root = find_project_root()
 
     def external(value: Path, label: str) -> Path:
-        resolved = value.resolve(strict=True)
-        try:
-            if os.path.commonpath((str(root.resolve()), str(resolved))) == str(root.resolve()):
-                raise RuntimeError(f"{label} must be Git-external")
-        except ValueError:
-            pass
+        resolved = validate_external_path(value, project_root=root)
+        if not resolved.is_file():
+            raise RevalidationGateError(f"N2B2_RUNTIME_IDENTITY_REVALIDATION_BLOCKED: {label}")
+        return resolved
+
+    def external_dir(value: Path, label: str) -> Path:
+        resolved = validate_external_path(value, project_root=root)
+        if not resolved.is_dir():
+            raise RevalidationGateError(f"N2B2_RUNTIME_IDENTITY_REVALIDATION_BLOCKED: {label}")
         return resolved
 
     def identity_record(identity: ModelIdentity) -> dict[str, object]:
@@ -1030,73 +1062,123 @@ def n2b2_runtime_identity_revalidate(
         ).stdout.strip()
 
     review = external(review_artifact, "review artifact")
+    lease_path = external(execution_lease, "execution lease")
     prior_review = external(prior_s20_review_record, "prior S20 review record")
-    old_s3 = external(old_s3_runtime, "old S3 runtime")
-    old_s20 = external(old_s20_runtime, "old S20 runtime")
-    s3_manifest = external(s3_manifest_dir, "S3 manifest")
-    s20_manifest = external(s20_manifest_dir, "S20 manifest")
-    baseline_manifest = external(baseline_manifest_dir, "baseline manifest")
+    old_s3 = external_dir(old_s3_runtime, "old S3 runtime")
+    old_s20 = external_dir(old_s20_runtime, "old S20 runtime")
+    s3_manifest = external_dir(s3_manifest_dir, "S3 manifest")
+    s20_manifest = external_dir(s20_manifest_dir, "S20 manifest")
+    baseline_manifest = external_dir(baseline_manifest_dir, "baseline manifest")
     runtime = load_n2b1p_runtime_configuration(root)
+    consumption_root = runtime.runtime_parent / "n2b2-authorization-consumption"
+    resolved_roots = validate_root_set(
+        {
+            "project_root": root,
+            "cache_root": runtime.cache_root,
+            "old_s3": old_s3,
+            "old_s20": old_s20,
+            "s3_manifest": s3_manifest,
+            "s20_manifest": s20_manifest,
+            "baseline_manifest": baseline_manifest,
+            "s3_output": s3_out,
+            "s20_output": s20_out,
+            "evidence_output": evidence_out,
+            "consumption_root": consumption_root,
+        },
+        project_root=root,
+        allow_missing={"s3_output", "s20_output", "evidence_output", "consumption_root"},
+    )
     new_s3 = validate_fresh_output(
-        s3_out,
+        resolved_roots["s3_output"],
         project_root=root,
         cache_root=runtime.cache_root,
         old_roots=(old_s3, old_s20),
     )
     new_s20 = validate_fresh_output(
-        s20_out,
+        resolved_roots["s20_output"],
         project_root=root,
         cache_root=runtime.cache_root,
         old_roots=(old_s3, old_s20),
     )
     evidence = validate_fresh_output(
-        evidence_out,
+        resolved_roots["evidence_output"],
         project_root=root,
         cache_root=runtime.cache_root,
         old_roots=(old_s3, old_s20),
     )
-    if git("HEAD^") != BASE_CANDIDATE:
+    lease_schema = root / "schemas" / "n2b2_runtime_execution_lease_v1.schema.json"
+    if not lease_schema.is_file():
         raise RevalidationGateError(
-            "N2B2_RUNTIME_IDENTITY_REVALIDATION_BLOCKED: remediation parent drift"
+            "N2B2_RUNTIME_IDENTITY_REVALIDATION_BLOCKED: execution lease schema unavailable"
         )
-
-    receipt_path = (
-        root / "approvals" / "owner_n2b2_ollama_runtime_identity_revalidation_20260906.yaml"
-    )
-    receipt_schema = (
-        root / "schemas" / "owner_n2b2_ollama_runtime_identity_revalidation_v1.schema.json"
-    )
-    if not receipt_path.is_file() or not receipt_schema.is_file():
+    lease = yaml.safe_load(lease_path.read_text(encoding="utf-8"))
+    if not isinstance(lease, dict):
         raise RevalidationGateError(
-            "N2B2_RUNTIME_IDENTITY_REVALIDATION_BLOCKED: receipt unavailable"
+            "N2B2_RUNTIME_IDENTITY_REVALIDATION_BLOCKED: invalid execution lease"
         )
-    receipt = yaml.safe_load(receipt_path.read_text(encoding="utf-8"))
-    if not isinstance(receipt, dict):
-        raise RevalidationGateError("N2B2_RUNTIME_IDENTITY_REVALIDATION_BLOCKED: invalid receipt")
     from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 
-    schema = load_json_strict(receipt_schema)
-    if list(Draft202012Validator(schema).iter_errors(receipt)):
-        raise RevalidationGateError("N2B2_RUNTIME_IDENTITY_REVALIDATION_BLOCKED: receipt schema")
+    schema = load_json_strict(lease_schema)
+    if list(Draft202012Validator(schema).iter_errors(lease)):
+        raise RevalidationGateError(
+            "N2B2_RUNTIME_IDENTITY_REVALIDATION_BLOCKED: execution lease schema"
+        )
     old_identity = load_json_strict(old_s20 / "ollama_identity.json")
     if not isinstance(old_identity, dict):
         raise RevalidationGateError("N2B2_RUNTIME_IDENTITY_REVALIDATION_BLOCKED: old identity")
-    client = OllamaClient()
-    current_identity = identity_record(client.verify_identity())
+    current_head = git("HEAD")
+    tree_binding = git_tree_binding(root)
     state_path = root / "PROJECT_STATE.json"
-    permit = validate_revalidation_authorization(
-        receipt,
-        review_sha256=hashlib.sha256(review.read_bytes()).hexdigest(),
+    review_sha256 = hashlib.sha256(review.read_bytes()).hexdigest()
+    lease_sha256 = hashlib.sha256(lease_path.read_bytes()).hexdigest()
+    validate_source_bound_execution_lease(
+        lease,
+        lease_sha256=lease_sha256,
+        current_head=current_head,
+        current_tree=tree_binding,
+        project_state_sha256=hashlib.sha256(state_path.read_bytes()).hexdigest(),
+        project_state_n2b2=str(load_json_strict(state_path)["phase_status"]["N2B2"]),
+        old_identity=old_identity,
+        current_identity=None,
+        review_sha256=review_sha256,
         review_text=review.read_text(encoding="utf-8"),
+    )
+    reservation = reserve_one_shot_authorization(
+        resolved_roots["consumption_root"],
+        project_root=root,
+        receipt_sha256=lease_sha256,
+        source_candidate=current_head,
+    )
+    activate_one_shot_authorization(reservation)
+    client = OllamaClient()
+    identities: list[dict[str, object]] = []
+    commands: list[dict[str, object]] = []
+
+    def observe_identity() -> dict[str, object]:
+        observed = identity_record(client.verify_identity())
+        if identities:
+            assert_identity_stable(identities[-1], observed)
+        identities.append(observed)
+        return observed
+
+    current_identity = observe_identity()
+    validate_source_bound_execution_lease(
+        lease,
+        lease_sha256=lease_sha256,
+        current_head=current_head,
+        current_tree=tree_binding,
         project_state_sha256=hashlib.sha256(state_path.read_bytes()).hexdigest(),
         project_state_n2b2=str(load_json_strict(state_path)["phase_status"]["N2B2"]),
         old_identity=old_identity,
         current_identity=current_identity,
-        current_head=BASE_CANDIDATE,
+        review_sha256=review_sha256,
+        review_text=review.read_text(encoding="utf-8"),
     )
     old_s3_before = snapshot_tree(old_s3)
     old_s20_before = snapshot_tree(old_s20)
-    identities = [current_identity]
+    s3_manifest_before = snapshot_tree(s3_manifest)
+    s20_manifest_before = snapshot_tree(s20_manifest)
+    baseline_manifest_before = snapshot_tree(baseline_manifest)
 
     schemas = root / "schemas"
     vision_schema = load_json_strict(schemas / "n2b2_vision_fact_contract.schema.json")
@@ -1115,8 +1197,7 @@ def n2b2_runtime_identity_revalidate(
         device="cuda",
         s3_only=True,
     )
-    assert_identity_stable(identities[-1], identity_record(client.verify_identity()))
-    identities.append(identity_record(client.verify_identity()))
+    observe_identity()
     s3_result = run_n2b2(
         config=s3_config,
         s3_fixtures=s3_fixtures,
@@ -1130,9 +1211,9 @@ def n2b2_runtime_identity_revalidate(
     )
     if s3_result.result != "N2B2_SYNTHETIC_SMOKE_VALIDATION_COMPLETE_AWAITING_OWNER_REVIEW":
         raise RevalidationGateError("N2B2_OLLAMA_RUNTIME_IDENTITY_REVALIDATION_FAILED: fresh S3")
+    commands.append({"name": "fresh_s3", "exit_code": 0, "status": "PASS"})
     write_json(new_s3 / "validation_summary.json", s3_result.summary)
-    assert_identity_stable(identities[-1], identity_record(client.verify_identity()))
-    identities.append(identity_record(client.verify_identity()))
+    observe_identity()
 
     new_s20.mkdir(parents=True)
     s20_config = N2B2RunConfig(
@@ -1169,8 +1250,8 @@ def n2b2_runtime_identity_revalidate(
     s20_summary = run_s20(**common)
     if s20_summary.get("result") != S20_COMPLETE:
         raise RevalidationGateError("N2B2_OLLAMA_RUNTIME_IDENTITY_REVALIDATION_FAILED: fresh S20")
-    assert_identity_stable(identities[-1], identity_record(client.verify_identity()))
-    identities.append(identity_record(client.verify_identity()))
+    commands.append({"name": "fresh_s20", "exit_code": 0, "status": "PASS"})
+    observe_identity()
     before_resume = snapshot_tree(new_s20)
     resumed = run_s20(**common, resume=True)
     after_resume = snapshot_tree(new_s20)
@@ -1178,29 +1259,78 @@ def n2b2_runtime_identity_revalidate(
         raise RevalidationGateError(
             "N2B2_OLLAMA_RUNTIME_IDENTITY_REVALIDATION_FAILED: no-op resume"
         )
-    assert_identity_stable(identities[-1], identity_record(client.verify_identity()))
-    identities.append(identity_record(client.verify_identity()))
-    if snapshot_tree(old_s3) != old_s3_before or snapshot_tree(old_s20) != old_s20_before:
+    commands.append({"name": "s20_noop_resume", "exit_code": 0, "status": "PASS"})
+    observe_identity()
+    if (
+        snapshot_tree(old_s3) != old_s3_before
+        or snapshot_tree(old_s20) != old_s20_before
+        or snapshot_tree(s3_manifest) != s3_manifest_before
+        or snapshot_tree(s20_manifest) != s20_manifest_before
+        or snapshot_tree(baseline_manifest) != baseline_manifest_before
+    ):
         raise RevalidationGateError(
-            "N2B2_RUNTIME_IDENTITY_REVALIDATION_FAILED: old evidence mutated"
+            "N2B2_RUNTIME_IDENTITY_REVALIDATION_FAILED: protected evidence or fixture input mutated"
         )
 
     evidence.mkdir(parents=True)
     counters = s20_summary.get("hard_counts", {})
+    before_files = set(before_resume.entries)
+    after_files = set(after_resume.entries)
+    resume_evidence = {
+        "status": resumed["resume_status"],
+        "exit_code": 0,
+        "added": len(after_files - before_files),
+        "changed": sum(
+            before_resume.entries[name] != after_resume.entries[name]
+            for name in before_files & after_files
+        ),
+        "removed": len(before_files - after_files),
+    }
+    artifact_hashes = {
+        "s3_summary_sha256": hashlib.sha256(
+            (new_s3 / "validation_summary.json").read_bytes()
+        ).hexdigest(),
+        "s20_summary_sha256": hashlib.sha256(
+            (new_s20 / "validation_summary.json").read_bytes()
+        ).hexdigest(),
+        "s20_checkpoint_sha256": hashlib.sha256(
+            (new_s20 / "checkpoint.json").read_bytes()
+        ).hexdigest(),
+        "s20_runtime_metrics_sha256": hashlib.sha256(
+            (new_s20 / "runtime_metrics.json").read_bytes()
+        ).hexdigest(),
+        "s20_checksums_sha256": hashlib.sha256(
+            (new_s20 / "CHECKSUMS.sha256").read_bytes()
+        ).hexdigest(),
+    }
+    evidence_payload = build_revalidation_evidence(
+        candidate=current_head,
+        tree=tree_binding,
+        identities=identities,
+        commands=commands,
+        artifacts=artifact_hashes,
+        resume=resume_evidence,
+        forbidden_counters=counters,
+    )
     transition = {
         "schema_version": "1.0",
         "base_candidate": BASE_CANDIDATE,
-        "remediation_candidate": git("HEAD"),
-        "external_review_sha256": hashlib.sha256(review.read_bytes()).hexdigest(),
+        "remediation_candidate": current_head,
+        "external_review_sha256": review_sha256,
         "old_identity": old_identity,
         "new_identity": current_identity,
-        "old_identity_sha256": permit.old_identity_sha256,
-        "new_identity_sha256": permit.new_identity_sha256,
-        "identity_diff_fields": list(permit.identity_diff_fields),
+        "old_identity_sha256": hashlib.sha256(canonical_identity(old_identity)).hexdigest(),
+        "new_identity_sha256": hashlib.sha256(canonical_identity(current_identity)).hexdigest(),
+        "identity_diff_fields": ["ollama_version"],
         "old_evidence_mutation_count": 0,
         "forbidden_counters": counters,
     }
     write_json(evidence / "runtime_identity_transition.json", transition)
+    evidence_path = evidence / "revalidation_evidence.json"
+    write_json(evidence_path, evidence_payload)
+    validate_artifact(
+        evidence_path, root / "schemas" / "n2b2_runtime_revalidation_evidence_v1.schema.json"
+    )
     write_json(evidence / "forbidden_action_counters.json", counters)
     write_json(evidence / "resume_before_hashes.json", {"files": before_resume.entries})
     write_json(evidence / "resume_after_hashes.json", {"files": after_resume.entries})
@@ -1209,21 +1339,56 @@ def n2b2_runtime_identity_revalidate(
         {
             "result": "N2B2_OLLAMA_0_33_3_SYNTHETIC_REVALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW",
             "identity_checkpoint_count": len(identities),
-            "s3_summary_sha256": hashlib.sha256(
-                (new_s3 / "validation_summary.json").read_bytes()
-            ).hexdigest(),
-            "s20_summary_sha256": hashlib.sha256(
-                (new_s20 / "validation_summary.json").read_bytes()
-            ).hexdigest(),
+            "s3_summary_sha256": artifact_hashes["s3_summary_sha256"],
+            "s20_summary_sha256": artifact_hashes["s20_summary_sha256"],
+            "s20_checkpoint_sha256": artifact_hashes["s20_checkpoint_sha256"],
+            "s20_runtime_metrics_sha256": artifact_hashes["s20_runtime_metrics_sha256"],
+            "s20_checksums_sha256": artifact_hashes["s20_checksums_sha256"],
+            "git_tree_binding": tree_binding,
+            "runtime_source_sha256": _source_digest(root),
+            "commands": commands,
+            "identity_observations": identities,
+            "forbidden_counters": counters,
             "resume_status": resumed["resume_status"],
-            "added": 0,
-            "changed": 0,
-            "removed": 0,
+            "added": resume_evidence["added"],
+            "changed": resume_evidence["changed"],
+            "removed": resume_evidence["removed"],
         },
     )
-    write_json(evidence / "quality_matrix.json", {"runtime_gate": "PASS"})
+    write_json(
+        evidence / "quality_matrix.json",
+        {
+            "schema_version": EVIDENCE_SCHEMA_VERSION,
+            "runtime_gate": "PASS",
+            "python_version": platform.python_version(),
+            "candidate": current_head,
+            "git_tree": tree_binding,
+            "identity_observations": identities,
+            "commands": commands,
+            "artifacts": artifact_hashes,
+            "resume": resume_evidence,
+            "forbidden_counters": counters,
+            "counter_evidence": "DECLARED_BY_RUNNER_NOT_INDEPENDENT_OS_TELEMETRY",
+        },
+    )
     (evidence / "remediation_result.md").write_text(
-        "N2B2_OLLAMA_0_33_3_SYNTHETIC_REVALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW\n",
+        "\n".join(
+            (
+                "N2B2_OLLAMA_0_33_3_SYNTHETIC_REVALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW",
+                f"candidate={current_head}",
+                f"git_tree={tree_binding['git_tree']}",
+                f"identity_observations={len(identities)}",
+                f"fresh_s3_exit_code={commands[0]['exit_code']}",
+                f"fresh_s20_exit_code={commands[1]['exit_code']}",
+                f"noop_resume_exit_code={resume_evidence['exit_code']}",
+                f"noop_resume_status={resume_evidence['status']}",
+                f"noop_resume_delta=added:{resume_evidence['added']},changed:{resume_evidence['changed']},removed:{resume_evidence['removed']}",
+                f"s20_checksums_sha256={artifact_hashes['s20_checksums_sha256']}",
+                f"s20_checkpoint_sha256={artifact_hashes['s20_checkpoint_sha256']}",
+                "production_n2b2=LOCKED",
+            )
+        )
+        + "\n",
         encoding="utf-8",
     )
     write_checksums(evidence)

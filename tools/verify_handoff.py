@@ -38,11 +38,16 @@ N2B2_S20_REVIEW_CANDIDATE_SHA = "c1008132654d32e7ac6a2032eb5d3a2c7e07cdb6"
 N2B2_OWNER_AUTH_TASK = "tasks/phase_n2b2_authorized_synthetic_validation_20260823.yaml"
 N2B2_OWNER_AUTH_RECEIPT = "approvals/owner_n2b2_synthetic_model_stack_validation.yaml"
 N2B1P_PHASE_COMPLETION = "approvals/phase_completion_N2B1P.yaml"
-N2B2_RUNTIME_REVALIDATION_TASK = "tasks/phase_n2b2_ollama_runtime_identity_revalidation_20260906.yaml"
+N2B2_RUNTIME_REVALIDATION_TASK = (
+    "tasks/phase_n2b2_ollama_runtime_identity_revalidation_20260906.yaml"
+)
 N2B2_RUNTIME_REVALIDATION_RECEIPT = (
     "approvals/owner_n2b2_ollama_runtime_identity_revalidation_20260906.yaml"
 )
 N2B2_REVIEW_CONTROL_PLANE_SHA = "d83f96271f754763d61cedcc314fc725c840c86f"
+N2B2_RUNTIME_REVALIDATION_SHA = "da638bab6a61fe6fc466521cc60abcacfea9120a"
+REVIEW_TOOLING_OVERLAY_SHA = "3b453efed300dbe4d9e7f410697da1fb2d797f70"
+REVIEW_TOOLING_MANIFEST = "review_tools/MANIFEST.sha256"
 
 errors: list[str] = []
 passes: list[str] = []
@@ -604,7 +609,10 @@ def check_runtime_identity_revalidation_contract() -> None:
     )
     valid = all(
         (
-            _validate("schemas/owner_n2b2_ollama_runtime_identity_revalidation_v1.schema.json", receipt),
+            _validate(
+                "schemas/owner_n2b2_ollama_runtime_identity_revalidation_v1.schema.json",
+                receipt,
+            ),
             isinstance(task, dict),
             task.get("phase", {}).get("status") == "AUTHORIZED_SYNTHETIC_REVALIDATION_ONLY",
             task.get("authorization", {}).get("base_candidate") == N2B2_REVIEW_CONTROL_PLANE_SHA,
@@ -658,6 +666,17 @@ def check_baselines() -> None:
         or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "2")
     ):
         fail("N2B2 integration candidate must be exactly one child of portability remediation")
+    elif git("rev-parse", "HEAD") == (0, REVIEW_TOOLING_OVERLAY_SHA) and (
+        git("rev-parse", "HEAD^") != (0, N2B2_RUNTIME_REVALIDATION_SHA)
+        or git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "5")
+        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "4")
+    ):
+        fail("review-tooling overlay must be one direct child of the frozen runtime candidate")
+    elif git("rev-parse", "HEAD^") == (0, REVIEW_TOOLING_OVERLAY_SHA) and (
+        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "6")
+        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "5")
+    ):
+        fail("F1-F6 remediation must be one direct child of the review-tooling overlay")
     elif git("rev-parse", "HEAD") != (0, N2B1P_SHA) and not (
         (
             git("rev-parse", "HEAD^") == (0, N2B1P_SHA)
@@ -684,6 +703,17 @@ def check_baselines() -> None:
             and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "4")
             and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "3")
         )
+        or (
+            git("rev-parse", "HEAD") == (0, REVIEW_TOOLING_OVERLAY_SHA)
+            and git("rev-parse", "HEAD^") == (0, N2B2_RUNTIME_REVALIDATION_SHA)
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "5")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "4")
+        )
+        or (
+            git("rev-parse", "HEAD^") == (0, REVIEW_TOOLING_OVERLAY_SHA)
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "6")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "5")
+        )
     ):
         fail("N2B2 review candidate must be exactly one direct child of N2B1P")
     elif git("rev-list", "--merges", "HEAD") != (0, ""):
@@ -698,28 +728,55 @@ def check_baselines() -> None:
 
 
 def check_manifest() -> None:
-    listed: dict[str, str] = {}
-    try:
-        for line in (ROOT / "MANIFEST.sha256").read_text(encoding="utf-8").splitlines():
+    def read_manifest(path: Path) -> dict[str, str]:
+        listed: dict[str, str] = {}
+        for line in path.read_text(encoding="utf-8").splitlines():
             if not line.strip():
                 continue
             digest, rel = line.split("  ", 1)
             if not re.fullmatch(r"[0-9a-f]{64}", digest) or rel in listed:
                 raise ValueError("invalid digest or duplicate path")
             listed[rel] = digest
+        return listed
+
+    try:
+        listed = read_manifest(ROOT / "MANIFEST.sha256")
     except (OSError, ValueError) as exc:
         fail(f"MANIFEST.sha256 is invalid: {type(exc).__name__}")
         return
     rc, tracked_text = git("ls-files")
     tracked = {rel for rel in tracked_text.splitlines() if rel and rel != "MANIFEST.sha256"}
-    if rc != 0 or set(listed) != tracked:
+    overlay_manifest = "review_tools/MANIFEST.sha256"
+    overlay_tracked = {rel for rel in tracked if rel.startswith("review_tools/")}
+    if rc != 0 or set(listed) != tracked - overlay_tracked:
         fail("MANIFEST.sha256 does not bind exactly the tracked current-stage file set")
         return
     mismatches = [rel for rel, digest in listed.items() if sha256_index_file(rel) != digest]
     if mismatches:
         fail("MANIFEST.sha256 hash mismatch: " + ", ".join(sorted(mismatches)))
-    elif git("status", "--porcelain", "--untracked-files=all") != (0, ""):
+        return
+    if overlay_manifest in tracked:
+        try:
+            overlay = read_manifest(ROOT / overlay_manifest)
+        except (OSError, ValueError) as exc:
+            fail(f"review_tools/MANIFEST.sha256 is invalid: {type(exc).__name__}")
+            return
+        if set(overlay) != overlay_tracked - {overlay_manifest}:
+            fail("review_tools/MANIFEST.sha256 does not bind the tracked overlay file set")
+            return
+        overlay_mismatches = [
+            rel for rel, digest in overlay.items() if sha256_index_file(rel) != digest
+        ]
+        if overlay_mismatches:
+            fail(
+                "review_tools/MANIFEST.sha256 hash mismatch: "
+                + ", ".join(sorted(overlay_mismatches))
+            )
+            return
+    if git("status", "--porcelain", "--untracked-files=all") != (0, ""):
         fail("worktree is not clean")
+    elif overlay_manifest in tracked:
+        ok("root and review_tools manifests bind the complete tracked file set; worktree is clean")
     else:
         ok("MANIFEST.sha256 binds every tracked current-stage file; worktree is clean")
 
@@ -785,6 +842,16 @@ def main() -> int:
     elif git("rev-parse", "HEAD^") == (0, N2B2_REVIEW_CONTROL_PLANE_SHA):
         print(
             "HANDOFF_VALID: one-shot Ollama runtime-identity revalidation candidate; "
+            "production N2B2 remains LOCKED"
+        )
+    elif git("rev-parse", "HEAD") == (0, REVIEW_TOOLING_OVERLAY_SHA):
+        print(
+            "HANDOFF_VALID: review-tooling overlay after the frozen runtime candidate; "
+            "production N2B2 remains LOCKED"
+        )
+    elif git("rev-parse", "HEAD^") == (0, REVIEW_TOOLING_OVERLAY_SHA):
+        print(
+            "HANDOFF_VALID: F1-F6 code-remediation candidate after the review-tooling overlay; "
             "production N2B2 remains LOCKED"
         )
     else:

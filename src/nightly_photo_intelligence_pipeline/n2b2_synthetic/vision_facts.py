@@ -42,21 +42,63 @@ def _frame_contact(box: dict[str, float], width: int, height: int) -> dict[str, 
     }
 
 
-def _negative_space(boxes: list[dict[str, float]], width: int, height: int) -> dict[str, float]:
-    total = float(width * height)
-    occupied = 0.0
-    for b in boxes:
-        occupied += max(0.0, b["x_max"] - b["x_min"]) * max(0.0, b["y_max"] - b["y_min"])
-    occupied = min(occupied, total)
-    fg_ratio = occupied / total if total else 0.0
-    # Simple quad split: assume boxes pull from the centre, leaving margins.
-    left = right = top = bottom = fg_ratio / 4.0
+def _union_area(boxes: list[tuple[float, float, float, float]]) -> float:
+    xs = sorted({x for box in boxes for x in (box[0], box[2])})
+    slabs: list[float] = []
+    for left, right in zip(xs, xs[1:], strict=False):
+        intervals = sorted((y0, y1) for x0, y0, x1, y1 in boxes if x0 < right and x1 > left)
+        occupied = 0.0
+        if intervals:
+            start, end = intervals[0]
+            for low, high in intervals[1:]:
+                if low > end:
+                    occupied += end - start
+                    start, end = low, high
+                else:
+                    end = max(end, high)
+            occupied += end - start
+        slabs.append((right - left) * occupied)
+    return math.fsum(slabs)
+
+
+def _negative_space(boxes: list[dict[str, float]], width: int, height: int) -> dict[str, Any]:
+    if width <= 0 or height <= 0 or len(boxes) > 256:
+        raise ValueError("invalid negative-space frame")
+    normalized: list[tuple[float, float, float, float]] = []
+    for box in boxes:
+        try:
+            x0, y0, x1, y1 = (float(box[key]) for key in ("x_min", "y_min", "x_max", "y_max"))
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("invalid negative-space box") from exc
+        if not all(math.isfinite(value) for value in (x0, y0, x1, y1)):
+            raise ValueError("invalid negative-space box")
+        if x0 > x1 or y0 > y1:
+            raise ValueError("inverted negative-space box")
+        x0, x1 = max(0.0, min(float(width), x0)), max(0.0, min(float(width), x1))
+        y0, y1 = max(0.0, min(float(height), y0)), max(0.0, min(float(height), y1))
+        if x0 < x1 and y0 < y1:
+            normalized.append((x0 / width, y0 / height, x1 / width, y1 / height))
+
+    def empty(region: tuple[float, float, float, float]) -> float:
+        rx0, ry0, rx1, ry1 = region
+        clipped = [
+            (max(x0, rx0), max(y0, ry0), min(x1, rx1), min(y1, ry1))
+            for x0, y0, x1, y1 in normalized
+        ]
+        occupied = _union_area([box for box in clipped if box[0] < box[2] and box[1] < box[3]])
+        area = (rx1 - rx0) * (ry1 - ry0)
+        return _finite(max(0.0, min(1.0, 1.0 - occupied / area)))
+
     return {
-        "left_ratio": _finite(left),
-        "right_ratio": _finite(right),
-        "top_ratio": _finite(top),
-        "bottom_ratio": _finite(bottom),
-        "total_negative_ratio": _finite(1.0 - fg_ratio),
+        "method": "bbox-union-half-frame-empty-area-v1",
+        "measurement_kind": "BBOX_EMPTY_AREA_PROXY_NOT_AESTHETIC_NEGATIVE_SPACE",
+        "coordinate_system": "pixel_edges",
+        "directional_denominator": "corresponding_half_frame_area",
+        "left_ratio": empty((0.0, 0.0, 0.5, 1.0)),
+        "right_ratio": empty((0.5, 0.0, 1.0, 1.0)),
+        "top_ratio": empty((0.0, 0.0, 1.0, 0.5)),
+        "bottom_ratio": empty((0.0, 0.5, 1.0, 1.0)),
+        "total_negative_ratio": empty((0.0, 0.0, 1.0, 1.0)),
     }
 
 

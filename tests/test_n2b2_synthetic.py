@@ -34,6 +34,7 @@ from nightly_photo_intelligence_pipeline.n2b2_synthetic.torchvision_loader impor
     verify_cache_hit,
 )
 from nightly_photo_intelligence_pipeline.n2b2_synthetic.vision_facts import (
+    _negative_space,
     build_vision_facts,
     compute_fact_digest,
 )
@@ -473,6 +474,25 @@ def test_fact_immutability():
         ),
     )
     assert compute_fact_digest(f1) == compute_fact_digest(f2)
+
+
+def test_negative_space_metrics_are_directional_and_versioned():
+    left = [{"x_min": 0.0, "y_min": 0.0, "x_max": 20.0, "y_max": 100.0}]
+    right = [{"x_min": 80.0, "y_min": 0.0, "x_max": 100.0, "y_max": 100.0}]
+    overlap = [
+        {"x_min": 0.0, "y_min": 0.0, "x_max": 40.0, "y_max": 100.0},
+        {"x_min": 20.0, "y_min": 0.0, "x_max": 60.0, "y_max": 100.0},
+    ]
+
+    left_metrics = _negative_space(left, 100, 100)
+    right_metrics = _negative_space(right, 100, 100)
+    overlap_metrics = _negative_space(overlap, 100, 100)
+
+    assert left_metrics["method"] == "bbox-union-half-frame-empty-area-v1"
+    assert left_metrics["directional_denominator"] == "corresponding_half_frame_area"
+    assert (left_metrics["left_ratio"], left_metrics["right_ratio"]) == (0.6, 1.0)
+    assert (right_metrics["left_ratio"], right_metrics["right_ratio"]) == (1.0, 0.6)
+    assert overlap_metrics["total_negative_ratio"] == 0.4
 
 
 def test_reference_bundle_checksum():

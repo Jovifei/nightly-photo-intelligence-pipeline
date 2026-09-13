@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from datetime import UTC, datetime
 from pathlib import Path
@@ -209,7 +210,17 @@ def _validate_complete_layout(root: Path, payload: dict[str, Any]) -> None:
     if payload.get("result") != S20_COMPLETE:
         raise _integrity_error("validation summary is not COMPLETE")
     gpu = payload.get("gpu")
-    if isinstance(gpu, dict) and isinstance(gpu.get("peak_mib"), int) and gpu["peak_mib"] > 11500:
+    peak = gpu.get("peak_mib") if isinstance(gpu, dict) else None
+    try:
+        valid_peak = (
+            type(peak) is not bool
+            and isinstance(peak, (int, float))
+            and math.isfinite(float(peak))
+            and 0 < peak <= 11500
+        )
+    except (OverflowError, TypeError, ValueError):
+        valid_peak = False
+    if not valid_peak:
         raise _integrity_error("validation summary exceeds the GPU ceiling")
     if (root / "failure_summary.json").exists():
         raise _integrity_error("successful release contains failure_summary.json")

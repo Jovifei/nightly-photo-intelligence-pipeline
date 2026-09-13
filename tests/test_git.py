@@ -30,6 +30,8 @@ N2B1P_PORTABILITY_CANDIDATE = "0fef0a8f6a2f2b2f75ce2fba3e3eef1e764037b8"
 N2B2_GPU_REVIEW_CANDIDATE = "49e653b27884f9ba09d15ca17682e496687dc59f"
 N2B2_S20_REVIEW_CANDIDATE = "c1008132654d32e7ac6a2032eb5d3a2c7e07cdb6"
 N2B2_REVIEW_CONTROL_PLANE_CANDIDATE = "d83f96271f754763d61cedcc314fc725c840c86f"
+N2B2_RUNTIME_REVALIDATION_CANDIDATE = "da638bab6a61fe6fc466521cc60abcacfea9120a"
+N2B2_REVIEW_TOOLING_OVERLAY = "3b453efed300dbe4d9e7f410697da1fb2d797f70"
 
 SENSITIVE_SUFFIXES = (
     ".db",
@@ -80,6 +82,23 @@ def _is_runtime_identity_revalidation_candidate(project_root: Path) -> bool:
     return parent == N2B2_REVIEW_CONTROL_PLANE_CANDIDATE and count.stdout.strip() == "3"
 
 
+def _is_review_tooling_overlay_candidate(project_root: Path) -> bool:
+    head = _git(project_root, "rev-parse", "HEAD").stdout.strip()
+    parent = _git(project_root, "rev-parse", "HEAD^").stdout.strip()
+    count = _git(project_root, "rev-list", "--count", f"{N2B1P_BASELINE}..HEAD")
+    return (
+        head == N2B2_REVIEW_TOOLING_OVERLAY
+        and parent == N2B2_RUNTIME_REVALIDATION_CANDIDATE
+        and count.stdout.strip() == "4"
+    )
+
+
+def _is_runtime_remediation_candidate(project_root: Path) -> bool:
+    parent = _git(project_root, "rev-parse", "HEAD^").stdout.strip()
+    count = _git(project_root, "rev-list", "--count", f"{N2B1P_BASELINE}..HEAD")
+    return parent == N2B2_REVIEW_TOOLING_OVERLAY and count.stdout.strip() == "5"
+
+
 def test_git_approved_tags_and_ancestry_are_exact(project_root: Path) -> None:
     assert _git(project_root, "rev-parse", N0_TAG).stdout.strip() == N0_BASELINE
     assert _git(project_root, "rev-parse", N1_TAG).stdout.strip() == N1_BASELINE
@@ -116,6 +135,10 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
         candidate_offset = 2
     elif _is_runtime_identity_revalidation_candidate(project_root):
         candidate_offset = 3
+    elif _is_review_tooling_overlay_candidate(project_root):
+        candidate_offset = 4
+    elif _is_runtime_remediation_candidate(project_root):
+        candidate_offset = 5
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         candidate_offset = 1
     else:
@@ -164,6 +187,16 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
         assert post_n2b1r == 4
         assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() == (
             N2B2_REVIEW_CONTROL_PLANE_CANDIDATE
+        )
+    elif _is_review_tooling_overlay_candidate(project_root):
+        assert post_n2b1r == 5
+        assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() == (
+            N2B2_RUNTIME_REVALIDATION_CANDIDATE
+        )
+    elif _is_runtime_remediation_candidate(project_root):
+        assert post_n2b1r == 6
+        assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() == (
+            N2B2_REVIEW_TOOLING_OVERLAY
         )
     else:
         assert post_n2b1r == 1 + candidate_offset
@@ -215,6 +248,10 @@ def test_n2b1p_candidate_is_resolved_not_hardcoded(project_root: Path) -> None:
         expected_count = 3
     elif _is_runtime_identity_revalidation_candidate(project_root):
         expected_count = 4
+    elif _is_review_tooling_overlay_candidate(project_root):
+        expected_count = 5
+    elif _is_runtime_remediation_candidate(project_root):
+        expected_count = 6
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         expected_count = 2
     else:

@@ -25,23 +25,38 @@ def _read_manifest(root: Path) -> dict[str, str]:
     return listed
 
 
-def test_current_stage_manifest_binds_every_tracked_file(project_root: Path) -> None:
-    """The current stage hashes every tracked file, including governance."""
-    listed = _read_manifest(project_root)
+def _tracked_files(root: Path) -> set[str]:
     result = subprocess.run(
-        ["git", "-C", str(project_root), "ls-files"],
+        ["git", "-C", str(root), "ls-files"],
         capture_output=True,
         text=True,
         check=False,
     )
     assert result.returncode == 0
-    tracked = {line for line in result.stdout.splitlines() if line and line != "MANIFEST.sha256"}
-    assert set(listed) == tracked
+    return {line for line in result.stdout.splitlines() if line}
+
+
+def test_current_stage_manifest_binds_every_tracked_file(project_root: Path) -> None:
+    """The root and review manifests jointly hash every tracked file."""
+    listed = _read_manifest(project_root)
+    tracked = _tracked_files(project_root) - {"MANIFEST.sha256"}
+    overlay_manifest = "review_tools/MANIFEST.sha256"
+    overlay_tracked = {rel for rel in tracked if rel.startswith("review_tools/")}
+    assert set(listed) == tracked - overlay_tracked
     for rel, digest in listed.items():
         p = project_root / rel
         assert p.is_file(), f"manifest file missing: {rel}"
         actual = hashlib.sha256(p.read_bytes()).hexdigest()
         assert actual == digest, f"manifest hash mismatch: {rel}"
+    if overlay_manifest in tracked:
+        overlay = _read_manifest(project_root / "review_tools")
+        assert set(overlay) == overlay_tracked - {overlay_manifest}
+        for rel, digest in overlay.items():
+            p = project_root / rel
+            assert p.is_file(), f"overlay manifest file missing: {rel}"
+            assert hashlib.sha256(p.read_bytes()).hexdigest() == digest
+    else:
+        assert not overlay_tracked
 
 
 def test_at_n0_ho_01_fixtures_match_fixture_manifest(
@@ -158,6 +173,7 @@ def test_current_handoff_verifier_passes(project_root: Path) -> None:
         or "bounded N2B2 S20 artifact-integrity review candidate" in result.stdout
         or "linear N2B1P portability plus bounded N2B2 synthetic review candidate" in result.stdout
         or "one-shot Ollama runtime-identity revalidation candidate" in result.stdout
+        or "F1-F6 code-remediation candidate after the review-tooling overlay" in result.stdout
     )
 
 
