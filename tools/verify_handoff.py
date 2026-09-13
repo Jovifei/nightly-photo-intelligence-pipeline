@@ -49,6 +49,7 @@ N2B2_RUNTIME_REVALIDATION_SHA = "da638bab6a61fe6fc466521cc60abcacfea9120a"
 REVIEW_TOOLING_OVERLAY_SHA = "3b453efed300dbe4d9e7f410697da1fb2d797f70"
 REVIEW_TOOLING_MANIFEST = "review_tools/MANIFEST.sha256"
 ENGINEERING_REPAIR_BASE_SHA = "ed8e3d9eb750505ee3cf501f6adfe91aab03fea8"
+ENGINEERING_FOLLOWUP_BASE_SHA = "1a3eb113055248eda891793d281fd226070b82e5"
 
 errors: list[str] = []
 passes: list[str] = []
@@ -656,9 +657,14 @@ def check_runtime_identity_revalidation_contract() -> None:
 def check_engineering_repair_profile() -> None:
     """Validate the code-only child without changing old state or approvals."""
 
-    if git("rev-parse", "HEAD^") != (0, ENGINEERING_REPAIR_BASE_SHA):
+    parent = git("rev-parse", "HEAD^")
+    if parent not in {
+        (0, ENGINEERING_REPAIR_BASE_SHA),
+        (0, ENGINEERING_FOLLOWUP_BASE_SHA),
+    }:
         return
-    changed = git("diff", "--name-only", f"{ENGINEERING_REPAIR_BASE_SHA}..HEAD")
+    parent_sha = parent[1]
+    changed = git("diff", "--name-only", f"{parent_sha}..HEAD")
     changed_paths = set(changed[1].splitlines()) if changed[0] == 0 else set()
     protected = {"PROJECT_STATE.json", N2B2_RUNTIME_REVALIDATION_RECEIPT}
     if changed[0] != 0:
@@ -670,10 +676,8 @@ def check_engineering_repair_profile() -> None:
     state_hash = sha256(ROOT / "PROJECT_STATE.json")
     approval_hash = sha256(ROOT / N2B2_RUNTIME_REVALIDATION_RECEIPT)
     if state_hash != sha256_git_file(
-        ENGINEERING_REPAIR_BASE_SHA, "PROJECT_STATE.json"
-    ) or approval_hash != sha256_git_file(
-        ENGINEERING_REPAIR_BASE_SHA, N2B2_RUNTIME_REVALIDATION_RECEIPT
-    ):
+        parent_sha, "PROJECT_STATE.json"
+    ) or approval_hash != sha256_git_file(parent_sha, N2B2_RUNTIME_REVALIDATION_RECEIPT):
         fail("code-only engineering profile changed the bound state or old approval")
         return
     state = load_json("PROJECT_STATE.json")
@@ -742,6 +746,11 @@ def check_baselines() -> None:
         or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "6")
     ):
         fail("engineering repair must be one direct child of the F1-F6 remediation candidate")
+    elif git("rev-parse", "HEAD^") == (0, ENGINEERING_FOLLOWUP_BASE_SHA) and (
+        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "8")
+        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "7")
+    ):
+        fail("engineering follow-up must be one direct child of the engineering repair candidate")
     elif git("rev-parse", "HEAD") != (0, N2B1P_SHA) and not (
         (
             git("rev-parse", "HEAD^") == (0, N2B1P_SHA)
@@ -783,6 +792,11 @@ def check_baselines() -> None:
             git("rev-parse", "HEAD^") == (0, ENGINEERING_REPAIR_BASE_SHA)
             and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "7")
             and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "6")
+        )
+        or (
+            git("rev-parse", "HEAD^") == (0, ENGINEERING_FOLLOWUP_BASE_SHA)
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "8")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "7")
         )
     ):
         fail("N2B2 review candidate must be exactly one direct child of N2B1P")
@@ -928,6 +942,11 @@ def main() -> int:
     elif git("rev-parse", "HEAD^") == (0, ENGINEERING_REPAIR_BASE_SHA):
         print(
             "HANDOFF_VALID: engineering repair candidate after the F1-F6 remediation; "
+            "production N2B2 remains LOCKED"
+        )
+    elif git("rev-parse", "HEAD^") == (0, ENGINEERING_FOLLOWUP_BASE_SHA):
+        print(
+            "HANDOFF_VALID: engineering follow-up candidate after the engineering repair; "
             "production N2B2 remains LOCKED"
         )
     else:

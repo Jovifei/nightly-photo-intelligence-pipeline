@@ -300,3 +300,11 @@
   surrounding runtime directory. Verify that input boundary before allocating
   CUDA or starting any local model service; the corrected v4 invocation made
   no model load or output write before this check.
+
+## 2026-09-14 N2B2 engineering review correction
+
+- A path-plan snapshot is only an admission precondition: recheck every bound
+  ancestor immediately before reservation or a protected write, and regress by
+  replacing a protected root after `validate_plan` returns.
+- Every numeric producer boundary, including segmentation ratios, must reject
+  NaN and infinities before canonicalization; never convert invalid values to zero.

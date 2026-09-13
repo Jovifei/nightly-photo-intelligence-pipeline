@@ -19,9 +19,7 @@ from .torchvision_loader import RawPoseDetections, RawSegmentation
 
 def _finite(value: float) -> float:
     if not math.isfinite(value):
-        # Canonicalise non-finite to 0.0; this is a defensive guard because the
-        # contract forbids NaN/Infinity in any fact payload.
-        return 0.0
+        raise ValueError("NPI_NONFINITE_VISION_FACT")
     return round(value, 6)
 
 

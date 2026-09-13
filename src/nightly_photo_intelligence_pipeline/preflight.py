@@ -1094,6 +1094,7 @@ def _check_git_baselines() -> CheckResult:
         n2b2_runtime_candidate = "da638bab6a61fe6fc466521cc60abcacfea9120a"
         review_tooling_overlay = "3b453efed300dbe4d9e7f410697da1fb2d797f70"
         engineering_repair_base = "ed8e3d9eb750505ee3cf501f6adfe91aab03fea8"
+        engineering_followup_base = "1a3eb113055248eda891793d281fd226070b82e5"
         head = git("rev-parse", "HEAD")[1]
         portability_candidate = head == n2b1p_portability and git("rev-parse", "HEAD^") == (
             0,
@@ -1125,6 +1126,11 @@ def _check_git_baselines() -> CheckResult:
             and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "6")
             and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "7")
         )
+        engineering_followup_topology = (
+            git("rev-parse", "HEAD^") == (0, engineering_followup_base)
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "7")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "8")
+        )
         portability_record_ok = True
         if (
             portability_candidate
@@ -1133,6 +1139,7 @@ def _check_git_baselines() -> CheckResult:
             or tooling_overlay_topology
             or runtime_remediation_topology
             or engineering_repair_topology
+            or engineering_followup_topology
         ):
             record_path = root / "research" / "N2B1P_manifest_portability_remediation.json"
             schema_path = root / "schemas" / "n2b1p_manifest_portability_remediation_v1.schema.json"
@@ -1192,7 +1199,8 @@ def _check_git_baselines() -> CheckResult:
             or runtime_identity_revalidation_topology
             or tooling_overlay_topology
             or runtime_remediation_topology
-            or engineering_repair_topology,
+            or engineering_repair_topology
+            or engineering_followup_topology,
             portability_record_ok,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),
@@ -1208,6 +1216,7 @@ def _check_git_baselines() -> CheckResult:
                 "authorization candidate after c100813, or one direct Ollama runtime-identity "
                 "revalidation candidate after d83f962, followed by the review-tooling overlay "
                 "and code-remediation candidate, followed by the engineering repair candidate; "
+                "an engineering follow-up candidate may follow that repair; "
                 "no merge; worktree clean"
             ),
         )

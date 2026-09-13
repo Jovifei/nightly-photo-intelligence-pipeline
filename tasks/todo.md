@@ -1738,3 +1738,21 @@ out of scope.
   history and used only for the package's exact-base check/apply worktree.
 - No model, Ollama process, real photo, EXIF, Real20, App, production Bundle, or
   `PROJECT_STATE.json` mutation has occurred in this repair.
+
+## N2B2 F1/F3 review follow-up — 2026-09-14
+
+### Plan
+
+- [x] Reproduce the independent F3 protected-root replacement and F1 non-finite
+  segmentation findings on the published `1a3eb113` candidate.
+- [x] Add failing regressions, implement only `recheck()` and strict finite-value
+  fixes, and pass the affected 3.12.10 tests.
+- [ ] Update exact follow-up topology/manifest, run the clean supported-environment
+  quality matrix, and create one normal child commit.
+- [ ] Push the child candidate and report the remaining native capability gap;
+  do not authorize model execution.
+
+### Review
+
+- Independent review evidence was reproduced without model, photo, EXIF, SQLite,
+  App, or lease access. The final status remains pending full revalidation.

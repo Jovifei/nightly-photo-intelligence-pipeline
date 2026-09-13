@@ -13,8 +13,11 @@ and reference-bundle checksums.
 from __future__ import annotations
 
 import json
+import math
 import re
 from pathlib import Path
+
+import pytest
 
 from nightly_photo_intelligence_pipeline.domain.errors import NPI_SECURITY_BOUNDARY
 from nightly_photo_intelligence_pipeline.json_strict import load_json_strict
@@ -493,6 +496,27 @@ def test_negative_space_metrics_are_directional_and_versioned():
     assert (left_metrics["left_ratio"], left_metrics["right_ratio"]) == (0.6, 1.0)
     assert (right_metrics["left_ratio"], right_metrics["right_ratio"]) == (1.0, 0.6)
     assert overlap_metrics["total_negative_ratio"] == 0.4
+
+
+@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf])
+def test_vision_facts_reject_nonfinite_segmentation_ratio(value: float):
+    pose = RawPoseDetections(
+        person_boxes=[{"x_min": 1.0, "y_min": 1.0, "x_max": 20.0, "y_max": 20.0}],
+        pose_keypoints=[[{"x": 1.0, "y": 1.0, "score": 0.9} for _ in range(17)]],
+        pose_scores=[0.9],
+    )
+    with pytest.raises(ValueError, match="NPI_NONFINITE_VISION_FACT"):
+        build_vision_facts(
+            case_id="n2b2-s3-01",
+            image_sha256="0" * 64,
+            generator_version="test",
+            seed=1,
+            width=100,
+            height=100,
+            pose=pose,
+            seg_primary=RawSegmentation(person_mask_ratio=value),
+            seg_comparator=RawSegmentation(person_mask_ratio=0.2),
+        )
 
 
 def test_reference_bundle_checksum():

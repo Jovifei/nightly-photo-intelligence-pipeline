@@ -12,7 +12,7 @@ from typing import Any, cast
 from .common import EngineeringError, canonical, is_digest, require, sha256
 from .evidence import quality_matrix, validate_identity_observations, validate_resume_evidence
 from .lease import Reservation, finish, reserve, validate_lease
-from .path_policy import validate_plan
+from .path_policy import recheck, validate_plan
 from .readiness import python_check
 from .source_identity import full_source_identity
 
@@ -184,6 +184,7 @@ def run_controlled_execution(
 
     reservation: Reservation | None = None
     try:
+        recheck(checked_paths)
         reservation = reserve(
             plan.ledger_root,
             permit,

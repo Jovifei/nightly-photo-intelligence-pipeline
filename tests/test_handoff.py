@@ -175,6 +175,7 @@ def test_current_handoff_verifier_passes(project_root: Path) -> None:
         or "one-shot Ollama runtime-identity revalidation candidate" in result.stdout
         or "F1-F6 code-remediation candidate after the review-tooling overlay" in result.stdout
         or "engineering repair candidate after the F1-F6 remediation" in result.stdout
+        or "engineering follow-up candidate after the engineering repair" in result.stdout
     )
 
 

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
+from nightly_photo_intelligence_pipeline.engineering import controlled_entry
 from nightly_photo_intelligence_pipeline.engineering.common import canonical, sha256
 from nightly_photo_intelligence_pipeline.engineering.controlled_entry import (
     ControlledExecutionPlan,
@@ -206,6 +207,37 @@ class ControlledEntryTests(unittest.TestCase):
             run_controlled_execution(
                 plan, now=NOW, identity_probe=lambda: self.identity, execute=self._evidence
             )
+        self.assertEqual(list(self.ledger.iterdir()), [])
+
+    def test_recheck_blocks_replaced_protected_root(self) -> None:
+        original_validate = controlled_entry.validate_plan
+        called = False
+
+        def replace_after_validate(**kwargs: object) -> dict[str, object]:
+            checked = original_validate(**kwargs)  # type: ignore[arg-type]
+            old_root = self.inputs["old_s3"]
+            old_root.rename(self.external / "old_s3_saved")
+            old_root.mkdir()
+            return checked  # type: ignore[return-value]
+
+        def execute() -> dict[str, Any]:
+            nonlocal called
+            called = True
+            return self._evidence()
+
+        with (
+            self.assertRaisesRegex(ValueError, "NPI_BOUND_ROOT_CHANGED"),
+            patch.object(sys, "version_info", (3, 12, 10)),
+            patch.object(
+                controlled_entry,
+                "validate_plan",
+                side_effect=replace_after_validate,
+            ),
+        ):
+            run_controlled_execution(
+                self.plan, now=NOW, identity_probe=lambda: self.identity, execute=execute
+            )
+        self.assertFalse(called)
         self.assertEqual(list(self.ledger.iterdir()), [])
 
     def test_failed_callback_consumes_lease(self) -> None:
