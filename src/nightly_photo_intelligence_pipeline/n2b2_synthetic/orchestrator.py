@@ -506,6 +506,7 @@ def run_n2b2(  # noqa: PLR0911
         "sqlite_write_count": 0,
         "app_write_count": 0,
         "obsidian_write_count": 0,
+        "model_download_bytes": 0,
     }
     try:
         cache_entries = verify_cache_hit(config.cache_root, config.cache_subdirs)

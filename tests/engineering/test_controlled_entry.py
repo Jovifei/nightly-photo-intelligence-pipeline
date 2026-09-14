@@ -13,6 +13,7 @@ from unittest.mock import patch
 from nightly_photo_intelligence_pipeline.engineering import controlled_entry
 from nightly_photo_intelligence_pipeline.engineering.common import canonical, sha256
 from nightly_photo_intelligence_pipeline.engineering.controlled_entry import (
+    REQUIRED_FORBIDDEN_COUNTERS,
     ControlledExecutionPlan,
     path_plan_digest,
     run_controlled_execution,
@@ -141,7 +142,7 @@ class ControlledEntryTests(unittest.TestCase):
                 "model_load_count": 0,
             },
             "artifacts": {"s3_summary": "1" * 64, "s20_summary": "2" * 64},
-            "forbidden_counters": {"runner_loads": 0, "content_reads": 0},
+            "forbidden_counters": dict.fromkeys(REQUIRED_FORBIDDEN_COUNTERS, 0),
         }
 
     def test_fake_callback_runs_only_after_reservation(self) -> None:

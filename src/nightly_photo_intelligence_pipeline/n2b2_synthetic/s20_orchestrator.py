@@ -488,6 +488,7 @@ def run_s20(
                 "manifest_sha256": manifest_digest,
                 "bundle_count": 20,
                 "hard_counts": _hard_counts(),
+                "model_load_count": 0,
             }
         if existing.get("status") in {"FAILED", "QWEN_FAILED"}:
             raise ValueError(

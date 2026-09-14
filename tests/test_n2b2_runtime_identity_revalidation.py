@@ -511,3 +511,45 @@ def test_runtime_cli_requires_a_fresh_source_bound_execution_lease() -> None:
     assert result.exit_code != 0
     assert help_result.exit_code == 0
     assert "--execution-lease" in help_result.output
+
+
+def test_runtime_cli_routes_to_the_controlled_adapter(monkeypatch, tmp_path: Path) -> None:
+    from typer.testing import CliRunner
+
+    import nightly_photo_intelligence_pipeline.cli as cli_module
+    from nightly_photo_intelligence_pipeline.cli import app
+
+    captured: dict[str, object] = {}
+
+    def fake_adapter(**kwargs: object) -> dict[str, str]:
+        captured.update(kwargs)
+        return {"result": "CONTROLLED_EXECUTION_FAKE_COMPLETE"}
+
+    monkeypatch.setattr(
+        cli_module,
+        "run_controlled_runtime_revalidation",
+        fake_adapter,
+        raising=False,
+    )
+    values = {
+        "review-artifact": tmp_path / "review.txt",
+        "execution-lease": tmp_path / "lease.json",
+        "execution-lease-sha256": "a" * 64,
+        "quality-evidence": tmp_path / "quality.json",
+        "prior-s20-review-record": tmp_path / "prior.json",
+        "old-s3-runtime": tmp_path / "old-s3",
+        "old-s20-runtime": tmp_path / "old-s20",
+        "s3-manifest-dir": tmp_path / "s3-manifest",
+        "s20-manifest-dir": tmp_path / "s20-manifest",
+        "baseline-manifest-dir": tmp_path / "baseline-manifest",
+        "s3-out": tmp_path / "s3-out",
+        "s20-out": tmp_path / "s20-out",
+        "evidence-out": tmp_path / "evidence-out",
+    }
+    command = ["n2b2", "runtime-identity-revalidate"]
+    for name, path in values.items():
+        command.extend([f"--{name}", str(path)])
+    result = CliRunner().invoke(app, command)
+    assert result.exit_code == 0, result.output
+    assert captured["execution_lease_sha256"] == "a" * 64
+    assert captured["quality_evidence"] == values["quality-evidence"]

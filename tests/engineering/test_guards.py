@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.metadata
 import subprocess
+import sys
 import tempfile
 import threading
 import unittest
@@ -30,6 +31,9 @@ from nightly_photo_intelligence_pipeline.engineering.lease import (
     finish,
     reserve,
     validate_lease,
+)
+from nightly_photo_intelligence_pipeline.engineering.native_capability import (
+    symlink_privilege_gap,
 )
 from nightly_photo_intelligence_pipeline.engineering.path_policy import (
     _linked,
@@ -181,7 +185,10 @@ class PathTests(unittest.TestCase):
         try:
             link.symlink_to(self.inputs["fixtures"], target_is_directory=True)
         except OSError as exc:
-            self.skipTest(f"native symlink capability unavailable: {exc.__class__.__name__}")
+            reason = symlink_privilege_gap(exc, platform=sys.platform)
+            if reason is None:
+                raise
+            self.skipTest(reason)
         with self.assertRaisesRegex(EngineeringError, "REPARSE"):
             checked_path(link / "output", must_exist=False)
 

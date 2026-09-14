@@ -50,6 +50,7 @@ REVIEW_TOOLING_OVERLAY_SHA = "3b453efed300dbe4d9e7f410697da1fb2d797f70"
 REVIEW_TOOLING_MANIFEST = "review_tools/MANIFEST.sha256"
 ENGINEERING_REPAIR_BASE_SHA = "ed8e3d9eb750505ee3cf501f6adfe91aab03fea8"
 ENGINEERING_FOLLOWUP_BASE_SHA = "1a3eb113055248eda891793d281fd226070b82e5"
+AUDIT_FIX_C_BASE_SHA = "45d4abd1099169ba6e5c92c7f7f6656e94748efb"
 
 errors: list[str] = []
 passes: list[str] = []
@@ -661,6 +662,7 @@ def check_engineering_repair_profile() -> None:
     if parent not in {
         (0, ENGINEERING_REPAIR_BASE_SHA),
         (0, ENGINEERING_FOLLOWUP_BASE_SHA),
+        (0, AUDIT_FIX_C_BASE_SHA),
     }:
         return
     parent_sha = parent[1]
@@ -751,6 +753,11 @@ def check_baselines() -> None:
         or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "7")
     ):
         fail("engineering follow-up must be one direct child of the engineering repair candidate")
+    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_C_BASE_SHA) and (
+        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "9")
+        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "8")
+    ):
+        fail("audit fix C must be one direct child of the F1/F3 follow-up candidate")
     elif git("rev-parse", "HEAD") != (0, N2B1P_SHA) and not (
         (
             git("rev-parse", "HEAD^") == (0, N2B1P_SHA)
@@ -797,6 +804,11 @@ def check_baselines() -> None:
             git("rev-parse", "HEAD^") == (0, ENGINEERING_FOLLOWUP_BASE_SHA)
             and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "8")
             and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "7")
+        )
+        or (
+            git("rev-parse", "HEAD^") == (0, AUDIT_FIX_C_BASE_SHA)
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "9")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "8")
         )
     ):
         fail("N2B2 review candidate must be exactly one direct child of N2B1P")
@@ -947,6 +959,11 @@ def main() -> int:
     elif git("rev-parse", "HEAD^") == (0, ENGINEERING_FOLLOWUP_BASE_SHA):
         print(
             "HANDOFF_VALID: engineering follow-up candidate after the engineering repair; "
+            "production N2B2 remains LOCKED"
+        )
+    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_C_BASE_SHA):
+        print(
+            "HANDOFF_VALID: audit fix C candidate after the F1/F3 follow-up; "
             "production N2B2 remains LOCKED"
         )
     else:

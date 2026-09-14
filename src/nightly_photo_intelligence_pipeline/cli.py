@@ -51,6 +51,7 @@ from .local_research_acquisition import (
     preflight_transfer,
 )
 from .local_research_promotion import load_authorized_promotion, promote_artifact
+from .n2b2_synthetic.controlled_runtime import run_controlled_runtime_revalidation
 from .persistence.sqlite import StateStore
 from .preflight import FAIL, format_preflight_text, run_preflight
 from .redaction import redact_text
@@ -984,9 +985,7 @@ def n2b2_s20_validate(
         raise typer.Exit(code=int(ExitCode.PARTIAL_FAILURE))
 
 
-@n2b2_app.command("runtime-identity-revalidate")
-@_run_safely
-def n2b2_runtime_identity_revalidate(
+def _legacy_runtime_identity_revalidate(
     review_artifact: Path = typer.Option(..., "--review-artifact"),
     execution_lease: Path = typer.Option(..., "--execution-lease"),
     prior_s20_review_record: Path = typer.Option(..., "--prior-s20-review-record"),
@@ -1000,6 +999,8 @@ def n2b2_runtime_identity_revalidate(
     evidence_out: Path = typer.Option(..., "--evidence-out"),
 ) -> None:
     """Run the one Owner-approved synthetic revalidation under Ollama 0.33.3."""
+
+    raise GateNotAuthorizedError("NPI_LEGACY_RUNTIME_REVALIDATION_DISABLED")
 
     import hashlib
     import subprocess
@@ -1395,6 +1396,50 @@ def n2b2_runtime_identity_revalidate(
     )
     write_checksums(evidence)
     typer.echo("N2B2_OLLAMA_0_33_3_SYNTHETIC_REVALIDATION_COMPLETE_AWAITING_EXTERNAL_REVIEW")
+
+
+@n2b2_app.command("runtime-identity-revalidate")
+@_run_safely
+def n2b2_runtime_identity_revalidate(
+    review_artifact: Path = typer.Option(..., "--review-artifact"),
+    execution_lease: Path = typer.Option(..., "--execution-lease"),
+    execution_lease_sha256: str = typer.Option(..., "--execution-lease-sha256"),
+    quality_evidence: Path = typer.Option(..., "--quality-evidence"),
+    prior_s20_review_record: Path = typer.Option(..., "--prior-s20-review-record"),
+    old_s3_runtime: Path = typer.Option(..., "--old-s3-runtime"),
+    old_s20_runtime: Path = typer.Option(..., "--old-s20-runtime"),
+    s3_manifest_dir: Path = typer.Option(..., "--s3-manifest-dir"),
+    s20_manifest_dir: Path = typer.Option(..., "--s20-manifest-dir"),
+    baseline_manifest_dir: Path = typer.Option(..., "--baseline-manifest-dir"),
+    s3_out: Path = typer.Option(..., "--s3-out"),
+    s20_out: Path = typer.Option(..., "--s20-out"),
+    evidence_out: Path = typer.Option(..., "--evidence-out"),
+) -> None:
+    """Run the source-bound controlled synthetic revalidation entry."""
+
+    from .engineering.common import EngineeringError
+
+    try:
+        result = run_controlled_runtime_revalidation(
+            project_root=find_project_root(),
+            review_artifact=review_artifact,
+            execution_lease=execution_lease,
+            execution_lease_sha256=execution_lease_sha256,
+            quality_evidence=quality_evidence,
+            prior_s20_review_record=prior_s20_review_record,
+            old_s3_runtime=old_s3_runtime,
+            old_s20_runtime=old_s20_runtime,
+            s3_manifest_dir=s3_manifest_dir,
+            s20_manifest_dir=s20_manifest_dir,
+            baseline_manifest_dir=baseline_manifest_dir,
+            s3_out=s3_out,
+            s20_out=s20_out,
+            evidence_out=evidence_out,
+        )
+    except EngineeringError as exc:
+        raise GateNotAuthorizedError(str(exc)) from exc
+    typer.echo(str(result["result"]))
+    typer.echo("controlled evidence written")
 
 
 @n2b2_app.command("qwen-contract-probe")

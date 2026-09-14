@@ -1756,3 +1756,24 @@ out of scope.
 
 - Independent review evidence was reproduced without model, photo, EXIF, SQLite,
   App, or lease access. The final status remains pending full revalidation.
+
+## N2B2 audit fix C — 2026-09-14
+
+### Plan
+
+- [x] Verify the C package, SHA256SUMS, remote baseline, and clean isolated worktree;
+  preserve the primary AGENTS.md edit.
+- [x] Apply the evidence/root/native fixes and keep the original F1/F3 regressions.
+- [x] Connect the public runtime command to one controlled adapter, one lease, one
+  ledger, the existing S3/S20 runners, and an independent resume worker.
+- [x] Add fake Typer end-to-end rejection coverage for authorization, binding, quality,
+  artifact, counter, and pre-reservation path failures.
+- [ ] Rebuild the index-derived manifest, run clean-tree supported-environment gates,
+  create one direct child of 45d4abd, and push the named review branch.
+
+### Review
+
+- C package hash and internal SHA256SUMS passed; no model, Ollama, photo, EXIF,
+  Real20, App, Bundle, or PROJECT_STATE execution has occurred.
+- Adapter and fake command tests pass; final commit, manifest, full quality matrix,
+  and independent review remain pending.

@@ -308,3 +308,9 @@
   replacing a protected root after `validate_plan` returns.
 - Every numeric producer boundary, including segmentation ratios, must reject
   NaN and infinities before canonicalization; never convert invalid values to zero.
+
+## 2026-09-14 N2B2 controlled CLI integration
+
+- A tested admission library is not proof that the public command uses it. Keep
+  one public adapter as the only command path, reserve once after the last recheck,
+  and make the existing runner subprocess return actual exit and log evidence.

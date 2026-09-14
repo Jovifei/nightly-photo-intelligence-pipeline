@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -9,12 +10,26 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
-from .common import EngineeringError, canonical, is_digest, require, sha256
+from .common import EngineeringError, canonical, is_digest, require, sha256, strict_json
 from .evidence import quality_matrix, validate_identity_observations, validate_resume_evidence
 from .lease import Reservation, finish, reserve, validate_lease
-from .path_policy import recheck, validate_plan
+from .path_policy import overlaps, recheck, validate_plan
 from .readiness import python_check
 from .source_identity import full_source_identity
+
+# Absence is not zero. These are callback declarations, not OS measurements.
+REQUIRED_FORBIDDEN_COUNTERS = frozenset(
+    {
+        "real_photo_read_count",
+        "real_exif_read_count",
+        "g1_source_access",
+        "sqlite_write_count",
+        "app_write_count",
+        "production_bundle_count",
+        "model_download_bytes",
+    }
+)
+_EVIDENCE_LABEL = re.compile(r"[a-z][a-z0-9_]{0,63}\Z")
 
 
 @dataclass(frozen=True)
@@ -50,15 +65,45 @@ def path_plan_digest(
     return sha256(canonical(payload))
 
 
+def _bind_operational_roots(plan: ControlledExecutionPlan) -> None:
+    """Bind the actual reservation destination to the Owner-bound path plan.
+
+    Do not resolve aliases here: validate_plan must still see and reject links.
+    A caller cannot reset a consumed allowance by selecting another ledger while
+    leaving the signed path-plan digest unchanged.
+    """
+    require(
+        plan.protected.get("ledger_root") == plan.ledger_root,
+        "NPI_LEDGER_ROOT_BINDING_MISMATCH",
+    )
+    require(
+        plan.protected.get("project_root") == plan.project_root,
+        "NPI_PROJECT_ROOT_BINDING_MISMATCH",
+    )
+    blockers = [*plan.inputs.values()]
+    blockers.extend(path for name, path in plan.protected.items() if name != "ledger_root")
+    require(
+        all(not overlaps(plan.ledger_root, path) for path in blockers),
+        "NPI_LEDGER_ROOT_OVERLAP",
+    )
+
+
 def _bind_static_inputs(
     plan: ControlledExecutionPlan, source: Mapping[str, Any], path_digest: str
 ) -> None:
     state = plan.project_root / "PROJECT_STATE.json"
+    state_bytes = state.read_bytes()
+    payload = strict_json(state_bytes)
+    phase_status = payload.get("phase_status") if isinstance(payload, Mapping) else None
+    require(
+        isinstance(phase_status, Mapping) and phase_status.get("N2B2") == "LOCKED",
+        "NPI_PROJECT_STATE_BOUNDARY_VIOLATION",
+    )
     expected = {
         "candidate_commit": source["candidate_commit"],
         "candidate_tree": source["candidate_tree"],
         "source_manifest_sha256": source["source_manifest_sha256"],
-        "project_state_sha256": sha256(state.read_bytes()),
+        "project_state_sha256": sha256(state_bytes),
         "path_plan_sha256": path_digest,
     }
     for name, value in expected.items():
@@ -118,20 +163,30 @@ def _validate_callback_evidence(
     if not (
         isinstance(artifacts, Mapping)
         and bool(artifacts)
-        and all(isinstance(key, str) and is_digest(value) for key, value in artifacts.items()),
+        and all(
+            isinstance(key, str) and _EVIDENCE_LABEL.fullmatch(key) is not None and is_digest(value)
+            for key, value in artifacts.items()
+        )
     ):
         raise EngineeringError("NPI_ARTIFACT_EVIDENCE_INVALID")
     artifacts = cast(Mapping[str, object], artifacts)
-    counters = result.get("forbidden_counters", {})
+    # Never synthesize missing observations, and never accept a nonzero
+    # forbidden action as a successfully completed controlled execution.
+    counters = result.get("forbidden_counters")
     if not (
         isinstance(counters, Mapping)
+        and REQUIRED_FORBIDDEN_COUNTERS.issubset(counters)
         and all(
-            isinstance(key, str) and type(value) is int and value >= 0
+            isinstance(key, str)
+            and _EVIDENCE_LABEL.fullmatch(key) is not None
+            and type(value) is int
+            and value >= 0
             for key, value in counters.items()
-        ),
+        )
     ):
         raise EngineeringError("NPI_COUNTER_EVIDENCE_INVALID")
-    counters = cast(Mapping[str, object], counters)
+    counters = cast(Mapping[str, int], counters)
+    require(all(value == 0 for value in counters.values()), "NPI_FORBIDDEN_ACTION_RECORDED")
     return {
         "quality_matrix": quality,
         "identity_observations_sha256": identity_sha,
@@ -147,6 +202,7 @@ def run_controlled_execution(
     now: datetime,
     identity_probe: Callable[[], Mapping[str, object]],
     execute: Callable[[], Mapping[str, Any]],
+    evidence_sink: Callable[[Mapping[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     """Admit one source-bound synthetic run and consume its lease exactly once.
 
@@ -159,6 +215,7 @@ def run_controlled_execution(
     support = python_check(version)
     require(support["status"] == "PASS", "NPI_UNSUPPORTED_PYTHON")
 
+    _bind_operational_roots(plan)
     source = full_source_identity(plan.project_root)
     checked_paths = validate_plan(
         inputs=plan.inputs, outputs=plan.outputs, protected=plan.protected
@@ -204,7 +261,13 @@ def run_controlled_execution(
                 "runtime_identity_sha256": runtime_identity_sha,
             }
         )
+        supplemental = callback_result.get("supplemental_evidence")
+        if supplemental is not None:
+            require(isinstance(supplemental, Mapping), "NPI_SUPPLEMENTAL_EVIDENCE_INVALID")
+            evidence["supplemental_evidence"] = dict(supplemental)
         evidence_sha = sha256(canonical(evidence))
+        if evidence_sink is not None:
+            evidence_sink(evidence)
         finish(reservation, outcome="COMPLETE", evidence_sha256=evidence_sha, now=now)
         return {
             "result": "CONTROLLED_EXECUTION_COMPLETE",
