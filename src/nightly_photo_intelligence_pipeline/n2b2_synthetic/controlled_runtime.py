@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import platform
+import re
 import stat
 import subprocess
 import sys
@@ -46,7 +47,11 @@ IdentityProbe = Callable[[], Mapping[str, object]]
 Execute = Callable[[], Mapping[str, Any]]
 _LEASE_SCHEMA = "npi_synthetic_execution_lease_v2.schema.json"
 _WORKER_MODULE = "nightly_photo_intelligence_pipeline.n2b2_synthetic.controlled_runtime_worker"
+_WORKER_CALL = f"from {_WORKER_MODULE} import run_from_stdin; raise SystemExit(run_from_stdin())"
 _LEDGER_DIR = "n2b2-controlled-execution-ledger"
+_COUNTER_LABEL = re.compile(r"[a-z][a-z0-9_]{0,63}\Z")
+_TASK_RECEIPT = "approvals/owner_n2b2_ollama_runtime_identity_revalidation_20260906.yaml"
+_TASK_RECEIPT_SCHEMA = "schemas/owner_n2b2_ollama_runtime_identity_revalidation_v1.schema.json"
 
 
 def _checked_dir(value: Path) -> Path:
@@ -54,8 +59,19 @@ def _checked_dir(value: Path) -> Path:
     return Path(value)
 
 
+def _validate_file_syntax(path: Path) -> None:
+    require(path.is_absolute(), "NPI_PATH_NOT_ABSOLUTE")
+    require(".." not in path.parts, "NPI_PATH_TRAVERSAL")
+    require(not str(path).startswith(("\\\\", "//")), "NPI_NETWORK_PATH_DENIED")
+    require(
+        all(":" not in part for part in path.parts[1:]),
+        "NPI_ALTERNATE_STREAM_DENIED",
+    )
+
+
 def _regular_file(path: Path, *, nonempty: bool = True) -> tuple[Path, bytes]:
     candidate = Path(path)
+    _validate_file_syntax(candidate)
     checked_path(candidate.parent, must_exist=True)
     try:
         info = candidate.lstat()
@@ -138,6 +154,54 @@ def _validate_lease_schema(project_root: Path, lease: Mapping[str, Any]) -> None
     require(not errors, "NPI_LEASE_SCHEMA_INVALID")
 
 
+def _load_task_specific_receipt(project_root: Path) -> Mapping[str, object]:
+    try:
+        import yaml
+
+        payload = yaml.safe_load((project_root / _TASK_RECEIPT).read_text(encoding="utf-8"))
+        schema = strict_json((project_root / _TASK_RECEIPT_SCHEMA).read_bytes())
+    except Exception as exc:
+        raise EngineeringError("NPI_TASK_RECEIPT_INVALID") from exc
+    require(isinstance(payload, Mapping), "NPI_TASK_RECEIPT_INVALID")
+    require(
+        not list(Draft202012Validator(schema).iter_errors(payload)),
+        "NPI_TASK_RECEIPT_INVALID",
+    )
+    return cast(Mapping[str, object], payload)
+
+
+def _validate_task_specific_receipt(
+    *,
+    receipt: Mapping[str, object],
+    review_bytes: bytes,
+    state_bytes: bytes,
+    old_identity: Mapping[str, object],
+    current_identity: Mapping[str, object],
+) -> None:
+    try:
+        review_text = review_bytes.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise EngineeringError("NPI_REVIEW_ARTIFACT_INVALID") from exc
+    from .runtime_identity_revalidation import (
+        BASE_CANDIDATE,
+        validate_revalidation_authorization,
+    )
+
+    try:
+        validate_revalidation_authorization(
+            receipt,
+            review_sha256=sha256(review_bytes),
+            review_text=review_text,
+            project_state_sha256=sha256(state_bytes),
+            project_state_n2b2="LOCKED",
+            old_identity=old_identity,
+            current_identity=current_identity,
+            current_head=BASE_CANDIDATE,
+        )
+    except ValueError as exc:
+        raise EngineeringError("NPI_TASK_RECEIPT_BINDING_INVALID") from exc
+
+
 def _identity_record(identity: Any) -> dict[str, object]:
     values = {
         "model_name": getattr(identity, "model_name", None),
@@ -186,10 +250,10 @@ def _write_exclusive_json(path: Path, value: object) -> None:
 def _run_worker(
     *, project_root: Path, mode: str, configuration: Mapping[str, object]
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    command = [Path(sys.executable).name, "-m", _WORKER_MODULE, "--mode", mode]
+    command = [Path(sys.executable).name, "-c", _WORKER_CALL, "--mode", mode]
     try:
         completed = subprocess.run(
-            [sys.executable, "-m", _WORKER_MODULE, "--mode", mode],
+            [sys.executable, "-c", _WORKER_CALL, "--mode", mode],
             cwd=str(project_root),
             input=canonical(configuration),
             capture_output=True,
@@ -214,14 +278,22 @@ def _run_worker(
 
 
 def _combine_counters(*values: object) -> dict[str, int]:
-    total = dict.fromkeys(REQUIRED_FORBIDDEN_COUNTERS, 0)
+    total: dict[str, int] = {}
     for value in values:
         require(isinstance(value, Mapping), "NPI_COUNTER_EVIDENCE_INVALID")
         counters = cast(Mapping[str, object], value)
-        for name in REQUIRED_FORBIDDEN_COUNTERS:
-            count = counters.get(name)
+        require(
+            REQUIRED_FORBIDDEN_COUNTERS.issubset(counters),
+            "NPI_COUNTER_EVIDENCE_INVALID",
+        )
+        for name, count in counters.items():
+            require(
+                isinstance(name, str) and _COUNTER_LABEL.fullmatch(name) is not None,
+                "NPI_COUNTER_EVIDENCE_INVALID",
+            )
             require(type(count) is int and count >= 0, "NPI_COUNTER_EVIDENCE_INVALID")
-            total[name] += cast(int, count)
+            total[name] = total.get(name, 0) + cast(int, count)
+    require(REQUIRED_FORBIDDEN_COUNTERS.issubset(total), "NPI_COUNTER_EVIDENCE_INVALID")
     return total
 
 
@@ -280,6 +352,9 @@ def _default_execute(
     file_fingerprints: Mapping[Path, tuple[int, int, int, int, str]],
     identity_observations: list[dict[str, object]],
     prior_review: Path,
+    ledger_root: Path,
+    receipt_sha256: str,
+    bindings_sha256: str,
 ) -> Execute:
     def execute() -> Mapping[str, Any]:
         _assert_file_fingerprint(file_fingerprints)
@@ -303,6 +378,10 @@ def _default_execute(
             "s20_out": str(outputs["s20_out"]),
             "prior_s20_review_record": str(prior_review),
             "reviewed_commit": str(source["candidate_commit"]),
+            "ledger_root": str(ledger_root),
+            "reservation_dir": str(ledger_root / receipt_sha256),
+            "receipt_sha256": receipt_sha256,
+            "bindings_sha256": bindings_sha256,
         }
         fresh_payload, fresh_command = _run_worker(
             project_root=project_root, mode="fresh", configuration=configuration
@@ -469,6 +548,14 @@ def run_controlled_runtime_revalidation(
         isinstance(reviewed_commit, str) and len(reviewed_commit) == 40, "NPI_PRIOR_REVIEW_INVALID"
     )
     require(bool(review_bytes), "NPI_REVIEW_ARTIFACT_EMPTY")
+    task_receipt_path = root / _TASK_RECEIPT
+    task_receipt_schema_path = root / _TASK_RECEIPT_SCHEMA
+    task_receipt = _load_task_specific_receipt(root)
+    old_identity_path = inputs["old_s20"] / "ollama_identity.json"
+    _, old_identity_bytes = _regular_file(old_identity_path)
+    old_identity_payload = strict_json(old_identity_bytes)
+    require(isinstance(old_identity_payload, Mapping), "NPI_OLD_IDENTITY_INVALID")
+    old_identity = cast(Mapping[str, object], old_identity_payload)
 
     state_path, state_bytes = _regular_file(root / "PROJECT_STATE.json")
     state_payload = strict_json(state_bytes)
@@ -536,6 +623,9 @@ def run_controlled_runtime_revalidation(
             quality_path,
             prior_path,
             state_path,
+            old_identity_path,
+            task_receipt_path,
+            task_receipt_schema_path,
             *manifest_paths.values(),
         )
     }
@@ -573,6 +663,9 @@ def run_controlled_runtime_revalidation(
         file_fingerprints=file_fingerprints,
         identity_observations=observations,
         prior_review=prior_path,
+        ledger_root=ledger_root,
+        receipt_sha256=execution_lease_sha256,
+        bindings_sha256=sha256(canonical(source_bindings)),
     )
 
     def guarded_execute() -> Mapping[str, Any]:
@@ -584,6 +677,13 @@ def run_controlled_runtime_revalidation(
     def guarded_probe() -> Mapping[str, object]:
         observed = probe()
         _assert_file_fingerprint(file_fingerprints)
+        _validate_task_specific_receipt(
+            receipt=task_receipt,
+            review_bytes=review_bytes,
+            state_bytes=state_bytes,
+            old_identity=old_identity,
+            current_identity=observed,
+        )
         return observed
 
     def sink(evidence: Mapping[str, Any]) -> None:

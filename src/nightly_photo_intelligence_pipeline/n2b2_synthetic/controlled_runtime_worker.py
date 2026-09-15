@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import platform
+import stat
 import sys
 from collections.abc import Mapping
 from datetime import UTC, datetime
@@ -17,6 +18,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from ..engineering.common import canonical, require, strict_json
+from ..engineering.path_policy import checked_path
 from . import N2B2RunConfig, load_s3_manifest, load_s20_manifest, run_n2b2
 from .ollama_client import ModelIdentity, OllamaClient
 from .runtime_identity_revalidation import snapshot_tree
@@ -44,6 +46,58 @@ def _identity_record(identity: ModelIdentity) -> dict[str, object]:
         "capabilities": list(identity.capabilities),
         "ollama_version": identity.ollama_version,
     }
+
+
+def _require_parent_reservation(payload: Mapping[str, Any]) -> None:
+    names = ("ledger_root", "reservation_dir", "receipt_sha256", "bindings_sha256")
+    if not all(name in payload for name in names):
+        raise ValueError("NPI_RUNNER_RESERVATION_REQUIRED")
+    values = {name: payload.get(name) for name in names}
+    if not all(isinstance(value, str) and value for value in values.values()):
+        raise ValueError("NPI_RUNNER_RESERVATION_REQUIRED")
+    ledger_root = Path(cast(str, values["ledger_root"]))
+    reservation_dir = Path(cast(str, values["reservation_dir"]))
+    receipt_sha256 = cast(str, values["receipt_sha256"])
+    bindings_sha256 = cast(str, values["bindings_sha256"])
+    if (
+        len(receipt_sha256) != 64
+        or any(char not in "0123456789abcdef" for char in receipt_sha256)
+        or len(bindings_sha256) != 64
+        or any(char not in "0123456789abcdef" for char in bindings_sha256)
+        or reservation_dir != ledger_root / receipt_sha256
+    ):
+        raise ValueError("NPI_RUNNER_RESERVATION_INVALID")
+    try:
+        checked_path(ledger_root, must_exist=True)
+        checked_path(reservation_dir, must_exist=True)
+        record_path = reservation_dir / "reservation.json"
+        info = record_path.lstat()
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+            raise ValueError("NPI_RUNNER_RESERVATION_INVALID")
+        record = strict_json(record_path.read_bytes())
+    except (OSError, ValueError) as exc:
+        if isinstance(exc, ValueError) and str(exc) == "NPI_RUNNER_RESERVATION_INVALID":
+            raise
+        raise ValueError("NPI_RUNNER_RESERVATION_INVALID") from exc
+    if not isinstance(record, Mapping):
+        raise ValueError("NPI_RUNNER_RESERVATION_INVALID")
+    if (
+        set(record)
+        != {"schema_version", "status", "receipt_sha256", "bindings_sha256", "reserved_at_utc"}
+        or record.get("schema_version") != "npi-lease-consumption-v1"
+        or record.get("status") != "RESERVED"
+        or record.get("receipt_sha256") != receipt_sha256
+        or record.get("bindings_sha256") != bindings_sha256
+    ):
+        raise ValueError("NPI_RUNNER_RESERVATION_INVALID")
+    terminal_path = reservation_dir / "terminal.json"
+    try:
+        terminal_path.lstat()
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        raise ValueError("NPI_RUNNER_RESERVATION_INVALID") from exc
+    raise ValueError("NPI_RUNNER_RESERVATION_ALREADY_FINISHED")
 
 
 def _observation(label: str, identity: ModelIdentity) -> dict[str, object]:
@@ -180,20 +234,18 @@ def _resume(payload: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def main(argv: list[str] | None = None) -> int:
+def run_from_stdin(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--mode", choices=("fresh", "resume"), required=True)
     args = parser.parse_args(argv)
     payload = strict_json(sys.stdin.buffer.read())
     require(isinstance(payload, Mapping), "NPI_RUNNER_CONFIGURATION_INVALID")
+    _require_parent_reservation(payload)
     result = _fresh(payload) if args.mode == "fresh" else _resume(payload)
     sys.stdout.buffer.write(canonical(result))
     return 0
 
 
 if __name__ == "__main__":
-    try:
-        raise SystemExit(main())
-    except Exception as exc:  # pragma: no cover - exercised by parent process
-        sys.stderr.write(f"{type(exc).__name__}: {exc}\n")
-        raise SystemExit(1) from None
+    sys.stderr.write("NPI_WORKER_DIRECT_INVOCATION_DENIED\n")
+    raise SystemExit(1)

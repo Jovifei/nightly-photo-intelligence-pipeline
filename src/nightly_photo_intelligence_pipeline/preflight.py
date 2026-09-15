@@ -1096,6 +1096,7 @@ def _check_git_baselines() -> CheckResult:
         engineering_repair_base = "ed8e3d9eb750505ee3cf501f6adfe91aab03fea8"
         engineering_followup_base = "1a3eb113055248eda891793d281fd226070b82e5"
         audit_fix_c_base = "45d4abd1099169ba6e5c92c7f7f6656e94748efb"
+        audit_fix_d_base = "ab69f2c46971e5fea0cd0bf6ca13367e964f0409"
         head = git("rev-parse", "HEAD")[1]
         portability_candidate = head == n2b1p_portability and git("rev-parse", "HEAD^") == (
             0,
@@ -1137,6 +1138,11 @@ def _check_git_baselines() -> CheckResult:
             and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "8")
             and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "9")
         )
+        audit_fix_d_topology = (
+            git("rev-parse", "HEAD^") == (0, audit_fix_d_base)
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "9")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "10")
+        )
         portability_record_ok = True
         if (
             portability_candidate
@@ -1147,6 +1153,7 @@ def _check_git_baselines() -> CheckResult:
             or engineering_repair_topology
             or engineering_followup_topology
             or audit_fix_c_topology
+            or audit_fix_d_topology
         ):
             record_path = root / "research" / "N2B1P_manifest_portability_remediation.json"
             schema_path = root / "schemas" / "n2b1p_manifest_portability_remediation_v1.schema.json"
@@ -1208,7 +1215,8 @@ def _check_git_baselines() -> CheckResult:
             or runtime_remediation_topology
             or engineering_repair_topology
             or engineering_followup_topology
-            or audit_fix_c_topology,
+            or audit_fix_c_topology
+            or audit_fix_d_topology,
             portability_record_ok,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),
@@ -1226,6 +1234,7 @@ def _check_git_baselines() -> CheckResult:
                 "and code-remediation candidate, followed by the engineering repair candidate; "
                 "an engineering follow-up candidate may follow that repair; "
                 "an audit-fix C candidate may follow the F1/F3 follow-up; "
+                "an audit-fix D candidate may follow the controlled CLI remediation; "
                 "no merge; worktree clean"
             ),
         )

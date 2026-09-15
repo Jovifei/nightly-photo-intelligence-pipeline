@@ -1777,3 +1777,23 @@ out of scope.
   Real20, App, Bundle, or PROJECT_STATE execution has occurred.
 - Adapter and fake command tests pass; final commit, manifest, full quality matrix,
   and independent review remain pending.
+
+## N2B2 audit fix D — 2026-09-15
+
+### Plan
+
+- [x] Reproduce the four independent-review findings against `ab69f2c` with
+  focused fake/temporary tests before changing production code.
+- [x] Preserve every runner forbidden counter, reject ADS file paths, and bind
+  worker execution to the controlled parent admission/reservation.
+- [x] Revalidate the task-specific Ollama receipt and exact 0.32.15 to 0.33.3
+  identity transition without running a model.
+- [ ] Run the complete supported-Python quality matrix, rebuild MANIFEST from
+  the index, create one normal child commit, push the same review branch, and
+  report the remaining gates without approving execution.
+
+### Review
+
+- Review source: independent `CHANGES_REQUIRED` report supplied by Owner.
+- No production code has been changed in this D worktree yet; model/Ollama,
+  real-photo, EXIF, Real20, SQLite, App, and lease consumption remain forbidden.
