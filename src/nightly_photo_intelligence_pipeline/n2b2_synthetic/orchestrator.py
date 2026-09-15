@@ -505,6 +505,7 @@ def run_n2b2(  # noqa: PLR0911
         "g1_source_access": 0,
         "sqlite_write_count": 0,
         "app_write_count": 0,
+        "production_bundle_count": 0,
         "obsidian_write_count": 0,
         "model_download_bytes": 0,
     }

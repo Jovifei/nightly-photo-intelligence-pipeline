@@ -13,6 +13,7 @@ import platform
 import stat
 import sys
 from collections.abc import Mapping
+from contextlib import redirect_stdout
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
@@ -20,10 +21,12 @@ from typing import Any, cast
 from ..engineering.common import canonical, require, strict_json
 from ..engineering.path_policy import checked_path
 from . import N2B2RunConfig, load_s3_manifest, load_s20_manifest, run_n2b2
+from .legacy_s20_binding import validate_legacy_s20_binding
 from .ollama_client import ModelIdentity, OllamaClient
 from .runtime_identity_revalidation import snapshot_tree
 from .s20_bundle import S20_COMPLETE, write_json
 from .s20_orchestrator import run_s20
+from .worker_dispatch import MAX_BYTES, assert_identity, assert_source, claim, finish
 
 WORKER_MODULE = "nightly_photo_intelligence_pipeline.n2b2_synthetic.controlled_runtime_worker"
 N2B1P_SHA = "0fef0a8f6a2f2b2f75ce2fba3e3eef1e764037b8"
@@ -114,8 +117,10 @@ def _common(payload: Mapping[str, Any]) -> dict[str, Any]:
     s20_manifest = _path(payload, "s20_manifest_dir")
     baseline_manifest = _path(payload, "baseline_manifest_dir")
     prior_review = _path(payload, "prior_s20_review_record")
-    reviewed_commit = payload.get("reviewed_commit")
-    require(isinstance(reviewed_commit, str), "NPI_RUNNER_CONFIGURATION_INVALID")
+    # The historical review SHA and current execution SHA have different roles.
+    reviewed_commit = validate_legacy_s20_binding(
+        root, prior_review, s20_manifest / "fixture_manifest.json"
+    )
     schemas = root / "schemas"
     fixtures = load_s20_manifest(
         s20_manifest, project_root=root, baseline_manifest_dir=baseline_manifest
@@ -157,11 +162,15 @@ def _fresh(payload: Mapping[str, Any]) -> dict[str, Any]:
     s3_manifest = _path(payload, "s3_manifest_dir")
     s20_out = _path(payload, "s20_out")
     s3_out = _path(payload, "s3_out")
+    # Check all legacy S20 inputs before S3 can consume GPU work.
+    common = _common(payload)
     client = OllamaClient()
     observations: list[dict[str, object]] = []
 
     def observe(label: str) -> None:
-        observations.append(_observation(label, client.verify_identity()))
+        identity = client.verify_identity()
+        assert_identity(payload, _identity_record(identity))
+        observations.append(_observation(label, identity))
 
     observe("before_s3")
     s3_fixtures = load_s3_manifest(s3_manifest, project_root=root)
@@ -198,7 +207,6 @@ def _fresh(payload: Mapping[str, Any]) -> dict[str, Any]:
     write_json(s3_out / "validation_summary.json", s3_result.summary)
 
     observe("before_s20")
-    common = _common(payload)
     s20_out.mkdir(parents=True, exist_ok=True)
     s20_summary = run_s20(**common, ollama=client)
     require(s20_summary.get("result") == S20_COMPLETE, "NPI_S20_RUNNER_FAILED")
@@ -213,13 +221,17 @@ def _fresh(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 def _resume(payload: Mapping[str, Any]) -> dict[str, Any]:
     client = OllamaClient()
-    observations = [_observation("before_resume", client.verify_identity())]
+    identity = client.verify_identity()
+    assert_identity(payload, _identity_record(identity))
+    observations = [_observation("before_resume", identity)]
     output = _path(payload, "s20_out")
     before = snapshot_tree(output).entries
     common = _common(payload)
     resumed = run_s20(**common, resume=True, ollama=client)
     after = snapshot_tree(output).entries
-    observations.append(_observation("after_resume", client.verify_identity()))
+    identity = client.verify_identity()
+    assert_identity(payload, _identity_record(identity))
+    observations.append(_observation("after_resume", identity))
     require(
         resumed.get("resume_status") == "ALREADY_COMPLETE_VERIFIED", "NPI_RESUME_STATUS_INVALID"
     )
@@ -238,10 +250,29 @@ def run_from_stdin(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--mode", choices=("fresh", "resume"), required=True)
     args = parser.parse_args(argv)
-    payload = strict_json(sys.stdin.buffer.read())
-    require(isinstance(payload, Mapping), "NPI_RUNNER_CONFIGURATION_INVALID")
-    _require_parent_reservation(payload)
-    result = _fresh(payload) if args.mode == "fresh" else _resume(payload)
+    data = sys.stdin.buffer.read(MAX_BYTES + 1)
+    require(len(data) <= MAX_BYTES, "NPI_DISPATCH_SIZE_LIMIT")
+    envelope = strict_json(data)
+    require(isinstance(envelope, Mapping), "NPI_RUNNER_CONFIGURATION_INVALID")
+    payload = claim(envelope, args.mode)
+    try:
+        _require_parent_reservation(payload)
+        from ..engineering.readiness import python_check
+        from ..engineering.source_identity import full_source_identity
+
+        version = (sys.version_info[0], sys.version_info[1], sys.version_info[2])
+        require(
+            python_check(version)["status"] == "PASS",
+            "NPI_UNSUPPORTED_PYTHON",
+        )
+        assert_source(payload, full_source_identity(_path(payload, "project_root")))
+        # Keep machine-readable stdout separate from runner diagnostics.
+        with redirect_stdout(sys.stderr):
+            result = _fresh(payload) if args.mode == "fresh" else _resume(payload)
+        finish(payload, args.mode, outcome="COMPLETE", result=result)
+    except Exception as exc:
+        finish(payload, args.mode, outcome="FAILED", result={"error_type": type(exc).__name__})
+        raise
     sys.stdout.buffer.write(canonical(result))
     return 0
 

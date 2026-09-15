@@ -314,3 +314,10 @@
 - A tested admission library is not proof that the public command uses it. Keep
   one public adapter as the only command path, reserve once after the last recheck,
   and make the existing runner subprocess return actual exit and log evidence.
+
+## 2026-09-16 N2B2 E2 delivery integration
+
+- A later delivery recipe is evidence-bound to its stated source bytes. When
+  one anchor is stale, stop that recipe, verify every remaining anchor, and
+  manually port only reviewed changes; never edit the expected hash to force an
+  apply over a newer published candidate.

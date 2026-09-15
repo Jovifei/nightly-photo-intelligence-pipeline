@@ -972,6 +972,7 @@ def _hard_counts() -> dict[str, int]:
         "g1_source_access": 0,
         "sqlite_write_count": 0,
         "app_write_count": 0,
+        "production_bundle_count": 0,
         "obsidian_write_count": 0,
         "s20_runtime_obsidian_write_count": 0,
         "model_download_bytes": 0,

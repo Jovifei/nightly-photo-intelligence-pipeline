@@ -612,6 +612,7 @@ def test_n2b2_happy_complete(monkeypatch):
     assert hc["real_exif_read_count"] == 0
     assert hc["g1_source_access"] == 0
     assert hc["sqlite_write_count"] == 0
+    assert hc["production_bundle_count"] == 0
     assert result.summary["model_download_bytes"] == 0
     assert result.summary["torchvision_cache"][0]["verification_status"] == "CACHE_HIT"
 

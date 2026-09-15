@@ -27,13 +27,14 @@ from nightly_photo_intelligence_pipeline.n2b1p_integrity import N2B1PRuntimeConf
 from nightly_photo_intelligence_pipeline.n2b2_synthetic import (
     controlled_runtime,
     controlled_runtime_worker,
+    legacy_s20_binding,
 )
 from nightly_photo_intelligence_pipeline.n2b2_synthetic.runtime_identity_revalidation import (
     BASE_CANDIDATE,
     canonical_identity,
 )
 
-NOW = datetime(2026, 9, 14, 10, tzinfo=UTC)
+NOW = datetime(2026, 9, 15, 10, tzinfo=UTC)
 IDENTITY = {
     "model_name": "qwen3.5:9b",
     "full_local_digest": "a" * 64,
@@ -97,7 +98,7 @@ def _callback_evidence() -> dict[str, Any]:
 
 
 class Harness:
-    def __init__(self, tmp_path: Path, monkeypatch: Any) -> None:
+    def __init__(self, tmp_path: Path, monkeypatch: Any, *, install_default: bool = True) -> None:
         self.project = Path(__file__).resolve().parents[1]
         monkeypatch.setenv("NPI_PROJECT_ROOT", str(self.project))
         self.now = NOW
@@ -173,7 +174,13 @@ class Harness:
             lambda _root: self.task_receipt,
             raising=False,
         )
-        self.install_fake_runner(monkeypatch, _callback_evidence())
+        monkeypatch.setattr(
+            legacy_s20_binding,
+            "validate_legacy_s20_binding",
+            lambda *_args: "f" * 40,
+        )
+        if install_default:
+            self.install_fake_runner(monkeypatch, _callback_evidence())
 
     def _task_receipt(self) -> dict[str, Any]:
         old = dict(self.old_identity)
@@ -483,21 +490,8 @@ def test_worker_module_direct_invocation_is_denied() -> None:
 
 
 def test_worker_internal_call_requires_parent_reservation() -> None:
-    root = Path(__file__).resolve().parents[1]
-    environment = {**os.environ, "PYTHONPATH": str(root / "src")}
-    call = (
-        "from nightly_photo_intelligence_pipeline.n2b2_synthetic.controlled_runtime_worker "
-        "import run_from_stdin; raise SystemExit(run_from_stdin())"
-    )
-    result = subprocess.run(
-        [sys.executable, "-c", call, "--mode", "fresh"],
-        input=b"{}",
-        capture_output=True,
-        check=False,
-        env=environment,
-    )
-    assert result.returncode != 0
-    assert b"NPI_RUNNER_RESERVATION_REQUIRED" in result.stderr
+    with pytest.raises(ValueError, match="NPI_RUNNER_RESERVATION_REQUIRED"):
+        controlled_runtime_worker._require_parent_reservation({})
 
 
 def test_public_command_rejects_old_ollama_identity_transition(

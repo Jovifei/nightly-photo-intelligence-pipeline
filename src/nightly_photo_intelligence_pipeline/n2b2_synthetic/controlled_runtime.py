@@ -41,6 +41,7 @@ from ..engineering.path_policy import checked_path, overlaps, validate_plan
 from ..engineering.readiness import python_check
 from ..engineering.source_identity import full_source_identity
 from ..n2b1p_integrity import N2B1PRuntimeConfiguration, load_n2b1p_runtime_configuration
+from . import worker_dispatch
 from .runtime_identity_revalidation import snapshot_tree
 
 IdentityProbe = Callable[[], Mapping[str, object]]
@@ -250,12 +251,13 @@ def _write_exclusive_json(path: Path, value: object) -> None:
 def _run_worker(
     *, project_root: Path, mode: str, configuration: Mapping[str, object]
 ) -> tuple[dict[str, Any], dict[str, Any]]:
+    envelope = worker_dispatch.issue(configuration, mode)
     command = [Path(sys.executable).name, "-c", _WORKER_CALL, "--mode", mode]
     try:
         completed = subprocess.run(
             [sys.executable, "-c", _WORKER_CALL, "--mode", mode],
             cwd=str(project_root),
-            input=canonical(configuration),
+            input=canonical(envelope),
             capture_output=True,
             check=False,
             timeout=24 * 60 * 60,
@@ -378,6 +380,9 @@ def _default_execute(
             "s20_out": str(outputs["s20_out"]),
             "prior_s20_review_record": str(prior_review),
             "reviewed_commit": str(source["candidate_commit"]),
+            "candidate_tree": str(source["candidate_tree"]),
+            "source_manifest_sha256": str(source["source_manifest_sha256"]),
+            "runtime_identity_sha256": sha256(canonical(identity_observations[0]["identity"])),
             "ledger_root": str(ledger_root),
             "reservation_dir": str(ledger_root / receipt_sha256),
             "receipt_sha256": receipt_sha256,
@@ -548,6 +553,10 @@ def run_controlled_runtime_revalidation(
         isinstance(reviewed_commit, str) and len(reviewed_commit) == 40, "NPI_PRIOR_REVIEW_INVALID"
     )
     require(bool(review_bytes), "NPI_REVIEW_ARTIFACT_EMPTY")
+    from .legacy_s20_binding import validate_legacy_s20_binding
+
+    # Reject stale or mismatched historical inputs before ledger creation or S3.
+    validate_legacy_s20_binding(root, prior_path, inputs["s20_manifest"] / "fixture_manifest.json")
     task_receipt_path = root / _TASK_RECEIPT
     task_receipt_schema_path = root / _TASK_RECEIPT_SCHEMA
     task_receipt = _load_task_specific_receipt(root)
@@ -649,7 +658,6 @@ def run_controlled_runtime_revalidation(
 
             client = OllamaClient()
         observed = _identity_record(client.verify_identity())
-        observations.append(_observation("preflight", observed))
         return observed
 
     probe = identity_probe or default_probe
@@ -684,6 +692,7 @@ def run_controlled_runtime_revalidation(
             old_identity=old_identity,
             current_identity=observed,
         )
+        observations.append(_observation("preflight", observed))
         return observed
 
     def sink(evidence: Mapping[str, Any]) -> None:

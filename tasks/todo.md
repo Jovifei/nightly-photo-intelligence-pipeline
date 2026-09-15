@@ -1797,3 +1797,24 @@ out of scope.
 - Review source: independent `CHANGES_REQUIRED` report supplied by Owner.
 - No production code has been changed in this D worktree yet; model/Ollama,
   real-photo, EXIF, Real20, SQLite, App, and lease consumption remain forbidden.
+
+## N2B2 E2 worker integration — 2026-09-16
+
+### Plan
+
+- [x] Fetch and verify the E1 delivery, read its complete handoff, and keep the
+  stale C recipe from overwriting the newer D candidate.
+- [x] Port the E1 dispatch, historical S20 binding, pre-stage identity, stdout
+  separation, and producer counter changes into the actual runtime path.
+- [x] Exercise the real default adapter factory and dispatch protocol with fake
+  subprocess/model boundaries; retain all prior C/F1-F3/native regressions.
+- [ ] Rebuild the complete index manifest, run clean 3.12 E2 acceptance, create
+  one direct child of the E1 delivery, push it, and record the remaining gaps.
+
+### Review
+
+- E1 delivery verifier: passed; E1 tests: 26 passed, 1 native symlink skip.
+- E1 recipe check-only stopped on its stale `orchestrator.py` SHA (`f5b5...` vs
+  real 835 blob `db494...`); no recipe hash was changed to force application.
+- No model/Ollama, real-photo, EXIF, Real20, SQLite, App, Bundle, or lease
+  execution has occurred.

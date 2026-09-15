@@ -178,6 +178,10 @@ CONTENT_RULE_ALLOWLIST: frozenset[tuple[str, str]] = frozenset(
         ("tests/test_state_concurrency.py", "unc_path"),
         ("tests/test_state_concurrency.py", "wsl_mount_path"),
         ("tests/test_windows_readonly.py", "windows_absolute_path"),
+        # E1's delivery-only tests contain explicit synthetic negative inputs;
+        # these are not source data or retained evidence.
+        ("review_stages/E1/test_stage.py", "unc_path"),
+        ("review_stages/E1/test_stage.py", "sensitive_exif_field"),
     }
 )
 
