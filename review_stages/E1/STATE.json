@@ -1,0 +1,42 @@
+{
+  "schema_version": "npi-stage-E1-delivery-v1",
+  "stage": "E1_REVIEW_AND_REPAIR_DELIVERY",
+  "date": "2026-09-15",
+  "runtime_base": "835007b3cf12cd19a23cbd476545a2d10cf49c50",
+  "runtime_base_parent": "ab69f2c46971e5fea0cd0bf6ca13367e964f0409",
+  "runtime_base_tree": "489a28e9d75bd3344784fe59574538d69f64cdea",
+  "review_scope": "REMOTE_CODE_AND_TARGETED_MODEL_FREE_REPRODUCTIONS",
+  "runtime_base_verdict": "CHANGES_REQUIRED",
+  "original_runtime_modified": false,
+  "root_manifest_modified": false,
+  "production_execution_authorized": false,
+  "lease_approved": false,
+  "next_stage": "E2_LOCAL_APPLICATION_INTEGRATION_SUPPORTED_ENV_TEST_AND_BRANCH_PUSH",
+  "progress": {
+    "E0_remote_read_and_fixed_D_audit": "COMPLETE",
+    "E1_worker_protocol_and_repair_recipe": "IMPLEMENTED_UNDER_DELIVERY_PROFILE",
+    "E1_worker_recipe_exact_base_application": "CHECKED",
+    "E1_parent_recipe_full_base_application": "REQUIRES_LOCAL_CHECK_ONLY_BEFORE_APPLY",
+    "E1_targeted_unit_tests": "26_PASSED_ON_DEVELOPMENT_ENVIRONMENT",
+    "E2_actual_runtime_integration": "NOT_PERFORMED",
+    "E2_windows_312_full_quality": "NOT_PERFORMED",
+    "synthetic_execution": "NOT_PERFORMED",
+    "real20": "NOT_AUTHORIZED",
+    "E1_counter_producer_recipe": "IMPLEMENTED_REQUIRES_PROJECT_INTEGRATION_TEST"
+  },
+  "development_environment": {
+    "python": "3.13.5",
+    "platform": "Linux",
+    "supported_project_environment": false
+  },
+  "limitations": [
+    "Full 714-test suite not rerun",
+    "Windows native worker I/O race coverage pending",
+    "Ruff and mypy unavailable in this environment",
+    "No access to Owner local final report bytes",
+    "Dispatch protocol not an OS sandbox against a same-user actor modifying code/ledger"
+  ],
+  "unit_log_sha256": "aac0fbe52f3fec9b525953367deb21012b7ca712468ef92dece4a5b2e279487f",
+  "pytest_summary": "26 passed, 42 subtests passed",
+  "pytest_log_sha256": "7f1a414ef1b217abcedf1d36e8ce60336e6763095bb88fbf44fd211bcd50b5d5"
+}
