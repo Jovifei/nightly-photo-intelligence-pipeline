@@ -1098,7 +1098,7 @@ def _check_git_baselines() -> CheckResult:
         audit_fix_c_base = "45d4abd1099169ba6e5c92c7f7f6656e94748efb"
         audit_fix_d_base = "ab69f2c46971e5fea0cd0bf6ca13367e964f0409"
         e2_base = "3445f2911d7bb6bfe9fb8bdadc5ec30541adad99"
-        audit_fix_f_final_base = "69fe68a221f5beefff66b23ad58ffc9ea835a1fd"
+        audit_fix_f_final_base = "4e7f7e1483728557ae6b05c543569151614b5833"
         head = git("rev-parse", "HEAD")[1]
         portability_candidate = head == n2b1p_portability and git("rev-parse", "HEAD^") == (
             0,
@@ -1152,8 +1152,8 @@ def _check_git_baselines() -> CheckResult:
         )
         audit_fix_f_topology = (
             git("rev-parse", "HEAD^") == (0, audit_fix_f_final_base)
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "18")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "19")
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "19")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "20")
         )
         portability_record_ok = True
         if (

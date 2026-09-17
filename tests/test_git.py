@@ -37,7 +37,7 @@ N2B2_ENGINEERING_FOLLOWUP_BASE = "1a3eb113055248eda891793d281fd226070b82e5"
 N2B2_AUDIT_FIX_C_BASE = "45d4abd1099169ba6e5c92c7f7f6656e94748efb"
 N2B2_AUDIT_FIX_D_BASE = "ab69f2c46971e5fea0cd0bf6ca13367e964f0409"
 N2B2_E2_BASE = "3445f2911d7bb6bfe9fb8bdadc5ec30541adad99"
-N2B2_AUDIT_FIX_F_FINAL_BASE = "69fe68a221f5beefff66b23ad58ffc9ea835a1fd"
+N2B2_AUDIT_FIX_F_FINAL_BASE = "4e7f7e1483728557ae6b05c543569151614b5833"
 
 SENSITIVE_SUFFIXES = (
     ".db",
@@ -138,7 +138,7 @@ def _is_e2_candidate(project_root: Path) -> bool:
 def _is_audit_fix_f_candidate(project_root: Path) -> bool:
     parent = _git(project_root, "rev-parse", "HEAD^").stdout.strip()
     count = _git(project_root, "rev-list", "--count", f"{N2B1P_BASELINE}..HEAD")
-    return parent == N2B2_AUDIT_FIX_F_FINAL_BASE and count.stdout.strip() == "18"
+    return parent == N2B2_AUDIT_FIX_F_FINAL_BASE and count.stdout.strip() == "19"
 
 
 def test_git_approved_tags_and_ancestry_are_exact(project_root: Path) -> None:
@@ -192,7 +192,7 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
     elif _is_e2_candidate(project_root):
         candidate_offset = 11
     elif _is_audit_fix_f_candidate(project_root):
-        candidate_offset = 18
+        candidate_offset = 19
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         candidate_offset = 1
     else:
@@ -272,7 +272,7 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
         assert post_n2b1r == 12
         assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() == (N2B2_E2_BASE)
     elif _is_audit_fix_f_candidate(project_root):
-        assert post_n2b1r == 19
+        assert post_n2b1r == 20
         assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() == (
             N2B2_AUDIT_FIX_F_FINAL_BASE
         )
@@ -341,7 +341,7 @@ def test_n2b1p_candidate_is_resolved_not_hardcoded(project_root: Path) -> None:
     elif _is_e2_candidate(project_root):
         expected_count = 12
     elif _is_audit_fix_f_candidate(project_root):
-        expected_count = 19
+        expected_count = 20
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         expected_count = 2
     else:

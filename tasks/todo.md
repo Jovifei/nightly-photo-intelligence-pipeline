@@ -1833,13 +1833,20 @@ out of scope.
   Typer-to-worker entry and one-shot ledger semantics.
 - [x] Persist execution-lease provenance and make fake CLI fixtures use an
   injected clock.
-- [ ] Correct the external report's MANIFEST byte-domain statement.
-- [ ] Run RED/GREEN regressions, the complete supported-Python quality matrix,
-  rebuild the index-derived MANIFEST, create one normal child commit, and
+- [x] Correct the external report's MANIFEST byte-domain statement with separate
+  Git-index/LF and Windows checkout hashes.
+- [x] Run RED/GREEN regressions, the complete supported-Python quality matrix,
+  rebuild the index-derived MANIFEST, create normal child commits, and
   ordinary-push the same review branch.
 
 ### Review
 
 - Current implementation worktree: `<EXTERNAL_IMPLEMENTATION_WORKTREE>`.
 - Baseline candidate: `28c8749503563d2496f4f4a8c7b8f9165b6cc7c0`.
+- Final supported Python 3.12 result: 731 passed, 1 skipped, 91 subtests;
+  quality 7/7; handoff 9/9; CLI preflight 16/16; native/security 101 passed,
+  1 skipped, 48 subtests.
+- The only skip is ordinary-user Windows symlink capability
+  (`winerror=1314`); no model, Ollama, photo, EXIF, SQLite, App, Bundle, or
+  lease execution occurred.
 - Production N2B2 remains locked; no execution lease is approved or consumed.
