@@ -54,6 +54,7 @@ AUDIT_FIX_C_BASE_SHA = "45d4abd1099169ba6e5c92c7f7f6656e94748efb"
 AUDIT_FIX_D_BASE_SHA = "ab69f2c46971e5fea0cd0bf6ca13367e964f0409"
 E2_BASE_SHA = "3445f2911d7bb6bfe9fb8bdadc5ec30541adad99"
 AUDIT_FIX_F_CODE_SHA = "db4a1b05bd9b1f247b80e120cc00e753ff94ffba"
+AUDIT_FIX_F_HANDOFF_SHA = "c91eaed05287dd2f3a3665926b4d73ef965e124d"
 
 errors: list[str] = []
 passes: list[str] = []
@@ -669,6 +670,7 @@ def check_engineering_repair_profile() -> None:
         (0, AUDIT_FIX_D_BASE_SHA),
         (0, E2_BASE_SHA),
         (0, AUDIT_FIX_F_CODE_SHA),
+        (0, AUDIT_FIX_F_HANDOFF_SHA),
     }:
         return
     parent_sha = parent[1]
@@ -779,6 +781,11 @@ def check_baselines() -> None:
         or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "13")
     ):
         fail("audit fix F verification must be one direct child of the F code candidate")
+    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_HANDOFF_SHA) and (
+        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "16")
+        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "15")
+    ):
+        fail("audit fix F final registration has unexpected ancestry")
     elif git("rev-parse", "HEAD") != (0, N2B1P_SHA) and not (
         (
             git("rev-parse", "HEAD^") == (0, N2B1P_SHA)
@@ -845,6 +852,11 @@ def check_baselines() -> None:
             git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_CODE_SHA)
             and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "14")
             and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "13")
+        )
+        or (
+            git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_HANDOFF_SHA)
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "16")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "15")
         )
     ):
         fail("N2B2 review candidate must be exactly one direct child of N2B1P")
@@ -1015,6 +1027,11 @@ def main() -> int:
     elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_CODE_SHA):
         print(
             "HANDOFF_VALID: audit fix F candidate after independent-review remediation; "
+            "production N2B2 remains LOCKED"
+        )
+    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_HANDOFF_SHA):
+        print(
+            "HANDOFF_VALID: audit fix F final candidate after remediation verification; "
             "production N2B2 remains LOCKED"
         )
     else:
