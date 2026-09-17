@@ -1827,12 +1827,13 @@ out of scope.
   create a clean detached implementation worktree.
 - [x] Reproduce the seven independent findings against the exact `28c8749`
   candidate without model, Ollama, photo, EXIF, SQLite, or lease execution.
-- [ ] Add post-execution checks for every admitted protected file and bind
+- [x] Add post-execution checks for every admitted protected file and bind
   worker-side manifest bytes, all configured roots, and admitted runtime identity.
-- [ ] Remove public direct-run bypasses while preserving the one controlled
+- [x] Remove public direct-run bypasses while preserving the one controlled
   Typer-to-worker entry and one-shot ledger semantics.
-- [ ] Persist execution-lease provenance, make fake CLI fixtures use an injected
-  clock, and correct the external report's MANIFEST byte-domain statement.
+- [x] Persist execution-lease provenance and make fake CLI fixtures use an
+  injected clock.
+- [ ] Correct the external report's MANIFEST byte-domain statement.
 - [ ] Run RED/GREEN regressions, the complete supported-Python quality matrix,
   rebuild the index-derived MANIFEST, create one normal child commit, and
   ordinary-push the same review branch.
