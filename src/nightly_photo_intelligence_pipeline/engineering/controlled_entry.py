@@ -203,6 +203,7 @@ def run_controlled_execution(
     identity_probe: Callable[[], Mapping[str, object]],
     execute: Callable[[], Mapping[str, Any]],
     evidence_sink: Callable[[Mapping[str, Any]], None] | None = None,
+    post_execute_check: Callable[[], None] | None = None,
 ) -> dict[str, Any]:
     """Admit one source-bound synthetic run and consume its lease exactly once.
 
@@ -250,6 +251,8 @@ def run_controlled_execution(
         )
         callback_result = execute()
         require(isinstance(callback_result, Mapping), "NPI_CALLBACK_RESULT_INVALID")
+        if post_execute_check is not None:
+            post_execute_check()
         evidence = _validate_callback_evidence(callback_result, identity=identity)
         evidence.update(
             {
@@ -259,6 +262,7 @@ def run_controlled_execution(
                 "source_manifest_sha256": source["source_manifest_sha256"],
                 "path_plan_sha256": path_digest,
                 "runtime_identity_sha256": runtime_identity_sha,
+                "execution_lease_sha256": plan.trusted_receipt_sha256,
             }
         )
         supplemental = callback_result.get("supplemental_evidence")
@@ -266,6 +270,8 @@ def run_controlled_execution(
             require(isinstance(supplemental, Mapping), "NPI_SUPPLEMENTAL_EVIDENCE_INVALID")
             evidence["supplemental_evidence"] = dict(supplemental)
         evidence_sha = sha256(canonical(evidence))
+        if post_execute_check is not None:
+            post_execute_check()
         if evidence_sink is not None:
             evidence_sink(evidence)
         finish(reservation, outcome="COMPLETE", evidence_sha256=evidence_sha, now=now)

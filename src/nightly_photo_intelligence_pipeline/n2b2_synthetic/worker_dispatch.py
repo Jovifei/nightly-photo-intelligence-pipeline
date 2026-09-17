@@ -16,6 +16,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from ..engineering.path_policy import checked_path
+
 MAX_BYTES = 128 * 1024
 MODES = {"fresh", "resume"}
 CONFIG_FIELDS = {
@@ -30,6 +32,8 @@ CONFIG_FIELDS = {
     "reviewed_commit",
     "candidate_tree",
     "source_manifest_sha256",
+    "s3_manifest_sha256",
+    "s20_manifest_sha256",
     "ledger_root",
     "reservation_dir",
     "receipt_sha256",
@@ -48,6 +52,16 @@ PATH_FIELDS = {
     "ledger_root",
     "reservation_dir",
 }
+REQUIRED_DIRS = {
+    "project_root",
+    "cache_root",
+    "s3_manifest_dir",
+    "s20_manifest_dir",
+    "baseline_manifest_dir",
+    "ledger_root",
+    "reservation_dir",
+}
+OUTPUT_DIRS = {"s3_out", "s20_out"}
 
 
 def _require(ok: bool, code: str) -> None:
@@ -129,6 +143,19 @@ def _read(path: Path) -> bytes:
     return data
 
 
+def _validate_manifest_bindings(configuration: Mapping[str, Any]) -> None:
+    for directory, digest_name in (
+        ("s3_manifest_dir", "s3_manifest_sha256"),
+        ("s20_manifest_dir", "s20_manifest_sha256"),
+    ):
+        manifest = _path(configuration[directory]) / "fixture_manifest.json"
+        try:
+            data = _read(manifest)
+        except (OSError, ValueError) as exc:
+            raise ValueError("NPI_WORKER_MANIFEST_INVALID") from exc
+        _require(_sha(data) == configuration[digest_name], "NPI_WORKER_MANIFEST_MISMATCH")
+
+
 def _write_new(path: Path, value: object) -> None:
     _check_existing(path.parent)
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
@@ -150,6 +177,8 @@ def _configuration(configuration: Mapping[str, Any]) -> dict[str, Any]:
         "receipt_sha256",
         "bindings_sha256",
         "source_manifest_sha256",
+        "s3_manifest_sha256",
+        "s20_manifest_sha256",
         "runtime_identity_sha256",
     ):
         _require(_hex(result[key]), "NPI_WORKER_CONFIGURATION_DIGEST")
@@ -159,6 +188,19 @@ def _configuration(configuration: Mapping[str, Any]) -> dict[str, Any]:
         _path(result["reservation_dir"]) == _path(result["ledger_root"]) / result["receipt_sha256"],
         "NPI_WORKER_RESERVATION_LOCATION",
     )
+    _validate_manifest_bindings(result)
+    return result
+
+
+def validate_bound_configuration(configuration: Mapping[str, Any]) -> dict[str, Any]:
+    """Recheck every worker root and bound manifest immediately before a stage."""
+
+    result = _configuration(configuration)
+    for name in REQUIRED_DIRS:
+        checked_path(_path(result[name]), must_exist=True)
+    for name in OUTPUT_DIRS:
+        checked_path(_path(result[name]), must_exist=False)
+    _read(_path(result["prior_s20_review_record"]))
     return result
 
 

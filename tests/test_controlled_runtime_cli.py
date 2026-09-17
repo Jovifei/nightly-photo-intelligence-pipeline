@@ -101,7 +101,7 @@ class Harness:
     def __init__(self, tmp_path: Path, monkeypatch: Any, *, install_default: bool = True) -> None:
         self.project = Path(__file__).resolve().parents[1]
         monkeypatch.setenv("NPI_PROJECT_ROOT", str(self.project))
-        self.now = NOW
+        self.now = datetime.now(UTC)
         self.root = tmp_path
         self.runtime_parent = tmp_path / "runtime"
         self.cache_root = tmp_path / "cache"
@@ -261,8 +261,8 @@ class Harness:
             "status": status,
             "owner_id": "Jovi",
             "purpose": "SYNTHETIC_S3_S20_ENGINEERING_VALIDATION",
-            "not_before_utc": (NOW - timedelta(minutes=1)).isoformat(),
-            "expires_at_utc": (NOW + timedelta(days=1)).isoformat(),
+            "not_before_utc": (self.now - timedelta(minutes=1)).isoformat(),
+            "expires_at_utc": (self.now + timedelta(days=1)).isoformat(),
             "bindings": bindings,
             "boundaries": {
                 "real_photo": False,
@@ -460,6 +460,44 @@ def test_public_command_rejects_nonzero_counter_after_reservation(
     assert (harness.ledger / "terminal.json").is_file()
 
 
+def test_public_command_rechecks_protected_evidence_after_runner(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    harness = Harness(tmp_path, monkeypatch, install_default=False)
+    harness.install_fake_runner(monkeypatch, _callback_evidence())
+
+    def fake_execute_factory(**_kwargs: Any):
+        def fake_execute() -> dict[str, Any]:
+            harness.review.write_text("tampered after admission\n", encoding="utf-8")
+            return _callback_evidence()
+
+        return fake_execute
+
+    monkeypatch.setattr(controlled_runtime, "_default_execute", fake_execute_factory)
+    harness.write_lease()
+    result = harness.invoke()
+    assert result.exit_code != 0
+    assert "NPI_BOUND_FILE_CHANGED" in result.output
+    terminal = json.loads((harness.ledger / "terminal.json").read_text(encoding="utf-8"))
+    assert terminal["status"] == "FAILED"
+    assert not (harness.outputs["evidence_out"] / "controlled_execution_evidence.json").exists()
+
+
+def test_persisted_controlled_evidence_binds_execution_lease(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    harness = Harness(tmp_path, monkeypatch)
+    harness.write_lease()
+    result = harness.invoke()
+    assert result.exit_code == 0, result.output
+    evidence = json.loads(
+        (harness.outputs["evidence_out"] / "controlled_execution_evidence.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert evidence["execution_lease_sha256"] == harness.lease_sha
+
+
 def test_counter_aggregation_preserves_extra_runner_counters() -> None:
     first = dict.fromkeys(REQUIRED_FORBIDDEN_COUNTERS, 0)
     second = dict.fromkeys(REQUIRED_FORBIDDEN_COUNTERS, 0)
@@ -513,3 +551,53 @@ def test_repository_task_receipt_is_loaded_with_its_schema() -> None:
     receipt = controlled_runtime._load_task_specific_receipt(root)
     assert receipt["task"] == "N2B2_OLLAMA_RUNTIME_IDENTITY_REVALIDATION_20260906"
     assert receipt["status"] == "APPROVED"
+
+
+@pytest.mark.parametrize(
+    ("command", "options"),
+    [
+        ("run", ["--s3-only"]),
+        ("gpu-validate", ["--s3-manifest-dir", "external", "--out", "external-out"]),
+        (
+            "case17-remediate",
+            [
+                "--baseline-manifest-dir",
+                "external",
+                "--candidate-dir",
+                "external-candidates",
+                "--out",
+                "external-out",
+            ],
+        ),
+        (
+            "s20-validate",
+            [
+                "--review-record",
+                "external/review.json",
+                "--s20-manifest-dir",
+                "external/s20",
+                "--out",
+                "external-out",
+            ],
+        ),
+        (
+            "qwen-contract-probe",
+            [
+                "--review-record",
+                "external/review.json",
+                "--fixture-manifest-dir",
+                "external/s20",
+                "--baseline-manifest-dir",
+                "external/baseline",
+                "--vision-evidence-dir",
+                "external/vision",
+                "--out",
+                "external-out",
+            ],
+        ),
+    ],
+)
+def test_legacy_n2b2_commands_require_controlled_entry(command: str, options: list[str]) -> None:
+    result = CliRunner().invoke(app, ["n2b2", command, *options])
+    assert result.exit_code == 8, result.output
+    assert "NPI_CONTROLLED_ENTRY_REQUIRED" in result.output

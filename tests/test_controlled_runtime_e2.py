@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import inspect
-import json
-from datetime import UTC, datetime
+import io
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
 
-from nightly_photo_intelligence_pipeline.engineering.common import canonical
+from nightly_photo_intelligence_pipeline.engineering.common import canonical, sha256
 from nightly_photo_intelligence_pipeline.n2b2_synthetic import (
     controlled_runtime,
     controlled_runtime_worker,
@@ -78,7 +78,83 @@ def test_worker_checks_identity_and_source_before_runner() -> None:
     assert "claim(envelope, args.mode)" in source
     assert "assert_source" in source
     assert "assert_identity" in source
+    assert "_AdmittedIdentityClient" in source
     assert "redirect_stdout(sys.stderr)" in source
+
+
+def test_admitted_identity_guard_rejects_runner_identity_drift() -> None:
+    first = SimpleNamespace(**IDENTITY)
+    second = SimpleNamespace(**{**IDENTITY, "ollama_version": "0.33.4"})
+
+    class FakeClient:
+        def __init__(self) -> None:
+            self.values = iter((first, second))
+
+        def verify_identity(self) -> Any:
+            return next(self.values)
+
+    guarded = controlled_runtime_worker._AdmittedIdentityClient(
+        FakeClient(), {"runtime_identity_sha256": sha256(canonical(IDENTITY))}
+    )
+    assert guarded.verify_identity() is first
+    with pytest.raises(ValueError, match="NPI_WORKER_RUNTIME_IDENTITY_DRIFT"):
+        guarded.verify_identity()
+
+
+def test_worker_revalidates_manifest_bindings_and_configured_paths() -> None:
+    source = inspect.getsource(controlled_runtime_worker.validate_bound_configuration)
+    source += inspect.getsource(worker_dispatch._validate_manifest_bindings)
+    assert "checked_path" in source
+    assert "s3_manifest_sha256" in source
+    assert "s20_manifest_sha256" in source
+
+
+def test_worker_rejects_manifest_drift_after_claim(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    paths = {
+        name: tmp_path / name
+        for name in (
+            "cache",
+            "s3-manifest",
+            "s20-manifest",
+            "baseline-manifest",
+            "ledger",
+        )
+    }
+    for path in paths.values():
+        path.mkdir()
+    manifest = b"manifest\n"
+    for name in ("s3-manifest", "s20-manifest"):
+        (paths[name] / "fixture_manifest.json").write_bytes(manifest)
+    prior = tmp_path / "prior-review.json"
+    prior.write_bytes(b"{}\n")
+    reservation = paths["ledger"] / ("a" * 64)
+    reservation.mkdir()
+    config = {
+        "project_root": str(project),
+        "cache_root": str(paths["cache"]),
+        "s3_manifest_dir": str(paths["s3-manifest"]),
+        "s20_manifest_dir": str(paths["s20-manifest"]),
+        "baseline_manifest_dir": str(paths["baseline-manifest"]),
+        "s3_out": str(tmp_path / "s3-out"),
+        "s20_out": str(tmp_path / "s20-out"),
+        "prior_s20_review_record": str(prior),
+        "reviewed_commit": "b" * 40,
+        "candidate_tree": "c" * 40,
+        "source_manifest_sha256": "d" * 64,
+        "s3_manifest_sha256": sha256(manifest),
+        "s20_manifest_sha256": sha256(manifest),
+        "ledger_root": str(paths["ledger"]),
+        "reservation_dir": str(reservation),
+        "receipt_sha256": "a" * 64,
+        "bindings_sha256": "e" * 64,
+        "runtime_identity_sha256": "f" * 64,
+    }
+    worker_dispatch.validate_bound_configuration(config)
+    (paths["s3-manifest"] / "fixture_manifest.json").write_bytes(b"changed\n")
+    with pytest.raises(ValueError, match="NPI_WORKER_MANIFEST_MISMATCH"):
+        worker_dispatch.validate_bound_configuration(config)
 
 
 def test_both_synthetic_producers_declare_production_bundle_counter() -> None:
@@ -118,10 +194,7 @@ def test_legacy_binding_passes_historical_commit_to_existing_gates(
 def test_public_command_uses_default_factory_and_real_dispatch_protocol(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    real_factory = controlled_runtime._default_execute
     harness = Harness(tmp_path, monkeypatch, install_default=False)
-    harness.install_fake_runner(monkeypatch, {})
-    monkeypatch.setattr(controlled_runtime, "_default_execute", real_factory)
     harness.write_lease()
     calls: list[str] = []
     counters = {
@@ -136,57 +209,89 @@ def test_public_command_uses_default_factory_and_real_dispatch_protocol(
         "s20_runtime_obsidian_write_count": 0,
     }
 
-    def observation(label: str) -> dict[str, object]:
-        return {
-            "checkpoint": label,
-            "observed_at_utc": datetime.now(UTC).isoformat(),
-            "identity": IDENTITY,
-        }
+    class FakeWorkerClient:
+        def verify_identity(self) -> Any:
+            calls.append("identity")
+            return SimpleNamespace(**IDENTITY)
+
+    def fake_s3(**kwargs: Any) -> Any:
+        calls.append("s3")
+        kwargs["ollama"].verify_identity()
+        out = Path(kwargs["config"].runtime_out_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "validation_summary.json").write_bytes(canonical({"result": "fake"}))
+        return SimpleNamespace(
+            result=controlled_runtime_worker.S3_COMPLETE,
+            summary={"hard_counts": counters},
+        )
+
+    def fake_s20(**kwargs: Any) -> dict[str, Any]:
+        calls.append("resume" if kwargs.get("resume") else "s20")
+        kwargs["ollama"].verify_identity()
+        out = Path(kwargs["config"].runtime_out_dir)
+        if kwargs.get("resume"):
+            return {
+                "result": controlled_runtime_worker.S20_COMPLETE,
+                "resume_status": "ALREADY_COMPLETE_VERIFIED",
+                "model_load_count": 0,
+            }
+        out.mkdir(parents=True, exist_ok=True)
+        for name in (
+            "validation_summary.json",
+            "checkpoint.json",
+            "runtime_metrics.json",
+            "CHECKSUMS.sha256",
+        ):
+            (out / name).write_bytes(b"{}\n")
+        return {"result": controlled_runtime_worker.S20_COMPLETE, "hard_counts": counters}
+
+    monkeypatch.setattr(controlled_runtime_worker, "OllamaClient", FakeWorkerClient)
+    monkeypatch.setattr(
+        "nightly_photo_intelligence_pipeline.n2b2_synthetic.ollama_client.OllamaClient",
+        FakeWorkerClient,
+    )
+    monkeypatch.setattr(controlled_runtime_worker, "load_s3_manifest", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(
+        controlled_runtime_worker, "load_s20_manifest", lambda *_args, **_kwargs: []
+    )
+    monkeypatch.setattr(
+        controlled_runtime_worker, "validate_legacy_s20_binding", lambda *_args: "f" * 40
+    )
+    monkeypatch.setattr(controlled_runtime_worker, "run_n2b2", fake_s3)
+    monkeypatch.setattr(controlled_runtime_worker, "run_s20", fake_s20)
+    monkeypatch.setattr(
+        "nightly_photo_intelligence_pipeline.engineering.source_identity.full_source_identity",
+        lambda _root: harness.source,
+    )
 
     def worker_process(command: list[str], **kwargs: object) -> SimpleNamespace:
-        mode = str(command[-1])
-        envelope = json.loads(cast(bytes, kwargs["input"]))
-        configuration = worker_dispatch.claim(envelope, mode)
-        controlled_runtime_worker._require_parent_reservation(configuration)
-        if mode == "fresh":
-            calls.append("fresh")
-            s3_out = Path(configuration["s3_out"])
-            s20_out = Path(configuration["s20_out"])
-            s3_out.mkdir()
-            s20_out.mkdir()
-            (s3_out / "validation_summary.json").write_text("{}", encoding="utf-8")
-            for name in (
-                "validation_summary.json",
-                "checkpoint.json",
-                "runtime_metrics.json",
-                "CHECKSUMS.sha256",
-            ):
-                (s20_out / name).write_text("{}", encoding="utf-8")
-            payload: dict[str, Any] = {
-                "identity_observations": [observation("before_s3"), observation("before_s20")],
-                "s3_hard_counts": counters,
-                "s20_hard_counts": counters,
-            }
-        else:
-            calls.append("resume")
-            payload = {
-                "identity_observations": [
-                    observation("before_resume"),
-                    observation("after_resume"),
-                ],
-                "resume": {
-                    "resume_status": "ALREADY_COMPLETE_VERIFIED",
-                    "model_load_count": 0,
-                },
-                "before": {"output": "a" * 64},
-                "after": {"output": "a" * 64},
-            }
-        worker_dispatch.finish(configuration, mode, outcome="COMPLETE", result=payload)
-        return SimpleNamespace(returncode=0, stdout=canonical(payload), stderr=b"")
+        input_bytes = cast(bytes, kwargs["input"])
+        stdin = io.TextIOWrapper(io.BytesIO(input_bytes), encoding="utf-8")
+        stdout_buffer = io.BytesIO()
+        stderr_buffer = io.BytesIO()
+        stdout = io.TextIOWrapper(stdout_buffer, encoding="utf-8")
+        stderr = io.TextIOWrapper(stderr_buffer, encoding="utf-8")
+        old_stdin, old_stdout, old_stderr = sys.stdin, sys.stdout, sys.stderr
+        try:
+            sys.stdin, sys.stdout, sys.stderr = stdin, stdout, stderr
+            returncode = controlled_runtime_worker.run_from_stdin(["--mode", str(command[-1])])
+            stdout.flush()
+            stderr.flush()
+            return SimpleNamespace(
+                returncode=returncode,
+                stdout=stdout_buffer.getvalue(),
+                stderr=stderr_buffer.getvalue(),
+            )
+        finally:
+            sys.stdin, sys.stdout, sys.stderr = old_stdin, old_stdout, old_stderr
 
     monkeypatch.setattr(controlled_runtime.subprocess, "run", worker_process)
     result = harness.invoke()
     assert result.exit_code == 0, result.output
-    assert calls == ["fresh", "resume"]
+    assert [item for item in calls if item in {"s3", "s20", "resume"}] == [
+        "s3",
+        "s20",
+        "resume",
+    ]
     assert (harness.ledger / "worker-fresh-claim.json").is_file()
     assert (harness.ledger / "worker-resume-claim.json").is_file()

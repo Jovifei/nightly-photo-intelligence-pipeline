@@ -37,7 +37,7 @@ from ..engineering.controlled_entry import (
 )
 from ..engineering.evidence import quality_matrix
 from ..engineering.lease import validate_lease
-from ..engineering.path_policy import checked_path, overlaps, validate_plan
+from ..engineering.path_policy import checked_path, overlaps, recheck, validate_plan
 from ..engineering.readiness import python_check
 from ..engineering.source_identity import full_source_identity
 from ..n2b1p_integrity import N2B1PRuntimeConfiguration, load_n2b1p_runtime_configuration
@@ -382,6 +382,12 @@ def _default_execute(
             "reviewed_commit": str(source["candidate_commit"]),
             "candidate_tree": str(source["candidate_tree"]),
             "source_manifest_sha256": str(source["source_manifest_sha256"]),
+            "s3_manifest_sha256": sha256(
+                (inputs["s3_manifest"] / "fixture_manifest.json").read_bytes()
+            ),
+            "s20_manifest_sha256": sha256(
+                (inputs["s20_manifest"] / "fixture_manifest.json").read_bytes()
+            ),
             "runtime_identity_sha256": sha256(canonical(identity_observations[0]["identity"])),
             "ledger_root": str(ledger_root),
             "reservation_dir": str(ledger_root / receipt_sha256),
@@ -622,7 +628,7 @@ def run_controlled_runtime_revalidation(
             raise EngineeringError("NPI_LEDGER_ROOT_UNAVAILABLE") from exc
         _checked_dir(ledger_root)
 
-    validate_plan(inputs=inputs, outputs=outputs, protected=protected)
+    checked_paths = validate_plan(inputs=inputs, outputs=outputs, protected=protected)
     _check_disjoint(inputs, protected, outputs)
     file_fingerprints = {
         path: _file_fingerprint(path)
@@ -682,6 +688,10 @@ def run_controlled_runtime_revalidation(
         require(isinstance(result, Mapping), "NPI_CALLBACK_RESULT_INVALID")
         return result
 
+    def post_execute_check() -> None:
+        _assert_file_fingerprint(file_fingerprints)
+        recheck({name: item for name, item in checked_paths.items() if item.existed})
+
     def guarded_probe() -> Mapping[str, object]:
         observed = probe()
         _assert_file_fingerprint(file_fingerprints)
@@ -706,6 +716,7 @@ def run_controlled_runtime_revalidation(
         identity_probe=guarded_probe,
         execute=guarded_execute,
         evidence_sink=sink,
+        post_execute_check=post_execute_check,
     )
     return {
         **result,

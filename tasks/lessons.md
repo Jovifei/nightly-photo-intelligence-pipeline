@@ -321,3 +321,20 @@
   one anchor is stale, stop that recipe, verify every remaining anchor, and
   manually port only reviewed changes; never edit the expected hash to force an
   apply over a newer published candidate.
+
+## 2026-09-17 N2B2 independent review remediation
+
+- Admission fingerprints are not enough if the complete protected set is not
+  checked after the runner returns; post-execution checks must run before
+  evidence persistence and terminal ledger finalization.
+- A worker's pre-stage identity sample does not bind identity calls made
+  inside an existing runner. Pass an identity-checking delegate so every
+  runner verification is compared with the admitted hash.
+- A public synthetic command is not controlled merely because a controlled
+  command also exists. Legacy execution commands must fail closed or route
+  through the same dispatch, reservation, and worker protocol.
+- Worker-side configuration validation must recheck each configured root and
+  the bytes of every manifest after dispatch; an unexecuted native race stays
+  NOT_RUN rather than becoming a skip or PASS.
+- Report hashes must state their byte domain. Git-index/LF and Windows raw
+  checkout hashes are different evidence and must not be interchanged.

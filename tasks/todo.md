@@ -1818,3 +1818,27 @@ out of scope.
   real 835 blob `db494...`); no recipe hash was changed to force application.
 - No model/Ollama, real-photo, EXIF, Real20, SQLite, App, Bundle, or lease
   execution has occurred.
+
+## N2B2 independent-review remediation F — 2026-09-17
+
+### Plan
+
+- [x] Fetch the real review branch, preserve the primary `AGENTS.md`, and
+  create a clean detached implementation worktree.
+- [x] Reproduce the seven independent findings against the exact `28c8749`
+  candidate without model, Ollama, photo, EXIF, SQLite, or lease execution.
+- [ ] Add post-execution checks for every admitted protected file and bind
+  worker-side manifest bytes, all configured roots, and admitted runtime identity.
+- [ ] Remove public direct-run bypasses while preserving the one controlled
+  Typer-to-worker entry and one-shot ledger semantics.
+- [ ] Persist execution-lease provenance, make fake CLI fixtures use an injected
+  clock, and correct the external report's MANIFEST byte-domain statement.
+- [ ] Run RED/GREEN regressions, the complete supported-Python quality matrix,
+  rebuild the index-derived MANIFEST, create one normal child commit, and
+  ordinary-push the same review branch.
+
+### Review
+
+- Current implementation worktree: `<EXTERNAL_IMPLEMENTATION_WORKTREE>`.
+- Baseline candidate: `28c8749503563d2496f4f4a8c7b8f9165b6cc7c0`.
+- Production N2B2 remains locked; no execution lease is approved or consumed.

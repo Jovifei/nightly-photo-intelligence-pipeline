@@ -20,7 +20,7 @@ import os
 import platform
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, TypeVar, cast
+from typing import Any, NoReturn, TypeVar, cast
 
 import typer
 
@@ -117,6 +117,10 @@ def _emit_error(exc: NpiError) -> None:
     typer.echo(f"error_code: {exc.error_code}", err=True)
     typer.echo(f"exit_code: {int(exc.exit_code)}", err=True)
     typer.echo(f"message: {redact_text(str(exc))}", err=True)
+
+
+def _require_controlled_n2b2_entry() -> NoReturn:
+    raise GateNotAuthorizedError("NPI_CONTROLLED_ENTRY_REQUIRED")
 
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -511,6 +515,7 @@ def n2b2_run(
     ),
 ) -> None:
     """Run the bounded, synthetic-only N2B2 S3 smoke."""
+    _require_controlled_n2b2_entry()
     import hashlib  # noqa: PLC0415
     import subprocess  # noqa: PLC0415
 
@@ -666,6 +671,7 @@ def n2b2_gpu_validate(
     out: Path = typer.Option(..., "--out"),
 ) -> None:
     """Run CPU comparator, explicit CUDA probe, then the CUDA S3 smoke."""
+    _require_controlled_n2b2_entry()
 
     import hashlib
 
@@ -807,6 +813,7 @@ def n2b2_case17_remediate(
     out: Path = typer.Option(..., "--out"),
 ) -> None:
     """Select one bounded Case 17 candidate and build an external v2 set."""
+    _require_controlled_n2b2_entry()
 
     from .json_strict import load_json_strict
     from .n2b1p_integrity import load_n2b1p_runtime_configuration
@@ -875,6 +882,7 @@ def n2b2_s20_validate(
     resume: bool = typer.Option(False, "--resume"),
 ) -> None:
     """Run the separately authorized CUDA-only S20 synthetic validation."""
+    _require_controlled_n2b2_entry()
 
     import hashlib
 
@@ -1454,6 +1462,7 @@ def n2b2_qwen_contract_probe(
     out: Path = typer.Option(..., "--out"),
 ) -> None:
     """Run the frozen Case 03 Qwen fact-binding probe before S20."""
+    _require_controlled_n2b2_entry()
 
     from .json_strict import load_json_strict
     from .n2b2_synthetic import load_s20_manifest

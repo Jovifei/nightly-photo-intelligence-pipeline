@@ -26,7 +26,14 @@ from .ollama_client import ModelIdentity, OllamaClient
 from .runtime_identity_revalidation import snapshot_tree
 from .s20_bundle import S20_COMPLETE, write_json
 from .s20_orchestrator import run_s20
-from .worker_dispatch import MAX_BYTES, assert_identity, assert_source, claim, finish
+from .worker_dispatch import (
+    MAX_BYTES,
+    assert_identity,
+    assert_source,
+    claim,
+    finish,
+    validate_bound_configuration,
+)
 
 WORKER_MODULE = "nightly_photo_intelligence_pipeline.n2b2_synthetic.controlled_runtime_worker"
 N2B1P_SHA = "0fef0a8f6a2f2b2f75ce2fba3e3eef1e764037b8"
@@ -49,6 +56,22 @@ def _identity_record(identity: ModelIdentity) -> dict[str, object]:
         "capabilities": list(identity.capabilities),
         "ollama_version": identity.ollama_version,
     }
+
+
+class _AdmittedIdentityClient:
+    """Delegate runtime calls while binding every identity observation to admission."""
+
+    def __init__(self, delegate: OllamaClient, configuration: Mapping[str, Any]) -> None:
+        self._delegate = delegate
+        self._configuration = configuration
+
+    def verify_identity(self) -> ModelIdentity:
+        identity = self._delegate.verify_identity()
+        assert_identity(self._configuration, _identity_record(identity))
+        return identity
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._delegate, name)
 
 
 def _require_parent_reservation(payload: Mapping[str, Any]) -> None:
@@ -112,6 +135,7 @@ def _observation(label: str, identity: ModelIdentity) -> dict[str, object]:
 
 
 def _common(payload: Mapping[str, Any]) -> dict[str, Any]:
+    validate_bound_configuration(payload)
     root = _path(payload, "project_root")
     cache_root = _path(payload, "cache_root")
     s20_manifest = _path(payload, "s20_manifest_dir")
@@ -157,6 +181,7 @@ def _common(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _fresh(payload: Mapping[str, Any]) -> dict[str, Any]:
+    payload = validate_bound_configuration(payload)
     root = _path(payload, "project_root")
     cache_root = _path(payload, "cache_root")
     s3_manifest = _path(payload, "s3_manifest_dir")
@@ -164,15 +189,17 @@ def _fresh(payload: Mapping[str, Any]) -> dict[str, Any]:
     s3_out = _path(payload, "s3_out")
     # Check all legacy S20 inputs before S3 can consume GPU work.
     common = _common(payload)
-    client = OllamaClient()
+    client = _AdmittedIdentityClient(OllamaClient(), payload)
     observations: list[dict[str, object]] = []
 
     def observe(label: str) -> None:
+        validate_bound_configuration(payload)
         identity = client.verify_identity()
         assert_identity(payload, _identity_record(identity))
         observations.append(_observation(label, identity))
 
     observe("before_s3")
+    validate_bound_configuration(payload)
     s3_fixtures = load_s3_manifest(s3_manifest, project_root=root)
     s3_config = N2B2RunConfig(
         project_root=root,
@@ -201,14 +228,15 @@ def _fresh(payload: Mapping[str, Any]) -> dict[str, Any]:
         n2b1p_sha=N2B1P_SHA,
         n2b1p_review_passed=True,
         start_head=str(payload["reviewed_commit"]),
-        ollama=client,
+        ollama=cast(OllamaClient, client),
     )
     require(s3_result.result == S3_COMPLETE, "NPI_S3_RUNNER_FAILED")
     write_json(s3_out / "validation_summary.json", s3_result.summary)
 
     observe("before_s20")
+    validate_bound_configuration(payload)
     s20_out.mkdir(parents=True, exist_ok=True)
-    s20_summary = run_s20(**common, ollama=client)
+    s20_summary = run_s20(**common, ollama=cast(OllamaClient, client))
     require(s20_summary.get("result") == S20_COMPLETE, "NPI_S20_RUNNER_FAILED")
     return {
         "python_version": platform.python_version(),
@@ -220,14 +248,16 @@ def _fresh(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _resume(payload: Mapping[str, Any]) -> dict[str, Any]:
-    client = OllamaClient()
+    payload = validate_bound_configuration(payload)
+    client = _AdmittedIdentityClient(OllamaClient(), payload)
     identity = client.verify_identity()
     assert_identity(payload, _identity_record(identity))
     observations = [_observation("before_resume", identity)]
     output = _path(payload, "s20_out")
     before = snapshot_tree(output).entries
     common = _common(payload)
-    resumed = run_s20(**common, resume=True, ollama=client)
+    validate_bound_configuration(payload)
+    resumed = run_s20(**common, resume=True, ollama=cast(OllamaClient, client))
     after = snapshot_tree(output).entries
     identity = client.verify_identity()
     assert_identity(payload, _identity_record(identity))
@@ -254,7 +284,7 @@ def run_from_stdin(argv: list[str] | None = None) -> int:
     require(len(data) <= MAX_BYTES, "NPI_DISPATCH_SIZE_LIMIT")
     envelope = strict_json(data)
     require(isinstance(envelope, Mapping), "NPI_RUNNER_CONFIGURATION_INVALID")
-    payload = claim(envelope, args.mode)
+    payload = validate_bound_configuration(claim(envelope, args.mode))
     try:
         _require_parent_reservation(payload)
         from ..engineering.readiness import python_check
