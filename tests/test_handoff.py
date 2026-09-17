@@ -177,9 +177,10 @@ def test_current_handoff_verifier_passes(project_root: Path) -> None:
         or "engineering repair candidate after the F1-F6 remediation" in result.stdout
         or "engineering follow-up candidate after the engineering repair" in result.stdout
         or "audit fix C candidate after the F1/F3 follow-up" in result.stdout
-        or "audit fix D candidate after controlled CLI remediation" in result.stdout
-        or "E2 integrated candidate after E1 worker delivery" in result.stdout
-    )
+            or "audit fix D candidate after controlled CLI remediation" in result.stdout
+            or "E2 integrated candidate after E1 worker delivery" in result.stdout
+            or "audit fix F candidate after independent-review remediation" in result.stdout
+        )
 
 
 def test_current_entry_documents_reference_n2b1p_not_n0_only(project_root: Path) -> None:
