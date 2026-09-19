@@ -1,0 +1,14 @@
+{
+  "schema_version": "npi-h0-delivery-v1",
+  "stage": "H0_SYNTHETIC_LEASE_REQUEST_PREPARATION",
+  "base_candidate": "ffc4130823c1308f089b835c766e341ec2173e82",
+  "execution_authorized": false,
+  "owner_anchor_created": false,
+  "approved_lease_created": false,
+  "model_execution": "NOT_PERFORMED",
+  "real_photo_or_exif": "NOT_PERFORMED",
+  "project_state_mutation": false,
+  "main_mutation_by_h0": false,
+  "next_stage": "H1_LOCAL_BINDING_COLLECTION_AND_DRAFT_REQUEST",
+  "success_stop": "H1_DRAFT_REQUEST_READY_FOR_OWNER_REVIEW"
+}
