@@ -22,6 +22,63 @@ from nightly_photo_intelligence_pipeline.n2b2_synthetic import (
 from test_controlled_runtime_cli import IDENTITY, Harness
 
 
+def _worker_configuration(tmp_path: Path) -> dict[str, str]:
+    project = tmp_path / "project"
+    project.mkdir()
+    paths = {
+        name: tmp_path / name
+        for name in (
+            "cache",
+            "s3-manifest",
+            "s20-manifest",
+            "baseline-manifest",
+            "ledger",
+        )
+    }
+    for path in paths.values():
+        path.mkdir()
+    manifest = b"manifest\n"
+    for name in ("s3-manifest", "s20-manifest"):
+        (paths[name] / "fixture_manifest.json").write_bytes(manifest)
+    prior = tmp_path / "prior-review.json"
+    prior.write_bytes(b"{}\n")
+    receipt_sha = "a" * 64
+    bindings_sha = "e" * 64
+    reservation = paths["ledger"] / receipt_sha
+    reservation.mkdir()
+    (reservation / "reservation.json").write_bytes(
+        canonical(
+            {
+                "schema_version": "npi-lease-consumption-v1",
+                "status": "RESERVED",
+                "receipt_sha256": receipt_sha,
+                "bindings_sha256": bindings_sha,
+                "reserved_at_utc": "2026-09-19T00:00:00+00:00",
+            }
+        )
+    )
+    return {
+        "project_root": str(project),
+        "cache_root": str(paths["cache"]),
+        "s3_manifest_dir": str(paths["s3-manifest"]),
+        "s20_manifest_dir": str(paths["s20-manifest"]),
+        "baseline_manifest_dir": str(paths["baseline-manifest"]),
+        "s3_out": str(tmp_path / "s3-out"),
+        "s20_out": str(tmp_path / "s20-out"),
+        "prior_s20_review_record": str(prior),
+        "reviewed_commit": "b" * 40,
+        "candidate_tree": "c" * 40,
+        "source_manifest_sha256": "d" * 64,
+        "s3_manifest_sha256": sha256(manifest),
+        "s20_manifest_sha256": sha256(manifest),
+        "ledger_root": str(paths["ledger"]),
+        "reservation_dir": str(reservation),
+        "receipt_sha256": receipt_sha,
+        "bindings_sha256": bindings_sha,
+        "runtime_identity_sha256": "f" * 64,
+    }
+
+
 def test_parent_worker_launch_issues_a_dispatch_envelope(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -155,6 +212,22 @@ def test_worker_rejects_manifest_drift_after_claim(tmp_path: Path) -> None:
     (paths["s3-manifest"] / "fixture_manifest.json").write_bytes(b"changed\n")
     with pytest.raises(ValueError, match="NPI_WORKER_MANIFEST_MISMATCH"):
         worker_dispatch.validate_bound_configuration(config)
+
+
+def test_fresh_dispatch_rejects_preexisting_outputs(tmp_path: Path) -> None:
+    config = _worker_configuration(tmp_path)
+    Path(config["s3_out"]).mkdir()
+    Path(config["s20_out"]).mkdir()
+    with pytest.raises(ValueError, match="NPI_FRESH_OUTPUT_ALREADY_EXISTS"):
+        worker_dispatch.issue(config, "fresh")
+
+
+def test_fresh_worker_claim_rejects_output_created_after_dispatch(tmp_path: Path) -> None:
+    config = _worker_configuration(tmp_path)
+    envelope = worker_dispatch.issue(config, "fresh")
+    Path(config["s3_out"]).mkdir()
+    with pytest.raises(ValueError, match="NPI_FRESH_OUTPUT_ALREADY_EXISTS"):
+        worker_dispatch.claim(envelope, "fresh")
 
 
 def test_both_synthetic_producers_declare_production_bundle_counter() -> None:

@@ -1099,6 +1099,7 @@ def _check_git_baselines() -> CheckResult:
         audit_fix_d_base = "ab69f2c46971e5fea0cd0bf6ca13367e964f0409"
         e2_base = "3445f2911d7bb6bfe9fb8bdadc5ec30541adad99"
         audit_fix_f_final_base = "4e7f7e1483728557ae6b05c543569151614b5833"
+        audit_fix_g_base = "a6a4df9e6187f524a22f52bfb258d7a4b2ab3d3a"
         head = git("rev-parse", "HEAD")[1]
         portability_candidate = head == n2b1p_portability and git("rev-parse", "HEAD^") == (
             0,
@@ -1155,6 +1156,11 @@ def _check_git_baselines() -> CheckResult:
             and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "19")
             and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "20")
         )
+        audit_fix_g_topology = (
+            git("rev-parse", "HEAD^") == (0, audit_fix_g_base)
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "20")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "21")
+        )
         portability_record_ok = True
         if (
             portability_candidate
@@ -1168,6 +1174,7 @@ def _check_git_baselines() -> CheckResult:
             or audit_fix_d_topology
             or e2_topology
             or audit_fix_f_topology
+            or audit_fix_g_topology
         ):
             record_path = root / "research" / "N2B1P_manifest_portability_remediation.json"
             schema_path = root / "schemas" / "n2b1p_manifest_portability_remediation_v1.schema.json"
@@ -1232,7 +1239,8 @@ def _check_git_baselines() -> CheckResult:
             or audit_fix_c_topology
             or audit_fix_d_topology
             or e2_topology
-            or audit_fix_f_topology,
+            or audit_fix_f_topology
+            or audit_fix_g_topology,
             portability_record_ok,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),
@@ -1253,6 +1261,7 @@ def _check_git_baselines() -> CheckResult:
                 "an audit-fix D candidate may follow the controlled CLI remediation; "
                 "an E2 integrated candidate may follow the E1 worker delivery; "
                 "an audit-fix F candidate may follow the E2 remediation; "
+                "an audit-fix G candidate may follow the final F candidate; "
                 "no merge; worktree clean"
             ),
         )

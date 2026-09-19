@@ -210,7 +210,7 @@ def _fresh(payload: Mapping[str, Any]) -> dict[str, Any]:
         device="cuda",
         s3_only=True,
     )
-    s3_out.mkdir(parents=True, exist_ok=True)
+    s3_out.mkdir(parents=True, exist_ok=False)
     s3_result = run_n2b2(
         config=s3_config,
         s3_fixtures=s3_fixtures,
@@ -235,7 +235,7 @@ def _fresh(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     observe("before_s20")
     validate_bound_configuration(payload)
-    s20_out.mkdir(parents=True, exist_ok=True)
+    s20_out.mkdir(parents=True, exist_ok=False)
     s20_summary = run_s20(**common, ollama=cast(OllamaClient, client))
     require(s20_summary.get("result") == S20_COMPLETE, "NPI_S20_RUNNER_FAILED")
     return {

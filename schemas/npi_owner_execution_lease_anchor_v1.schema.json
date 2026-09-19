@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/npi_owner_execution_lease_anchor_v1.schema.json",
+  "title": "Owner-controlled external execution lease anchor",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "owner_id",
+    "purpose",
+    "execution_lease_sha256",
+    "production_unlock"
+  ],
+  "properties": {
+    "schema_version": {"const": "npi-owner-execution-lease-anchor-v1"},
+    "status": {"const": "APPROVED"},
+    "owner_id": {"const": "Jovi"},
+    "purpose": {"const": "SYNTHETIC_S3_S20_ENGINEERING_VALIDATION"},
+    "execution_lease_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "production_unlock": {"const": false}
+  }
+}

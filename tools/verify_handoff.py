@@ -59,6 +59,7 @@ AUDIT_FIX_F_FINAL_BASE_SHA = "0a2b6b1a4afacbacd1f49425de9c1e8dce3b738c"
 AUDIT_FIX_F_PREFLIGHT_BASE_SHA = "d0593a693b275b40e0d1ad5e5f6e611e20746771"
 AUDIT_FIX_F_FINAL_REGISTRATION_BASE_SHA = "69fe68a221f5beefff66b23ad58ffc9ea835a1fd"
 AUDIT_FIX_F_DOCUMENTATION_BASE_SHA = "4e7f7e1483728557ae6b05c543569151614b5833"
+AUDIT_FIX_G_BASE_SHA = "a6a4df9e6187f524a22f52bfb258d7a4b2ab3d3a"
 
 errors: list[str] = []
 passes: list[str] = []
@@ -814,6 +815,11 @@ def check_baselines() -> None:
         or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "19")
     ):
         fail("audit fix F documentation candidate has unexpected ancestry")
+    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_G_BASE_SHA) and (
+        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "21")
+        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "20")
+    ):
+        fail("audit fix G candidate has unexpected ancestry")
     elif git("rev-parse", "HEAD") != (0, N2B1P_SHA) and not (
         (
             git("rev-parse", "HEAD^") == (0, N2B1P_SHA)
@@ -905,6 +911,11 @@ def check_baselines() -> None:
             git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_DOCUMENTATION_BASE_SHA)
             and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "20")
             and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "19")
+        )
+        or (
+            git("rev-parse", "HEAD^") == (0, AUDIT_FIX_G_BASE_SHA)
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "21")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "20")
         )
     ):
         fail("N2B2 review candidate must be exactly one direct child of N2B1P")
@@ -1101,6 +1112,11 @@ def main() -> int:
             "HANDOFF_VALID: E2 integrated candidate after E1 worker delivery; "
             "audit fix F final candidate after final verification; "
             "production N2B2 remains LOCKED"
+        )
+    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_G_BASE_SHA):
+        print(
+            "HANDOFF_VALID: audit fix G candidate after trust-anchor, fresh-output, "
+            "and exceptional-integrity remediation; production N2B2 remains LOCKED"
         )
     else:
         print(

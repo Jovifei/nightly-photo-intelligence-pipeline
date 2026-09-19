@@ -1411,7 +1411,6 @@ def _legacy_runtime_identity_revalidate(
 def n2b2_runtime_identity_revalidate(
     review_artifact: Path = typer.Option(..., "--review-artifact"),
     execution_lease: Path = typer.Option(..., "--execution-lease"),
-    execution_lease_sha256: str = typer.Option(..., "--execution-lease-sha256"),
     quality_evidence: Path = typer.Option(..., "--quality-evidence"),
     prior_s20_review_record: Path = typer.Option(..., "--prior-s20-review-record"),
     old_s3_runtime: Path = typer.Option(..., "--old-s3-runtime"),
@@ -1432,7 +1431,6 @@ def n2b2_runtime_identity_revalidate(
             project_root=find_project_root(),
             review_artifact=review_artifact,
             execution_lease=execution_lease,
-            execution_lease_sha256=execution_lease_sha256,
             quality_evidence=quality_evidence,
             prior_s20_review_record=prior_s20_review_record,
             old_s3_runtime=old_s3_runtime,

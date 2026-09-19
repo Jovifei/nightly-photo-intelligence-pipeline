@@ -15,6 +15,7 @@ import stat
 import subprocess
 import sys
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
@@ -53,6 +54,16 @@ _LEDGER_DIR = "n2b2-controlled-execution-ledger"
 _COUNTER_LABEL = re.compile(r"[a-z][a-z0-9_]{0,63}\Z")
 _TASK_RECEIPT = "approvals/owner_n2b2_ollama_runtime_identity_revalidation_20260906.yaml"
 _TASK_RECEIPT_SCHEMA = "schemas/owner_n2b2_ollama_runtime_identity_revalidation_v1.schema.json"
+_OWNER_LEASE_ANCHOR_SCHEMA = "schemas/npi_owner_execution_lease_anchor_v1.schema.json"
+_OWNER_LEASE_ANCHOR_DIR = "owner-approvals"
+_OWNER_LEASE_ANCHOR_FILE = "n2b2_synthetic_execution_lease_anchor.json"
+
+
+@dataclass(frozen=True)
+class _OwnerLeaseAnchor:
+    path: Path
+    data: bytes
+    execution_lease_sha256: str
 
 
 def _checked_dir(value: Path) -> Path:
@@ -169,6 +180,24 @@ def _load_task_specific_receipt(project_root: Path) -> Mapping[str, object]:
         "NPI_TASK_RECEIPT_INVALID",
     )
     return cast(Mapping[str, object], payload)
+
+
+def _load_owner_lease_anchor(project_root: Path, runtime_parent: Path) -> _OwnerLeaseAnchor:
+    path = runtime_parent / _OWNER_LEASE_ANCHOR_DIR / _OWNER_LEASE_ANCHOR_FILE
+    _, data = _regular_file(path)
+    payload = strict_json(data)
+    try:
+        schema = strict_json((project_root / _OWNER_LEASE_ANCHOR_SCHEMA).read_bytes())
+    except OSError as exc:
+        raise EngineeringError("NPI_OWNER_LEASE_ANCHOR_SCHEMA_UNAVAILABLE") from exc
+    require(isinstance(payload, Mapping), "NPI_OWNER_LEASE_ANCHOR_INVALID")
+    require(
+        not list(Draft202012Validator(schema).iter_errors(payload)),
+        "NPI_OWNER_LEASE_ANCHOR_INVALID",
+    )
+    digest = payload.get("execution_lease_sha256")
+    require(isinstance(digest, str) and is_digest(digest), "NPI_OWNER_LEASE_ANCHOR_INVALID")
+    return _OwnerLeaseAnchor(path=path, data=data, execution_lease_sha256=digest)
 
 
 def _validate_task_specific_receipt(
@@ -490,7 +519,6 @@ def run_controlled_runtime_revalidation(
     project_root: Path,
     review_artifact: Path,
     execution_lease: Path,
-    execution_lease_sha256: str,
     quality_evidence: Path,
     prior_s20_review_record: Path,
     old_s3_runtime: Path,
@@ -537,6 +565,8 @@ def run_controlled_runtime_revalidation(
 
     protected: dict[str, Path] = {"project_root": root, "ledger_root": ledger_root}
     _add_protected(protected, "cache_root", cache_root)
+    owner_anchor_root = runtime_parent / _OWNER_LEASE_ANCHOR_DIR
+    _add_protected(protected, "owner_anchor_root", owner_anchor_root)
     for label, path in (
         ("review_root", Path(review_artifact).parent),
         ("lease_root", Path(execution_lease).parent),
@@ -549,6 +579,12 @@ def run_controlled_runtime_revalidation(
 
     review_path, review_bytes = _regular_file(Path(review_artifact))
     lease_path, lease_bytes = _regular_file(Path(execution_lease))
+    owner_anchor = _load_owner_lease_anchor(root, runtime_parent)
+    execution_lease_sha256 = owner_anchor.execution_lease_sha256
+    require(
+        sha256(lease_bytes) == execution_lease_sha256,
+        "NPI_OWNER_LEASE_ANCHOR_MISMATCH",
+    )
     quality_path = Path(quality_evidence)
     quality_records, _, quality_bytes = _load_quality(quality_path)
     prior_path, prior_bytes = _regular_file(Path(prior_s20_review_record))
@@ -641,6 +677,7 @@ def run_controlled_runtime_revalidation(
             old_identity_path,
             task_receipt_path,
             task_receipt_schema_path,
+            owner_anchor.path,
             *manifest_paths.values(),
         )
     }

@@ -107,6 +107,12 @@ class Harness:
         self.cache_root = tmp_path / "cache"
         self.runtime_parent.mkdir()
         self.cache_root.mkdir()
+        self.owner_anchor_path = (
+            self.runtime_parent
+            / controlled_runtime._OWNER_LEASE_ANCHOR_DIR
+            / controlled_runtime._OWNER_LEASE_ANCHOR_FILE
+        )
+        self.owner_anchor_path.parent.mkdir()
         self.inputs = {
             "old_s3": tmp_path / "old-s3",
             "old_s20": tmp_path / "old-s20",
@@ -226,6 +232,7 @@ class Harness:
             "project_root": self.project,
             "ledger_root": self.runtime_parent / "n2b2-controlled-execution-ledger",
             "cache_root": self.cache_root,
+            "owner_anchor_root": self.owner_anchor_path.parent,
             "review_root": self.file_dirs["review"],
             "lease_root": self.file_dirs["lease"],
             "quality_root": self.file_dirs["quality"],
@@ -282,6 +289,18 @@ class Harness:
         self.lease_bytes = canonical(lease)
         self.lease_path.write_bytes(self.lease_bytes)
         self.lease_sha = hashlib.sha256(self.lease_bytes).hexdigest()
+        self.owner_anchor_path.write_bytes(
+            canonical(
+                {
+                    "schema_version": "npi-owner-execution-lease-anchor-v1",
+                    "status": "APPROVED",
+                    "owner_id": "Jovi",
+                    "purpose": "SYNTHETIC_S3_S20_ENGINEERING_VALIDATION",
+                    "execution_lease_sha256": self.lease_sha,
+                    "production_unlock": False,
+                }
+            )
+        )
 
     def install_fake_runner(
         self,
@@ -309,11 +328,10 @@ class Harness:
         )
         monkeypatch.setattr(controlled_runtime, "_default_execute", fake_execute_factory)
 
-    def command(self, *, anchor: str | None = None) -> list[str]:
+    def command(self, *, include_caller_hash: bool = False) -> list[str]:
         values = {
             "review-artifact": self.review,
             "execution-lease": self.lease_path,
-            "execution-lease-sha256": anchor or self.lease_sha,
             "quality-evidence": self.quality,
             "prior-s20-review-record": self.prior,
             "old-s3-runtime": self.inputs["old_s3"],
@@ -328,10 +346,12 @@ class Harness:
         args = ["n2b2", "runtime-identity-revalidate"]
         for name, value in values.items():
             args.extend([f"--{name}", str(value)])
+        if include_caller_hash:
+            args.extend(["--execution-lease-sha256", self.lease_sha])
         return args
 
-    def invoke(self, *, anchor: str | None = None):
-        return CliRunner().invoke(app, self.command(anchor=anchor))
+    def invoke(self, *, include_caller_hash: bool = False):
+        return CliRunner().invoke(app, self.command(include_caller_hash=include_caller_hash))
 
     @property
     def ledger(self) -> Path:
@@ -351,6 +371,29 @@ def test_public_command_accepts_only_controlled_fake_execution(
     assert (harness.outputs["evidence_out"] / "controlled_execution_evidence.json").is_file()
 
 
+def test_public_command_rejects_caller_supplied_self_hash(tmp_path: Path, monkeypatch: Any) -> None:
+    harness = Harness(tmp_path, monkeypatch)
+    harness.write_lease()
+    result = harness.invoke(include_caller_hash=True)
+    assert result.exit_code != 0
+    assert "execution-lease-sha256" in result.output
+    assert harness.probe_calls == 0
+    assert harness.runner_calls == 0
+    assert not harness.ledger.exists()
+
+
+def test_public_command_requires_external_owner_anchor(tmp_path: Path, monkeypatch: Any) -> None:
+    harness = Harness(tmp_path, monkeypatch)
+    harness.write_lease()
+    harness.owner_anchor_path.unlink()
+    result = harness.invoke()
+    assert result.exit_code != 0
+    assert "NPI_REQUIRED_FILE_MISSING" in result.output
+    assert harness.probe_calls == 0
+    assert harness.runner_calls == 0
+    assert not harness.ledger.exists()
+
+
 def test_public_command_rejects_draft_before_probe_or_ledger(
     tmp_path: Path, monkeypatch: Any
 ) -> None:
@@ -363,11 +406,17 @@ def test_public_command_rejects_draft_before_probe_or_ledger(
     assert not harness.ledger.exists()
 
 
-def test_public_command_rejects_wrong_anchor_before_probe(tmp_path: Path, monkeypatch: Any) -> None:
+def test_public_command_rejects_wrong_owner_anchor_before_probe(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
     harness = Harness(tmp_path, monkeypatch)
     harness.write_lease()
-    result = harness.invoke(anchor="a" * 64)
+    anchor = json.loads(harness.owner_anchor_path.read_text(encoding="utf-8"))
+    anchor["execution_lease_sha256"] = "a" * 64
+    harness.owner_anchor_path.write_bytes(canonical(anchor))
+    result = harness.invoke()
     assert result.exit_code != 0
+    assert "NPI_OWNER_LEASE_ANCHOR_MISMATCH" in result.output
     assert harness.probe_calls == 0
     assert harness.runner_calls == 0
     assert not harness.ledger.exists()

@@ -511,6 +511,7 @@ def test_runtime_cli_requires_a_fresh_source_bound_execution_lease() -> None:
     assert result.exit_code != 0
     assert help_result.exit_code == 0
     assert "--execution-lease" in help_result.output
+    assert "--execution-lease-sha256" not in help_result.output
 
 
 def test_runtime_cli_routes_to_the_controlled_adapter(monkeypatch, tmp_path: Path) -> None:
@@ -534,7 +535,6 @@ def test_runtime_cli_routes_to_the_controlled_adapter(monkeypatch, tmp_path: Pat
     values = {
         "review-artifact": tmp_path / "review.txt",
         "execution-lease": tmp_path / "lease.json",
-        "execution-lease-sha256": "a" * 64,
         "quality-evidence": tmp_path / "quality.json",
         "prior-s20-review-record": tmp_path / "prior.json",
         "old-s3-runtime": tmp_path / "old-s3",
@@ -551,5 +551,5 @@ def test_runtime_cli_routes_to_the_controlled_adapter(monkeypatch, tmp_path: Pat
         command.extend([f"--{name}", str(path)])
     result = CliRunner().invoke(app, command)
     assert result.exit_code == 0, result.output
-    assert captured["execution_lease_sha256"] == "a" * 64
+    assert "execution_lease_sha256" not in captured
     assert captured["quality_evidence"] == values["quality-evidence"]

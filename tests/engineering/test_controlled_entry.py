@@ -263,6 +263,34 @@ class ControlledEntryTests(unittest.TestCase):
                 self.plan, now=NOW, identity_probe=lambda: self.identity, execute=self._evidence
             )
 
+    def test_failed_callback_still_runs_post_execution_integrity_check(self) -> None:
+        checked = False
+
+        def fail() -> dict[str, Any]:
+            raise RuntimeError("fake runner failure")
+
+        def detect_tamper() -> None:
+            nonlocal checked
+            checked = True
+            raise ValueError("NPI_BOUND_FILE_CHANGED")
+
+        with (
+            self.assertRaisesRegex(ValueError, "NPI_BOUND_FILE_CHANGED") as raised,
+            patch.object(sys, "version_info", (3, 12, 10)),
+        ):
+            run_controlled_execution(
+                self.plan,
+                now=NOW,
+                identity_probe=lambda: self.identity,
+                execute=fail,
+                post_execute_check=detect_tamper,
+            )
+        self.assertTrue(checked)
+        self.assertIsInstance(raised.exception.__cause__, RuntimeError)
+        reservation = next(self.ledger.iterdir())
+        terminal = json.loads((reservation / "terminal.json").read_text(encoding="utf-8"))
+        self.assertEqual(terminal["status"], "FAILED")
+
 
 if __name__ == "__main__":
     unittest.main()

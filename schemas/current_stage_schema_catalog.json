@@ -40,6 +40,7 @@
     {"file": "owner_n2b2_ollama_runtime_identity_revalidation_v1.schema.json", "purpose": "one-shot Owner authorization for the exact Ollama runtime identity transition"},
     {"file": "n2b2_runtime_identity_transition_v1.schema.json", "purpose": "redacted external identity transition evidence"},
     {"file": "n2b2_runtime_execution_lease_v1.schema.json", "purpose": "fresh source-bound synthetic runtime execution lease"},
+    {"file": "npi_owner_execution_lease_anchor_v1.schema.json", "purpose": "fixed external Owner trust anchor for the controlled synthetic execution lease"},
     {"file": "n2b2_runtime_revalidation_evidence_v1.schema.json", "purpose": "versioned runtime identity and command evidence"},
     {"file": "n2b2_vision_fact_contract_v1_2.schema.json", "purpose": "versioned bbox-union empty-area proxy facts; historical v1.1 remains unchanged"}
   ]

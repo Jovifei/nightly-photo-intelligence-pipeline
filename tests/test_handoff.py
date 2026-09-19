@@ -182,6 +182,7 @@ def test_current_handoff_verifier_passes(project_root: Path) -> None:
         or "audit fix F candidate after independent-review remediation" in result.stdout
         or "audit fix F final candidate after remediation verification" in result.stdout
         or "audit fix F final candidate after final verification" in result.stdout
+        or "audit fix G candidate after trust-anchor" in result.stdout
     )
 
 

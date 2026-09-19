@@ -249,7 +249,15 @@ def run_controlled_execution(
             observed_bindings=plan.observed_bindings,
             now=now,
         )
-        callback_result = execute()
+        try:
+            callback_result = execute()
+        except Exception as execute_error:
+            if post_execute_check is not None:
+                try:
+                    post_execute_check()
+                except Exception as integrity_error:
+                    raise integrity_error from execute_error
+            raise
         require(isinstance(callback_result, Mapping), "NPI_CALLBACK_RESULT_INVALID")
         if post_execute_check is not None:
             post_execute_check()

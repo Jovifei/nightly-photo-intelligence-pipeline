@@ -1850,3 +1850,35 @@ out of scope.
   (`winerror=1314`); no model, Ollama, photo, EXIF, SQLite, App, Bundle, or
   lease execution occurred.
 - Production N2B2 remains locked; no execution lease is approved or consumed.
+
+## N2B2 independent-review remediation G — 2026-09-19
+
+### Plan
+
+- [x] Reproduce the self-hashed lease, pre-existing fresh-output, and exceptional
+  runner integrity-check bypass findings against exact candidate `a6a4df9`.
+- [x] Bind the execution lease to a fixed external Owner trust anchor;
+  reject caller-selected hashes that have no independently approved binding.
+- [x] Require fresh S3/S20 outputs before dispatch and recheck that condition in
+  the worker before any stage starts.
+- [x] Run post-execution protected-input checks on both success and failure while
+  preserving the original runner exception as the primary failure.
+- [x] Run focused RED/GREEN regressions and the complete Python 3.12 quality
+  matrix, rebuild the index-derived MANIFEST, create a normal child commit, and
+  report the exact remote-write status without approving an execution lease.
+
+### Review
+
+- Four RED regressions reproduced the review findings before implementation;
+  the focused controlled-runtime suite now passes 67 tests.
+- Preliminary Python 3.12 full pytest reached 733 passed, 1 native symlink skip,
+  and 91 subtests; its only three failures were the expected dirty-worktree and
+  pre-MANIFEST acceptance checks. Ruff, format, mypy (84 files), E1 (26 passed,
+  1 winerror=1314 skip), sensitive scan, and diff-check pass.
+- No model, Ollama, photo, EXIF, SQLite, App, production Bundle, or actual Owner
+  execution lease was run or created. Production N2B2 remains locked.
+- Final clean candidate: full pytest 736 passed, 1 winerror=1314 skip, 91
+  subtests; quality 7/7; handoff 8/8; CLI preflight 16/16; native/security
+  193 passed, 1 winerror=1314 skip, 91 subtests; E1 26 passed, 1 matching skip.
+- The code-only candidate is complete for independent review. No Review PASS or
+  execution lease is implied; remote publication is reported separately.

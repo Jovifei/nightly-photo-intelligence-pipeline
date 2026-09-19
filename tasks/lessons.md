@@ -301,6 +301,17 @@
   CUDA or starting any local model service; the corrected v4 invocation made
   no model load or output write before this check.
 
+## 2026-09-19 N2B2 execution trust-anchor correction
+
+- A caller-supplied digest is an integrity comparison value, not an Owner trust
+  anchor. An execution gate must derive or verify the approved lease digest from
+  a separately controlled receipt or signed binding before accepting `APPROVED`.
+- Fresh-run output directories are reservation inputs: reject an existing S3 or
+  S20 directory both before dispatch and again in the worker to close races.
+- Protected-input integrity checks must execute after every runner attempt,
+  including exceptions; preserve the runner exception unless the integrity
+  failure is the only failure.
+
 ## 2026-09-14 N2B2 engineering review correction
 
 - A path-plan snapshot is only an admission precondition: recheck every bound

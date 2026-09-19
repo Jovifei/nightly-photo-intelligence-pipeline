@@ -156,6 +156,12 @@ def _validate_manifest_bindings(configuration: Mapping[str, Any]) -> None:
         _require(_sha(data) == configuration[digest_name], "NPI_WORKER_MANIFEST_MISMATCH")
 
 
+def _require_fresh_outputs(configuration: Mapping[str, Any]) -> None:
+    for name in OUTPUT_DIRS:
+        checked = checked_path(_path(configuration[name]), must_exist=False)
+        _require(not checked.existed, "NPI_FRESH_OUTPUT_ALREADY_EXISTS")
+
+
 def _write_new(path: Path, value: object) -> None:
     _check_existing(path.parent)
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
@@ -243,6 +249,8 @@ def issue(configuration: Mapping[str, Any], mode: str) -> dict[str, Any]:
     """Called by the admitted parent, after reservation and before subprocess start."""
     _require(mode in MODES, "NPI_WORKER_MODE_INVALID")
     config = _configuration(configuration)
+    if mode == "fresh":
+        _require_fresh_outputs(config)
     root, reservation_sha = _reservation(config)
     config_sha = _sha(_canonical(config))
     if mode == "resume":
@@ -278,6 +286,8 @@ def claim(envelope: Mapping[str, Any], mode: str) -> dict[str, Any]:
         "NPI_WORKER_ENVELOPE_INVALID",
     )
     config = _configuration(envelope["configuration"])
+    if mode == "fresh":
+        _require_fresh_outputs(config)
     root, reservation_sha = _reservation(config)
     config_sha = _sha(_canonical(config))
     expected = {
