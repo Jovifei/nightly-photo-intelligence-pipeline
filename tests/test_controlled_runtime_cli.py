@@ -126,15 +126,35 @@ class Harness:
         self.old_identity = {**IDENTITY, "ollama_version": "0.32.15"}
         (self.inputs["old_s20"] / "ollama_identity.json").write_bytes(canonical(self.old_identity))
         self.file_dirs = {
-            "review": tmp_path / "review",
+            "candidate_review": tmp_path / "candidate-review",
+            "historical_review": tmp_path / "historical-review",
             "lease": tmp_path / "lease",
             "quality": tmp_path / "quality",
             "prior": tmp_path / "prior",
         }
         for path in self.file_dirs.values():
             path.mkdir()
-        self.review = self.file_dirs["review"] / "review.txt"
-        self.review.write_text(
+        self.source = {
+            "candidate_commit": "1" * 40,
+            "candidate_tree": "2" * 40,
+            "source_manifest_sha256": "3" * 64,
+        }
+        self.candidate_review = self.file_dirs["candidate_review"] / "review.json"
+        self.candidate_review.write_bytes(
+            canonical(
+                {
+                    "schema_version": "npi-independent-review-v1",
+                    "reviewed_commit": self.source["candidate_commit"],
+                    "reviewed_parent": "0" * 40,
+                    "reviewed_tree": self.source["candidate_tree"],
+                    "independent": True,
+                    "verdict": "PASS_FOR_EXTERNAL_REVIEW",
+                    "ready_to_merge_or_publish": True,
+                }
+            )
+        )
+        self.historical_review = self.file_dirs["historical_review"] / "review.txt"
+        self.historical_review.write_text(
             "INCONCLUSIVE\nN2B2_S20_RESUME_BINDING_MISMATCH: model_identity\n",
             encoding="utf-8",
         )
@@ -146,11 +166,6 @@ class Harness:
             "s3_out": tmp_path / "s3-out",
             "s20_out": tmp_path / "s20-out",
             "evidence_out": tmp_path / "evidence-out",
-        }
-        self.source = {
-            "candidate_commit": "1" * 40,
-            "candidate_tree": "2" * 40,
-            "source_manifest_sha256": "3" * 64,
         }
         self.runtime = N2B1PRuntimeConfiguration(
             configuration_version="TEST",
@@ -201,7 +216,9 @@ class Harness:
             "issued_at_utc": "2026-09-06T00:00:00Z",
             "task": "N2B2_OLLAMA_RUNTIME_IDENTITY_REVALIDATION_20260906",
             "base_candidate": BASE_CANDIDATE,
-            "external_review_sha256": hashlib.sha256(self.review.read_bytes()).hexdigest(),
+            "external_review_sha256": hashlib.sha256(
+                self.historical_review.read_bytes()
+            ).hexdigest(),
             "accepted_verdict": "INCONCLUSIVE",
             "accepted_blocker": "N2B2_S20_RESUME_BINDING_MISMATCH: model_identity",
             "old_identity": old,
@@ -233,7 +250,8 @@ class Harness:
             "ledger_root": self.runtime_parent / "n2b2-controlled-execution-ledger",
             "cache_root": self.cache_root,
             "owner_anchor_root": self.owner_anchor_path.parent,
-            "review_root": self.file_dirs["review"],
+            "candidate_review_root": self.file_dirs["candidate_review"],
+            "historical_review_root": self.file_dirs["historical_review"],
             "lease_root": self.file_dirs["lease"],
             "quality_root": self.file_dirs["quality"],
             "prior_review_root": self.file_dirs["prior"],
@@ -253,6 +271,10 @@ class Harness:
         bindings = {
             **self.source,
             "project_state_sha256": sha256(state_bytes),
+            "candidate_review_sha256": sha256(self.candidate_review.read_bytes()),
+            "historical_review_sha256": sha256(self.historical_review.read_bytes()),
+            "prior_s20_review_sha256": sha256(self.prior.read_bytes()),
+            "quality_evidence_sha256": sha256(self.quality.read_bytes()),
             "runtime_identity_sha256": sha256(canonical(bound_identity)),
             "s3_manifest_sha256": sha256(
                 (inputs["s3_manifest"] / "fixture_manifest.json").read_bytes()
@@ -264,7 +286,7 @@ class Harness:
             "path_plan_sha256": path_sha,
         }
         lease = {
-            "schema_version": "npi-synthetic-execution-lease-v2",
+            "schema_version": "npi-synthetic-execution-lease-v3",
             "status": status,
             "owner_id": "Jovi",
             "purpose": "SYNTHETIC_S3_S20_ENGINEERING_VALIDATION",
@@ -330,7 +352,8 @@ class Harness:
 
     def command(self, *, include_caller_hash: bool = False) -> list[str]:
         values = {
-            "review-artifact": self.review,
+            "candidate-review-artifact": self.candidate_review,
+            "historical-review-artifact": self.historical_review,
             "execution-lease": self.lease_path,
             "quality-evidence": self.quality,
             "prior-s20-review-record": self.prior,
@@ -369,6 +392,58 @@ def test_public_command_accepts_only_controlled_fake_execution(
     assert harness.runner_calls == 1
     assert (harness.ledger / "terminal.json").is_file()
     assert (harness.outputs["evidence_out"] / "controlled_execution_evidence.json").is_file()
+
+
+def test_public_command_rejects_candidate_review_with_wrong_source_before_probe(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    harness = Harness(tmp_path, monkeypatch)
+    review = json.loads(harness.candidate_review.read_text(encoding="utf-8"))
+    review["reviewed_commit"] = "9" * 40
+    harness.candidate_review.write_bytes(canonical(review))
+    harness.write_lease()
+
+    result = harness.invoke()
+
+    assert result.exit_code != 0
+    assert "NPI_CANDIDATE_REVIEW_BINDING_INVALID" in result.output
+    assert harness.probe_calls == 0
+    assert harness.runner_calls == 0
+    assert not harness.ledger.exists()
+
+
+def test_public_command_rejects_historical_review_not_accepted_by_task_receipt(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    harness = Harness(tmp_path, monkeypatch)
+    harness.historical_review.write_bytes(harness.candidate_review.read_bytes())
+    harness.write_lease()
+
+    result = harness.invoke()
+
+    assert result.exit_code != 0
+    assert "NPI_TASK_RECEIPT_BINDING_INVALID" in result.output
+    assert harness.probe_calls == 1
+    assert harness.runner_calls == 0
+    assert not (harness.ledger / "reservation.json").exists()
+
+
+def test_public_command_rejects_passing_quality_substitution_before_probe(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    harness = Harness(tmp_path, monkeypatch)
+    harness.write_lease()
+    quality = json.loads(harness.quality.read_text(encoding="utf-8"))
+    quality["extra"] = "substituted"
+    harness.quality.write_bytes(canonical(quality))
+
+    result = harness.invoke()
+
+    assert result.exit_code != 0
+    assert "NPI_LEASE_BINDING_MISMATCH" in result.output
+    assert harness.probe_calls == 0
+    assert harness.runner_calls == 0
+    assert not harness.ledger.exists()
 
 
 def test_public_command_rejects_caller_supplied_self_hash(tmp_path: Path, monkeypatch: Any) -> None:
@@ -517,7 +592,7 @@ def test_public_command_rechecks_protected_evidence_after_runner(
 
     def fake_execute_factory(**_kwargs: Any):
         def fake_execute() -> dict[str, Any]:
-            harness.review.write_text("tampered after admission\n", encoding="utf-8")
+            harness.candidate_review.write_text("tampered after admission\n", encoding="utf-8")
             return _callback_evidence()
 
         return fake_execute
@@ -545,6 +620,11 @@ def test_persisted_controlled_evidence_binds_execution_lease(
         )
     )
     assert evidence["execution_lease_sha256"] == harness.lease_sha
+    bindings = evidence["input_bindings"]
+    assert bindings["candidate_review_sha256"] == sha256(harness.candidate_review.read_bytes())
+    assert bindings["historical_review_sha256"] == sha256(harness.historical_review.read_bytes())
+    assert bindings["prior_s20_review_sha256"] == sha256(harness.prior.read_bytes())
+    assert bindings["quality_evidence_sha256"] == sha256(harness.quality.read_bytes())
 
 
 def test_counter_aggregation_preserves_extra_runner_counters() -> None:

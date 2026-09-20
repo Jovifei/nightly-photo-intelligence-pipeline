@@ -27,6 +27,10 @@ REQUIRED_BINDINGS = {
     "candidate_tree",
     "source_manifest_sha256",
     "project_state_sha256",
+    "candidate_review_sha256",
+    "historical_review_sha256",
+    "prior_s20_review_sha256",
+    "quality_evidence_sha256",
     "runtime_identity_sha256",
     "s3_manifest_sha256",
     "s20_manifest_sha256",
@@ -92,7 +96,7 @@ def validate_lease(
     }
     require(isinstance(receipt, dict) and set(receipt) == fields, "NPI_LEASE_SCHEMA_INVALID")
     require(
-        receipt["schema_version"] == "npi-synthetic-execution-lease-v2"
+        receipt["schema_version"] == "npi-synthetic-execution-lease-v3"
         and receipt["status"] == "APPROVED"
         and receipt["owner_id"] == "Jovi"
         and receipt["purpose"] == "SYNTHETIC_S3_S20_ENGINEERING_VALIDATION",

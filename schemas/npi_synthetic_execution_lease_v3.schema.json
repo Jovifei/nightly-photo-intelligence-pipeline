@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/npi_synthetic_execution_lease_v3.schema.json",
+  "title": "NPI controlled synthetic execution lease v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "owner_id",
+    "purpose",
+    "not_before_utc",
+    "expires_at_utc",
+    "bindings",
+    "boundaries",
+    "max_fresh_s3_runs",
+    "max_fresh_s20_runs",
+    "production_unlock"
+  ],
+  "properties": {
+    "schema_version": {"const": "npi-synthetic-execution-lease-v3"},
+    "status": {"const": "APPROVED"},
+    "owner_id": {"const": "Jovi"},
+    "purpose": {"const": "SYNTHETIC_S3_S20_ENGINEERING_VALIDATION"},
+    "not_before_utc": {"type": "string", "format": "date-time"},
+    "expires_at_utc": {"type": "string", "format": "date-time"},
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_commit",
+        "candidate_tree",
+        "source_manifest_sha256",
+        "project_state_sha256",
+        "candidate_review_sha256",
+        "historical_review_sha256",
+        "prior_s20_review_sha256",
+        "quality_evidence_sha256",
+        "runtime_identity_sha256",
+        "s3_manifest_sha256",
+        "s20_manifest_sha256",
+        "model_cache_binding_sha256",
+        "path_plan_sha256"
+      ],
+      "properties": {
+        "candidate_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "candidate_tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "source_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "project_state_sha256": {"$ref": "#/$defs/sha256"},
+        "candidate_review_sha256": {"$ref": "#/$defs/sha256"},
+        "historical_review_sha256": {"$ref": "#/$defs/sha256"},
+        "prior_s20_review_sha256": {"$ref": "#/$defs/sha256"},
+        "quality_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "runtime_identity_sha256": {"$ref": "#/$defs/sha256"},
+        "s3_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "s20_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "model_cache_binding_sha256": {"$ref": "#/$defs/sha256"},
+        "path_plan_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "real_photo",
+        "real_exif",
+        "g1_source",
+        "sqlite_ingest",
+        "app",
+        "production_bundle",
+        "model_download",
+        "model_replacement",
+        "project_state_mutation"
+      ],
+      "properties": {
+        "real_photo": {"const": false},
+        "real_exif": {"const": false},
+        "g1_source": {"const": false},
+        "sqlite_ingest": {"const": false},
+        "app": {"const": false},
+        "production_bundle": {"const": false},
+        "model_download": {"const": false},
+        "model_replacement": {"const": false},
+        "project_state_mutation": {"const": false}
+      }
+    },
+    "max_fresh_s3_runs": {"const": 1},
+    "max_fresh_s20_runs": {"const": 1},
+    "production_unlock": {"const": false}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

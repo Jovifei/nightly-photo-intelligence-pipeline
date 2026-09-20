@@ -39,6 +39,7 @@ N2B2_AUDIT_FIX_D_BASE = "ab69f2c46971e5fea0cd0bf6ca13367e964f0409"
 N2B2_E2_BASE = "3445f2911d7bb6bfe9fb8bdadc5ec30541adad99"
 N2B2_AUDIT_FIX_F_FINAL_BASE = "4e7f7e1483728557ae6b05c543569151614b5833"
 N2B2_AUDIT_FIX_G_BASE = "a6a4df9e6187f524a22f52bfb258d7a4b2ab3d3a"
+N2B2_H3_BINDING_BASE = "1b9997ba0b099fd159932a8de0697f78d1fc7867"
 
 SENSITIVE_SUFFIXES = (
     ".db",
@@ -148,6 +149,12 @@ def _is_audit_fix_g_candidate(project_root: Path) -> bool:
     return parent == N2B2_AUDIT_FIX_G_BASE and count.stdout.strip() == "20"
 
 
+def _is_h3_binding_candidate(project_root: Path) -> bool:
+    parent = _git(project_root, "rev-parse", "HEAD^").stdout.strip()
+    count = _git(project_root, "rev-list", "--count", f"{N2B1P_BASELINE}..HEAD")
+    return parent == N2B2_H3_BINDING_BASE and count.stdout.strip() == "21"
+
+
 def test_git_approved_tags_and_ancestry_are_exact(project_root: Path) -> None:
     assert _git(project_root, "rev-parse", N0_TAG).stdout.strip() == N0_BASELINE
     assert _git(project_root, "rev-parse", N1_TAG).stdout.strip() == N1_BASELINE
@@ -202,6 +209,8 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
         candidate_offset = 19
     elif _is_audit_fix_g_candidate(project_root):
         candidate_offset = 20
+    elif _is_h3_binding_candidate(project_root):
+        candidate_offset = 21
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         candidate_offset = 1
     else:
@@ -288,6 +297,9 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
     elif _is_audit_fix_g_candidate(project_root):
         assert post_n2b1r == 21
         assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B2_AUDIT_FIX_G_BASE
+    elif _is_h3_binding_candidate(project_root):
+        assert post_n2b1r == 22
+        assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B2_H3_BINDING_BASE
     else:
         assert post_n2b1r == 1 + candidate_offset
         parent = _git(project_root, "rev-parse", "HEAD^").stdout.strip()
@@ -356,6 +368,8 @@ def test_n2b1p_candidate_is_resolved_not_hardcoded(project_root: Path) -> None:
         expected_count = 20
     elif _is_audit_fix_g_candidate(project_root):
         expected_count = 21
+    elif _is_h3_binding_candidate(project_root):
+        expected_count = 22
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         expected_count = 2
     else:

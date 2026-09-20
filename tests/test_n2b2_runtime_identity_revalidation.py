@@ -533,7 +533,8 @@ def test_runtime_cli_routes_to_the_controlled_adapter(monkeypatch, tmp_path: Pat
         raising=False,
     )
     values = {
-        "review-artifact": tmp_path / "review.txt",
+        "candidate-review-artifact": tmp_path / "candidate-review.json",
+        "historical-review-artifact": tmp_path / "historical-review.md",
         "execution-lease": tmp_path / "lease.json",
         "quality-evidence": tmp_path / "quality.json",
         "prior-s20-review-record": tmp_path / "prior.json",

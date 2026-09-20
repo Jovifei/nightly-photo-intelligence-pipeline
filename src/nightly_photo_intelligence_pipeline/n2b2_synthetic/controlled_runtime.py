@@ -47,7 +47,7 @@ from .runtime_identity_revalidation import snapshot_tree
 
 IdentityProbe = Callable[[], Mapping[str, object]]
 Execute = Callable[[], Mapping[str, Any]]
-_LEASE_SCHEMA = "npi_synthetic_execution_lease_v2.schema.json"
+_LEASE_SCHEMA = "npi_synthetic_execution_lease_v3.schema.json"
 _WORKER_MODULE = "nightly_photo_intelligence_pipeline.n2b2_synthetic.controlled_runtime_worker"
 _WORKER_CALL = f"from {_WORKER_MODULE} import run_from_stdin; raise SystemExit(run_from_stdin())"
 _LEDGER_DIR = "n2b2-controlled-execution-ledger"
@@ -155,6 +155,20 @@ def _load_quality(path: Path) -> tuple[list[Mapping[str, Any]], dict[str, Any], 
     matrix = quality_matrix(checks, python_supported=support["status"] == "PASS")
     require(matrix["complete"] is True, "NPI_QUALITY_INCOMPLETE")
     return list(checks), matrix, data
+
+
+def _validate_candidate_review(data: bytes, *, candidate_commit: str, candidate_tree: str) -> None:
+    payload = strict_json(data)
+    require(isinstance(payload, Mapping), "NPI_CANDIDATE_REVIEW_INVALID")
+    require(
+        payload.get("schema_version") == "npi-independent-review-v1"
+        and payload.get("reviewed_commit") == candidate_commit
+        and payload.get("reviewed_tree") == candidate_tree
+        and payload.get("independent") is True
+        and payload.get("verdict") == "PASS_FOR_EXTERNAL_REVIEW"
+        and payload.get("ready_to_merge_or_publish") is True,
+        "NPI_CANDIDATE_REVIEW_BINDING_INVALID",
+    )
 
 
 def _validate_lease_schema(project_root: Path, lease: Mapping[str, Any]) -> None:
@@ -517,7 +531,8 @@ def _default_execute(
 def run_controlled_runtime_revalidation(
     *,
     project_root: Path,
-    review_artifact: Path,
+    candidate_review_artifact: Path,
+    historical_review_artifact: Path,
     execution_lease: Path,
     quality_evidence: Path,
     prior_s20_review_record: Path,
@@ -568,7 +583,8 @@ def run_controlled_runtime_revalidation(
     owner_anchor_root = runtime_parent / _OWNER_LEASE_ANCHOR_DIR
     _add_protected(protected, "owner_anchor_root", owner_anchor_root)
     for label, path in (
-        ("review_root", Path(review_artifact).parent),
+        ("candidate_review_root", Path(candidate_review_artifact).parent),
+        ("historical_review_root", Path(historical_review_artifact).parent),
         ("lease_root", Path(execution_lease).parent),
         ("quality_root", Path(quality_evidence).parent),
         ("prior_review_root", Path(prior_s20_review_record).parent),
@@ -577,7 +593,10 @@ def run_controlled_runtime_revalidation(
     _checked_dir(ledger_root.parent)
     _check_disjoint(inputs, protected, outputs)
 
-    review_path, review_bytes = _regular_file(Path(review_artifact))
+    candidate_review_path, candidate_review_bytes = _regular_file(Path(candidate_review_artifact))
+    historical_review_path, historical_review_bytes = _regular_file(
+        Path(historical_review_artifact)
+    )
     lease_path, lease_bytes = _regular_file(Path(execution_lease))
     owner_anchor = _load_owner_lease_anchor(root, runtime_parent)
     execution_lease_sha256 = owner_anchor.execution_lease_sha256
@@ -594,7 +613,8 @@ def run_controlled_runtime_revalidation(
     require(
         isinstance(reviewed_commit, str) and len(reviewed_commit) == 40, "NPI_PRIOR_REVIEW_INVALID"
     )
-    require(bool(review_bytes), "NPI_REVIEW_ARTIFACT_EMPTY")
+    require(bool(candidate_review_bytes), "NPI_CANDIDATE_REVIEW_EMPTY")
+    require(bool(historical_review_bytes), "NPI_HISTORICAL_REVIEW_EMPTY")
     from .legacy_s20_binding import validate_legacy_s20_binding
 
     # Reject stale or mismatched historical inputs before ledger creation or S3.
@@ -619,6 +639,11 @@ def run_controlled_runtime_revalidation(
         "NPI_PROJECT_STATE_BOUNDARY_VIOLATION",
     )
     source = full_source_identity(root)
+    _validate_candidate_review(
+        candidate_review_bytes,
+        candidate_commit=cast(str, source["candidate_commit"]),
+        candidate_tree=cast(str, source["candidate_tree"]),
+    )
     manifest_paths = {
         "s3_manifest_sha256": inputs["s3_manifest"] / "fixture_manifest.json",
         "s20_manifest_sha256": inputs["s20_manifest"] / "fixture_manifest.json",
@@ -630,6 +655,10 @@ def run_controlled_runtime_revalidation(
         "candidate_tree": cast(str, source["candidate_tree"]),
         "source_manifest_sha256": cast(str, source["source_manifest_sha256"]),
         "project_state_sha256": sha256(state_bytes),
+        "candidate_review_sha256": sha256(candidate_review_bytes),
+        "historical_review_sha256": sha256(historical_review_bytes),
+        "prior_s20_review_sha256": sha256(prior_bytes),
+        "quality_evidence_sha256": sha256(quality_bytes),
         "runtime_identity_sha256": "",
         "s3_manifest_sha256": sha256(manifest_bytes["s3_manifest_sha256"]),
         "s20_manifest_sha256": sha256(manifest_bytes["s20_manifest_sha256"]),
@@ -669,7 +698,8 @@ def run_controlled_runtime_revalidation(
     file_fingerprints = {
         path: _file_fingerprint(path)
         for path in (
-            review_path,
+            candidate_review_path,
+            historical_review_path,
             lease_path,
             quality_path,
             prior_path,
@@ -734,7 +764,7 @@ def run_controlled_runtime_revalidation(
         _assert_file_fingerprint(file_fingerprints)
         _validate_task_specific_receipt(
             receipt=task_receipt,
-            review_bytes=review_bytes,
+            review_bytes=historical_review_bytes,
             state_bytes=state_bytes,
             old_identity=old_identity,
             current_identity=observed,
@@ -758,6 +788,7 @@ def run_controlled_runtime_revalidation(
     return {
         **result,
         "quality_evidence_sha256": sha256(quality_bytes),
-        "review_artifact_sha256": sha256(review_bytes),
+        "candidate_review_artifact_sha256": sha256(candidate_review_bytes),
+        "historical_review_artifact_sha256": sha256(historical_review_bytes),
         "execution_lease_sha256": execution_lease_sha256,
     }

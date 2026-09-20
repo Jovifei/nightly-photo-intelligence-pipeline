@@ -60,6 +60,7 @@ AUDIT_FIX_F_PREFLIGHT_BASE_SHA = "d0593a693b275b40e0d1ad5e5f6e611e20746771"
 AUDIT_FIX_F_FINAL_REGISTRATION_BASE_SHA = "69fe68a221f5beefff66b23ad58ffc9ea835a1fd"
 AUDIT_FIX_F_DOCUMENTATION_BASE_SHA = "4e7f7e1483728557ae6b05c543569151614b5833"
 AUDIT_FIX_G_BASE_SHA = "a6a4df9e6187f524a22f52bfb258d7a4b2ab3d3a"
+H3_BINDING_BASE_SHA = "1b9997ba0b099fd159932a8de0697f78d1fc7867"
 
 errors: list[str] = []
 passes: list[str] = []
@@ -700,7 +701,7 @@ def check_engineering_repair_profile() -> None:
         fail("code-only engineering profile changed the bound state or old approval")
         return
     state = load_json("PROJECT_STATE.json")
-    draft = load_json("templates/synthetic_execution_lease_v2.DRAFT.json")
+    draft = load_json("templates/synthetic_execution_lease_v3.DRAFT.json")
     valid = (
         state.get("phase_status", {}).get("N2B2") == "LOCKED"
         and draft.get("status") == "DRAFT"
@@ -820,6 +821,11 @@ def check_baselines() -> None:
         or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "20")
     ):
         fail("audit fix G candidate has unexpected ancestry")
+    elif git("rev-parse", "HEAD^") == (0, H3_BINDING_BASE_SHA) and (
+        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "22")
+        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "21")
+    ):
+        fail("H3 review-binding candidate has unexpected ancestry")
     elif git("rev-parse", "HEAD") != (0, N2B1P_SHA) and not (
         (
             git("rev-parse", "HEAD^") == (0, N2B1P_SHA)
@@ -916,6 +922,11 @@ def check_baselines() -> None:
             git("rev-parse", "HEAD^") == (0, AUDIT_FIX_G_BASE_SHA)
             and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "21")
             and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "20")
+        )
+        or (
+            git("rev-parse", "HEAD^") == (0, H3_BINDING_BASE_SHA)
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "22")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "21")
         )
     ):
         fail("N2B2 review candidate must be exactly one direct child of N2B1P")
@@ -1117,6 +1128,10 @@ def main() -> int:
         print(
             "HANDOFF_VALID: audit fix G candidate after trust-anchor, fresh-output, "
             "and exceptional-integrity remediation; production N2B2 remains LOCKED"
+        )
+    elif git("rev-parse", "HEAD^") == (0, H3_BINDING_BASE_SHA):
+        print(
+            "HANDOFF_VALID: H3 review-binding remediation candidate; production N2B2 remains LOCKED"
         )
     else:
         print(

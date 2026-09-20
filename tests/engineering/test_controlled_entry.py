@@ -67,6 +67,10 @@ class ControlledEntryTests(unittest.TestCase):
             "candidate_tree": source["candidate_tree"],
             "source_manifest_sha256": source["source_manifest_sha256"],
             "project_state_sha256": sha256((self.root / "PROJECT_STATE.json").read_bytes()),
+            "candidate_review_sha256": "d" * 64,
+            "historical_review_sha256": "e" * 64,
+            "prior_s20_review_sha256": "f" * 64,
+            "quality_evidence_sha256": "9" * 64,
             "runtime_identity_sha256": sha256(canonical(identity)),
             "s3_manifest_sha256": "a" * 64,
             "s20_manifest_sha256": "b" * 64,
@@ -77,7 +81,7 @@ class ControlledEntryTests(unittest.TestCase):
         }
         self.bindings = bindings
         lease = {
-            "schema_version": "npi-synthetic-execution-lease-v2",
+            "schema_version": "npi-synthetic-execution-lease-v3",
             "status": "APPROVED",
             "owner_id": "Jovi",
             "purpose": "SYNTHETIC_S3_S20_ENGINEERING_VALIDATION",

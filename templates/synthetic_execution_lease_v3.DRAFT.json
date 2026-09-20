@@ -1,0 +1,37 @@
+{
+  "schema_version": "npi-synthetic-execution-lease-v3",
+  "status": "DRAFT",
+  "owner_id": "Jovi",
+  "purpose": "SYNTHETIC_S3_S20_ENGINEERING_VALIDATION",
+  "not_before_utc": null,
+  "expires_at_utc": null,
+  "bindings": {
+    "candidate_commit": null,
+    "candidate_review_sha256": null,
+    "candidate_tree": null,
+    "historical_review_sha256": null,
+    "model_cache_binding_sha256": null,
+    "path_plan_sha256": null,
+    "prior_s20_review_sha256": null,
+    "project_state_sha256": null,
+    "quality_evidence_sha256": null,
+    "runtime_identity_sha256": null,
+    "s20_manifest_sha256": null,
+    "s3_manifest_sha256": null,
+    "source_manifest_sha256": null
+  },
+  "boundaries": {
+    "app": false,
+    "g1_source": false,
+    "model_download": false,
+    "model_replacement": false,
+    "production_bundle": false,
+    "project_state_mutation": false,
+    "real_exif": false,
+    "real_photo": false,
+    "sqlite_ingest": false
+  },
+  "max_fresh_s3_runs": 1,
+  "max_fresh_s20_runs": 1,
+  "production_unlock": false
+}

@@ -271,6 +271,7 @@ def run_controlled_execution(
                 "path_plan_sha256": path_digest,
                 "runtime_identity_sha256": runtime_identity_sha,
                 "execution_lease_sha256": plan.trusted_receipt_sha256,
+                "input_bindings": dict(plan.observed_bindings),
             }
         )
         supplemental = callback_result.get("supplemental_evidence")

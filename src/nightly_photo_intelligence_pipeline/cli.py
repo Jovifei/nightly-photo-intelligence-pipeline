@@ -1409,7 +1409,8 @@ def _legacy_runtime_identity_revalidate(
 @n2b2_app.command("runtime-identity-revalidate")
 @_run_safely
 def n2b2_runtime_identity_revalidate(
-    review_artifact: Path = typer.Option(..., "--review-artifact"),
+    candidate_review_artifact: Path = typer.Option(..., "--candidate-review-artifact"),
+    historical_review_artifact: Path = typer.Option(..., "--historical-review-artifact"),
     execution_lease: Path = typer.Option(..., "--execution-lease"),
     quality_evidence: Path = typer.Option(..., "--quality-evidence"),
     prior_s20_review_record: Path = typer.Option(..., "--prior-s20-review-record"),
@@ -1429,7 +1430,8 @@ def n2b2_runtime_identity_revalidate(
     try:
         result = run_controlled_runtime_revalidation(
             project_root=find_project_root(),
-            review_artifact=review_artifact,
+            candidate_review_artifact=candidate_review_artifact,
+            historical_review_artifact=historical_review_artifact,
             execution_lease=execution_lease,
             quality_evidence=quality_evidence,
             prior_s20_review_record=prior_s20_review_record,

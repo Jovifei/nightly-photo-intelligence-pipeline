@@ -61,7 +61,7 @@ def bindings():
 
 def lease_data():
     return {
-        "schema_version": "npi-synthetic-execution-lease-v2",
+        "schema_version": "npi-synthetic-execution-lease-v3",
         "status": "APPROVED",
         "owner_id": "Jovi",
         "purpose": "SYNTHETIC_S3_S20_ENGINEERING_VALIDATION",
