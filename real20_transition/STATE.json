@@ -1,0 +1,31 @@
+{
+  "schema_version": "npi-real20-transition-stage-v1",
+  "date": "2026-09-21",
+  "stage": "R0_METADATA_PREPARATION",
+  "base_candidate": "ffc4130823c1308f089b835c766e341ec2173e82",
+  "base_tree": "3b01e26388d131181a8553b4122a9abbaff177b2",
+  "original_runtime_modified": false,
+  "root_manifest_modified": false,
+  "execution_authorized": false,
+  "owner_intent": "REAL20_REQUEST_ACKNOWLEDGED",
+  "h3_review_status": "OWNER_REPORTED_PASS_NOT_INDEPENDENTLY_RECOMPUTED_IN_CLOUD",
+  "code_in_this_stage": "Runnable metadata preparation CLI; no image/model executor",
+  "next_stage": "R1_LOCAL_ACTUAL_EXECUTOR_IMPLEMENTATION_AND_QUALIFICATION",
+  "test_environment": {
+    "python": "3.13.5",
+    "platform": "linux",
+    "project_supported_environment": false
+  },
+  "unit_tests": {
+    "passed": 25,
+    "failed": 0,
+    "skipped": 0
+  },
+  "test_log_sha256": "b5cb2d5fec6068127a055278969f68f5e8c2f09d16fbc461883c45d4fcb0fa60",
+  "limitations": [
+    "Windows native and full-project quality not run",
+    "Owner local H3 artifacts unavailable in cloud",
+    "Actual Real20 executor not implemented by R0",
+    "No actual approval/lease/anchor created or consumed"
+  ]
+}
