@@ -178,6 +178,12 @@ CONTENT_RULE_ALLOWLIST: frozenset[tuple[str, str]] = frozenset(
         ("tests/test_state_concurrency.py", "unc_path"),
         ("tests/test_state_concurrency.py", "wsl_mount_path"),
         ("tests/test_windows_readonly.py", "windows_absolute_path"),
+        # R0 Real20 transition deliverables contain redacted EXIF exclusion
+        # names and synthetic path-guard fixtures, never source values/paths.
+        ("real20_transition/NEXT_CODEX.md", "sensitive_exif_field"),
+        ("real20_transition/prepare.py", "sensitive_exif_field"),
+        ("real20_transition/test_prepare.py", "windows_absolute_path"),
+        ("tests/test_real20_runner.py", "sensitive_exif_field"),
         # E1's delivery-only tests contain explicit synthetic negative inputs;
         # these are not source data or retained evidence.
         ("review_stages/E1/test_stage.py", "unc_path"),

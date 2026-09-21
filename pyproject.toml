@@ -76,7 +76,7 @@ ignore = ["PLR0913", "PLR2004", "PLR0912", "PLR0915", "PLC0415", "B008", "UP042"
 line-ending = "lf"
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 strict = true
 warn_return_any = true
 warn_unused_configs = true

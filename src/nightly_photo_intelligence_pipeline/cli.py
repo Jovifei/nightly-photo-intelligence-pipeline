@@ -87,6 +87,14 @@ n2b2_app = typer.Typer(
 )
 app.add_typer(n2b2_app, name="n2b2")
 
+real20_app = typer.Typer(
+    name="real20",
+    help="Bounded Real20 preparation and read-only evaluation.",
+    no_args_is_help=True,
+    add_completion=False,
+)
+app.add_typer(real20_app, name="real20")
+
 
 def _resolve_runtime_root() -> Path:
     env = os.environ.get("NPI_RUNTIME_ROOT")
@@ -1534,6 +1542,98 @@ def json_strict_dump(obj: object) -> str:
     import json  # noqa: PLC0415
 
     return json.dumps(obj, sort_keys=True, indent=2, ensure_ascii=False)
+
+
+@real20_app.command("prepare")
+def real20_prepare(
+    project_root: Path = typer.Option(..., "--project-root"),
+    manifest: Path = typer.Option(..., "--manifest"),
+    h3_provenance: Path = typer.Option(..., "--h3-provenance"),
+    out: Path = typer.Option(..., "--out"),
+    h3_candidate: str = typer.Option("ffc4130823c1308f089b835c766e341ec2173e82", "--h3-candidate"),
+) -> None:
+    """Create a metadata-only Real20 worksheet; never opens source images."""
+    from .real20 import Real20Error, prepare_real20
+
+    try:
+        result = prepare_real20(
+            project_root=project_root,
+            manifest_path=manifest,
+            h3_provenance_path=h3_provenance,
+            output_path=out,
+            h3_candidate=h3_candidate,
+        )
+    except Real20Error as exc:
+        typer.echo(f"error_code: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+    typer.echo(json_strict_dump(result))
+
+
+@real20_app.command("run")
+def real20_run(
+    project_root: Path = typer.Option(..., "--project-root"),
+    source_root: Path = typer.Option(..., "--source-root"),
+    manifest: Path = typer.Option(..., "--manifest"),
+    credential: Path = typer.Option(..., "--credential"),
+    anchor: Path = typer.Option(..., "--anchor"),
+    runtime_identity: Path = typer.Option(..., "--runtime-identity"),
+    model_identity: Path = typer.Option(..., "--model-identity"),
+    ledger_root: Path = typer.Option(..., "--ledger-root"),
+    output_root: Path = typer.Option(..., "--output-root"),
+    backend: str = typer.Option("real", "--backend"),
+    cache_root: Path | None = typer.Option(None, "--cache-root"),
+    device: str = typer.Option("cuda", "--device"),
+    synthetic_test_mode: bool = typer.Option(False, "--synthetic-test-mode"),
+) -> None:
+    """Run one credential-bound Real20 evaluation; no SQLite/App/Bundle writes."""
+    from .real20 import Real20Error, run_real20
+    from .real20.runner import default_backend_factory, default_runtime_probe
+
+    try:
+        if backend == "fake":
+            if not synthetic_test_mode:
+                raise Real20Error("REAL20_FAKE_BACKEND_TEST_ONLY")
+            from .n2b2_synthetic.torchvision_loader import FakeTorchVisionBackend
+
+            fake = FakeTorchVisionBackend()
+            result = run_real20(
+                project_root=project_root,
+                source_root=source_root,
+                manifest_path=manifest,
+                credential_path=credential,
+                anchor_path=anchor,
+                runtime_identity_path=runtime_identity,
+                model_identity_path=model_identity,
+                ledger_root=ledger_root,
+                output_root=output_root,
+                backend_factory=lambda: fake,
+                runtime_probe=fake.runtime_attestation,
+                capability_probe=lambda *_: True,
+            )
+        elif backend == "real" and cache_root is not None:
+            result = run_real20(
+                project_root=project_root,
+                source_root=source_root,
+                manifest_path=manifest,
+                credential_path=credential,
+                anchor_path=anchor,
+                runtime_identity_path=runtime_identity,
+                model_identity_path=model_identity,
+                ledger_root=ledger_root,
+                output_root=output_root,
+                backend_factory=default_backend_factory(cache_root, device=device),
+                runtime_probe=lambda: default_runtime_probe(cache_root, device=device),
+            )
+        else:
+            raise Real20Error("REAL20_BACKEND_CONFIGURATION_INVALID")
+    except Real20Error as exc:
+        typer.echo(f"error_code: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+    except Exception as exc:  # noqa: BLE001 - terminal evidence is written by the runner
+        typer.echo("error_code: REAL20_WORKER_FAILED", err=True)
+        typer.echo(f"detail: {type(exc).__name__}", err=True)
+        raise typer.Exit(code=1) from None
+    typer.echo(json_strict_dump(result))
 
 
 def main() -> None:

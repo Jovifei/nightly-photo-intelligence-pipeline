@@ -1101,6 +1101,7 @@ def _check_git_baselines() -> CheckResult:
         audit_fix_f_final_base = "4e7f7e1483728557ae6b05c543569151614b5833"
         audit_fix_g_base = "a6a4df9e6187f524a22f52bfb258d7a4b2ab3d3a"
         h3_binding_base = "1b9997ba0b099fd159932a8de0697f78d1fc7867"
+        real20_r0_delivery = "50d9ffac597570ceba3bfea44ff9dc6448ba85c0"
         head = git("rev-parse", "HEAD")[1]
         portability_candidate = head == n2b1p_portability and git("rev-parse", "HEAD^") == (
             0,
@@ -1167,6 +1168,11 @@ def _check_git_baselines() -> CheckResult:
             and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "21")
             and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "22")
         )
+        real20_transition_topology = (
+            git("rev-parse", "HEAD^") == (0, real20_r0_delivery)
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "23")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "24")
+        )
         portability_record_ok = True
         if (
             portability_candidate
@@ -1182,6 +1188,7 @@ def _check_git_baselines() -> CheckResult:
             or audit_fix_f_topology
             or audit_fix_g_topology
             or h3_binding_topology
+            or real20_transition_topology
         ):
             record_path = root / "research" / "N2B1P_manifest_portability_remediation.json"
             schema_path = root / "schemas" / "n2b1p_manifest_portability_remediation_v1.schema.json"
@@ -1248,7 +1255,8 @@ def _check_git_baselines() -> CheckResult:
             or e2_topology
             or audit_fix_f_topology
             or audit_fix_g_topology
-            or h3_binding_topology,
+            or h3_binding_topology
+            or real20_transition_topology,
             portability_record_ok,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),
@@ -1271,7 +1279,8 @@ def _check_git_baselines() -> CheckResult:
                 "an audit-fix F candidate may follow the E2 remediation; "
                 "an audit-fix G candidate may follow the final F candidate; "
                 "an H3 review-binding remediation candidate may follow the reviewed "
-                "runtime candidate; "
+                "runtime candidate; a Real20 transition code-only candidate may follow "
+                "the R0 delivery; "
                 "no merge; worktree clean"
             ),
         )

@@ -1882,3 +1882,37 @@ out of scope.
   193 passed, 1 winerror=1314 skip, 91 subtests; E1 26 passed, 1 matching skip.
 - The code-only candidate is complete for independent review. No Review PASS or
   execution lease is implied; remote publication is reported separately.
+
+## Real20 transition R1 implementation — 2026-09-22
+
+### Plan
+
+- [ ] Add failing tests for distinct Real20 credentials, exact 20/19+1
+  manifest admission, prepare/run separation, source guard, EXIF allowlist,
+  one-shot ledger, failure consumption, and the actual CLI path.
+- [ ] Implement the minimal typed Real20 package using the existing bound-handle
+  source guard and v1.2 facts builder; keep `PROJECT_STATE.N2B2=LOCKED`.
+- [ ] Add real20 `prepare` and `run` CLI commands with an explicit fake backend
+  only for synthetic tests; default execution uses the existing TorchVision
+  backend and never downloads or replaces models.
+- [ ] Run the focused RED/GREEN tests, then the complete Python 3.12 quality
+  matrix with `PYTHONPATH=src`, rebuild the index-derived MANIFEST, and inspect
+  the final diff and remote branch.
+- [ ] Commit and push a normal code-only successor to
+  `gpt/real20-transition-20260921`; do not update `main` or execute photos.
+
+### Review
+
+- [x] R0 delivery verified at `50d9ffac597570ceba3bfea44ff9dc6448ba85c0`;
+  R0 unittest passed 25 tests with one ordinary-user Windows symlink skip.
+- [x] R0 H3 control files were checked by explicit path and SHA; no H3 rerun,
+  model load, photo read, EXIF read, SQLite write, or production Bundle occurred.
+- [x] R0 prepare remains `BLOCKED_MISSING_FRESH_G1_MANIFEST_COPY`; the expired
+  historical G1 record and synthetic lease were not reused.
+- [x] R1 Real20 package, prepare/run CLI, distinct credential/anchor, source
+  guard, 19+1 deduplication, v1.2 facts, EXIF allowlist, one-shot ledger, and
+  failure-consumption tests are implemented and covered by the full suite.
+- [x] Final quality: pytest `749 passed / 1 skipped / 95 subtests`, schema,
+  sensitive scan, Ruff, format, mypy, handoff, and preflight all pass.
+- [x] R2 actual Real20 execution is `NOT_RUN`; no valid fresh credential,
+  current manifest, validity window, or Owner anchor was materialized.

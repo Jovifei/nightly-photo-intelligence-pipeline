@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "owner_id", "purpose", "credential_sha256", "production_unlock", "n2b2"],
+  "properties": {
+    "schema_version": {"const": "npi-real20-owner-anchor-v1"},
+    "status": {"const": "APPROVED"},
+    "owner_id": {"const": "Jovi"},
+    "purpose": {"const": "REAL20_READ_ONLY_EVALUATION"},
+    "credential_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "production_unlock": {"const": false},
+    "n2b2": {"const": "LOCKED"}
+  }
+}

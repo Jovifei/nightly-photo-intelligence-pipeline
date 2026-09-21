@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "owner_id", "purpose", "not_before_utc", "expires_at_utc", "bindings", "scope", "boundaries", "production_n2b2"],
+  "properties": {
+    "schema_version": {"const": "npi-real20-execution-lease-v1"},
+    "status": {"const": "APPROVED"},
+    "owner_id": {"const": "Jovi"},
+    "purpose": {"const": "REAL20_READ_ONLY_EVALUATION"},
+    "not_before_utc": {"type": "string", "format": "date-time"},
+    "expires_at_utc": {"type": "string", "format": "date-time"},
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_commit", "candidate_tree", "project_state_sha256", "manifest_sha256", "source_fingerprint_sha256", "runtime_identity_sha256", "model_identity_sha256", "facts_schema_version"],
+      "properties": {
+        "candidate_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "candidate_tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "project_state_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "source_fingerprint_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "runtime_identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "model_identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "facts_schema_version": {"const": "1.2"}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_assets", "max_unique_inferences", "max_runs", "exif_allowlist"],
+      "properties": {
+        "max_assets": {"const": 20},
+        "max_unique_inferences": {"const": 19},
+        "max_runs": {"const": 1},
+        "exif_allowlist": {"type": "array", "const": ["ExposureTime", "FNumber", "ISOSpeedRatings", "FocalLength", "Flash", "WhiteBalance"]}
+      }
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["real_photo_read", "real_exif_read", "source_mutation", "acl_change", "sqlite_write", "app_write", "production_bundle", "model_download", "model_replacement", "n2b2_unlock", "push_merge_release"],
+      "properties": {
+        "real_photo_read": {"const": true},
+        "real_exif_read": {"const": true},
+        "source_mutation": {"const": false},
+        "acl_change": {"const": false},
+        "sqlite_write": {"const": false},
+        "app_write": {"const": false},
+        "production_bundle": {"const": false},
+        "model_download": {"const": false},
+        "model_replacement": {"const": false},
+        "n2b2_unlock": {"const": false},
+        "push_merge_release": {"const": false}
+      }
+    },
+    "production_n2b2": {"const": "LOCKED"}
+  }
+}

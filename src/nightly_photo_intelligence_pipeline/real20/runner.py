@@ -1,0 +1,461 @@
+"""Real20 preparation and one-shot read-only evaluation."""
+
+from __future__ import annotations
+
+import os
+import stat
+from collections.abc import Callable, Mapping, Sequence
+from contextlib import suppress
+from datetime import UTC, datetime
+from io import BytesIO
+from pathlib import Path
+from typing import Any, Literal, Protocol, cast
+
+from ..engineering.common import canonical, sha256, strict_json
+from ..engineering.path_policy import overlaps
+from ..ingest.read_only_capability import verify_source_read_only_capability
+from ..ingest.source_guard import FileIdentity, is_reparse_point, open_source_file, validate_roots
+from ..n2b2_synthetic.config import TorchVisionRole
+from ..n2b2_synthetic.vision_facts import build_vision_facts, compute_fact_digest
+from .contracts import EXIF_ALLOWLIST, Real20Error, load_manifest, validate_credential
+from .exif import read_real20_exif
+from .identity import candidate_identity
+
+H3_CANDIDATE = "ffc4130823c1308f089b835c766e341ec2173e82"
+_IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".heic", ".webp")
+
+
+class VisionBackend(Protocol):
+    def detect_pose(self, image_bytes: bytes) -> Any: ...
+
+    def segment(self, image_bytes: bytes, role: TorchVisionRole) -> Any: ...
+
+    def unload(self, role: TorchVisionRole | None = None) -> None: ...
+
+
+def _write_new(path: Path, payload: Mapping[str, Any]) -> bytes:
+    if path.exists():
+        raise Real20Error("REAL20_OUTPUT_NOT_FRESH")
+    if not path.parent.is_dir() or is_reparse_point(path.parent):
+        raise Real20Error("REAL20_OUTPUT_PARENT_INVALID")
+    data = canonical(dict(payload))
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
+    try:
+        fd = os.open(path, flags, 0o600)
+    except OSError as exc:
+        raise Real20Error("REAL20_OUTPUT_WRITE_FAILED") from exc
+    with os.fdopen(fd, "wb") as stream:
+        stream.write(data)
+        stream.flush()
+        os.fsync(stream.fileno())
+    return data
+
+
+def _read_control(path: Path) -> dict[str, Any]:
+    try:
+        value = strict_json(path.read_bytes())
+    except Exception as exc:  # noqa: BLE001
+        raise Real20Error("REAL20_CONTROL_JSON_INVALID") from exc
+    if not isinstance(value, dict):
+        raise Real20Error("REAL20_CONTROL_OBJECT_REQUIRED")
+    return value
+
+
+def _external(path: Path, *, project_root: Path, source_root: Path, ledger_root: Path) -> None:
+    if is_reparse_point(path):
+        raise Real20Error("REAL20_REPARSE_PATH_DENIED")
+    if overlaps(path, project_root) or overlaps(path, source_root) or overlaps(path, ledger_root):
+        raise Real20Error("REAL20_EXTERNAL_OUTPUT_REQUIRED")
+
+
+def _source_root_identity(path: Path) -> FileIdentity:
+    try:
+        info = path.lstat()
+    except OSError as exc:
+        raise Real20Error("REAL20_SOURCE_ROOT_UNAVAILABLE") from exc
+    if not stat.S_ISDIR(info.st_mode) or is_reparse_point(path):
+        raise Real20Error("REAL20_SOURCE_ROOT_INVALID")
+    return FileIdentity.from_stat(info)
+
+
+def _read_image(path: Path, source_root: Path, expected_sha: str) -> tuple[bytes, int, int]:
+    try:
+        from PIL import Image
+
+        with open_source_file(path, source_root, allowed_extensions=_IMAGE_EXTENSIONS) as handle:
+            data = handle.read()
+            actual = sha256(data)
+            if actual != expected_sha:
+                raise Real20Error("REAL20_SOURCE_HASH_MISMATCH")
+            handle.seek(0)
+            if handle.read() != data:
+                raise Real20Error("REAL20_SOURCE_CHANGED_DURING_READ")
+            handle.post_fingerprint(actual)
+        with Image.open(BytesIO(data)) as image:
+            width, height = image.size
+        if width < 1 or height < 1:
+            raise Real20Error("REAL20_IMAGE_DIMENSIONS_INVALID")
+        return data, width, height
+    except Real20Error:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise Real20Error("REAL20_IMAGE_READ_FAILED") from exc
+
+
+def _verify_source_bytes(source_root: Path, assets: Sequence[Any]) -> None:
+    for asset in assets:
+        if asset.duplicate_of:
+            continue
+        path = source_root / asset.relative_path
+        try:
+            with open_source_file(
+                path, source_root, allowed_extensions=_IMAGE_EXTENSIONS
+            ) as handle:
+                if sha256(handle.read()) != asset.sha256:
+                    raise Real20Error("REAL20_SOURCE_INTEGRITY_CHANGED")
+        except Real20Error:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            raise Real20Error("REAL20_SOURCE_INTEGRITY_CHANGED") from exc
+
+
+def _reservation(ledger_root: Path, credential_sha: str, bindings_sha: str, now: datetime) -> Path:
+    if not ledger_root.is_dir() or is_reparse_point(ledger_root):
+        raise Real20Error("REAL20_LEDGER_ROOT_INVALID")
+    target = ledger_root / credential_sha
+    try:
+        target.mkdir(mode=0o700)
+    except FileExistsError as exc:
+        raise Real20Error("REAL20_CREDENTIAL_ALREADY_CONSUMED") from exc
+    record = {
+        "schema_version": "npi-real20-consumption-v1",
+        "status": "RESERVED",
+        "credential_sha256": credential_sha,
+        "bindings_sha256": bindings_sha,
+        "reserved_at_utc": now.astimezone(UTC).isoformat(),
+    }
+    _write_new(target / "reservation.json", record)
+    return target
+
+
+def _finish(reservation: Path, *, status: str, evidence_sha: str, now: datetime) -> None:
+    _write_new(
+        reservation / "terminal.json",
+        {
+            "schema_version": "npi-real20-consumption-v1",
+            "status": status,
+            "evidence_sha256": evidence_sha,
+            "finished_at_utc": now.astimezone(UTC).isoformat(),
+        },
+    )
+
+
+def _manifest_selection(manifest: Any) -> list[dict[str, Any]]:
+    return [
+        {
+            "case_id": asset.asset_id,
+            "expected_sha256": asset.sha256,
+            "duplicate_of": asset.duplicate_of,
+            "action": "REFERENCE_ONLY" if asset.duplicate_of else "INFER_ONCE",
+        }
+        for asset in manifest.assets
+    ]
+
+
+def prepare_real20(
+    *,
+    project_root: Path,
+    manifest_path: Path,
+    h3_provenance_path: Path,
+    output_path: Path,
+    h3_candidate: str = H3_CANDIDATE,
+) -> dict[str, Any]:
+    """Create a redacted non-executable worksheet from metadata only."""
+
+    manifest = load_manifest(manifest_path)
+    h3 = _read_control(h3_provenance_path)
+    h3_source = h3.get("h3_source")
+    h3_closeout = h3.get("h3_closeout")
+    if not isinstance(h3_source, dict) or h3_source.get("candidate") != h3_candidate:
+        raise Real20Error("REAL20_H3_PROVENANCE_MISMATCH")
+    if not isinstance(h3_closeout, dict) or h3_closeout.get("ledger_status") != "COMPLETE":
+        raise Real20Error("REAL20_H3_CLOSEOUT_INCOMPLETE")
+    identity = candidate_identity(project_root)
+    if (
+        output_path.exists()
+        or not output_path.parent.is_dir()
+        or is_reparse_point(output_path.parent)
+    ):
+        raise Real20Error("REAL20_OUTPUT_NOT_FRESH")
+    if overlaps(output_path, project_root):
+        raise Real20Error("REAL20_EXTERNAL_OUTPUT_REQUIRED")
+    result = {
+        "schema_version": "npi-real20-preparation-v1",
+        "status": "REAL20_PREPARATION_READY_AWAITING_CREDENTIAL",
+        "execution_authorized": False,
+        "production_n2b2": "LOCKED",
+        "candidate": {
+            "commit": identity["candidate_commit"],
+            "tree": identity["candidate_tree"],
+            "source_manifest_sha256": identity["source_manifest_sha256"],
+            "project_state_sha256": identity["project_state_sha256"],
+        },
+        "h3_provenance": {"candidate": h3_candidate, "ledger_status": "COMPLETE"},
+        "selection": {
+            "manifest_sha256": manifest.sha256,
+            "source_fingerprint_sha256": sha256(manifest.source_fingerprint.encode("utf-8")),
+            "asset_count": 20,
+            "canonical_count": manifest.canonical_count,
+            "duplicate_count": 1,
+            "assets": _manifest_selection(manifest),
+        },
+        "exif_allowlist": list(EXIF_ALLOWLIST),
+        "blockers": [
+            "REAL20_CREDENTIAL_NOT_MATERIALIZED",
+            "REAL20_SOURCE_READ_ONLY_CAPABILITY_PENDING",
+            "REAL20_WORKER_RUNTIME_PROBE_PENDING",
+            "REAL20_HUMAN_REVIEW_PENDING",
+        ],
+        "execution_draft": {
+            "issued": False,
+            "execution_candidate": None,
+            "not_before_utc": None,
+            "expires_at_utc": None,
+            "max_runs": 1,
+            "max_unique_inferences": 19,
+            "source_read_authorized_now": False,
+        },
+    }
+    _write_new(output_path, result)
+    return result
+
+
+def run_real20(
+    *,
+    project_root: Path,
+    source_root: Path,
+    manifest_path: Path,
+    credential_path: Path,
+    anchor_path: Path,
+    runtime_identity_path: Path,
+    model_identity_path: Path,
+    ledger_root: Path,
+    output_root: Path,
+    backend_factory: Callable[[], VisionBackend] | None = None,
+    runtime_probe: Callable[[], dict[str, Any]] | None = None,
+    capability_probe: Callable[[Path, Sequence[Path]], object] | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Run one exact, credential-bound, read-only Real20 evaluation."""
+
+    current = (now or datetime.now(UTC)).astimezone(UTC)
+    manifest = load_manifest(manifest_path)
+    identity = candidate_identity(project_root)
+    runtime_identity = _read_control(runtime_identity_path)
+    model_identity = _read_control(model_identity_path)
+    credential_raw = credential_path.read_bytes()
+    anchor = _read_control(anchor_path)
+    expected = {
+        "candidate_commit": identity["candidate_commit"],
+        "candidate_tree": identity["candidate_tree"],
+        "project_state_sha256": identity["project_state_sha256"],
+        "manifest_sha256": manifest.sha256,
+        "source_fingerprint_sha256": sha256(manifest.source_fingerprint.encode("utf-8")),
+        "runtime_identity_sha256": sha256(canonical(runtime_identity)),
+        "model_identity_sha256": sha256(canonical(model_identity)),
+    }
+    credential_sha = validate_credential(
+        credential_raw,
+        anchor=anchor,
+        expected=expected,
+        runtime_identity=runtime_identity,
+        model_identity=model_identity,
+        now=current,
+    )
+    if not output_root.is_dir() or any(output_root.iterdir()):
+        raise Real20Error("REAL20_OUTPUT_NOT_FRESH")
+    _external(
+        output_root, project_root=project_root, source_root=source_root, ledger_root=ledger_root
+    )
+    if (
+        not ledger_root.is_dir()
+        or overlaps(ledger_root, project_root)
+        or overlaps(ledger_root, source_root)
+    ):
+        raise Real20Error("REAL20_LEDGER_ROOT_INVALID")
+    try:
+        source_resolved, _ = validate_roots(source_root, output_root)
+    except Exception as exc:  # noqa: BLE001
+        raise Real20Error("REAL20_SOURCE_RUNTIME_BOUNDARY_INVALID") from exc
+    assets = [source_resolved / asset.relative_path for asset in manifest.assets]
+    capability_result = (
+        capability_probe(source_resolved, assets)
+        if capability_probe is not None
+        else verify_source_read_only_capability(source_resolved, assets)
+    )
+    verified = capability_result is True or bool(getattr(capability_result, "verified", False))
+    if not verified:
+        raise Real20Error("REAL20_SOURCE_READ_ONLY_NOT_VERIFIED")
+    if runtime_probe is None:
+        raise Real20Error("REAL20_RUNTIME_PROBE_REQUIRED")
+    observed_runtime = runtime_probe()
+    if sha256(canonical(observed_runtime)) != expected["runtime_identity_sha256"]:
+        raise Real20Error("REAL20_RUNTIME_IDENTITY_DRIFT")
+    root_before = _source_root_identity(source_resolved)
+    reservation = _reservation(ledger_root, credential_sha, sha256(canonical(expected)), current)
+    backend: VisionBackend | None = None
+    evidence: dict[str, Any] = {}
+    try:
+        backend = backend_factory() if backend_factory is not None else None
+        if backend is None:
+            raise Real20Error("REAL20_BACKEND_NOT_CONFIGURED")
+        rows: list[dict[str, Any]] = []
+        facts_by_id: dict[str, dict[str, Any]] = {}
+        for asset in manifest.assets:
+            if asset.duplicate_of:
+                rows.append(
+                    {
+                        "case_id": asset.asset_id,
+                        "action": "REFERENCE_ONLY",
+                        "duplicate_of": asset.duplicate_of,
+                    }
+                )
+                continue
+            image_path = source_resolved / asset.relative_path
+            data, width, height = _read_image(image_path, source_resolved, asset.sha256)
+            pose = backend.detect_pose(data)
+            primary = backend.segment(data, TorchVisionRole.SEGMENTATION_PRIMARY)
+            comparator = backend.segment(data, TorchVisionRole.SEGMENTATION_QUALITY_COMPARATOR)
+            facts = build_vision_facts(
+                case_id=asset.asset_id,
+                image_sha256=asset.sha256,
+                generator_version="real20-runtime-v1",
+                seed=None,
+                width=width,
+                height=height,
+                pose=pose,
+                seg_primary=primary,
+                seg_comparator=comparator,
+            )
+            if facts.get("schema_version") != "1.2" or facts.get(
+                "fact_digest"
+            ) != compute_fact_digest(facts):
+                raise Real20Error("REAL20_FACT_CONTRACT_INVALID")
+            facts_by_id[asset.asset_id] = facts
+            rows.append(
+                {
+                    "case_id": asset.asset_id,
+                    "action": "INFER_ONCE",
+                    "source_sha256": asset.sha256,
+                    "facts": facts,
+                    "exif": read_real20_exif(data),
+                }
+            )
+        _verify_source_bytes(source_resolved, manifest.assets)
+        root_after = _source_root_identity(source_resolved)
+        if not root_before.same_identity(root_after):
+            raise Real20Error("REAL20_SOURCE_ROOT_CHANGED")
+        evidence = {
+            "schema_version": "npi-real20-evaluation-v1",
+            "status": "REAL20_COMPLETE",
+            "candidate_commit": identity["candidate_commit"],
+            "candidate_tree": identity["candidate_tree"],
+            "source_manifest_sha256": manifest.sha256,
+            "source_fingerprint_sha256": expected["source_fingerprint_sha256"],
+            "runtime_identity_sha256": expected["runtime_identity_sha256"],
+            "model_identity_sha256": expected["model_identity_sha256"],
+            "credential_sha256": credential_sha,
+            "project_state_n2b2": "LOCKED",
+            "facts_schema_version": "1.2",
+            "asset_count": 20,
+            "unique_inference_count": len(facts_by_id),
+            "exif_allowlist": list(EXIF_ALLOWLIST),
+            "assets": rows,
+            "review_decision": "PENDING_HUMAN_REVIEW",
+            "sqlite_write": False,
+            "app_write": False,
+            "production_bundle": False,
+        }
+        evidence_bytes = _write_new(output_root / "real20_result.json", evidence)
+        _finish(reservation, status="COMPLETE", evidence_sha=sha256(evidence_bytes), now=current)
+        return {
+            "status": "REAL20_COMPLETE",
+            "credential_sha256": credential_sha,
+            "output_sha256": sha256(evidence_bytes),
+            "asset_count": 20,
+            "unique_inference_count": len(facts_by_id),
+            "facts_schema_version": "1.2",
+        }
+    except Exception as exc:
+        if backend is not None:
+            with suppress(Exception):
+                backend.unload()
+        integrity_failure: Real20Error | None = None
+        try:
+            _verify_source_bytes(source_resolved, manifest.assets)
+        except Real20Error as integrity_error:
+            integrity_failure = integrity_error
+        failure = {
+            "schema_version": "npi-real20-evaluation-v1",
+            "status": "REAL20_FAILED",
+            "credential_sha256": credential_sha,
+            "error_code": (
+                integrity_failure.code
+                if integrity_failure is not None
+                else exc.code
+                if isinstance(exc, Real20Error)
+                else "REAL20_WORKER_FAILED"
+            ),
+            "project_state_n2b2": "LOCKED",
+        }
+        try:
+            failure_bytes = _write_new(output_root / "real20_failure.json", failure)
+        except Real20Error:
+            failure_bytes = canonical(failure)
+        _finish(reservation, status="FAILED", evidence_sha=sha256(failure_bytes), now=current)
+        raise
+    finally:
+        if backend is not None:
+            with suppress(Exception):
+                backend.unload()
+
+
+def default_runtime_probe(cache_root: Path, *, device: str) -> dict[str, Any]:
+    from ..n2b2_synthetic.config import N2B2RunConfig
+    from ..n2b2_synthetic.torchvision_loader import load_backend, verify_cache_hit
+
+    if device not in {"cpu", "cuda"}:
+        raise Real20Error("REAL20_DEVICE_INVALID")
+    selected_device = cast(Literal["cpu", "cuda"], device)
+    config = N2B2RunConfig(
+        project_root=Path.cwd(),
+        cache_root=cache_root,
+        fixtures_dir=Path.cwd(),
+        runtime_out_dir=Path.cwd(),
+        backend="real",
+        device=selected_device,
+    )
+    verify_cache_hit(cache_root, config.cache_subdirs)
+    backend = load_backend("real", cache_root, config.cache_subdirs, device=device)
+    try:
+        return backend.runtime_attestation()
+    finally:
+        backend.unload()
+
+
+def default_backend_factory(cache_root: Path, *, device: str) -> Callable[[], VisionBackend]:
+    from ..n2b2_synthetic.config import N2B2RunConfig
+    from ..n2b2_synthetic.torchvision_loader import load_backend
+
+    if device not in {"cpu", "cuda"}:
+        raise Real20Error("REAL20_DEVICE_INVALID")
+    selected_device = cast(Literal["cpu", "cuda"], device)
+    config = N2B2RunConfig(
+        project_root=Path.cwd(),
+        cache_root=cache_root,
+        fixtures_dir=Path.cwd(),
+        runtime_out_dir=Path.cwd(),
+        backend="real",
+        device=selected_device,
+    )
+    return lambda: load_backend("real", cache_root, config.cache_subdirs, device=device)
