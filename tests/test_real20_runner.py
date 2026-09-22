@@ -19,11 +19,11 @@ from nightly_photo_intelligence_pipeline.real20 import (
     EXIF_ALLOWLIST,
     Real20Error,
     prepare_real20,
-    run_real20,
 )
 from nightly_photo_intelligence_pipeline.real20.contracts import load_manifest
 from nightly_photo_intelligence_pipeline.real20.exif import read_real20_exif
 from nightly_photo_intelligence_pipeline.real20.identity import candidate_identity
+from nightly_photo_intelligence_pipeline.real20.runner import _run_real20 as run_real20
 
 
 class CountingBackend(FakeTorchVisionBackend):
@@ -60,6 +60,35 @@ class MutatingBackend(CountingBackend):
         result = super().detect_pose(image_bytes)
         self.path.write_bytes(b"changed-source")
         return result
+
+
+class ExclusiveBackend(CountingBackend):
+    def __init__(self) -> None:
+        super().__init__()
+        self.loaded = False
+
+    def detect_pose(self, image_bytes):
+        assert not self.loaded, "multiple heavy roles resident"
+        self.loaded = True
+        return super().detect_pose(image_bytes)
+
+    def segment(self, image_bytes, role):
+        assert not self.loaded, "multiple heavy roles resident"
+        self.loaded = True
+        return super().segment(image_bytes, role)
+
+    def unload(self, role=None):
+        self.loaded = False
+
+
+def test_heavy_roles_are_unloaded_before_next_role(tmp_path):
+    project = _project(tmp_path)
+    manifest, source, _ = _manifest(tmp_path)
+    controls = _controls(tmp_path, project, manifest)
+    backend = ExclusiveBackend()
+    result = _run(project, source, manifest, controls, backend)
+    assert result["unique_inference_count"] == 19
+    assert not backend.loaded
 
 
 def _git(root: Path, *args: str) -> str:
@@ -109,6 +138,7 @@ def _manifest(tmp_path: Path) -> tuple[Path, Path, dict[str, Any]]:
             "duplicate_of": "asset-18",
         }
     )
+    (source / "photo-19.jpg").write_bytes((source / "photo-18.jpg").read_bytes())
     manifest = {
         "schema_version": "npi-real20-manifest-v2",
         "source_type": "OWNER_FROZEN_REAL_PHOTO_SNAPSHOT",
@@ -285,7 +315,7 @@ def test_synthetic_or_expired_credential_is_rejected_before_source_open(
 
     monkeypatch.setattr(
         runner,
-        "open_source_file",
+        "_source_bytes",
         lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("opened")),
     )
     with pytest.raises(Real20Error, match="REAL20_CREDENTIAL_PURPOSE_INVALID"):
@@ -468,5 +498,6 @@ def test_actual_cli_path_uses_explicit_synthetic_test_mode(tmp_path: Path) -> No
         check=False,
         env={**__import__("os").environ, **env},
     )
-    assert completed.returncode == 0, completed.stderr + completed.stdout
-    assert "REAL20_COMPLETE" in completed.stdout
+    assert completed.returncode != 0
+    assert "REAL20_FAKE_BACKEND_TEST_ONLY" in completed.stderr
+    assert not list(controls["ledger"].iterdir())

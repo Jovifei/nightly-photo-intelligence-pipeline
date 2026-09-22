@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import stat
 from collections.abc import Callable, Mapping, Sequence
-from contextlib import suppress
+from contextlib import ExitStack, suppress
 from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
@@ -14,7 +14,7 @@ from typing import Any, Literal, Protocol, cast
 from ..engineering.common import canonical, sha256, strict_json
 from ..engineering.path_policy import overlaps
 from ..ingest.read_only_capability import verify_source_read_only_capability
-from ..ingest.source_guard import FileIdentity, is_reparse_point, open_source_file, validate_roots
+from ..ingest.source_guard import FileIdentity, is_reparse_point, validate_roots
 from ..n2b2_synthetic.config import TorchVisionRole
 from ..n2b2_synthetic.vision_facts import build_vision_facts, compute_fact_digest
 from .contracts import EXIF_ALLOWLIST, Real20Error, load_manifest, validate_credential
@@ -52,8 +52,10 @@ def _write_new(path: Path, payload: Mapping[str, Any]) -> bytes:
 
 
 def _read_control(path: Path) -> dict[str, Any]:
+    from .admission import control_bytes
+
     try:
-        value = strict_json(path.read_bytes())
+        value = strict_json(control_bytes(path))
     except Exception as exc:  # noqa: BLE001
         raise Real20Error("REAL20_CONTROL_JSON_INVALID") from exc
     if not isinstance(value, dict):
@@ -82,15 +84,9 @@ def _read_image(path: Path, source_root: Path, expected_sha: str) -> tuple[bytes
     try:
         from PIL import Image
 
-        with open_source_file(path, source_root, allowed_extensions=_IMAGE_EXTENSIONS) as handle:
-            data = handle.read()
-            actual = sha256(data)
-            if actual != expected_sha:
-                raise Real20Error("REAL20_SOURCE_HASH_MISMATCH")
-            handle.seek(0)
-            if handle.read() != data:
-                raise Real20Error("REAL20_SOURCE_CHANGED_DURING_READ")
-            handle.post_fingerprint(actual)
+        data = _source_bytes(path, source_root)
+        if sha256(data) != expected_sha:
+            raise Real20Error("REAL20_SOURCE_HASH_MISMATCH")
         with Image.open(BytesIO(data)) as image:
             width, height = image.size
         if width < 1 or height < 1:
@@ -104,19 +100,28 @@ def _read_image(path: Path, source_root: Path, expected_sha: str) -> tuple[bytes
 
 def _verify_source_bytes(source_root: Path, assets: Sequence[Any]) -> None:
     for asset in assets:
-        if asset.duplicate_of:
-            continue
         path = source_root / asset.relative_path
         try:
-            with open_source_file(
-                path, source_root, allowed_extensions=_IMAGE_EXTENSIONS
-            ) as handle:
-                if sha256(handle.read()) != asset.sha256:
-                    raise Real20Error("REAL20_SOURCE_INTEGRITY_CHANGED")
+            if sha256(_source_bytes(path, source_root)) != asset.sha256:
+                raise Real20Error("REAL20_SOURCE_INTEGRITY_CHANGED")
         except Real20Error:
             raise
         except Exception as exc:  # noqa: BLE001
             raise Real20Error("REAL20_SOURCE_INTEGRITY_CHANGED") from exc
+
+
+def _source_bytes(path: Path, source_root: Path) -> bytes:
+    from ..windows_bound_promotion import bind_existing_directory
+
+    relative = path.relative_to(source_root)
+    if path.suffix.lower() not in _IMAGE_EXTENSIONS:
+        raise Real20Error("REAL20_IMAGE_TYPE_INVALID")
+    with ExitStack() as stack:
+        directory = stack.enter_context(bind_existing_directory(source_root, writable=False))
+        for component in relative.parts[:-1]:
+            directory = stack.enter_context(directory.open_directory(component, writable=False))
+        handle = stack.enter_context(directory.open_file(relative.name))
+        return handle.read_all(max_bytes=64 * 1024 * 1024)
 
 
 def _reservation(ledger_root: Path, credential_sha: str, bindings_sha: str, now: datetime) -> Path:
@@ -151,11 +156,14 @@ def _finish(reservation: Path, *, status: str, evidence_sha: str, now: datetime)
 
 
 def _manifest_selection(manifest: Any) -> list[dict[str, Any]]:
+    aliases = {
+        asset.asset_id: f"real20-{index:03d}" for index, asset in enumerate(manifest.assets, 1)
+    }
     return [
         {
-            "case_id": asset.asset_id,
+            "case_id": aliases[asset.asset_id],
             "expected_sha256": asset.sha256,
-            "duplicate_of": asset.duplicate_of,
+            "duplicate_of": aliases.get(asset.duplicate_of),
             "action": "REFERENCE_ONLY" if asset.duplicate_of else "INFER_ONCE",
         }
         for asset in manifest.assets
@@ -171,12 +179,40 @@ def prepare_real20(
     h3_candidate: str = H3_CANDIDATE,
 ) -> dict[str, Any]:
     """Create a redacted non-executable worksheet from metadata only."""
-
+    missing = [
+        label
+        for label, path in (
+            ("MANIFEST", manifest_path),
+            ("H3_PROVENANCE", h3_provenance_path),
+        )
+        if not path.is_file()
+    ]
+    if missing:
+        result = {
+            "schema_version": "npi-real20-preparation-v1",
+            "status": "REAL20_PREPARATION_INCOMPLETE",
+            "execution_authorized": False,
+            "blockers": ["REAL20_" + label + "_MISSING" for label in missing]
+            + [
+                "REAL20_DATA_RECEIPT_REQUIRED",
+                "REAL20_INDEPENDENT_REVIEW_REQUIRED",
+                "REAL20_WORKER_RUNTIME_PROBE_REQUIRED",
+                "REAL20_OWNER_ANCHOR_REQUIRED",
+            ],
+            "execution_draft": {"issued": False, "source_read_authorized_now": False},
+        }
+        if overlaps(output_path, project_root):
+            raise Real20Error("REAL20_EXTERNAL_OUTPUT_REQUIRED")
+        _write_new(output_path, result)
+        return result
     manifest = load_manifest(manifest_path)
     h3 = _read_control(h3_provenance_path)
     h3_source = h3.get("h3_source")
     h3_closeout = h3.get("h3_closeout")
-    if not isinstance(h3_source, dict) or h3_source.get("candidate") != h3_candidate:
+    if (
+        not isinstance(h3_source, dict)
+        or h3_source.get("candidate_commit", h3_source.get("candidate")) != h3_candidate
+    ):
         raise Real20Error("REAL20_H3_PROVENANCE_MISMATCH")
     if not isinstance(h3_closeout, dict) or h3_closeout.get("ledger_status") != "COMPLETE":
         raise Real20Error("REAL20_H3_CLOSEOUT_INCOMPLETE")
@@ -230,7 +266,7 @@ def prepare_real20(
     return result
 
 
-def run_real20(
+def _run_real20(
     *,
     project_root: Path,
     source_root: Path,
@@ -244,16 +280,20 @@ def run_real20(
     backend_factory: Callable[[], VisionBackend] | None = None,
     runtime_probe: Callable[[], dict[str, Any]] | None = None,
     capability_probe: Callable[[Path, Sequence[Path]], object] | None = None,
+    reasoning: Callable[[bytes, dict[str, Any], dict[str, Any]], dict[str, Any]] | None = None,
+    revalidate: Callable[[], None] | None = None,
     now: datetime | None = None,
 ) -> dict[str, Any]:
     """Run one exact, credential-bound, read-only Real20 evaluation."""
 
     current = (now or datetime.now(UTC)).astimezone(UTC)
+    from .admission import control_bytes
+
     manifest = load_manifest(manifest_path)
     identity = candidate_identity(project_root)
     runtime_identity = _read_control(runtime_identity_path)
     model_identity = _read_control(model_identity_path)
-    credential_raw = credential_path.read_bytes()
+    credential_raw = control_bytes(credential_path)
     anchor = _read_control(anchor_path)
     expected = {
         "candidate_commit": identity["candidate_commit"],
@@ -296,38 +336,81 @@ def run_real20(
     verified = capability_result is True or bool(getattr(capability_result, "verified", False))
     if not verified:
         raise Real20Error("REAL20_SOURCE_READ_ONLY_NOT_VERIFIED")
+
+    def post_source_check() -> None:
+        _verify_source_bytes(source_resolved, manifest.assets)
+        capability = (
+            capability_probe(source_resolved, assets)
+            if capability_probe is not None
+            else verify_source_read_only_capability(source_resolved, assets)
+        )
+        if not (capability is True or bool(getattr(capability, "verified", False))):
+            raise Real20Error("REAL20_SOURCE_READ_ONLY_NOT_VERIFIED")
+
     if runtime_probe is None:
         raise Real20Error("REAL20_RUNTIME_PROBE_REQUIRED")
     observed_runtime = runtime_probe()
     if sha256(canonical(observed_runtime)) != expected["runtime_identity_sha256"]:
         raise Real20Error("REAL20_RUNTIME_IDENTITY_DRIFT")
+    if revalidate is not None and model_identity != observed_runtime.get("models"):
+        raise Real20Error("REAL20_MODEL_IDENTITY_DRIFT")
     root_before = _source_root_identity(source_resolved)
+    if revalidate is not None:
+        revalidate()
+    latest_raw = control_bytes(credential_path)
+    latest_anchor = _read_control(anchor_path)
+    if latest_raw != credential_raw or latest_anchor != anchor:
+        raise Real20Error("REAL20_CREDENTIAL_CHANGED")
+    latest_sha = validate_credential(
+        latest_raw,
+        anchor=latest_anchor,
+        expected=expected,
+        runtime_identity=runtime_identity,
+        model_identity=model_identity,
+        now=now or datetime.now(UTC),
+    )
+    if latest_sha != credential_sha:
+        raise Real20Error("REAL20_CREDENTIAL_CHANGED")
     reservation = _reservation(ledger_root, credential_sha, sha256(canonical(expected)), current)
     backend: VisionBackend | None = None
+    source_admitted = False
     evidence: dict[str, Any] = {}
     try:
+        if revalidate is not None:
+            from .admission import protect_consumption
+
+            protect_consumption(reservation)
+        source_admitted = True
         backend = backend_factory() if backend_factory is not None else None
         if backend is None:
             raise Real20Error("REAL20_BACKEND_NOT_CONFIGURED")
         rows: list[dict[str, Any]] = []
         facts_by_id: dict[str, dict[str, Any]] = {}
-        for asset in manifest.assets:
+        aliases = {
+            asset.asset_id: f"real20-{index:03d}" for index, asset in enumerate(manifest.assets, 1)
+        }
+        for ordinal, asset in enumerate(manifest.assets, 1):
+            if not root_before.same_identity(_source_root_identity(source_resolved)):
+                raise Real20Error("REAL20_SOURCE_ROOT_CHANGED")
             if asset.duplicate_of:
                 rows.append(
                     {
-                        "case_id": asset.asset_id,
+                        "case_id": aliases[asset.asset_id],
                         "action": "REFERENCE_ONLY",
-                        "duplicate_of": asset.duplicate_of,
+                        "duplicate_of": aliases[asset.duplicate_of],
                     }
                 )
                 continue
             image_path = source_resolved / asset.relative_path
             data, width, height = _read_image(image_path, source_resolved, asset.sha256)
             pose = backend.detect_pose(data)
+            backend.unload(TorchVisionRole.POSE_BASELINE_SMOKE)
             primary = backend.segment(data, TorchVisionRole.SEGMENTATION_PRIMARY)
+            backend.unload(TorchVisionRole.SEGMENTATION_PRIMARY)
             comparator = backend.segment(data, TorchVisionRole.SEGMENTATION_QUALITY_COMPARATOR)
+            backend.unload(TorchVisionRole.SEGMENTATION_QUALITY_COMPARATOR)
             facts = build_vision_facts(
-                case_id=asset.asset_id,
+                case_id=f"real20-{ordinal:03d}",
                 image_sha256=asset.sha256,
                 generator_version="real20-runtime-v1",
                 seed=None,
@@ -342,16 +425,33 @@ def run_real20(
             ) != compute_fact_digest(facts):
                 raise Real20Error("REAL20_FACT_CONTRACT_INVALID")
             facts_by_id[asset.asset_id] = facts
+            if revalidate is not None:
+                from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
+
+                schema = strict_json(
+                    (
+                        project_root / "schemas/n2b2_vision_fact_contract_v1_2.schema.json"
+                    ).read_bytes()
+                )
+                schema["properties"]["case_id"] = {"const": facts["case_id"]}
+                if list(Draft202012Validator(schema).iter_errors(facts)):
+                    raise Real20Error("REAL20_FACT_CONTRACT_INVALID")
+            interpretation = (
+                reasoning(data, facts, runtime_identity) if reasoning is not None else None
+            )
             rows.append(
                 {
-                    "case_id": asset.asset_id,
+                    "case_id": aliases[asset.asset_id],
                     "action": "INFER_ONCE",
                     "source_sha256": asset.sha256,
                     "facts": facts,
                     "exif": read_real20_exif(data),
+                    "interpretation": interpretation,
                 }
             )
-        _verify_source_bytes(source_resolved, manifest.assets)
+        post_source_check()
+        if revalidate is not None:
+            revalidate()
         root_after = _source_root_identity(source_resolved)
         if not root_before.same_identity(root_after):
             raise Real20Error("REAL20_SOURCE_ROOT_CHANGED")
@@ -392,7 +492,14 @@ def run_real20(
                 backend.unload()
         integrity_failure: Real20Error | None = None
         try:
-            _verify_source_bytes(source_resolved, manifest.assets)
+            if source_admitted:
+                post_source_check()
+            if source_admitted and not root_before.same_identity(
+                _source_root_identity(source_resolved)
+            ):
+                raise Real20Error("REAL20_SOURCE_ROOT_CHANGED")
+            if revalidate is not None:
+                revalidate()
         except Real20Error as integrity_error:
             integrity_failure = integrity_error
         failure = {
@@ -421,11 +528,17 @@ def run_real20(
 
 
 def default_runtime_probe(cache_root: Path, *, device: str) -> dict[str, Any]:
-    from ..n2b2_synthetic.config import N2B2RunConfig
-    from ..n2b2_synthetic.torchvision_loader import load_backend, verify_cache_hit
+    from dataclasses import asdict
 
-    if device not in {"cpu", "cuda"}:
+    from ..n2b2_synthetic.config import ROLE_MODEL_MAP, N2B2RunConfig
+    from ..n2b2_synthetic.ollama_client import OllamaClient
+    from ..n2b2_synthetic.torchvision_loader import load_backend, verify_cache_hit
+    from ..windows_bound_promotion import bind_existing_directory
+    from .runtime_probe import probe_worker
+
+    if device != "cuda":
         raise Real20Error("REAL20_DEVICE_INVALID")
+    worker = probe_worker()
     selected_device = cast(Literal["cpu", "cuda"], device)
     config = N2B2RunConfig(
         project_root=Path.cwd(),
@@ -436,16 +549,35 @@ def default_runtime_probe(cache_root: Path, *, device: str) -> dict[str, Any]:
         device=selected_device,
     )
     verify_cache_hit(cache_root, config.cache_subdirs)
+    model_digests = {}
+    with bind_existing_directory(cache_root, writable=False) as root:
+        for role, (model_id, filename) in ROLE_MODEL_MAP.items():
+            with (
+                root.open_directory(config.cache_subdirs[role], writable=False) as directory,
+                directory.open_file(filename) as file,
+            ):
+                digest, _ = file.sha256_and_size()
+                if digest != config.cache_subdirs[role]:
+                    raise Real20Error("REAL20_MODEL_BYTES_CHANGED")
+                model_digests[model_id] = digest
     backend = load_backend("real", cache_root, config.cache_subdirs, device=device)
     try:
-        return backend.runtime_attestation()
+        client = OllamaClient()
+        if client.ps_snapshot():
+            raise Real20Error("REAL20_MODEL_ALREADY_RESIDENT")
+        return {
+            "models": model_digests,
+            "worker": worker,
+            "vision": backend.runtime_attestation(),
+            "qwen": asdict(client.verify_identity()),
+        }
     finally:
         backend.unload()
 
 
 def default_backend_factory(cache_root: Path, *, device: str) -> Callable[[], VisionBackend]:
     from ..n2b2_synthetic.config import N2B2RunConfig
-    from ..n2b2_synthetic.torchvision_loader import load_backend
+    from .backend import BoundTorchVisionBackend
 
     if device not in {"cpu", "cuda"}:
         raise Real20Error("REAL20_DEVICE_INVALID")
@@ -458,4 +590,72 @@ def default_backend_factory(cache_root: Path, *, device: str) -> Callable[[], Vi
         backend="real",
         device=selected_device,
     )
-    return lambda: load_backend("real", cache_root, config.cache_subdirs, device=device)
+    return lambda: BoundTorchVisionBackend(cache_root, config.cache_subdirs, device=device)
+
+
+def run_real20(
+    *,
+    project_root: Path,
+    source_root: Path,
+    manifest_path: Path,
+    credential_path: Path,
+    anchor_path: Path,
+    runtime_identity_path: Path,
+    model_identity_path: Path,
+    ledger_root: Path,
+    output_root: Path,
+    cache_root: Path | None = None,
+    device: str = "cuda",
+) -> dict[str, Any]:
+    """Public entry: bind executing code and Owner controls before source access."""
+    from .admission import admit
+
+    executing_root = Path(__file__).resolve().parents[3]
+    if project_root.resolve() != executing_root:
+        raise Real20Error("REAL20_EXECUTING_SOURCE_MISMATCH")
+    if device != "cuda" or cache_root is None:
+        raise Real20Error("REAL20_CUDA_CACHE_REQUIRED")
+
+    admission_baseline: dict[str, Any] | None = None
+
+    def revalidate() -> None:
+        nonlocal admission_baseline
+        current = admit(
+            project_root=executing_root,
+            source_root=source_root,
+            manifest_path=manifest_path,
+            credential_path=credential_path,
+            anchor_path=anchor_path,
+            ledger_root=ledger_root,
+            output_root=output_root,
+            cache_root=cache_root,
+            runtime_identity_path=runtime_identity_path,
+            model_identity_path=model_identity_path,
+        )
+        if admission_baseline is not None and current != admission_baseline:
+            raise Real20Error("REAL20_ADMISSION_CHANGED")
+        admission_baseline = current
+
+    revalidate()
+    from .reasoning import interpret
+
+    return _run_real20(
+        project_root=executing_root,
+        source_root=source_root,
+        manifest_path=manifest_path,
+        credential_path=credential_path,
+        anchor_path=anchor_path,
+        runtime_identity_path=runtime_identity_path,
+        model_identity_path=model_identity_path,
+        ledger_root=ledger_root,
+        output_root=output_root,
+        backend_factory=default_backend_factory(cache_root, device=device),
+        runtime_probe=lambda: default_runtime_probe(cache_root, device=device),
+        reasoning=lambda data, facts, runtime_identity: interpret(
+            data,
+            facts,
+            project_root=executing_root,
+            expected_identity=runtime_identity["qwen"],
+        ),
+        revalidate=revalidate,
+    )

@@ -1,5 +1,30 @@
 # G1 Remediation Todo
 
+## Real20 acceptance correction and hardening - 2026-09-22
+
+The earlier R1 completion claim is superseded by a requirements audit. Passing
+the previous suite did not establish trusted admission, native bound-handle
+source protection, or a complete Pose/Seg/Qwen chain.
+
+- [x] Independently audit admission and record concrete missing requirements.
+- [x] Remove the public fake-mode read-only bypass and prevent unreviewed reads.
+- [x] Enforce one heavy vision role at a time and implement worker operator probes.
+- [x] Parse numeric photographic EXIF including nested fields; add regressions.
+- [ ] Verify and publish a normal successor; retain the original published SHA.
+- [ ] Reconcile frozen manifest and H3 controls; prepare the exact execution worksheet.
+- [ ] Complete trusted data/code/lease/anchor integration and independent review.
+- [ ] Run approved Real20, obtain human photography decisions, then qualify export.
+
+Review: prior green tests missed public admission issues. Independent static
+review findings drove fixed/protected Owner controls, source-bound control paths,
+single manifest snapshots, exact credential revalidation, persistent-ledger
+capability checks and verified-byte model loading. Actual native CUDA readiness,
+Owner artifacts, protected ledger/source capability and data execution remain
+NOT_RUN/NOT_VERIFIED. The original R0 JSON/list mismatch also remains explicit.
+The next-run worksheet is docs/41_real20_acceptance.md. No photo/EXIF/model run,
+H3 rerun, ACL change, SQLite/App write or production Bundle was performed.
+
+
 Owner: Jovi
 Started: 2026-07-15
 Scope: `G1_CALIBRATION_20_REMEDIATION` only. N2-N8 and G2-G3 remain locked.

@@ -186,7 +186,7 @@ class RealTorchVisionBackend:
             model = torchvision.models.segmentation.deeplabv3_mobilenet_v3_large(
                 weights=None, weights_backbone=None, aux_loss=True
             )
-        state_dict = torch.load(path, map_location="cpu", weights_only=True)
+        state_dict = self._load_state_dict(torch, path)
         if isinstance(state_dict, dict) and "state_dict" in state_dict:
             state_dict = state_dict["state_dict"]
         model.load_state_dict(state_dict)
@@ -198,6 +198,9 @@ class RealTorchVisionBackend:
             )
         self._models[role] = model
         return model
+
+    def _load_state_dict(self, torch: Any, path: Path) -> Any:
+        return torch.load(path, map_location="cpu", weights_only=True)
 
     def unload(self, role: TorchVisionRole | None = None) -> None:
         if role is None:

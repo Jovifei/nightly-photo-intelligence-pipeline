@@ -2,14 +2,77 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "status", "owner_id", "purpose", "credential_sha256", "production_unlock", "n2b2"],
+  "required": [
+    "schema_version",
+    "status",
+    "owner_id",
+    "purpose",
+    "credential_sha256",
+    "production_unlock",
+    "n2b2",
+    "candidate_commit",
+    "candidate_tree",
+    "source_manifest_sha256",
+    "data_receipt_sha256",
+    "code_review_sha256",
+    "quality_sha256",
+    "h3_review_sha256",
+    "path_plan_sha256"
+  ],
   "properties": {
-    "schema_version": {"const": "npi-real20-owner-anchor-v1"},
-    "status": {"const": "APPROVED"},
-    "owner_id": {"const": "Jovi"},
-    "purpose": {"const": "REAL20_READ_ONLY_EVALUATION"},
-    "credential_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "production_unlock": {"const": false},
-    "n2b2": {"const": "LOCKED"}
+    "schema_version": {
+      "const": "npi-real20-owner-anchor-v1"
+    },
+    "status": {
+      "const": "APPROVED"
+    },
+    "owner_id": {
+      "const": "Jovi"
+    },
+    "purpose": {
+      "const": "REAL20_READ_ONLY_EVALUATION"
+    },
+    "credential_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "production_unlock": {
+      "const": false
+    },
+    "n2b2": {
+      "const": "LOCKED"
+    },
+    "candidate_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "candidate_tree": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "source_manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "data_receipt_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "code_review_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "quality_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "h3_review_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "path_plan_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
   }
 }

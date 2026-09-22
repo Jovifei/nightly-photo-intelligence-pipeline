@@ -1172,6 +1172,10 @@ def _check_git_baselines() -> CheckResult:
             git("rev-parse", "HEAD^") == (0, real20_r0_delivery)
             and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "23")
             and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "24")
+        ) or (
+            git("rev-parse", "HEAD^") == (0, "2ae0d76a551b18e773bfdfe33ce600b742ece631")
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "24")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "25")
         )
         portability_record_ok = True
         if (

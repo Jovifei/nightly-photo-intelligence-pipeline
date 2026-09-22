@@ -1587,29 +1587,10 @@ def real20_run(
 ) -> None:
     """Run one credential-bound Real20 evaluation; no SQLite/App/Bundle writes."""
     from .real20 import Real20Error, run_real20
-    from .real20.runner import default_backend_factory, default_runtime_probe
 
     try:
-        if backend == "fake":
-            if not synthetic_test_mode:
-                raise Real20Error("REAL20_FAKE_BACKEND_TEST_ONLY")
-            from .n2b2_synthetic.torchvision_loader import FakeTorchVisionBackend
-
-            fake = FakeTorchVisionBackend()
-            result = run_real20(
-                project_root=project_root,
-                source_root=source_root,
-                manifest_path=manifest,
-                credential_path=credential,
-                anchor_path=anchor,
-                runtime_identity_path=runtime_identity,
-                model_identity_path=model_identity,
-                ledger_root=ledger_root,
-                output_root=output_root,
-                backend_factory=lambda: fake,
-                runtime_probe=fake.runtime_attestation,
-                capability_probe=lambda *_: True,
-            )
+        if backend == "fake" or synthetic_test_mode:
+            raise Real20Error("REAL20_FAKE_BACKEND_TEST_ONLY")
         elif backend == "real" and cache_root is not None:
             result = run_real20(
                 project_root=project_root,
@@ -1621,8 +1602,8 @@ def real20_run(
                 model_identity_path=model_identity,
                 ledger_root=ledger_root,
                 output_root=output_root,
-                backend_factory=default_backend_factory(cache_root, device=device),
-                runtime_probe=lambda: default_runtime_probe(cache_root, device=device),
+                cache_root=cache_root,
+                device=device,
             )
         else:
             raise Real20Error("REAL20_BACKEND_CONFIGURATION_INVALID")

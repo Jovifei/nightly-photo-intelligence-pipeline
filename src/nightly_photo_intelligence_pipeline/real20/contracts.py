@@ -111,8 +111,11 @@ class Manifest:
 
 
 def load_manifest(path: Any) -> Manifest:
-    raw = path.read_bytes()
-    value = read_json(path)
+    from .admission import control_bytes
+
+    raw = control_bytes(path)
+    value = strict_json(raw)
+    _require(isinstance(value, dict), "REAL20_CONTROL_OBJECT_REQUIRED")
     _require(
         set(value) == {"schema_version", "source_type", "source_fingerprint", "assets"},
         "REAL20_MANIFEST_FIELDS_INVALID",
@@ -265,7 +268,10 @@ def validate_credential(
     _require(
         scope["max_assets"] == 20
         and scope["max_unique_inferences"] == 19
-        and scope["max_runs"] == 1,
+        and scope["max_runs"] == 1
+        and all(
+            type(scope[key]) is int for key in ("max_assets", "max_unique_inferences", "max_runs")
+        ),
         "REAL20_CREDENTIAL_SCOPE_INVALID",
     )
     _require(scope["exif_allowlist"] == list(EXIF_ALLOWLIST), "REAL20_EXIF_SCOPE_INVALID")

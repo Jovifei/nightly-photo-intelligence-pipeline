@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import io
+import math
+from numbers import Real
 from typing import Any
 
 from .contracts import EXIF_ALLOWLIST
@@ -39,6 +41,9 @@ def read_real20_exif(data: bytes) -> dict[str, Any]:
 
         with Image.open(io.BytesIO(data)) as image:
             exif = image.getexif()
+            values = dict(exif)
+            if 34665 in exif:
+                values.update(exif.get_ifd(34665))
     except Exception:  # noqa: BLE001
         return {
             "present": False,
@@ -58,7 +63,7 @@ def read_real20_exif(data: bytes) -> dict[str, Any]:
     fields: dict[str, str] = {}
     gps = False
     excluded = 0
-    for tag_id, value in exif.items():
+    for tag_id, value in values.items():
         if tag_id == _GPS:
             gps = True
             excluded += 1
@@ -68,9 +73,14 @@ def read_real20_exif(data: bytes) -> dict[str, Any]:
             if tag_id in _SENSITIVE or tag_id not in _TAGS:
                 excluded += 1
             continue
-        text = str(value).strip()[:80]
-        if text:
-            fields[name] = text
+        if isinstance(value, bool) or not isinstance(value, Real):
+            continue
+        try:
+            number = float(value)
+        except (ValueError, TypeError, OverflowError, ZeroDivisionError):
+            continue
+        if math.isfinite(number) and 0 <= number <= 1_000_000:
+            fields[name] = str(number)
     return {
         "present": True,
         "fields": {name: fields[name] for name in EXIF_ALLOWLIST if name in fields},
