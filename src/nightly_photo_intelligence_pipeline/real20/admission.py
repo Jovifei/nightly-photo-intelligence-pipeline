@@ -20,7 +20,7 @@ from ..ingest.read_only_capability import (
     _windows_probe,
     verify_source_read_only_capability,
 )
-from ..windows_bound_promotion import bind_existing_directory
+from ..windows_bound_promotion import BoundDirectory, bind_existing_directory
 from .contracts import Real20Error, load_manifest, validate_data_receipt
 from .identity import candidate_identity
 
@@ -53,13 +53,21 @@ def _require(condition: bool, code: str) -> None:
         raise Real20Error(code)
 
 
-def protect_consumption(path: Path) -> None:
+def protect_consumption(path: Path | BoundDirectory) -> None:
     """Require persistent claims to resist deletion and permission changes.
 
     Creation is allowed, but clearing old consumption is not. No ACL is changed.
     Unknown/platform/sharing errors fail closed.
     """
-    for target, rights in ((path, (0x40, 0x10000, 0x40000, 0x80000)), (path.parent, (0x40,))):
+    if isinstance(path, BoundDirectory):
+        path._verify()
+        target_path = Path(path.identity.final_path)
+    else:
+        target_path = path
+    for target, rights in (
+        (target_path, (0x40, 0x10000, 0x40000, 0x80000)),
+        (target_path.parent, (0x40,)),
+    ):
         for right in rights:
             _require(
                 _windows_probe(target, "directory", right) == CapabilityDisposition.DENIED,

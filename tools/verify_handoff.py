@@ -65,6 +65,7 @@ REAL20_R0_DELIVERY_SHA = "50d9ffac597570ceba3bfea44ff9dc6448ba85c0"
 REAL20_R1_BASE_SHA = "2ae0d76a551b18e773bfdfe33ce600b742ece631"
 REAL20_HARDENING_BASE_SHA = "1dec64dec010336791b20d6d4897ff90e2783b02"
 REAL20_OUTPUT_BOUND_BASE_SHA = "1036962e2b958d1a523799ecce5a6fb605d9fe02"
+REAL20_FINAL_REVIEW_BASE_SHA = "832e0ffe28942bb855f281490dfa410b02155474"
 
 errors: list[str] = []
 passes: list[str] = []
@@ -952,6 +953,11 @@ def check_baselines() -> None:
             and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "27")
             and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "26")
         )
+        or (
+            git("rev-parse", "HEAD^") == (0, REAL20_FINAL_REVIEW_BASE_SHA)
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "28")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "27")
+        )
     ):
         fail("N2B2 review candidate must be exactly one direct child of N2B1P")
     elif git("rev-list", "--merges", "HEAD") != (0, ""):
@@ -1158,9 +1164,11 @@ def main() -> int:
             "HANDOFF_VALID: H3 review-binding remediation candidate; production N2B2 remains LOCKED"
         )
     elif git("rev-parse", "HEAD^") in {
-        (0, REAL20_R0_DELIVERY_SHA), (0, REAL20_R1_BASE_SHA),
+        (0, REAL20_R0_DELIVERY_SHA),
+        (0, REAL20_R1_BASE_SHA),
         (0, REAL20_HARDENING_BASE_SHA),
         (0, REAL20_OUTPUT_BOUND_BASE_SHA),
+        (0, REAL20_FINAL_REVIEW_BASE_SHA),
     }:
         print(
             "HANDOFF_VALID: Real20 transition code-only candidate after R0 delivery; "
