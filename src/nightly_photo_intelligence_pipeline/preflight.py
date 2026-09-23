@@ -1197,6 +1197,16 @@ def _check_git_baselines() -> CheckResult:
             and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "28")
             and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "29")
         )
+        real20_admission_window_topology = (
+            git("rev-parse", "HEAD^") == (0, "9145c9c92b0eeac700aac212818b2208d0c87844")
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "29")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "30")
+        )
+        real20_ledger_handle_topology = (
+            git("rev-parse", "HEAD^") == (0, "9145c9c92b0eeac700aac212818b2208d0c87844")
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "30")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "31")
+        )
         portability_record_ok = True
         if (
             portability_candidate
@@ -1286,7 +1296,9 @@ def _check_git_baselines() -> CheckResult:
             or real20_admission_fix_topology
             or real20_output_bound_topology
             or real20_final_review_topology
-            or real20_latest_hardening_topology,
+            or real20_latest_hardening_topology
+            or real20_admission_window_topology
+            or real20_ledger_handle_topology,
             portability_record_ok,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),

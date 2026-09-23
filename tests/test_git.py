@@ -46,6 +46,8 @@ REAL20_HARDENING_BASE = "1dec64dec010336791b20d6d4897ff90e2783b02"
 REAL20_OUTPUT_BOUND_BASE = "1036962e2b958d1a523799ecce5a6fb605d9fe02"
 REAL20_FINAL_REVIEW_BASE = "832e0ffe28942bb855f281490dfa410b02155474"
 REAL20_FINAL_HARDENING_BASE = "b56c0fc8b80f2af53ecb809f3834227a4030fe94"
+REAL20_ADMISSION_WINDOW_BASE = "9145c9c92b0eeac700aac212818b2208d0c87844"
+REAL20_LEDGER_HANDLE_BASE = "9145c9c92b0eeac700aac212818b2208d0c87844"
 
 SENSITIVE_SUFFIXES = (
     ".db",
@@ -207,6 +209,22 @@ def _is_real20_latest_hardening(project_root: Path) -> bool:
     )
 
 
+def _is_real20_admission_window_fix(project_root: Path) -> bool:
+    return (
+        _git(project_root, "rev-parse", "HEAD^").stdout.strip() == REAL20_ADMISSION_WINDOW_BASE
+        and _git(project_root, "rev-list", "--count", f"{N2B1P_BASELINE}..HEAD").stdout.strip()
+        == "29"
+    )
+
+
+def _is_real20_ledger_handle_fix(project_root: Path) -> bool:
+    return (
+        _git(project_root, "rev-parse", "HEAD^").stdout.strip() == REAL20_LEDGER_HANDLE_BASE
+        and _git(project_root, "rev-list", "--count", f"{N2B1P_BASELINE}..HEAD").stdout.strip()
+        == "30"
+    )
+
+
 def test_git_approved_tags_and_ancestry_are_exact(project_root: Path) -> None:
     assert _git(project_root, "rev-parse", N0_TAG).stdout.strip() == N0_BASELINE
     assert _git(project_root, "rev-parse", N1_TAG).stdout.strip() == N1_BASELINE
@@ -275,6 +293,10 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
         candidate_offset = 27
     elif _is_real20_latest_hardening(project_root):
         candidate_offset = 28
+    elif _is_real20_admission_window_fix(project_root):
+        candidate_offset = 29
+    elif _is_real20_ledger_handle_fix(project_root):
+        candidate_offset = 30
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         candidate_offset = 1
     else:
@@ -384,6 +406,14 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
         assert (
             _git(project_root, "rev-parse", "HEAD^").stdout.strip() == REAL20_FINAL_HARDENING_BASE
         )
+    elif _is_real20_admission_window_fix(project_root):
+        assert post_n2b1r == 30
+        assert (
+            _git(project_root, "rev-parse", "HEAD^").stdout.strip() == REAL20_ADMISSION_WINDOW_BASE
+        )
+    elif _is_real20_ledger_handle_fix(project_root):
+        assert post_n2b1r == 31
+        assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() == REAL20_LEDGER_HANDLE_BASE
     else:
         assert post_n2b1r == 1 + candidate_offset
         parent = _git(project_root, "rev-parse", "HEAD^").stdout.strip()
@@ -466,6 +496,10 @@ def test_n2b1p_candidate_is_resolved_not_hardcoded(project_root: Path) -> None:
         expected_count = 28
     elif _is_real20_latest_hardening(project_root):
         expected_count = 29
+    elif _is_real20_admission_window_fix(project_root):
+        expected_count = 30
+    elif _is_real20_ledger_handle_fix(project_root):
+        expected_count = 31
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         expected_count = 2
     else:

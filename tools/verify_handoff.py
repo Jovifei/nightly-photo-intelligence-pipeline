@@ -67,6 +67,8 @@ REAL20_HARDENING_BASE_SHA = "1dec64dec010336791b20d6d4897ff90e2783b02"
 REAL20_OUTPUT_BOUND_BASE_SHA = "1036962e2b958d1a523799ecce5a6fb605d9fe02"
 REAL20_FINAL_REVIEW_BASE_SHA = "832e0ffe28942bb855f281490dfa410b02155474"
 REAL20_FINAL_HARDENING_BASE_SHA = "b56c0fc8b80f2af53ecb809f3834227a4030fe94"
+REAL20_ADMISSION_WINDOW_BASE_SHA = "9145c9c92b0eeac700aac212818b2208d0c87844"
+REAL20_LEDGER_HANDLE_BASE_SHA = "9145c9c92b0eeac700aac212818b2208d0c87844"
 
 errors: list[str] = []
 passes: list[str] = []
@@ -964,6 +966,16 @@ def check_baselines() -> None:
             and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "29")
             and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "28")
         )
+        or (
+            git("rev-parse", "HEAD^") == (0, REAL20_ADMISSION_WINDOW_BASE_SHA)
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "30")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "29")
+        )
+        or (
+            git("rev-parse", "HEAD^") == (0, REAL20_LEDGER_HANDLE_BASE_SHA)
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "31")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "30")
+        )
     ):
         fail("N2B2 review candidate must be exactly one direct child of N2B1P")
     elif git("rev-list", "--merges", "HEAD") != (0, ""):
@@ -1176,6 +1188,8 @@ def main() -> int:
         (0, REAL20_OUTPUT_BOUND_BASE_SHA),
         (0, REAL20_FINAL_REVIEW_BASE_SHA),
         (0, REAL20_FINAL_HARDENING_BASE_SHA),
+        (0, REAL20_ADMISSION_WINDOW_BASE_SHA),
+        (0, REAL20_LEDGER_HANDLE_BASE_SHA),
     }:
         print(
             "HANDOFF_VALID: Real20 transition code-only candidate after R0 delivery; "
