@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "owner_id", "not_before_utc", "expires_at_utc", "frozen_manifest_sha256", "manifest_sha256", "source_root_fingerprint", "real_photo_read", "real_exif_read", "max_assets", "max_unique_inferences", "sqlite_write", "app_write", "production_bundle", "acl_change", "source_mutation", "model_download", "n2b2_unlock", "production_n2b2"],
+  "properties": {
+    "schema_version": {"const": "npi-real20-data-receipt-v1"},
+    "status": {"const": "APPROVED"},
+    "owner_id": {"const": "Jovi"},
+    "not_before_utc": {"type": "string", "format": "date-time"},
+    "expires_at_utc": {"type": "string", "format": "date-time"},
+    "frozen_manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source_root_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "real_photo_read": {"const": true},
+    "real_exif_read": {"const": true},
+    "max_assets": {"const": 20},
+    "max_unique_inferences": {"const": 19},
+    "sqlite_write": {"const": false},
+    "app_write": {"const": false},
+    "production_bundle": {"const": false},
+    "acl_change": {"const": false},
+    "source_mutation": {"const": false},
+    "model_download": {"const": false},
+    "n2b2_unlock": {"const": false},
+    "production_n2b2": {"const": "LOCKED"}
+  }
+}

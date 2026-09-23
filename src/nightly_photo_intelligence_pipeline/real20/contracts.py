@@ -305,3 +305,57 @@ def validate_credential(
         "REAL20_ANCHOR_SCOPE_INVALID",
     )
     return credential_hash
+
+
+def validate_data_receipt(value: Any) -> None:
+    fields = {
+        "schema_version",
+        "status",
+        "owner_id",
+        "not_before_utc",
+        "expires_at_utc",
+        "frozen_manifest_sha256",
+        "manifest_sha256",
+        "source_root_fingerprint",
+        "real_photo_read",
+        "real_exif_read",
+        "max_assets",
+        "max_unique_inferences",
+        "sqlite_write",
+        "app_write",
+        "production_bundle",
+        "acl_change",
+        "source_mutation",
+        "model_download",
+        "n2b2_unlock",
+        "production_n2b2",
+    }
+    _require(isinstance(value, dict) and set(value) == fields, "REAL20_DATA_RECEIPT_FIELDS_INVALID")
+    _require(
+        value["schema_version"] == "npi-real20-data-receipt-v1"
+        and value["status"] == "APPROVED"
+        and value["owner_id"] == "Jovi",
+        "REAL20_DATA_RECEIPT_REQUIRED",
+    )
+    _require(
+        value["real_photo_read"] is True and value["real_exif_read"] is True,
+        "REAL20_DATA_SCOPE_INVALID",
+    )
+    for field in (
+        "sqlite_write",
+        "app_write",
+        "production_bundle",
+        "acl_change",
+        "source_mutation",
+        "model_download",
+        "n2b2_unlock",
+    ):
+        _require(value[field] is False, "REAL20_DATA_SCOPE_INVALID")
+    _require(
+        type(value["max_assets"]) is int
+        and value["max_assets"] == 20
+        and type(value["max_unique_inferences"]) is int
+        and value["max_unique_inferences"] == 19
+        and value["production_n2b2"] == "LOCKED",
+        "REAL20_DATA_SCOPE_INVALID",
+    )

@@ -21,7 +21,7 @@ from ..ingest.read_only_capability import (
     verify_source_read_only_capability,
 )
 from ..windows_bound_promotion import bind_existing_directory
-from .contracts import Real20Error, load_manifest
+from .contracts import Real20Error, load_manifest, validate_data_receipt
 from .identity import candidate_identity
 
 FROZEN_G1 = "29eee5fdb8e16c85649752501c4b722d2b4d071950c8a989add040e895a75c47"
@@ -167,20 +167,7 @@ def admit(
         "REAL20_FINAL_QUALITY_REQUIRED",
     )
     data = documents["data_receipt"]
-    _require(
-        data.get("real_photo_read") is True
-        and data.get("real_exif_read") is True
-        and data.get("max_assets") == 20
-        and data.get("max_unique_inferences") == 19
-        and data.get("production_n2b2") == "LOCKED",
-        "REAL20_DATA_SCOPE_INVALID",
-    )
-    _require(
-        data.get("schema_version") == "npi-real20-data-receipt-v1"
-        and data.get("status") == "APPROVED"
-        and data.get("owner_id") == "Jovi",
-        "REAL20_DATA_RECEIPT_REQUIRED",
-    )
+    validate_data_receipt(data)
     try:
         start = datetime.fromisoformat(data["not_before_utc"].replace("Z", "+00:00"))
         end = datetime.fromisoformat(data["expires_at_utc"].replace("Z", "+00:00"))
