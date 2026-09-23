@@ -49,6 +49,7 @@ REAL20_FINAL_HARDENING_BASE = "b56c0fc8b80f2af53ecb809f3834227a4030fe94"
 REAL20_ADMISSION_WINDOW_BASE = "9145c9c92b0eeac700aac212818b2208d0c87844"
 REAL20_LEDGER_HANDLE_BASE = "9145c9c92b0eeac700aac212818b2208d0c87844"
 REAL20_PREFLIGHT_RECEIPT_BASE = "f2302fee69255ab971942c44740fe5c059a2503c"
+REAL20_DATA_SCHEMA_BASE = "6263ebd2c7c4854ca13026a678397f83ef8adcef"
 
 SENSITIVE_SUFFIXES = (
     ".db",
@@ -234,6 +235,14 @@ def _is_real20_preflight_receipt_fix(project_root: Path) -> bool:
     )
 
 
+def _is_real20_terminal_evidence_fix(project_root: Path) -> bool:
+    return (
+        _git(project_root, "rev-parse", "HEAD^").stdout.strip() == REAL20_DATA_SCHEMA_BASE
+        and _git(project_root, "rev-list", "--count", f"{N2B1P_BASELINE}..HEAD").stdout.strip()
+        == "32"
+    )
+
+
 def test_git_approved_tags_and_ancestry_are_exact(project_root: Path) -> None:
     assert _git(project_root, "rev-parse", N0_TAG).stdout.strip() == N0_BASELINE
     assert _git(project_root, "rev-parse", N1_TAG).stdout.strip() == N1_BASELINE
@@ -308,6 +317,8 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
         candidate_offset = 30
     elif _is_real20_preflight_receipt_fix(project_root):
         candidate_offset = 31
+    elif _is_real20_terminal_evidence_fix(project_root):
+        candidate_offset = 32
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         candidate_offset = 1
     else:
@@ -430,6 +441,9 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
         assert (
             _git(project_root, "rev-parse", "HEAD^").stdout.strip() == REAL20_PREFLIGHT_RECEIPT_BASE
         )
+    elif _is_real20_terminal_evidence_fix(project_root):
+        assert post_n2b1r == 33
+        assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() == REAL20_DATA_SCHEMA_BASE
     else:
         assert post_n2b1r == 1 + candidate_offset
         parent = _git(project_root, "rev-parse", "HEAD^").stdout.strip()
@@ -518,6 +532,8 @@ def test_n2b1p_candidate_is_resolved_not_hardcoded(project_root: Path) -> None:
         expected_count = 31
     elif _is_real20_preflight_receipt_fix(project_root):
         expected_count = 32
+    elif _is_real20_terminal_evidence_fix(project_root):
+        expected_count = 33
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         expected_count = 2
     else:

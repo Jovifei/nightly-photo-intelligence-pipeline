@@ -17,6 +17,7 @@ from ..ingest.read_only_capability import verify_source_read_only_capability
 from ..ingest.source_guard import FileIdentity, is_reparse_point, validate_roots
 from ..n2b2_synthetic.config import TorchVisionRole
 from ..n2b2_synthetic.vision_facts import build_vision_facts, compute_fact_digest
+from ..windows_bound_promotion import BoundStagingTransaction
 from .contracts import EXIF_ALLOWLIST, Real20Error, load_manifest, validate_credential
 from .exif import read_real20_exif
 from .identity import candidate_identity
@@ -186,12 +187,14 @@ def _finish(
             "finished_at_utc": datetime.now(UTC).isoformat(),
         }
     )
-    with reservation.create_file("terminal.json") as handle:
-        handle.write(data)
-        handle.flush()
-    with reservation.open_file("terminal.json") as handle:
-        if handle.read_all(max_bytes=4096) != data:
-            raise Real20Error("REAL20_TERMINAL_WRITE_INVALID")
+    with BoundStagingTransaction.create(reservation) as transaction:
+        with transaction.create_file("record.json") as handle:
+            handle.write(data)
+            handle.flush()
+        with transaction.staging.open_file("record.json") as handle:
+            if handle.read_all(max_bytes=4096) != data:
+                raise Real20Error("REAL20_TERMINAL_WRITE_INVALID")
+        transaction.publish("terminal")
 
 
 def _manifest_selection(manifest: Any) -> list[dict[str, Any]]:
@@ -320,7 +323,7 @@ def _run_real20(
     runtime_probe: Callable[[], dict[str, Any]] | None = None,
     capability_probe: Callable[[Path, Sequence[Path]], object] | None = None,
     reasoning: Callable[[bytes, dict[str, Any], dict[str, Any]], dict[str, Any]] | None = None,
-    revalidate: Callable[[], None] | None = None,
+    revalidate: Callable[[Any], None] | None = None,
     now: datetime | None = None,
 ) -> dict[str, Any]:
     """Run one exact, credential-bound, read-only Real20 evaluation."""
@@ -394,8 +397,6 @@ def _run_real20(
     if revalidate is not None and model_identity != observed_runtime.get("models"):
         raise Real20Error("REAL20_MODEL_IDENTITY_DRIFT")
     root_before = _source_root_identity(source_resolved)
-    if revalidate is not None:
-        revalidate()
     latest_raw = control_bytes(credential_path)
     latest_anchor = _read_control(anchor_path)
     if latest_raw != credential_raw or latest_anchor != anchor:
@@ -412,26 +413,44 @@ def _run_real20(
         raise Real20Error("REAL20_CREDENTIAL_CHANGED")
     from ..windows_bound_promotion import bind_existing_directory
 
+    ledger_bound = None
     try:
         output_bound = bind_existing_directory(output_root, writable=True)
         if output_bound.list_names():
             output_bound.close()
             raise Real20Error("REAL20_OUTPUT_NOT_FRESH")
-    except Real20Error:
-        raise
-    except Exception as exc:
-        raise Real20Error("REAL20_OUTPUT_PARENT_INVALID") from exc
-    from ..windows_bound_promotion import bind_existing_directory
-
-    ledger_bound = bind_existing_directory(ledger_root, writable=True)
-    try:
+        ledger_bound = bind_existing_directory(ledger_root, writable=True)
+        if revalidate is not None:
+            revalidate(ledger_bound)
+        latest_raw = control_bytes(credential_path)
+        latest_anchor = _read_control(anchor_path)
+        if latest_raw != credential_raw or latest_anchor != anchor:
+            raise Real20Error("REAL20_CREDENTIAL_CHANGED")
+        latest_sha = validate_credential(
+            latest_raw,
+            anchor=latest_anchor,
+            expected=expected,
+            runtime_identity=runtime_identity,
+            model_identity=model_identity,
+            now=datetime.now(UTC),
+        )
+        if latest_sha != credential_sha:
+            raise Real20Error("REAL20_CREDENTIAL_CHANGED")
         reservation = _reservation(
             ledger_bound, credential_sha, sha256(canonical(expected)), current
         )
-    except Exception:
-        ledger_bound.close()
-        output_bound.close()
+    except Real20Error:
+        if ledger_bound is not None:
+            ledger_bound.close()
+        if "output_bound" in locals() and not output_bound._closed:
+            output_bound.close()
         raise
+    except Exception as exc:
+        if ledger_bound is not None:
+            ledger_bound.close()
+        if "output_bound" in locals() and not output_bound._closed:
+            output_bound.close()
+        raise Real20Error("REAL20_OUTPUT_OR_LEDGER_BOUNDARY_INVALID") from exc
     backend: VisionBackend | None = None
     source_admitted = False
     evidence: dict[str, Any] = {}
@@ -511,7 +530,7 @@ def _run_real20(
             )
         post_source_check()
         if revalidate is not None:
-            revalidate()
+            revalidate(ledger_bound)
         root_after = _source_root_identity(source_resolved)
         if not root_before.same_identity(root_after):
             raise Real20Error("REAL20_SOURCE_ROOT_CHANGED")
@@ -564,7 +583,7 @@ def _run_real20(
             ):
                 raise Real20Error("REAL20_SOURCE_ROOT_CHANGED")
             if revalidate is not None:
-                revalidate()
+                revalidate(ledger_bound)
         except Real20Error as integrity_error:
             integrity_failure = integrity_error
         failure = {
@@ -691,7 +710,7 @@ def run_real20(
 
     admission_baseline: dict[str, Any] | None = None
 
-    def revalidate() -> None:
+    def revalidate(ledger_handle: Any) -> None:
         nonlocal admission_baseline
         current = admit(
             project_root=executing_root,
@@ -699,7 +718,7 @@ def run_real20(
             manifest_path=manifest_path,
             credential_path=credential_path,
             anchor_path=anchor_path,
-            ledger_root=ledger_root,
+            ledger_root=ledger_handle,
             output_root=output_root,
             cache_root=cache_root,
             runtime_identity_path=runtime_identity_path,
@@ -709,7 +728,6 @@ def run_real20(
             raise Real20Error("REAL20_ADMISSION_CHANGED")
         admission_baseline = current
 
-    revalidate()
     from .reasoning import interpret
 
     return _run_real20(

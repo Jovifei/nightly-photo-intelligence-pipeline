@@ -70,6 +70,7 @@ REAL20_FINAL_HARDENING_BASE_SHA = "b56c0fc8b80f2af53ecb809f3834227a4030fe94"
 REAL20_ADMISSION_WINDOW_BASE_SHA = "9145c9c92b0eeac700aac212818b2208d0c87844"
 REAL20_LEDGER_HANDLE_BASE_SHA = "9145c9c92b0eeac700aac212818b2208d0c87844"
 REAL20_PREFLIGHT_RECEIPT_BASE_SHA = "f2302fee69255ab971942c44740fe5c059a2503c"
+REAL20_DATA_SCHEMA_BASE_SHA = "6263ebd2c7c4854ca13026a678397f83ef8adcef"
 
 errors: list[str] = []
 passes: list[str] = []
@@ -982,6 +983,11 @@ def check_baselines() -> None:
             and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "32")
             and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "31")
         )
+        or (
+            git("rev-parse", "HEAD^") == (0, REAL20_DATA_SCHEMA_BASE_SHA)
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "33")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "32")
+        )
     ):
         fail("N2B2 review candidate must be exactly one direct child of N2B1P")
     elif git("rev-list", "--merges", "HEAD") != (0, ""):
@@ -1197,6 +1203,7 @@ def main() -> int:
         (0, REAL20_ADMISSION_WINDOW_BASE_SHA),
         (0, REAL20_LEDGER_HANDLE_BASE_SHA),
         (0, REAL20_PREFLIGHT_RECEIPT_BASE_SHA),
+        (0, REAL20_DATA_SCHEMA_BASE_SHA),
     }:
         print(
             "HANDOFF_VALID: Real20 transition code-only candidate after R0 delivery; "

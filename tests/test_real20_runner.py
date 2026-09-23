@@ -255,6 +255,18 @@ def _run(
     )
 
 
+def _terminal(ledger: Path, credential_sha: str) -> dict[str, Any]:
+    from nightly_photo_intelligence_pipeline.windows_bound_promotion import bind_existing_directory
+
+    with (
+        bind_existing_directory(ledger, writable=False) as root,
+        root.open_directory(credential_sha, writable=False) as claim,
+        claim.open_directory("terminal", writable=False) as terminal_root,
+        terminal_root.open_file("record.json") as terminal,
+    ):
+        return json.loads(terminal.read_all(max_bytes=4096))
+
+
 def test_prepare_is_draft_and_does_not_read_source(tmp_path: Path) -> None:
     project = _project(tmp_path)
     manifest_path, source, _ = _manifest(tmp_path)
@@ -298,7 +310,7 @@ def test_run_infers_each_unique_asset_once_and_keeps_n2b2_locked(tmp_path: Path)
     assert payload["project_state_n2b2"] == "LOCKED"
     assert payload["assets"][-1]["action"] == "REFERENCE_ONLY"
     assert str(source) not in json.dumps(payload)
-    assert (controls["ledger"] / result["credential_sha256"] / "terminal.json").is_file()
+    assert _terminal(controls["ledger"], result["credential_sha256"])["status"] == "COMPLETE"
 
 
 def test_synthetic_or_expired_credential_is_rejected_before_source_open(
@@ -332,10 +344,7 @@ def test_worker_failure_consumes_credential_and_second_run_is_denied(tmp_path: P
     with pytest.raises(RuntimeError, match="worker failure"):
         _run(project, source, manifest_path, controls, first)
     credential_hash = sha256(controls["credential"].read_bytes())
-    assert (
-        json.loads((controls["ledger"] / credential_hash / "terminal.json").read_text())["status"]
-        == "FAILED"
-    )
+    assert _terminal(controls["ledger"], credential_hash)["status"] == "FAILED"
     controls["output"] = controls["output"].parent / "second-output"
     controls["output"].mkdir()
     with pytest.raises(Real20Error, match="REAL20_CREDENTIAL_ALREADY_CONSUMED"):
@@ -450,10 +459,7 @@ def test_source_mutation_after_worker_fails_and_is_recorded(tmp_path: Path) -> N
     credential_hash = sha256(controls["credential"].read_bytes())
     failure = json.loads((controls["output"] / "real20_failure.json").read_text(encoding="utf-8"))
     assert failure["error_code"] == "REAL20_SOURCE_INTEGRITY_CHANGED"
-    assert (
-        json.loads((controls["ledger"] / credential_hash / "terminal.json").read_text())["status"]
-        == "FAILED"
-    )
+    assert _terminal(controls["ledger"], credential_hash)["status"] == "FAILED"
 
 
 def test_actual_cli_path_uses_explicit_synthetic_test_mode(tmp_path: Path) -> None:

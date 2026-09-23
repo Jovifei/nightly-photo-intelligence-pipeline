@@ -113,8 +113,17 @@ def admit(
         _require(actual == trusted / name, "REAL20_UNTRUSTED_CONTROL_PATH")
     expected_anchor = trusted / "real20_execution_anchor.json"
     _require(anchor_path == expected_anchor, "REAL20_UNTRUSTED_ANCHOR_PATH")
-    _require(ledger_root == runtime / "real20-execution-ledger", "REAL20_LEDGER_BINDING_INVALID")
-    protect_consumption(ledger_root)
+    ledger_path = (
+        Path(ledger_root.identity.final_path)
+        if isinstance(ledger_root, BoundDirectory)
+        else ledger_root
+    )
+    _require(ledger_path == runtime / "real20-execution-ledger", "REAL20_LEDGER_BINDING_INVALID")
+    if isinstance(ledger_root, BoundDirectory):
+        protect_consumption(ledger_root)
+    else:
+        with bind_existing_directory(ledger_path, writable=False) as ledger_handle:
+            protect_consumption(ledger_handle)
     _require(cache_root == Path(config["cache_root"]), "REAL20_CACHE_BINDING_INVALID")
     protected_files = [
         expected_anchor,
