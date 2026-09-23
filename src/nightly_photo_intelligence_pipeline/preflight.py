@@ -1192,6 +1192,11 @@ def _check_git_baselines() -> CheckResult:
             and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "27")
             and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "28")
         )
+        real20_latest_hardening_topology = (
+            git("rev-parse", "HEAD^") == (0, "b56c0fc8b80f2af53ecb809f3834227a4030fe94")
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "28")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "29")
+        )
         portability_record_ok = True
         if (
             portability_candidate
@@ -1280,7 +1285,8 @@ def _check_git_baselines() -> CheckResult:
             or real20_transition_topology
             or real20_admission_fix_topology
             or real20_output_bound_topology
-            or real20_final_review_topology,
+            or real20_final_review_topology
+            or real20_latest_hardening_topology,
             portability_record_ok,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),
