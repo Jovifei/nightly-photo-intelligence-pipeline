@@ -51,6 +51,17 @@ def _write_new(path: Path, payload: Mapping[str, Any]) -> bytes:
     return data
 
 
+def _write_bound_new(directory: Any, name: str, payload: Mapping[str, Any]) -> bytes:
+    data = canonical(dict(payload))
+    try:
+        with directory.create_file(name) as handle:
+            handle.write(data)
+            handle.flush()
+    except Exception as exc:
+        raise Real20Error("REAL20_OUTPUT_WRITE_FAILED") from exc
+    return data
+
+
 def _read_control(path: Path) -> dict[str, Any]:
     from .admission import control_bytes
 
@@ -124,14 +135,19 @@ def _source_bytes(path: Path, source_root: Path) -> bytes:
         return handle.read_all(max_bytes=64 * 1024 * 1024)
 
 
-def _reservation(ledger_root: Path, credential_sha: str, bindings_sha: str, now: datetime) -> Path:
-    if not ledger_root.is_dir() or is_reparse_point(ledger_root):
-        raise Real20Error("REAL20_LEDGER_ROOT_INVALID")
-    target = ledger_root / credential_sha
+def _reservation(ledger_root: Any, credential_sha: str, bindings_sha: str, now: datetime) -> Any:
     try:
-        target.mkdir(mode=0o700)
+        target = ledger_root.create_directory(credential_sha)
     except FileExistsError as exc:
         raise Real20Error("REAL20_CREDENTIAL_ALREADY_CONSUMED") from exc
+    except Exception as exc:
+        try:
+            consumed = credential_sha in ledger_root.list_names()
+        except Exception:
+            consumed = False
+        if consumed:
+            raise Real20Error("REAL20_CREDENTIAL_ALREADY_CONSUMED") from exc
+        raise Real20Error("REAL20_LEDGER_RESERVATION_FAILED") from exc
     record = {
         "schema_version": "npi-real20-consumption-v1",
         "status": "RESERVED",
@@ -139,20 +155,32 @@ def _reservation(ledger_root: Path, credential_sha: str, bindings_sha: str, now:
         "bindings_sha256": bindings_sha,
         "reserved_at_utc": now.astimezone(UTC).isoformat(),
     }
-    _write_new(target / "reservation.json", record)
+    data = canonical(record)
+    with target.create_file("reservation.json") as handle:
+        handle.write(data)
+        handle.flush()
+    with target.open_file("reservation.json") as handle:
+        if handle.read_all(max_bytes=4096) != data:
+            target.close()
+            raise Real20Error("REAL20_RESERVATION_WRITE_INVALID")
     return target
 
 
-def _finish(reservation: Path, *, status: str, evidence_sha: str, now: datetime) -> None:
-    _write_new(
-        reservation / "terminal.json",
+def _finish(reservation: Any, *, status: str, evidence_sha: str, now: datetime) -> None:
+    data = canonical(
         {
             "schema_version": "npi-real20-consumption-v1",
             "status": status,
             "evidence_sha256": evidence_sha,
             "finished_at_utc": now.astimezone(UTC).isoformat(),
-        },
+        }
     )
+    with reservation.create_file("terminal.json") as handle:
+        handle.write(data)
+        handle.flush()
+    with reservation.open_file("terminal.json") as handle:
+        if handle.read_all(max_bytes=4096) != data:
+            raise Real20Error("REAL20_TERMINAL_WRITE_INVALID")
 
 
 def _manifest_selection(manifest: Any) -> list[dict[str, Any]]:
@@ -371,7 +399,28 @@ def _run_real20(
     )
     if latest_sha != credential_sha:
         raise Real20Error("REAL20_CREDENTIAL_CHANGED")
-    reservation = _reservation(ledger_root, credential_sha, sha256(canonical(expected)), current)
+    from ..windows_bound_promotion import bind_existing_directory
+
+    try:
+        output_bound = bind_existing_directory(output_root, writable=True)
+        if output_bound.list_names():
+            output_bound.close()
+            raise Real20Error("REAL20_OUTPUT_NOT_FRESH")
+    except Real20Error:
+        raise
+    except Exception as exc:
+        raise Real20Error("REAL20_OUTPUT_PARENT_INVALID") from exc
+    from ..windows_bound_promotion import bind_existing_directory
+
+    ledger_bound = bind_existing_directory(ledger_root, writable=True)
+    try:
+        reservation = _reservation(
+            ledger_bound, credential_sha, sha256(canonical(expected)), current
+        )
+    except Exception:
+        ledger_bound.close()
+        output_bound.close()
+        raise
     backend: VisionBackend | None = None
     source_admitted = False
     evidence: dict[str, Any] = {}
@@ -476,7 +525,7 @@ def _run_real20(
             "app_write": False,
             "production_bundle": False,
         }
-        evidence_bytes = _write_new(output_root / "real20_result.json", evidence)
+        evidence_bytes = _write_bound_new(output_bound, "real20_result.json", evidence)
         _finish(reservation, status="COMPLETE", evidence_sha=sha256(evidence_bytes), now=current)
         return {
             "status": "REAL20_COMPLETE",
@@ -516,7 +565,7 @@ def _run_real20(
             "project_state_n2b2": "LOCKED",
         }
         try:
-            failure_bytes = _write_new(output_root / "real20_failure.json", failure)
+            failure_bytes = _write_bound_new(output_bound, "real20_failure.json", failure)
         except Real20Error:
             failure_bytes = canonical(failure)
         _finish(reservation, status="FAILED", evidence_sha=sha256(failure_bytes), now=current)
@@ -525,6 +574,9 @@ def _run_real20(
         if backend is not None:
             with suppress(Exception):
                 backend.unload()
+        output_bound.close()
+        ledger_bound.close()
+        reservation.close()
 
 
 def default_runtime_probe(cache_root: Path, *, device: str) -> dict[str, Any]:
