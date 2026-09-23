@@ -24,6 +24,13 @@ NOT_RUN/NOT_VERIFIED. The original R0 JSON/list mismatch also remains explicit.
 The next-run worksheet is docs/41_real20_acceptance.md. No photo/EXIF/model run,
 H3 rerun, ACL change, SQLite/App write or production Bundle was performed.
 
+2026-09-23 continuation: the additional review's source-code identity bypass,
+failure evidence hash, and completion timestamp findings are fixed. Source
+identity rejects Git index skip-worktree/assume-unchanged flags. Bound output is
+read back before hashing. If failure output cannot persist, terminal evidence
+now explicitly records a null hash and PERSISTENCE_FAILED. Final integrated
+review and full quality are still pending; actual data/Owner gates remain shut.
+
 
 Owner: Jovi
 Started: 2026-07-15

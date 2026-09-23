@@ -540,6 +540,12 @@ class SourceTests(unittest.TestCase):
         with self.assertRaisesRegex(EngineeringError, "NOT_CLEAN"):
             full_source_identity(self.root)
 
+    def test_skip_worktree_flag_fails(self):
+        self.git("update-index", "--skip-worktree", "sample.py")
+        (self.root / "sample.py").write_text("print('hidden change')\n")
+        with self.assertRaisesRegex(EngineeringError, "SOURCE_INDEX_FLAGS_INVALID"):
+            full_source_identity(self.root)
+
     def test_every_source_change_alters_digest(self):
         before = full_source_identity(self.root)
         (self.root / "approval.json").write_text('{"status":"OTHER"}\n')

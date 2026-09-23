@@ -44,6 +44,13 @@ def full_source_identity(root: Path) -> dict[str, Any]:
         _git(root, "status", "--porcelain=v1", "--untracked-files=all") == b"",
         "NPI_SOURCE_NOT_CLEAN",
     )
+    # Status can hide worktree changes after assume-unchanged/skip-worktree.
+    # These index flags invalidate an executable-source identity.
+    index_flags = _git(root, "ls-files", "-v", "-z").split(b"\0")
+    require(
+        all(not row or row.startswith(b"H ") for row in index_flags),
+        "NPI_SOURCE_INDEX_FLAGS_INVALID",
+    )
     require(
         _git(root, "rev-parse", "--is-shallow-repository").strip() == b"false",
         "NPI_SHALLOW_REPOSITORY",

@@ -43,6 +43,7 @@ N2B2_H3_BINDING_BASE = "1b9997ba0b099fd159932a8de0697f78d1fc7867"
 REAL20_R0_DELIVERY = "50d9ffac597570ceba3bfea44ff9dc6448ba85c0"
 REAL20_R1_BASE = "2ae0d76a551b18e773bfdfe33ce600b742ece631"
 REAL20_HARDENING_BASE = "1dec64dec010336791b20d6d4897ff90e2783b02"
+REAL20_OUTPUT_BOUND_BASE = "1036962e2b958d1a523799ecce5a6fb605d9fe02"
 
 SENSITIVE_SUFFIXES = (
     ".db",
@@ -180,6 +181,14 @@ def _is_real20_admission_fix(project_root: Path) -> bool:
     )
 
 
+def _is_real20_output_bound_fix(project_root: Path) -> bool:
+    return (
+        _git(project_root, "rev-parse", "HEAD^").stdout.strip() == REAL20_OUTPUT_BOUND_BASE
+        and _git(project_root, "rev-list", "--count", f"{N2B1P_BASELINE}..HEAD").stdout.strip()
+        == "26"
+    )
+
+
 def test_git_approved_tags_and_ancestry_are_exact(project_root: Path) -> None:
     assert _git(project_root, "rev-parse", N0_TAG).stdout.strip() == N0_BASELINE
     assert _git(project_root, "rev-parse", N1_TAG).stdout.strip() == N1_BASELINE
@@ -242,6 +251,8 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
         candidate_offset = 24
     elif _is_real20_admission_fix(project_root):
         candidate_offset = 25
+    elif _is_real20_output_bound_fix(project_root):
+        candidate_offset = 26
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         candidate_offset = 1
     else:
@@ -340,6 +351,9 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
     elif _is_real20_admission_fix(project_root):
         assert post_n2b1r == 26
         assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() == REAL20_HARDENING_BASE
+    elif _is_real20_output_bound_fix(project_root):
+        assert post_n2b1r == 27
+        assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() == REAL20_OUTPUT_BOUND_BASE
     else:
         assert post_n2b1r == 1 + candidate_offset
         parent = _git(project_root, "rev-parse", "HEAD^").stdout.strip()
@@ -416,6 +430,8 @@ def test_n2b1p_candidate_is_resolved_not_hardcoded(project_root: Path) -> None:
         expected_count = 25
     elif _is_real20_admission_fix(project_root):
         expected_count = 26
+    elif _is_real20_output_bound_fix(project_root):
+        expected_count = 27
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         expected_count = 2
     else:

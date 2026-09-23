@@ -59,6 +59,14 @@ def _write_bound_new(directory: Any, name: str, payload: Mapping[str, Any]) -> b
             handle.flush()
     except Exception as exc:
         raise Real20Error("REAL20_OUTPUT_WRITE_FAILED") from exc
+    try:
+        with directory.open_file(name) as handle:
+            if handle.read_all(max_bytes=len(data)) != data:
+                raise Real20Error("REAL20_OUTPUT_INTEGRITY_FAILED")
+    except Real20Error:
+        raise
+    except Exception as exc:
+        raise Real20Error("REAL20_OUTPUT_INTEGRITY_FAILED") from exc
     return data
 
 
@@ -166,13 +174,16 @@ def _reservation(ledger_root: Any, credential_sha: str, bindings_sha: str, now: 
     return target
 
 
-def _finish(reservation: Any, *, status: str, evidence_sha: str, now: datetime) -> None:
+def _finish(
+    reservation: Any, *, status: str, evidence_sha: str | None, evidence_status: str
+) -> None:
     data = canonical(
         {
             "schema_version": "npi-real20-consumption-v1",
             "status": status,
+            "evidence_status": evidence_status,
             "evidence_sha256": evidence_sha,
-            "finished_at_utc": now.astimezone(UTC).isoformat(),
+            "finished_at_utc": datetime.now(UTC).isoformat(),
         }
     )
     with reservation.create_file("terminal.json") as handle:
@@ -526,7 +537,12 @@ def _run_real20(
             "production_bundle": False,
         }
         evidence_bytes = _write_bound_new(output_bound, "real20_result.json", evidence)
-        _finish(reservation, status="COMPLETE", evidence_sha=sha256(evidence_bytes), now=current)
+        _finish(
+            reservation,
+            status="COMPLETE",
+            evidence_sha=sha256(evidence_bytes),
+            evidence_status="PERSISTED",
+        )
         return {
             "status": "REAL20_COMPLETE",
             "credential_sha256": credential_sha,
@@ -567,8 +583,13 @@ def _run_real20(
         try:
             failure_bytes = _write_bound_new(output_bound, "real20_failure.json", failure)
         except Real20Error:
-            failure_bytes = canonical(failure)
-        _finish(reservation, status="FAILED", evidence_sha=sha256(failure_bytes), now=current)
+            failure_bytes = None
+        _finish(
+            reservation,
+            status="FAILED",
+            evidence_sha=sha256(failure_bytes) if failure_bytes is not None else None,
+            evidence_status="PERSISTED" if failure_bytes is not None else "PERSISTENCE_FAILED",
+        )
         raise
     finally:
         if backend is not None:
