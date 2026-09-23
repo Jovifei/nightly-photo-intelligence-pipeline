@@ -5,11 +5,11 @@ from __future__ import annotations
 import os
 import stat
 from collections.abc import Callable, Mapping, Sequence
-from contextlib import ExitStack, suppress
+from contextlib import ExitStack
 from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Literal, Protocol, cast
+from typing import Any, Literal, NoReturn, Protocol, cast
 
 from ..engineering.common import canonical, sha256, strict_json
 from ..engineering.path_policy import overlaps
@@ -165,13 +165,29 @@ def _reservation(ledger_root: Any, credential_sha: str, bindings_sha: str, now: 
         "reserved_at_utc": now.astimezone(UTC).isoformat(),
     }
     data = canonical(record)
-    with target.create_file("reservation.json") as handle:
-        handle.write(data)
-        handle.flush()
-    with target.open_file("reservation.json") as handle:
-        if handle.read_all(max_bytes=4096) != data:
-            target.close()
-            raise Real20Error("REAL20_RESERVATION_WRITE_INVALID")
+    try:
+        with target.create_file("reservation.json") as handle:
+            handle.write(data)
+            handle.flush()
+        with target.open_file("reservation.json") as handle:
+            if handle.read_all(max_bytes=4096) != data:
+                raise Real20Error("REAL20_RESERVATION_WRITE_INVALID")
+    except BaseException as record_error:
+        # The directory creation already consumed the allowance. Never remove it.
+        # Even an interrupted/failed reservation-record write attempts a terminal.
+        with ExitStack() as cleanup:
+            cleanup.callback(target.close)
+            try:
+                _finish(
+                    target, status="FAILED", evidence_sha=None,
+                    evidence_status="RESERVATION_RECORD_FAILED",
+                )
+            except BaseException as terminal_error:
+                raise BaseExceptionGroup(
+                    "REAL20_RESERVATION_AND_TERMINAL_WRITE_FAILED",
+                    [record_error, terminal_error],
+                ) from None
+        raise
     return target
 
 
@@ -195,6 +211,55 @@ def _finish(
             if handle.read_all(max_bytes=4096) != data:
                 raise Real20Error("REAL20_TERMINAL_WRITE_INVALID")
         transaction.publish("terminal")
+
+
+def _record_failed_attempt(
+    reservation: Any,
+    output_bound: Any,
+    credential_sha: str,
+    *,
+    primary: BaseException,
+    checks: Sequence[Callable[[], None]],
+) -> NoReturn:
+    """Persist a truthful failure; one cleanup failure cannot skip the rest.
+
+    Python 3.11+ ExceptionGroup preserves independent failures without hiding
+    the original runner exception. A terminal I/O failure stays visible; this
+    is not a promise of successful persistence after disk/process failure.
+    """
+    failures: list[BaseException] = [primary]
+    for check in checks:
+        try:
+            check()
+        except BaseException as check_error:
+            failures.append(check_error)
+    failure = {
+        "schema_version": "npi-real20-evaluation-v1",
+        "status": "REAL20_FAILED",
+        "credential_sha256": credential_sha,
+        "error_code": next(
+            (error.code for error in reversed(failures) if isinstance(error, Real20Error)),
+            "REAL20_WORKER_FAILED",
+        ),
+        "failure_types": [type(error).__name__ for error in failures],
+        "project_state_n2b2": "LOCKED",
+    }
+    failure_bytes = None
+    try:
+        failure_bytes = _write_bound_new(output_bound, "real20_failure.json", failure)
+    except BaseException as evidence_error:
+        failures.append(evidence_error)
+    try:
+        _finish(
+            reservation, status="FAILED",
+            evidence_sha=sha256(failure_bytes) if failure_bytes is not None else None,
+            evidence_status="PERSISTED" if failure_bytes is not None else "PERSISTENCE_FAILED",
+        )
+    except BaseException as terminal_error:
+        failures.append(terminal_error)
+    if len(failures) == 1:
+        raise primary
+    raise BaseExceptionGroup("REAL20_ATTEMPT_FAILED", failures) from None
 
 
 def _manifest_selection(manifest: Any) -> list[dict[str, Any]]:
@@ -413,13 +478,11 @@ def _run_real20(
         raise Real20Error("REAL20_CREDENTIAL_CHANGED")
     from ..windows_bound_promotion import bind_existing_directory
 
-    ledger_bound = None
-    try:
-        output_bound = bind_existing_directory(output_root, writable=True)
+    with ExitStack() as resources:
+        output_bound = resources.enter_context(bind_existing_directory(output_root, writable=True))
         if output_bound.list_names():
-            output_bound.close()
             raise Real20Error("REAL20_OUTPUT_NOT_FRESH")
-        ledger_bound = bind_existing_directory(ledger_root, writable=True)
+        ledger_bound = resources.enter_context(bind_existing_directory(ledger_root, writable=True))
         if revalidate is not None:
             revalidate(ledger_bound)
         latest_raw = control_bytes(credential_path)
@@ -432,191 +495,150 @@ def _run_real20(
             expected=expected,
             runtime_identity=runtime_identity,
             model_identity=model_identity,
-            now=datetime.now(UTC),
+            now=now or datetime.now(UTC),
         )
         if latest_sha != credential_sha:
             raise Real20Error("REAL20_CREDENTIAL_CHANGED")
-        reservation = _reservation(
-            ledger_bound, credential_sha, sha256(canonical(expected)), current
+        reservation = resources.enter_context(
+            _reservation(ledger_bound, credential_sha, sha256(canonical(expected)), current)
         )
-    except Real20Error:
-        if ledger_bound is not None:
-            ledger_bound.close()
-        if "output_bound" in locals() and not output_bound._closed:
-            output_bound.close()
-        raise
-    except Exception as exc:
-        if ledger_bound is not None:
-            ledger_bound.close()
-        if "output_bound" in locals() and not output_bound._closed:
-            output_bound.close()
-        raise Real20Error("REAL20_OUTPUT_OR_LEDGER_BOUNDARY_INVALID") from exc
-    backend: VisionBackend | None = None
-    source_admitted = False
-    evidence: dict[str, Any] = {}
-    try:
-        if revalidate is not None:
-            from .admission import protect_consumption
+        backend: VisionBackend | None = None
+        source_admitted = False
+        evidence: dict[str, Any] = {}
+        try:
+            if revalidate is not None:
+                from .admission import protect_consumption
 
-            protect_consumption(reservation)
-        source_admitted = True
-        backend = backend_factory() if backend_factory is not None else None
-        if backend is None:
-            raise Real20Error("REAL20_BACKEND_NOT_CONFIGURED")
-        rows: list[dict[str, Any]] = []
-        facts_by_id: dict[str, dict[str, Any]] = {}
-        aliases = {
-            asset.asset_id: f"real20-{index:03d}" for index, asset in enumerate(manifest.assets, 1)
-        }
-        for ordinal, asset in enumerate(manifest.assets, 1):
-            if not root_before.same_identity(_source_root_identity(source_resolved)):
-                raise Real20Error("REAL20_SOURCE_ROOT_CHANGED")
-            if asset.duplicate_of:
+                protect_consumption(reservation)
+            source_admitted = True
+            backend = backend_factory() if backend_factory is not None else None
+            if backend is None:
+                raise Real20Error("REAL20_BACKEND_NOT_CONFIGURED")
+            rows: list[dict[str, Any]] = []
+            facts_by_id: dict[str, dict[str, Any]] = {}
+            aliases = {
+                asset.asset_id: f"real20-{index:03d}" for index, asset in enumerate(manifest.assets, 1)
+            }
+            for ordinal, asset in enumerate(manifest.assets, 1):
+                if not root_before.same_identity(_source_root_identity(source_resolved)):
+                    raise Real20Error("REAL20_SOURCE_ROOT_CHANGED")
+                if asset.duplicate_of:
+                    rows.append(
+                        {
+                            "case_id": aliases[asset.asset_id],
+                            "action": "REFERENCE_ONLY",
+                            "duplicate_of": aliases[asset.duplicate_of],
+                        }
+                    )
+                    continue
+                image_path = source_resolved / asset.relative_path
+                data, width, height = _read_image(image_path, source_resolved, asset.sha256)
+                pose = backend.detect_pose(data)
+                backend.unload(TorchVisionRole.POSE_BASELINE_SMOKE)
+                primary = backend.segment(data, TorchVisionRole.SEGMENTATION_PRIMARY)
+                backend.unload(TorchVisionRole.SEGMENTATION_PRIMARY)
+                comparator = backend.segment(data, TorchVisionRole.SEGMENTATION_QUALITY_COMPARATOR)
+                backend.unload(TorchVisionRole.SEGMENTATION_QUALITY_COMPARATOR)
+                facts = build_vision_facts(
+                    case_id=f"real20-{ordinal:03d}",
+                    image_sha256=asset.sha256,
+                    generator_version="real20-runtime-v1",
+                    seed=None,
+                    width=width,
+                    height=height,
+                    pose=pose,
+                    seg_primary=primary,
+                    seg_comparator=comparator,
+                )
+                if facts.get("schema_version") != "1.2" or facts.get(
+                    "fact_digest"
+                ) != compute_fact_digest(facts):
+                    raise Real20Error("REAL20_FACT_CONTRACT_INVALID")
+                facts_by_id[asset.asset_id] = facts
+                if revalidate is not None:
+                    from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
+
+                    schema = strict_json(
+                        (
+                            project_root / "schemas/n2b2_vision_fact_contract_v1_2.schema.json"
+                        ).read_bytes()
+                    )
+                    schema["properties"]["case_id"] = {"const": facts["case_id"]}
+                    if list(Draft202012Validator(schema).iter_errors(facts)):
+                        raise Real20Error("REAL20_FACT_CONTRACT_INVALID")
+                interpretation = (
+                    reasoning(data, facts, runtime_identity) if reasoning is not None else None
+                )
                 rows.append(
                     {
                         "case_id": aliases[asset.asset_id],
-                        "action": "REFERENCE_ONLY",
-                        "duplicate_of": aliases[asset.duplicate_of],
+                        "action": "INFER_ONCE",
+                        "source_sha256": asset.sha256,
+                        "facts": facts,
+                        "exif": read_real20_exif(data),
+                        "interpretation": interpretation,
                     }
                 )
-                continue
-            image_path = source_resolved / asset.relative_path
-            data, width, height = _read_image(image_path, source_resolved, asset.sha256)
-            pose = backend.detect_pose(data)
-            backend.unload(TorchVisionRole.POSE_BASELINE_SMOKE)
-            primary = backend.segment(data, TorchVisionRole.SEGMENTATION_PRIMARY)
-            backend.unload(TorchVisionRole.SEGMENTATION_PRIMARY)
-            comparator = backend.segment(data, TorchVisionRole.SEGMENTATION_QUALITY_COMPARATOR)
-            backend.unload(TorchVisionRole.SEGMENTATION_QUALITY_COMPARATOR)
-            facts = build_vision_facts(
-                case_id=f"real20-{ordinal:03d}",
-                image_sha256=asset.sha256,
-                generator_version="real20-runtime-v1",
-                seed=None,
-                width=width,
-                height=height,
-                pose=pose,
-                seg_primary=primary,
-                seg_comparator=comparator,
-            )
-            if facts.get("schema_version") != "1.2" or facts.get(
-                "fact_digest"
-            ) != compute_fact_digest(facts):
-                raise Real20Error("REAL20_FACT_CONTRACT_INVALID")
-            facts_by_id[asset.asset_id] = facts
-            if revalidate is not None:
-                from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
-
-                schema = strict_json(
-                    (
-                        project_root / "schemas/n2b2_vision_fact_contract_v1_2.schema.json"
-                    ).read_bytes()
-                )
-                schema["properties"]["case_id"] = {"const": facts["case_id"]}
-                if list(Draft202012Validator(schema).iter_errors(facts)):
-                    raise Real20Error("REAL20_FACT_CONTRACT_INVALID")
-            interpretation = (
-                reasoning(data, facts, runtime_identity) if reasoning is not None else None
-            )
-            rows.append(
-                {
-                    "case_id": aliases[asset.asset_id],
-                    "action": "INFER_ONCE",
-                    "source_sha256": asset.sha256,
-                    "facts": facts,
-                    "exif": read_real20_exif(data),
-                    "interpretation": interpretation,
-                }
-            )
-        post_source_check()
-        if revalidate is not None:
-            revalidate(ledger_bound)
-        root_after = _source_root_identity(source_resolved)
-        if not root_before.same_identity(root_after):
-            raise Real20Error("REAL20_SOURCE_ROOT_CHANGED")
-        evidence = {
-            "schema_version": "npi-real20-evaluation-v1",
-            "status": "REAL20_COMPLETE",
-            "candidate_commit": identity["candidate_commit"],
-            "candidate_tree": identity["candidate_tree"],
-            "source_manifest_sha256": manifest.sha256,
-            "source_fingerprint_sha256": expected["source_fingerprint_sha256"],
-            "runtime_identity_sha256": expected["runtime_identity_sha256"],
-            "model_identity_sha256": expected["model_identity_sha256"],
-            "credential_sha256": credential_sha,
-            "project_state_n2b2": "LOCKED",
-            "facts_schema_version": "1.2",
-            "asset_count": 20,
-            "unique_inference_count": len(facts_by_id),
-            "exif_allowlist": list(EXIF_ALLOWLIST),
-            "assets": rows,
-            "review_decision": "PENDING_HUMAN_REVIEW",
-            "sqlite_write": False,
-            "app_write": False,
-            "production_bundle": False,
-        }
-        evidence_bytes = _write_bound_new(output_bound, "real20_result.json", evidence)
-        _finish(
-            reservation,
-            status="COMPLETE",
-            evidence_sha=sha256(evidence_bytes),
-            evidence_status="PERSISTED",
-        )
-        return {
-            "status": "REAL20_COMPLETE",
-            "credential_sha256": credential_sha,
-            "output_sha256": sha256(evidence_bytes),
-            "asset_count": 20,
-            "unique_inference_count": len(facts_by_id),
-            "facts_schema_version": "1.2",
-        }
-    except Exception as exc:
-        if backend is not None:
-            with suppress(Exception):
-                backend.unload()
-        integrity_failure: Real20Error | None = None
-        try:
-            if source_admitted:
-                post_source_check()
-            if source_admitted and not root_before.same_identity(
-                _source_root_identity(source_resolved)
-            ):
-                raise Real20Error("REAL20_SOURCE_ROOT_CHANGED")
+            backend.unload()
+            post_source_check()
             if revalidate is not None:
                 revalidate(ledger_bound)
-        except Real20Error as integrity_error:
-            integrity_failure = integrity_error
-        failure = {
-            "schema_version": "npi-real20-evaluation-v1",
-            "status": "REAL20_FAILED",
-            "credential_sha256": credential_sha,
-            "error_code": (
-                integrity_failure.code
-                if integrity_failure is not None
-                else exc.code
-                if isinstance(exc, Real20Error)
-                else "REAL20_WORKER_FAILED"
-            ),
-            "project_state_n2b2": "LOCKED",
-        }
-        try:
-            failure_bytes = _write_bound_new(output_bound, "real20_failure.json", failure)
-        except Real20Error:
-            failure_bytes = None
-        _finish(
-            reservation,
-            status="FAILED",
-            evidence_sha=sha256(failure_bytes) if failure_bytes is not None else None,
-            evidence_status="PERSISTED" if failure_bytes is not None else "PERSISTENCE_FAILED",
-        )
-        raise
-    finally:
-        if backend is not None:
-            with suppress(Exception):
-                backend.unload()
-        output_bound.close()
-        ledger_bound.close()
-        reservation.close()
+            root_after = _source_root_identity(source_resolved)
+            if not root_before.same_identity(root_after):
+                raise Real20Error("REAL20_SOURCE_ROOT_CHANGED")
+            evidence = {
+                "schema_version": "npi-real20-evaluation-v1",
+                "status": "REAL20_COMPLETE",
+                "candidate_commit": identity["candidate_commit"],
+                "candidate_tree": identity["candidate_tree"],
+                "source_manifest_sha256": manifest.sha256,
+                "source_fingerprint_sha256": expected["source_fingerprint_sha256"],
+                "runtime_identity_sha256": expected["runtime_identity_sha256"],
+                "model_identity_sha256": expected["model_identity_sha256"],
+                "credential_sha256": credential_sha,
+                "project_state_n2b2": "LOCKED",
+                "facts_schema_version": "1.2",
+                "asset_count": 20,
+                "unique_inference_count": len(facts_by_id),
+                "exif_allowlist": list(EXIF_ALLOWLIST),
+                "assets": rows,
+                "review_decision": "PENDING_HUMAN_REVIEW",
+                "sqlite_write": False,
+                "app_write": False,
+                "production_bundle": False,
+            }
+            evidence_bytes = _write_bound_new(output_bound, "real20_result.json", evidence)
+            _finish(
+                reservation,
+                status="COMPLETE",
+                evidence_sha=sha256(evidence_bytes),
+                evidence_status="PERSISTED",
+            )
+            return {
+                "status": "REAL20_COMPLETE",
+                "credential_sha256": credential_sha,
+                "output_sha256": sha256(evidence_bytes),
+                "asset_count": 20,
+                "unique_inference_count": len(facts_by_id),
+                "facts_schema_version": "1.2",
+            }
+        except BaseException as exc:
+            checks: list[Callable[[], None]] = []
+            if backend is not None:
+                checks.append(backend.unload)
+            if source_admitted:
+                checks.append(post_source_check)
+
+                def root_check() -> None:
+                    if not root_before.same_identity(_source_root_identity(source_resolved)):
+                        raise Real20Error("REAL20_SOURCE_ROOT_CHANGED")
+
+                checks.append(root_check)
+            if revalidate is not None:
+                checks.append(lambda: revalidate(ledger_bound))
+            _record_failed_attempt(
+                reservation, output_bound, credential_sha, primary=exc, checks=checks
+            )
 
 
 def default_runtime_probe(cache_root: Path, *, device: str) -> dict[str, Any]:
@@ -708,25 +730,37 @@ def run_real20(
     if device != "cuda" or cache_root is None:
         raise Real20Error("REAL20_CUDA_CACHE_REQUIRED")
 
-    admission_baseline: dict[str, Any] | None = None
+    # Static authority must be established before runtime/CUDA/Ollama probes,
+    # backend factory construction, capability probes, and any source reads.
+    admission_baseline = admit(
+        project_root=executing_root,
+        source_root=source_root,
+        manifest_path=manifest_path,
+        credential_path=credential_path,
+        anchor_path=anchor_path,
+        ledger_root=ledger_root,
+        output_root=output_root,
+        cache_root=cache_root,
+        runtime_identity_path=runtime_identity_path,
+        model_identity_path=model_identity_path,
+    )
 
     def revalidate(ledger_handle: Any) -> None:
-        nonlocal admission_baseline
         current = admit(
             project_root=executing_root,
             source_root=source_root,
             manifest_path=manifest_path,
             credential_path=credential_path,
             anchor_path=anchor_path,
-            ledger_root=ledger_handle,
+            ledger_root=ledger_root,
+            bound_ledger=ledger_handle,
             output_root=output_root,
             cache_root=cache_root,
             runtime_identity_path=runtime_identity_path,
             model_identity_path=model_identity_path,
         )
-        if admission_baseline is not None and current != admission_baseline:
+        if current != admission_baseline:
             raise Real20Error("REAL20_ADMISSION_CHANGED")
-        admission_baseline = current
 
     from .reasoning import interpret
 

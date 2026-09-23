@@ -1,0 +1,46 @@
+{
+  "schema_version": "npi-open-source-reuse-v1",
+  "checked_on": "2026-09-23",
+  "implementation_code_origin": "NPI_AUTHORED_ADAPTERS_NO_UPSTREAM_SOURCE_VENDORED",
+  "items": [
+    {
+      "project": "HumanSignal/label-studio",
+      "license": "Apache-2.0 upstream; no upstream source copied",
+      "mode": "DOCUMENTED_JSON_AND_XML_API_INTEGRATION",
+      "latest_release_observed": "1.23.0",
+      "release_observation_not_security_certification": true,
+      "implemented_files": ["integrations/label_studio/review_config.xml", "src/nightly_photo_intelligence_pipeline/real20/review_exchange.py", "tools/real20_review_exchange.py"],
+      "sources": ["https://github.com/HumanSignal/label-studio", "https://labelstud.io/guide/predictions", "https://labelstud.io/guide/export", "https://labelstud.io/guide/tasks"],
+      "server_installed_or_started": false,
+      "server_roundtrip_verified": false
+    },
+    {
+      "project": "python-jsonschema/jsonschema and python-jsonschema/referencing",
+      "license": "MIT upstream; existing dependencies, not vendored",
+      "mode": "REUSED_INSTALLED_DEPENDENCY_API",
+      "repository_pins": {"jsonschema": "4.26.0", "referencing": "0.37.0"},
+      "implemented_file": "src/nightly_photo_intelligence_pipeline/real20/review_exchange.py",
+      "capability": "Draft202012Validator with fixed schema and offline-only Registry",
+      "source": "https://python-jsonschema.readthedocs.io/en/stable/referencing/",
+      "dependency_version_changed": false
+    },
+    {
+      "project": "CPython standard library",
+      "mode": "REUSED_RUNTIME_PRIMITIVES",
+      "capabilities": ["contextlib.ExitStack", "BaseExceptionGroup", "context managers"],
+      "implemented_file": "src/nightly_photo_intelligence_pipeline/real20/runner.py",
+      "source": "https://docs.python.org/3.12/library/contextlib.html",
+      "new_dependency": false
+    },
+    {
+      "project": "untitaker/python-atomicwrites",
+      "mode": "EVALUATED_NOT_ADOPTED_FOR_PROTECTED_LEDGER",
+      "reason": "Do not replace existing NT handle-relative publication with weaker generic path-based Windows atomicity assumptions",
+      "source": "https://python-atomicwrites.readthedocs.io/en/latest/",
+      "code_copied": false
+    }
+  ],
+  "model_downloaded": false,
+  "new_library_installation_performed": false,
+  "production_authorization": false
+}

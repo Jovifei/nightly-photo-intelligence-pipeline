@@ -87,6 +87,7 @@ def admit(
     cache_root: Path,
     runtime_identity_path: Path,
     model_identity_path: Path,
+    bound_ledger: BoundDirectory | None = None,
 ) -> dict[str, Any]:
     controls = (
         manifest_path,
@@ -113,17 +114,22 @@ def admit(
         _require(actual == trusted / name, "REAL20_UNTRUSTED_CONTROL_PATH")
     expected_anchor = trusted / "real20_execution_anchor.json"
     _require(anchor_path == expected_anchor, "REAL20_UNTRUSTED_ANCHOR_PATH")
-    ledger_path = (
-        Path(ledger_root.identity.final_path)
-        if isinstance(ledger_root, BoundDirectory)
-        else ledger_root
-    )
-    _require(ledger_path == runtime / "real20-execution-ledger", "REAL20_LEDGER_BINDING_INVALID")
-    if isinstance(ledger_root, BoundDirectory):
-        protect_consumption(ledger_root)
-    else:
-        with bind_existing_directory(ledger_path, writable=False) as ledger_handle:
-            protect_consumption(ledger_handle)
+    # Paths belong in hashes/lexical checks; live handles belong in object checks.
+    # Never stringify BoundDirectory (its repr is not an Owner-approved path).
+    _require(isinstance(ledger_root, Path), "REAL20_LEDGER_PATH_REQUIRED")
+    ledger_path = runtime / "real20-execution-ledger"
+    _require(ledger_root == ledger_path, "REAL20_LEDGER_BINDING_INVALID")
+    with bind_existing_directory(ledger_path, writable=False) as configured_ledger:
+        if bound_ledger is not None:
+            _require(isinstance(bound_ledger, BoundDirectory), "REAL20_LEDGER_HANDLE_REQUIRED")
+            bound_ledger._verify()
+            _require(
+                bound_ledger.identity == configured_ledger.identity,
+                "REAL20_LEDGER_OBJECT_CHANGED",
+            )
+            protect_consumption(bound_ledger)
+        else:
+            protect_consumption(configured_ledger)
     _require(cache_root == Path(config["cache_root"]), "REAL20_CACHE_BINDING_INVALID")
     protected_files = [
         expected_anchor,

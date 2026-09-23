@@ -1,0 +1,28 @@
+<!-- NPI-authored Label Studio configuration; uses the documented open JSON/tag
+     interface. Model suggestions do not preselect a human decision. -->
+<View>
+  <Header value="$case_id"/>
+  <Header value="Duplicate reference: $duplicate_of"/>
+  <Image name="photo" value="$image" zoom="true"/>
+  <Header value="Immutable model facts (not an aesthetic score)"/>
+  <Text name="facts" value="$facts_text" valueType="text"/>
+  <Header value="Original photographic interpretation"/>
+  <Text name="advice" value="$advice_text" valueType="text"/>
+  <Header value="Human evaluation — this does not approve a production Bundle"/>
+  <Choices name="decision" toName="photo" choice="single-radio" required="true">
+    <Choice value="ACCEPT"/>
+    <Choice value="EDIT"/>
+    <Choice value="REJECT"/>
+  </Choices>
+  <Choices name="issues" toName="photo" choice="multiple">
+    <Choice value="COUNT"/>
+    <Choice value="POSE"/>
+    <Choice value="SEGMENTATION"/>
+    <Choice value="COMPOSITION"/>
+    <Choice value="UNSUPPORTED_CLAIM"/>
+    <Choice value="ADVICE"/>
+  </Choices>
+  <TextArea name="revision" toName="photo" rows="6" editable="true" maxSubmissions="1"/>
+  <TextArea name="notes" toName="photo" rows="3" editable="true" maxSubmissions="1"
+            placeholder="Explain edits or rejection; do not enter private identity/GPS information."/>
+</View>
