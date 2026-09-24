@@ -136,6 +136,20 @@ class TestAppendOnlyAccessMask(unittest.TestCase):
         self.assertEqual(_directory_access(True), 0x001101C7)
         self.assertEqual(_file_access(True), 0x00110183)
 
+    def test_secured_append_file_refuses_mutable_inherited_file_dacl(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="npi-real20-file-dacl-") as temp:
+            ledger_path = Path(temp) / "ledger"
+            ledger_path.mkdir()
+            with bind_existing_directory(
+                ledger_path, writable=True, append_only=True, security_check=True
+            ) as ledger:
+                with ledger.create_directory("a" * 64) as claim:
+                    with self.assertRaisesRegex(NpiError, "APPEND_ONLY_DACL_NOT_DENIED"):
+                        claim.create_file("reservation.json")
+                    self.assertIn("reservation.json", claim.list_names())
+                    with claim.open_file("reservation.json") as empty_file:
+                        self.assertEqual(empty_file.read_all(max_bytes=16), b"")
+
     def test_bound_append_only_claim_writes_and_reopens_without_delete_rights(self) -> None:
         with tempfile.TemporaryDirectory(prefix="npi-real20-append-only-") as temp:
             ledger_path = Path(temp) / "ledger"
@@ -144,11 +158,15 @@ class TestAppendOnlyAccessMask(unittest.TestCase):
             reservation_bytes = _reservation_bytes(claim_name)
             with bind_existing_directory(ledger_path, writable=True, append_only=True) as ledger:
                 self.assertEqual(_granted_access(ledger._handle) & _FORBIDDEN_LEDGER_HANDLE_RIGHTS, 0)
+                with self.assertRaisesRegex(NpiError, "APPEND_ONLY_NAME_DENIED"):
+                    ledger.create_file("unscoped.json")
                 with ledger.create_directory(claim_name) as claim:
                     self.assertEqual(_granted_access(claim._handle) & _FORBIDDEN_LEDGER_HANDLE_RIGHTS, 0)
                     self.assertEqual(_granted_access(claim._handle) & 0x00000004, 0)
                     with self.assertRaises(NpiError):
                         claim.create_directory("nested")
+                    with self.assertRaisesRegex(NpiError, "APPEND_ONLY_NAME_DENIED"):
+                        claim.create_file("unscoped.json")
                     with claim.create_file("reservation.json") as reservation:
                         access = _granted_access(reservation._handle)
                         self.assertEqual(access & 0x00010000, 0)
@@ -190,9 +208,9 @@ class TestAppendOnlyAccessMask(unittest.TestCase):
                     ledger_security,
                     "D:P(D;;0x000D0040;;;WD)(D;;0x00040000;;;OW)"
                     "(D;CI;0x00090040;;;WD)"
-                    "(D;OI;0x000D0000;;;WD)(D;OI;0x00040000;;;OW)"
+                    "(D;OIIO;0x000D0002;;;WD)(D;OIIO;0x00040000;;;OW)"
                     "(A;;0x00120087;;;WD)(A;CI;0x00120083;;;WD)"
-                    "(A;OI;0x00120085;;;WD)",
+                    "(A;OIIO;0x00120085;;;WD)",
                 )
                 with bind_existing_directory(
                     ledger_path, writable=True, append_only=True, security_check=True
@@ -208,14 +226,16 @@ class TestAppendOnlyAccessMask(unittest.TestCase):
                     _load_admission_module().protect_consumption(ledger)
                     ledger_api = _load_ledger_module()
                     claim = ledger.create_directory(credential_sha)
-                    claim_security = self._open_security_handle(
-                        ledger_path / credential_sha
-                    )
+                    claim_write_dac = claim.access_check(0x00040000)
+                    self.assertIs(claim_write_dac.granted, True)
+                    self.assertIsNone(claim_write_dac.win32_error)
+                    claim_security = self._open_security_handle(ledger_path / credential_sha)
+                    # Simulate the Owner-provisioned per-claim ACL; the runner never changes ACLs.
                     self._set_dacl(
                         claim_security,
                         "D:P(D;;0x000D0040;;;WD)(D;;0x00040000;;;OW)"
-                        "(D;OI;0x000D0000;;;WD)(D;OI;0x00040000;;;OW)"
-                        "(A;;0x00120083;;;WD)(A;OI;0x00120085;;;WD)",
+                        "(D;OIIO;0x000D0002;;;WD)(D;OIIO;0x00040000;;;OW)"
+                        "(A;;0x00120083;;;WD)(A;OIIO;0x00120085;;;WD)",
                     )
                     self.assertEqual(
                         _granted_access(claim._handle) & _FORBIDDEN_LEDGER_HANDLE_RIGHTS, 0
@@ -231,6 +251,14 @@ class TestAppendOnlyAccessMask(unittest.TestCase):
                     self.assertIs(claim_parent.granted, False)
                     self.assertIsNone(claim_parent.win32_error)
                     with claim.create_file("reservation.json") as handle:
+                        access = _granted_access(handle._handle)
+                        self.assertEqual(access & 0x00000002, 0)
+                        self.assertNotEqual(access & 0x00000004, 0)
+                        self.assertNotEqual(access & 0x00020000, 0)
+                        for right in (0x00000002, 0x00010000, 0x00040000, 0x00080000):
+                            result = handle.access_check(right)
+                            self.assertIs(result.granted, False)
+                            self.assertIsNone(result.win32_error)
                         handle.write(reservation_bytes)
                         handle.flush()
                     terminal = ledger_api.append_terminal_record(
@@ -359,13 +387,15 @@ class TestAppendOnlyAccessMask(unittest.TestCase):
                 )
 
                 partial_claim = ledger.create_directory("d" * 64)
-                partial_name = "terminal-v1-" + ("c" * 32) + ".json"
-                with partial_claim.create_file(partial_name) as partial:
-                    partial.write(b'{"schema_version":"npi-real20-ledger-terminal-v1"')
-                    partial.flush()
-                with self.assertRaisesRegex(ValueError, "TERMINAL_COMMIT_MISSING"):
-                    ledger_api.read_terminal_record(partial_claim, "d" * 64)
-                partial_claim.close()
+                try:
+                    partial_name = "terminal-v1-" + ("c" * 64) + ".json"
+                    with partial_claim.create_file(partial_name) as partial:
+                        partial.write(b'{"schema_version":"npi-real20-ledger-terminal-v1"')
+                        partial.flush()
+                    with self.assertRaisesRegex(ValueError, "TERMINAL_COMMIT_MISSING"):
+                        ledger_api.read_terminal_record(partial_claim, "d" * 64)
+                finally:
+                    partial_claim.close()
 
     def test_terminal_reader_rejects_complete_without_persisted_evidence(self) -> None:
         from nightly_photo_intelligence_pipeline.engineering.common import canonical, sha256

@@ -11,6 +11,7 @@ from __future__ import annotations
 import ctypes
 import hashlib
 import ntpath
+import re
 import secrets
 import sys
 from collections.abc import Callable, Iterator
@@ -59,6 +60,8 @@ _FILE_READ_DATA = 0x00000001
 _FILE_WRITE_DATA = 0x00000002
 _FILE_APPEND_DATA = 0x00000004
 _DELETE = 0x00010000
+_WRITE_DAC = 0x00040000
+_WRITE_OWNER = 0x00080000
 _SYNCHRONIZE = 0x00100000
 _OBJ_CASE_INSENSITIVE = 0x00000040
 _STATUS_NO_MORE_FILES = 0x80000006
@@ -66,6 +69,9 @@ _STATUS_OBJECT_NAME_NOT_FOUND = 0xC0000034
 _STATUS_OBJECT_PATH_NOT_FOUND = 0xC000003A
 _VOLUME_NAME_GUID = 0x00000001
 _CHUNK_BYTES = 1024 * 1024
+_REAL20_TERMINAL_FILE_NAME = re.compile(
+    r"(?:terminal-v1|terminal-commit-v1)-[0-9a-f]{64}\.json"
+)
 _SE_FILE_OBJECT = 1
 _SECURITY_INFORMATION = 0x00000007
 _TOKEN_QUERY = 0x0008
@@ -456,7 +462,9 @@ class _WindowsNative:
                         allow_subdirectories=allow_subdirectories,
                     )
                     if directory
-                    else _file_access(writable, append_only=append_only)
+                    else _file_access(
+                        writable, append_only=append_only, read_control=read_control
+                    )
                 ),
                 ctypes.byref(attributes),
                 ctypes.byref(status),
@@ -649,13 +657,15 @@ def _directory_access(
     return base | (_READ_CONTROL if read_control else 0)
 
 
-def _file_access(writable: bool, *, append_only: bool = False) -> int:
+def _file_access(
+    writable: bool, *, append_only: bool = False, read_control: bool = False
+) -> int:
     base = _FILE_READ_DATA | _FILE_READ_ATTRIBUTES | _SYNCHRONIZE
     if writable:
         if append_only:
-            return base | _FILE_APPEND_DATA
+            return base | _FILE_APPEND_DATA | (_READ_CONTROL if read_control else 0)
         return base | _FILE_WRITE_DATA | _FILE_WRITE_ATTRIBUTES | _DELETE
-    return base
+    return base | (_READ_CONTROL if read_control else 0)
 
 
 _TestHook = Callable[[str], None]
@@ -773,11 +783,28 @@ class BoundDirectory(AbstractContextManager["BoundDirectory"]):
         self._verify()
         if not self._writable:
             raise _failure("NPI_PROMOTION_RACE_RESISTANT_PATH_OPERATION_UNAVAILABLE")
+        if self._append_only and (
+            self._allow_subdirectories
+            or not isinstance(name, str)
+            or (name != "reservation.json" and _REAL20_TERMINAL_FILE_NAME.fullmatch(name) is None)
+        ):
+            raise _failure("NPI_PROMOTION_APPEND_ONLY_NAME_DENIED")
         handle = self._native.open_relative(
             self._handle, name, directory=False, create=True, writable=True,
             append_only=self._append_only,
+            read_control=self._security_check,
         )
-        return self._child_file(handle, True, append_only=self._append_only)
+        file = self._child_file(handle, True, append_only=self._append_only)
+        if self._append_only and self._security_check:
+            try:
+                for right in (_FILE_WRITE_DATA, _DELETE, _WRITE_DAC, _WRITE_OWNER):
+                    result = file.access_check(right)
+                    if result.granted is not False or result.win32_error is not None:
+                        raise _failure("NPI_PROMOTION_APPEND_ONLY_DACL_NOT_DENIED")
+            except BaseException:
+                file.close()
+                raise
+        return file
 
     def _child_file(
         self, handle: int, writable: bool, *, append_only: bool = False
@@ -898,6 +925,10 @@ class BoundFile(AbstractContextManager["BoundFile"]):
         if not self._writable:
             raise _failure("NPI_PROMOTION_RACE_RESISTANT_PATH_OPERATION_UNAVAILABLE")
         self._native.write(self._handle, data)
+
+    def access_check(self, desired_access: int) -> NativeAccessCheck:
+        self._verify()
+        return self._native.access_check(self._handle, desired_access)
 
     def flush(self) -> None:
         self._verify()

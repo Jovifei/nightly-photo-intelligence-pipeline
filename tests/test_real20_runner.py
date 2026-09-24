@@ -515,7 +515,7 @@ def test_actual_cli_path_uses_explicit_synthetic_test_mode(tmp_path: Path) -> No
     assert not list(controls["ledger"].iterdir())
 
 
-def test_runtime_guard_checks_claim_parent_before_worker(
+def test_runtime_guard_checks_ledger_parent_before_reservation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from nightly_photo_intelligence_pipeline.real20 import admission, runner
@@ -537,22 +537,20 @@ def test_runtime_guard_checks_claim_parent_before_worker(
     controls["anchor"].write_bytes(canonical(anchor))
     backend.runtime_attestation = lambda: runtime
     parent_checks: list[Any] = []
-    original = admission.protect_consumption
 
-    def observe_parent(handle: Any) -> None:
+    def revalidate(handle: Any) -> None:
         result = handle.parent_access_check(0x00000040)
         parent_checks.append(result)
-        original(handle)
+        admission.protect_consumption(handle)
 
     def unexpected_source_open(*_args: Any, **_kwargs: Any) -> bytes:
         raise AssertionError("source image opened before the ledger mutation gate")
 
-    monkeypatch.setattr(admission, "protect_consumption", observe_parent)
     monkeypatch.setattr(runner, "_source_bytes", unexpected_source_open)
     with pytest.raises(Real20Error, match="REAL20_LEDGER_MUTATION_NOT_DENIED"):
-        _run(project, source, manifest_path, controls, backend, revalidate=lambda *_: None)
+        _run(project, source, manifest_path, controls, backend, revalidate=revalidate)
     assert len(parent_checks) == 1
     assert parent_checks[0].granted is True and parent_checks[0].win32_error is None
     assert backend.pose_calls == 0
-    credential_sha = sha256(controls["credential"].read_bytes())
-    assert _terminal(controls["ledger"], credential_sha)["status"] == "FAILED"
+    assert not list(controls["ledger"].iterdir())
+    assert not list(controls["output"].iterdir())

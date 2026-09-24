@@ -1222,6 +1222,11 @@ def _check_git_baselines() -> CheckResult:
             and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "34")
             and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "35")
         )
+        real20_native_ledger_followup_topology = (
+            git("rev-parse", "HEAD^") == (0, "ff479dfde536bdbf5a9e0a401fd3c35d910ad774")
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "35")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "36")
+        )
         portability_record_ok = True
         if (
             portability_candidate
@@ -1247,6 +1252,7 @@ def _check_git_baselines() -> CheckResult:
             or real20_preflight_receipt_topology
             or real20_terminal_evidence_topology
             or real20_native_ledger_topology
+            or real20_native_ledger_followup_topology
         ):
             record_path = root / "research" / "N2B1P_manifest_portability_remediation.json"
             schema_path = root / "schemas" / "n2b1p_manifest_portability_remediation_v1.schema.json"
@@ -1323,7 +1329,8 @@ def _check_git_baselines() -> CheckResult:
             or real20_ledger_handle_topology
             or real20_preflight_receipt_topology
             or real20_terminal_evidence_topology
-            or real20_native_ledger_topology,
+            or real20_native_ledger_topology
+            or real20_native_ledger_followup_topology,
             portability_record_ok,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),
@@ -1348,7 +1355,8 @@ def _check_git_baselines() -> CheckResult:
                 "an H3 review-binding remediation candidate may follow the reviewed "
                 "runtime candidate; a Real20 transition code-only candidate may follow "
                 "the R0 delivery; the native ledger-closure candidate may follow the "
-                "current transition candidate; "
+                "current transition candidate; a native ledger acceptance follow-up may "
+                "follow that candidate; "
                 "no merge; worktree clean"
             ),
         )

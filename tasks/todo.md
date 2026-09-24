@@ -1919,18 +1919,18 @@ out of scope.
 
 ### Plan
 
-- [ ] Add failing tests for distinct Real20 credentials, exact 20/19+1
+- [x] Add failing tests for distinct Real20 credentials, exact 20/19+1
   manifest admission, prepare/run separation, source guard, EXIF allowlist,
   one-shot ledger, failure consumption, and the actual CLI path.
-- [ ] Implement the minimal typed Real20 package using the existing bound-handle
+- [x] Implement the minimal typed Real20 package using the existing bound-handle
   source guard and v1.2 facts builder; keep `PROJECT_STATE.N2B2=LOCKED`.
-- [ ] Add real20 `prepare` and `run` CLI commands with an explicit fake backend
+- [x] Add real20 `prepare` and `run` CLI commands with an explicit fake backend
   only for synthetic tests; default execution uses the existing TorchVision
   backend and never downloads or replaces models.
-- [ ] Run the focused RED/GREEN tests, then the complete Python 3.12 quality
+- [x] Run the focused RED/GREEN tests, then the complete Python 3.12 quality
   matrix with `PYTHONPATH=src`, rebuild the index-derived MANIFEST, and inspect
   the final diff and remote branch.
-- [ ] Commit and push a normal code-only successor to
+- [x] Commit and push a normal code-only successor to
   `gpt/real20-transition-20260921`; do not update `main` or execute photos.
 
 ### Review
@@ -1987,10 +1987,12 @@ not consume or mint a Real20 credential. The final push target remains
   eligible; 37 offline bridge cases passed with schema libraries explicitly
   stubbed, not a server/UI roundtrip.
 - [x] Remediate independent review findings: bind claim checks to the direct
-  parent handle, reject COMPLETE without persisted evidence, use OS append-only
-  FILE_APPEND_DATA and file-only claim directories. Retain server-assigned
-  Label Studio IDs as non-identity; exact frozen task data/case binding remains
-  authoritative and a regression covers reassignment.
+  parent handle, reject COMPLETE without a valid reservation/persisted evidence,
+  use OS append-only FILE_APPEND_DATA, verify file DACLs against overwrite and
+  ACL/delete rights in the secured profile, and allow only reservation/
+  terminal/commit filenames in claims. Retain server-assigned Label Studio IDs
+  as non-identity; exact frozen task data/case binding remains authoritative
+  and a regression covers reassignment.
 - [x] Exercise the actual synthetic runner with revalidation enabled: the
   current broad temporary ACL produces a determinate parent AccessCheck,
   refuses before `_source_bytes`/worker, and persists a FAILED terminal.
@@ -2000,31 +2002,54 @@ not consume or mint a Real20 credential. The final push target remains
   `run_quality` reports 1 PASS / 5 FAIL / 1 NOT_AVAILABLE / 0 skips; the
   installed system 3.12.10 lacks pytest, PyYAML, jsonschema/referencing, Ruff,
   mypy, Typer, Torch, and TorchVision. No dependencies were installed. Matrix
-  ran `2026-09-24T02:36:18.860Z`–`2026-09-24T02:36:21.760Z` and has SHA-256
-  `ca046bafca9124f64b2aed550e30e17a83f1b1d3d6d950e66cfc1395853cd2a8`.
-  Native unittest was 7/7 with zero skips; targeted harnesses are explicitly
+  ran `2026-09-24T05:18:22.605Z`–`2026-09-24T05:18:25.356Z` and has SHA-256
+  `e10e42c62ac4c2dc009518fae327dded8449dc8e74e1d32cb3228ca8c0a0be5d`.
+  Native unittest was 8/8 with zero skips; targeted harnesses are explicitly
   not full pytest/schema PASS. No WinError 1314 was converted to a skip.
-- [ ] Register the actual linear successor in preflight/handoff, regenerate
-  root `MANIFEST.sha256` from the staged Git index, and verify no history/tag/
-  N2B1P evidence was rewritten.
+- [x] Register the implementation successor and its native acceptance child
+  in preflight/handoff; regenerate root `MANIFEST.sha256` from the staged Git
+  index. Both are direct, non-merge descendants; no history/tag/N2B1P evidence
+  was rewritten.
 - [x] Complete the independent review cycle: the first review found four
   safety/compatibility issues; all were corrected and targeted regressions
   added. Follow-up verdict: no remaining Critical/Important findings, based
-  on the updated implementation and 7/7 native result; the reviewer did not
+  on the updated implementation and 8/8 native result; the reviewer did not
   independently rerun the final diff/tests.
-- [ ] Make one normal code-only commit and push to the transition branch; read
-  back remote SHA and leave `main` unchanged.
-- [ ] Add a redacted status comment to GitHub Issue #2 without closing it;
-  update Obsidian only from verified local/remote evidence.
+- [x] Implementation commit `ff479dfde536bdbf5a9e0a401fd3c35d910ad774` was
+  pushed/read back as a direct child of 769aa3b; main stayed at ffc4130. A
+  subsequent native-test refinement keeps history linear and is registered as
+  the next direct code-only acceptance child.
+- [x] Add the redacted status comment to GitHub Issue #2 without closing it;
+  checkpoint verified progress and references in Obsidian, preserving the
+  unrelated Tesla pending operation.
+
+## Native acceptance follow-up after `ff479df` — 2026-09-24
+
+- [x] Add an effective file-DACL check in the secured append-only profile:
+  refuse FILE_WRITE_DATA, DELETE, WRITE_DAC, and WRITE_OWNER; bind filename
+  creation to reservation/terminal/commit records only.
+- [x] Rework the native DACL test to create the claim after the ledger gate,
+  then apply the Owner-provisioned per-claim test ACL through a retained
+  recovery handle, call the real claim gate, and exercise reservation/terminal
+  commit/reopen. This models the required Owner filesystem policy; the runtime
+  itself never changes ACLs.
+- [x] Register this ordinary linear acceptance successor after `ff479df`:
+  N2B1P count 35 / N2B1R count 36. Regenerate the 565-entry MANIFEST from the
+  Git index and preserve all older tags and lock evidence.
+- [x] Final native suite: 8/8, zero skips; final complete quality matrix report
+  SHA-256 `e10e42c62ac4c2dc009518fae327dded8449dc8e74e1d32cb3228ca8c0a0be5d`.
+- [x] Push this follow-up as a normal child, read it back, keep `main` unchanged,
+  then refresh the external issue/Obsidian closeout to the final branch tip.
 
 ### Review
 
-- [x] Record actual native ledger result (7/7), offline Label Studio bridge
+- [x] Record actual native ledger result (8/8), offline Label Studio bridge
   (37 targeted cases with schema libraries stubbed), synthetic Real20 runner
   (4 real pipeline paths with fake backend), hardening (5 cases), lifecycle
   (14 cases), full quality-matrix gaps, and the R2 `NOT_RUN` boundary.
-- [ ] Record final successor commit/tree, remote readback, preflight/handoff
-  exits, and Issue #2 / Obsidian synchronization result after push.
+- [x] Record the final native-test follow-up commit/tree and remote readback in
+  the final handoff; verify Issue #2 and Obsidian remain current after push.
 - [ ] Keep R2 `NOT_RUN` until final independent review, required native gates,
-  exact manifest/source bindings, valid credential, and Owner anchor are all
-  present.
+  exact manifest/source bindings, a runtime DACL inheritable to each newly
+  created claim and ledger file with all required denials, valid credential,
+  and Owner anchor are all present.

@@ -482,7 +482,10 @@ def _run_real20(
             raise Real20Error("REAL20_OUTPUT_NOT_FRESH")
         ledger_bound = resources.enter_context(
             bind_existing_directory(
-                ledger_root, writable=True, append_only=True, security_check=True
+                ledger_root,
+                writable=True,
+                append_only=True,
+                security_check=revalidate is not None,
             )
         )
         if revalidate is not None:
