@@ -17,7 +17,6 @@ from ..ingest.read_only_capability import verify_source_read_only_capability
 from ..ingest.source_guard import FileIdentity, is_reparse_point, validate_roots
 from ..n2b2_synthetic.config import TorchVisionRole
 from ..n2b2_synthetic.vision_facts import build_vision_facts, compute_fact_digest
-from ..windows_bound_promotion import BoundStagingTransaction
 from .contracts import EXIF_ALLOWLIST, Real20Error, load_manifest, validate_credential
 from .exif import read_real20_exif
 from .identity import candidate_identity
@@ -194,23 +193,22 @@ def _reservation(ledger_root: Any, credential_sha: str, bindings_sha: str, now: 
 def _finish(
     reservation: Any, *, status: str, evidence_sha: str | None, evidence_status: str
 ) -> None:
-    data = canonical(
-        {
-            "schema_version": "npi-real20-consumption-v1",
-            "status": status,
-            "evidence_status": evidence_status,
-            "evidence_sha256": evidence_sha,
-            "finished_at_utc": datetime.now(UTC).isoformat(),
-        }
-    )
-    with BoundStagingTransaction.create(reservation) as transaction:
-        with transaction.create_file("record.json") as handle:
-            handle.write(data)
-            handle.flush()
-        with transaction.staging.open_file("record.json") as handle:
-            if handle.read_all(max_bytes=4096) != data:
-                raise Real20Error("REAL20_TERMINAL_WRITE_INVALID")
-        transaction.publish("terminal")
+    from .ledger import append_terminal_record
+
+    ledger = reservation._root
+    if ledger is None:
+        raise Real20Error("REAL20_LEDGER_HANDLE_INVALID")
+    try:
+        append_terminal_record(
+            ledger,
+            reservation,
+            reservation.identity.final_path.rsplit("\\", 1)[-1],
+            status=status,
+            evidence_sha=evidence_sha,
+            evidence_status=evidence_status,
+        )
+    except Exception as exc:
+        raise Real20Error("REAL20_TERMINAL_WRITE_INVALID") from exc
 
 
 def _record_failed_attempt(
@@ -482,7 +480,11 @@ def _run_real20(
         output_bound = resources.enter_context(bind_existing_directory(output_root, writable=True))
         if output_bound.list_names():
             raise Real20Error("REAL20_OUTPUT_NOT_FRESH")
-        ledger_bound = resources.enter_context(bind_existing_directory(ledger_root, writable=True))
+        ledger_bound = resources.enter_context(
+            bind_existing_directory(
+                ledger_root, writable=True, append_only=True, security_check=True
+            )
+        )
         if revalidate is not None:
             revalidate(ledger_bound)
         latest_raw = control_bytes(credential_path)
@@ -504,6 +506,7 @@ def _run_real20(
         )
         backend: VisionBackend | None = None
         source_admitted = False
+        source_check_failed = False
         evidence: dict[str, Any] = {}
         try:
             if revalidate is not None:
@@ -580,7 +583,11 @@ def _run_real20(
                     }
                 )
             backend.unload()
-            post_source_check()
+            try:
+                post_source_check()
+            except BaseException:
+                source_check_failed = True
+                raise
             if revalidate is not None:
                 revalidate(ledger_bound)
             root_after = _source_root_identity(source_resolved)
@@ -627,7 +634,8 @@ def _run_real20(
             if backend is not None:
                 checks.append(backend.unload)
             if source_admitted:
-                checks.append(post_source_check)
+                if not source_check_failed:
+                    checks.append(post_source_check)
 
                 def root_check() -> None:
                     if not root_before.same_identity(_source_root_identity(source_resolved)):

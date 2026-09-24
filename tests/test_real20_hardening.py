@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from io import BytesIO
 from types import SimpleNamespace
 
@@ -57,20 +58,63 @@ def test_worker_rejects_operator_failure(monkeypatch):
         probe_worker()
 
 
-def test_consumption_requires_denied_delete_and_acl_rights(tmp_path, monkeypatch):
-    from nightly_photo_intelligence_pipeline.ingest.read_only_capability import (
-        CapabilityDisposition,
-    )
+def test_consumption_requires_explicit_native_access_denials(tmp_path, monkeypatch):
     from nightly_photo_intelligence_pipeline.real20 import admission
+    from nightly_photo_intelligence_pipeline.windows_bound_promotion import (
+        BoundDirectory,
+        NativeAccessCheck,
+    )
 
-    monkeypatch.setattr(admission, "_windows_probe", lambda *args: CapabilityDisposition.GRANTED)
+    bound = object.__new__(BoundDirectory)
+    bound._append_only = True
+    bound._verify = lambda: None
+    monkeypatch.setattr(
+        bound,
+        "access_check",
+        lambda _right: NativeAccessCheck(True, None),
+    )
+    monkeypatch.setattr(
+        bound,
+        "parent_access_check",
+        lambda _right: NativeAccessCheck(False, None),
+    )
+
+    @contextmanager
+    def bind(*_args, **kwargs):
+        assert kwargs == {"writable": True, "append_only": True, "security_check": True}
+        yield bound
+
+    monkeypatch.setattr(admission, "bind_existing_directory", bind)
     with pytest.raises(Real20Error, match="LEDGER_MUTATION_NOT_DENIED"):
         admission.protect_consumption(tmp_path)
+
     monkeypatch.setattr(
-        admission, "_windows_probe", lambda *args: CapabilityDisposition.NOT_VERIFIED
+        bound,
+        "access_check",
+        lambda _right: NativeAccessCheck(None, 5),
     )
     with pytest.raises(Real20Error, match="LEDGER_MUTATION_NOT_DENIED"):
         admission.protect_consumption(tmp_path)
+
+    monkeypatch.setattr(
+        bound,
+        "access_check",
+        lambda _right: NativeAccessCheck(False, None),
+    )
+    monkeypatch.setattr(
+        bound,
+        "parent_access_check",
+        lambda right: NativeAccessCheck(right == 0x00040000, None),
+    )
+    with pytest.raises(Real20Error, match="LEDGER_MUTATION_NOT_DENIED"):
+        admission.protect_consumption(tmp_path)
+
+    monkeypatch.setattr(
+        bound,
+        "parent_access_check",
+        lambda _right: NativeAccessCheck(False, None),
+    )
+    admission.protect_consumption(tmp_path)
 
 
 def test_manifest_hardlink_rejected_before_parsing(tmp_path):

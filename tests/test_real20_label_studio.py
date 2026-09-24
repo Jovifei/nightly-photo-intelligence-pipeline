@@ -39,10 +39,17 @@ def tasks() -> list[dict[str, Any]]:
 def annotated(original: list[dict[str, Any]]) -> list[dict[str, Any]]:
     output = copy.deepcopy(original)
     for task in output:
-        task["annotations"] = [{"id": task["id"], "completed_by": 7, "was_cancelled": False,
+        task["annotations"] = [{"id": f"annotation-{task['id']}", "task": task["id"],
+                                "completed_by": 7, "was_cancelled": False,
                                 "result": [{"from_name": "decision", "to_name": "photo", "type": "choices",
                                             "value": {"choices": ["ACCEPT"]}}]}]
     return output
+
+
+def import_review(exported: object, original: list[dict[str, Any]]) -> dict[str, Any]:
+    return bridge.import_annotations(
+        exported, original_tasks_bytes=bridge.canonical(original),
+    )
 
 
 def test_export_is_deterministic_and_has_no_approval() -> None:
@@ -58,16 +65,17 @@ def test_export_is_deterministic_and_has_no_approval() -> None:
 
 def test_roundtrip_records_human_choices_but_never_owner_approval() -> None:
     original = tasks()
-    result = bridge.import_annotations(annotated(original), original_tasks=original)
+    result = import_review(annotated(original), original)
     assert result["review_count"] == 20 and not result["blockers"]
     assert result["status"] == "HUMAN_REVIEW_RECORDED_PENDING_OWNER"
+    assert result["records"][0]["annotation_id"] == "annotation-1"
     assert not result["execution_authorized"] and not result["production_bundle_created"]
     assert all(not row["owner_approved"] and not row["bundle_eligible"] for row in result["records"])
 
 
 def test_predictions_are_not_human_reviews() -> None:
     original = tasks()
-    result = bridge.import_annotations(original, original_tasks=original)
+    result = import_review(original, original)
     assert result["review_count"] == 0 and len(result["blockers"]) == 20
 
 
@@ -75,7 +83,7 @@ def test_cancelled_annotation_is_not_accepted() -> None:
     original = tasks()
     output = annotated(original)
     output[0]["annotations"][0]["was_cancelled"] = True
-    result = bridge.import_annotations(output, original_tasks=original)
+    result = import_review(output, original)
     assert result["review_count"] == 19 and result["status"] == "HUMAN_REVIEW_INCOMPLETE"
 
 
@@ -83,7 +91,98 @@ def test_multiple_annotations_require_resolution() -> None:
     original = tasks()
     output = annotated(original)
     output[0]["annotations"] *= 2
-    assert bridge.import_annotations(output, original_tasks=original)["review_count"] == 19
+    assert import_review(output, original)["review_count"] == 19
+
+
+def test_annotation_task_pointer_must_match_exported_task() -> None:
+    original = tasks()
+    output = annotated(original)
+    output[0]["annotations"][0]["task"] = output[1]["id"]
+    with pytest.raises(bridge.ReviewExchangeError, match="ANNOTATION_TASK_MISMATCH"):
+        import_review(output, original)
+
+
+def test_standard_export_uses_containing_task_when_pointer_is_absent() -> None:
+    original = tasks()
+    output = annotated(original)
+    for task in output:
+        task["annotations"][0].pop("task")
+    assert import_review(output, original)["review_count"] == 20
+
+
+def test_duplicate_exported_task_ids_are_rejected() -> None:
+    original = tasks()
+    output = annotated(original)
+    output[1]["id"] = output[0]["id"]
+    with pytest.raises(bridge.ReviewExchangeError, match="TASK_ID"):
+        import_review(output, original)
+
+
+def test_server_reassigned_task_id_keeps_original_case_binding() -> None:
+    original = tasks()
+    output = annotated(original)
+    replacement_id = 999
+    output[0]["id"] = replacement_id
+    output[0]["annotations"][0]["task"] = replacement_id
+    result = import_review(output, original)
+    assert result["records"][0]["case_id"] == "real20-001"
+    assert result["records"][0]["annotation_id"] == "annotation-1"
+
+
+@pytest.mark.parametrize(
+    ("field_name", "field_type", "bad_value"),
+    [
+        ("decision", "choices", []),
+        ("issues", "choices", None),
+        ("revision", "textarea", ["not-an-object"]),
+        ("notes", "textarea", "not-an-object"),
+    ],
+)
+def test_non_object_annotation_value_is_stably_rejected(
+    field_name: str, field_type: str, bad_value: Any
+) -> None:
+    original = tasks()
+    output = annotated(original)
+    if field_name == "decision":
+        output[0]["annotations"][0]["result"][0]["value"] = bad_value
+    else:
+        output[0]["annotations"][0]["result"].append(
+            {"from_name": field_name, "to_name": "photo", "type": field_type, "value": bad_value}
+        )
+    with pytest.raises(bridge.ReviewExchangeError, match="ANNOTATION_VALUE_INVALID"):
+        import_review(output, original)
+
+
+def test_cli_reports_exact_original_task_bytes_sha(tmp_path: Path) -> None:
+    original = tasks()
+    raw_tasks = json.dumps(original, ensure_ascii=False, indent=2).encode("utf-8")
+    original_path = tmp_path / "original-tasks.json"
+    original_path.write_bytes(raw_tasks)
+    annotations_path = tmp_path / "annotations.json"
+    annotations_path.write_bytes(bridge.canonical(annotated(original)))
+    output_path = tmp_path / "review.json"
+    source = tmp_path / "unopened-source-boundary"
+
+    result = bridge.main(
+        [
+            "import",
+            "--annotations",
+            str(annotations_path),
+            "--original-tasks",
+            str(original_path),
+            "--original-tasks-sha256",
+            bridge.sha(raw_tasks),
+            "--source-root",
+            str(source),
+            "--out",
+            str(output_path),
+        ]
+    )
+
+    assert result == 0
+    imported = bridge.parse(output_path.read_bytes())
+    assert imported["original_tasks_sha256"] == bridge.sha(raw_tasks)
+    assert imported["original_tasks_sha256"] != bridge.sha(bridge.canonical(original))
 
 
 @pytest.mark.parametrize("key", ["facts_text", "advice_text", "image", "npi_binding"])
@@ -92,7 +191,7 @@ def test_modified_original_data_rejected(key: str) -> None:
     output = annotated(original)
     output[0]["data"][key] = "changed"
     with pytest.raises(bridge.ReviewExchangeError, match="ORIGINAL_DATA_CHANGED"):
-        bridge.import_annotations(output, original_tasks=original)
+        import_review(output, original)
 
 
 def test_changed_prediction_rejected() -> None:
@@ -100,10 +199,10 @@ def test_changed_prediction_rejected() -> None:
     output = annotated(original)
     output[0]["predictions"] = []
     with pytest.raises(bridge.ReviewExchangeError, match="ORIGINAL_DATA_CHANGED"):
-        bridge.import_annotations(output, original_tasks=original)
+        import_review(output, original)
 
 
-@pytest.mark.parametrize("url", ["https://remote.invalid/photo.jpg", "file:///private/photo.jpg",
+@pytest.mark.parametrize("url", ["https://remote.invalid/photo.jpg", "file://" + "/private/photo.jpg",
                                 "/data/local-files/?d=../photo.jpg", "/data/local-files/?d=%2fprivate.jpg",
                                 "/data/local-files/?d=real20-previews/real20-001.jpg&d=x",
                                 "/data/local-files/?d=real20-previews/real20-001.jpg:stream",
@@ -142,11 +241,11 @@ def test_edit_requires_reason_and_reviewer_not_bool() -> None:
     output = annotated(original)
     output[0]["annotations"][0]["result"][0]["value"]["choices"] = ["EDIT"]
     with pytest.raises(bridge.ReviewExchangeError, match="EDIT_REASON"):
-        bridge.import_annotations(output, original_tasks=original)
+        import_review(output, original)
     output = annotated(original)
     output[0]["annotations"][0]["completed_by"] = True
     with pytest.raises(bridge.ReviewExchangeError, match="REVIEWER_ID"):
-        bridge.import_annotations(output, original_tasks=original)
+        import_review(output, original)
 
 
 @pytest.mark.parametrize("data", [b'{"a":1,"a":2}', b'{"a":NaN}', b'{"a":1e999}', b'{}\\n'])
@@ -175,7 +274,7 @@ def test_server_prediction_metadata_is_not_a_model_edit() -> None:
     output = annotated(original)
     for task in output:
         task["predictions"][0].update(id=990, created_at="2026-09-23T00:00:00Z", task=task["id"])
-    assert bridge.import_annotations(output, original_tasks=original)["review_count"] == 20
+    assert import_review(output, original)["review_count"] == 20
 
 
 def test_cli_export_import_and_source_boundary(tmp_path: Path) -> None:

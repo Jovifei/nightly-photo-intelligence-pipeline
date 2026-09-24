@@ -349,3 +349,15 @@
   NOT_RUN rather than becoming a skip or PASS.
 - Report hashes must state their byte domain. Git-index/LF and Windows raw
   checkout hashes are different evidence and must not be interchanged.
+
+## 2026-09-24 attached execution task follow-through correction
+
+- When the Owner supplies a task-specific handoff and explicitly says to execute
+  it, treat its code/test/publication steps as the active work plan. A separate
+  request to sync knowledge is an additional deliverable, not the task stop
+  condition. Continue through the named tests and submission gate while keeping
+  the handoff's photo, model, phase, and credential boundaries intact.
+
+- For temporary Windows DACL tests, retain a recovery handle before applying
+  OWNER RIGHTS/WRITE_DAC denial. Reset the synthetic ACL in `finally` before
+  cleanup; never leave a temporary fixture unremovable after a failed probe.

@@ -1948,3 +1948,83 @@ out of scope.
   sensitive scan, Ruff, format, mypy, handoff, and preflight all pass.
 - [x] R2 actual Real20 execution is `NOT_RUN`; no valid fresh credential,
   current manifest, validity window, or Owner anchor was materialized.
+
+## Real20 native ledger and human-review exchange closure — 2026-09-24
+
+Scope: code-only repair and synthetic/native acceptance on top of `769aa3b1`; keep
+`PROJECT_STATE.N2B2=LOCKED`, do not run H3, do not read real photos/EXIF, and do
+not consume or mint a Real20 credential. The final push target remains
+`gpt/real20-transition-20260921`; do not update `main`.
+
+### Plan
+
+- [x] Fetch and verify the supplied transition commit; create a clean worktree
+  and record the primary `AGENTS.md` without changing it. Remote candidate is
+  `769aa3b1d98a86227d9a8eb53f97f4904046025d`, parent `0eb6178`, tree
+  `55f4901a4b2afeea851a644f4b9ecb8df8786180`; remote `main` remains `ffc4130`.
+- [x] Read the current project contracts, Real20 review/reuse handoff, and
+  Label Studio integration records; run baseline handoff verifier. Baseline
+  Python 3.12.10 is missing PyYAML; verifier exit 1 reports dependency parsing
+  failures and unregistered successor topology, not a passing baseline.
+- [x] Check all already-installed Python 3.12 options without installing
+  dependencies. System Python 3.12.10 lacks PyYAML/pytest/jsonschema/
+  referencing/Ruff/mypy/Torch/TorchVision/Typer; bundled 3.12.14 only adds PIL;
+  the historical venv and project `.venv` are absent/empty.
+- [x] Reproduce and repair the ledger access-mask conflict using synthetic
+  Windows directories. Native checks exercise target DELETE/DELETE_CHILD/
+  WRITE_DAC/WRITE_OWNER denials and parent DELETE_CHILD/WRITE_DAC/WRITE_OWNER
+  denials, actual handle masks, real admission on root and claim, reservation
+  creation, terminal commit/reopen, and incomplete reservation failure without
+  touching source or Owner-control ACLs.
+- [x] Add RED/GREEN tests for append-only ledger creation and versioned terminal
+  record/commit-marker readback; preserve mutable cache staging and write a
+  single terminal only through bound handles.
+- [x] Add RED/GREEN review-exchange tests for task-pointer substitution,
+  duplicate task IDs, malformed annotation value objects, and exact original
+  task-byte SHA binding; ACCEPT/EDIT/REJECT remain non-Owner decisions.
+- [x] Preserve prediction read-only, cancel/missing/conflicting annotation
+  blockers, and ensure no imported ACCEPT becomes Owner APPROVED or Bundle
+  eligible; 37 offline bridge cases passed with schema libraries explicitly
+  stubbed, not a server/UI roundtrip.
+- [x] Remediate independent review findings: bind claim checks to the direct
+  parent handle, reject COMPLETE without persisted evidence, use OS append-only
+  FILE_APPEND_DATA and file-only claim directories. Retain server-assigned
+  Label Studio IDs as non-identity; exact frozen task data/case binding remains
+  authoritative and a regression covers reassignment.
+- [x] Exercise the actual synthetic runner with revalidation enabled: the
+  current broad temporary ACL produces a determinate parent AccessCheck,
+  refuses before `_source_bytes`/worker, and persists a FAILED terminal.
+- [x] Run the available synthetic/native paths and the complete Python 3.12
+  quality command matrix with `PYTHONPATH=src`, exact exits, stdout/stderr
+  hashes, and runtime version. The supported environment is unavailable:
+  `run_quality` reports 1 PASS / 5 FAIL / 1 NOT_AVAILABLE / 0 skips; the
+  installed system 3.12.10 lacks pytest, PyYAML, jsonschema/referencing, Ruff,
+  mypy, Typer, Torch, and TorchVision. No dependencies were installed. Matrix
+  ran `2026-09-24T02:36:18.860Z`–`2026-09-24T02:36:21.760Z` and has SHA-256
+  `ca046bafca9124f64b2aed550e30e17a83f1b1d3d6d950e66cfc1395853cd2a8`.
+  Native unittest was 7/7 with zero skips; targeted harnesses are explicitly
+  not full pytest/schema PASS. No WinError 1314 was converted to a skip.
+- [ ] Register the actual linear successor in preflight/handoff, regenerate
+  root `MANIFEST.sha256` from the staged Git index, and verify no history/tag/
+  N2B1P evidence was rewritten.
+- [x] Complete the independent review cycle: the first review found four
+  safety/compatibility issues; all were corrected and targeted regressions
+  added. Follow-up verdict: no remaining Critical/Important findings, based
+  on the updated implementation and 7/7 native result; the reviewer did not
+  independently rerun the final diff/tests.
+- [ ] Make one normal code-only commit and push to the transition branch; read
+  back remote SHA and leave `main` unchanged.
+- [ ] Add a redacted status comment to GitHub Issue #2 without closing it;
+  update Obsidian only from verified local/remote evidence.
+
+### Review
+
+- [x] Record actual native ledger result (7/7), offline Label Studio bridge
+  (37 targeted cases with schema libraries stubbed), synthetic Real20 runner
+  (4 real pipeline paths with fake backend), hardening (5 cases), lifecycle
+  (14 cases), full quality-matrix gaps, and the R2 `NOT_RUN` boundary.
+- [ ] Record final successor commit/tree, remote readback, preflight/handoff
+  exits, and Issue #2 / Obsidian synchronization result after push.
+- [ ] Keep R2 `NOT_RUN` until final independent review, required native gates,
+  exact manifest/source bindings, valid credential, and Owner anchor are all
+  present.

@@ -235,7 +235,13 @@ def _controls(
 
 
 def _run(
-    project: Path, source: Path, manifest: Path, controls: dict[str, Path], backend: CountingBackend
+    project: Path,
+    source: Path,
+    manifest: Path,
+    controls: dict[str, Path],
+    backend: CountingBackend,
+    *,
+    revalidate: Any = None,
 ) -> dict[str, Any]:
     controls["ledger"].mkdir(exist_ok=True)
     controls["output"].mkdir(exist_ok=True)
@@ -252,19 +258,19 @@ def _run(
         backend_factory=lambda: backend,
         runtime_probe=backend.runtime_attestation,
         capability_probe=lambda *_: True,
+        revalidate=revalidate,
     )
 
 
 def _terminal(ledger: Path, credential_sha: str) -> dict[str, Any]:
+    from nightly_photo_intelligence_pipeline.real20.ledger import read_terminal_record
     from nightly_photo_intelligence_pipeline.windows_bound_promotion import bind_existing_directory
 
     with (
-        bind_existing_directory(ledger, writable=False) as root,
-        root.open_directory(credential_sha, writable=False) as claim,
-        claim.open_directory("terminal", writable=False) as terminal_root,
-        terminal_root.open_file("record.json") as terminal,
+        bind_existing_directory(ledger, writable=True, append_only=True) as root,
+        root.open_directory(credential_sha, writable=True) as claim,
     ):
-        return json.loads(terminal.read_all(max_bytes=4096))
+        return read_terminal_record(claim, credential_sha)
 
 
 def test_prepare_is_draft_and_does_not_read_source(tmp_path: Path) -> None:
@@ -507,3 +513,46 @@ def test_actual_cli_path_uses_explicit_synthetic_test_mode(tmp_path: Path) -> No
     assert completed.returncode != 0
     assert "REAL20_FAKE_BACKEND_TEST_ONLY" in completed.stderr
     assert not list(controls["ledger"].iterdir())
+
+
+def test_runtime_guard_checks_claim_parent_before_worker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from nightly_photo_intelligence_pipeline.real20 import admission, runner
+
+    project = _project(tmp_path)
+    manifest_path, source, _ = _manifest(tmp_path)
+    controls = _controls(tmp_path, project, manifest_path)
+    backend = CountingBackend()
+    model = json.loads(controls["model"].read_bytes())
+    runtime = json.loads(controls["runtime"].read_bytes())
+    runtime["models"] = model
+    controls["runtime"].write_bytes(canonical(runtime))
+    credential = json.loads(controls["credential"].read_bytes())
+    credential["bindings"]["runtime_identity_sha256"] = sha256(canonical(runtime))
+    credential_bytes = canonical(credential)
+    controls["credential"].write_bytes(credential_bytes)
+    anchor = json.loads(controls["anchor"].read_bytes())
+    anchor["credential_sha256"] = sha256(credential_bytes)
+    controls["anchor"].write_bytes(canonical(anchor))
+    backend.runtime_attestation = lambda: runtime
+    parent_checks: list[Any] = []
+    original = admission.protect_consumption
+
+    def observe_parent(handle: Any) -> None:
+        result = handle.parent_access_check(0x00000040)
+        parent_checks.append(result)
+        original(handle)
+
+    def unexpected_source_open(*_args: Any, **_kwargs: Any) -> bytes:
+        raise AssertionError("source image opened before the ledger mutation gate")
+
+    monkeypatch.setattr(admission, "protect_consumption", observe_parent)
+    monkeypatch.setattr(runner, "_source_bytes", unexpected_source_open)
+    with pytest.raises(Real20Error, match="REAL20_LEDGER_MUTATION_NOT_DENIED"):
+        _run(project, source, manifest_path, controls, backend, revalidate=lambda *_: None)
+    assert len(parent_checks) == 1
+    assert parent_checks[0].granted is True and parent_checks[0].win32_error is None
+    assert backend.pose_calls == 0
+    credential_sha = sha256(controls["credential"].read_bytes())
+    assert _terminal(controls["ledger"], credential_sha)["status"] == "FAILED"

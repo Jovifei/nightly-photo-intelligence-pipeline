@@ -16,8 +16,6 @@ from ..engineering.evidence import quality_matrix
 from ..engineering.path_policy import checked_path, overlaps
 from ..ingest.g1_contract import path_fingerprint
 from ..ingest.read_only_capability import (
-    CapabilityDisposition,
-    _windows_probe,
     verify_source_read_only_capability,
 )
 from ..windows_bound_promotion import BoundDirectory, bind_existing_directory
@@ -26,6 +24,8 @@ from .identity import candidate_identity
 
 FROZEN_G1 = "29eee5fdb8e16c85649752501c4b722d2b4d071950c8a989add040e895a75c47"
 H3_REVIEW = "820f76ba48c5d55fd66b83f158afe7b12b62aad0315df710a57163ea407ffc33"
+_LEDGER_MUTATION_RIGHTS = (0x40, 0x10000, 0x40000, 0x80000)
+_LEDGER_PARENT_MUTATION_RIGHTS = (0x40, 0x40000, 0x80000)
 
 
 def control_bytes(path: Path) -> bytes:
@@ -57,22 +57,25 @@ def protect_consumption(path: Path | BoundDirectory) -> None:
     """Require persistent claims to resist deletion and permission changes.
 
     Creation is allowed, but clearing old consumption is not. No ACL is changed.
-    Unknown/platform/sharing errors fail closed.
+    The direct parent must not be able to restore those rights by changing its
+    DACL or ownership. Unknown/platform/sharing errors fail closed.
     """
     if isinstance(path, BoundDirectory):
-        path._verify()
-        target_path = Path(path.identity.final_path)
-    else:
-        target_path = path
-    for target, rights in (
-        (target_path, (0x40, 0x10000, 0x40000, 0x80000)),
-        (target_path.parent, (0x40,)),
-    ):
-        for right in rights:
+        bound = path
+        bound._verify()
+        _require(bound._append_only, "REAL20_LEDGER_ACCESS_PROFILE_INVALID")
+        checks = [bound.access_check(right) for right in _LEDGER_MUTATION_RIGHTS]
+        checks.extend(bound.parent_access_check(right) for right in _LEDGER_PARENT_MUTATION_RIGHTS)
+        for result in checks:
             _require(
-                _windows_probe(target, "directory", right) == CapabilityDisposition.DENIED,
+                result.granted is False and result.win32_error is None,
                 "REAL20_LEDGER_MUTATION_NOT_DENIED",
             )
+        return
+    with bind_existing_directory(
+        path, writable=True, append_only=True, security_check=True
+    ) as bound:
+        protect_consumption(bound)
 
 
 def admit(
@@ -119,7 +122,9 @@ def admit(
     _require(isinstance(ledger_root, Path), "REAL20_LEDGER_PATH_REQUIRED")
     ledger_path = runtime / "real20-execution-ledger"
     _require(ledger_root == ledger_path, "REAL20_LEDGER_BINDING_INVALID")
-    with bind_existing_directory(ledger_path, writable=False) as configured_ledger:
+    with bind_existing_directory(
+        ledger_path, writable=True, append_only=True, security_check=True
+    ) as configured_ledger:
         if bound_ledger is not None:
             _require(isinstance(bound_ledger, BoundDirectory), "REAL20_LEDGER_HANDLE_REQUIRED")
             bound_ledger._verify()

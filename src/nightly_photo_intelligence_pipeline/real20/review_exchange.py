@@ -13,7 +13,7 @@ import math
 import os
 import re
 import stat
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
@@ -200,22 +200,36 @@ def export_tasks(
 
 
 def import_annotations(
-    exported: object, *, original_tasks: Sequence[Mapping[str, Any]]
+    exported: object, *, original_tasks_bytes: bytes,
 ) -> dict[str, Any]:
     """Import human records without upgrading them to Owner or Bundle approval.
 
     Canceled, missing and conflicting annotations are surfaced, never silently
     accepted. Predictions alone are not human work. Original task data and model
     predictions must be unchanged, preventing stale/cross-evaluation imports.
+    Label Studio may assign new task IDs on import; the frozen case binding in
+    task data, not that server-local ID, identifies each Real20 case.
     """
     require(isinstance(exported, list) and len(exported) <= 20
             and all(isinstance(task, dict) for task in exported), "REVIEW_EXPORT_INVALID")
+    original_tasks = parse(original_tasks_bytes)
+    require(isinstance(original_tasks, list), "REVIEW_ORIGINAL_TASKS_INVALID")
     require(len(original_tasks) == 20, "REVIEW_ORIGINAL_TASKS_INVALID")
-    original = {task["data"]["case_id"]: task for task in original_tasks}
+    original_ids = [task.get("id") for task in original_tasks if isinstance(task, Mapping)]
+    require(len(original_ids) == 20 and all(type(task_id) is int and task_id > 0
+            for task_id in original_ids) and len(set(original_ids)) == 20,
+            "REVIEW_TASK_ID_INVALID")
+    require(all(isinstance(task, Mapping) and isinstance(task.get("data"), Mapping)
+                for task in original_tasks), "REVIEW_ORIGINAL_TASKS_INVALID")
+    original = {task["data"].get("case_id"): task for task in original_tasks}
     require(set(original) == set(CASE_IDS), "REVIEW_ORIGINAL_TASKS_INVALID")
+    exported_ids = [task.get("id") for task in exported]
+    require(all(type(task_id) is int and task_id > 0 for task_id in exported_ids)
+            and len(set(exported_ids)) == len(exported_ids), "REVIEW_TASK_ID_INVALID")
     rows: dict[str, Any] = {}
     blockers: list[dict[str, str]] = []
     for task in exported:
+        task_id = task["id"]
         data = task.get("data")
         require(isinstance(data, dict), "REVIEW_TASK_DATA_INVALID")
         case_id = data.get("case_id")
@@ -235,6 +249,9 @@ def import_annotations(
         annotations = task.get("annotations", [])
         require(isinstance(annotations, list) and all(isinstance(a, dict) for a in annotations),
                 "REVIEW_ANNOTATIONS_INVALID")
+        require(all("task" not in annotation or annotation.get("task") == task_id
+                    for annotation in annotations),
+                "REVIEW_ANNOTATION_TASK_MISMATCH")
         rows[case_id] = None
         active = [item for item in annotations if item.get("was_cancelled") is False]
         if len(active) != 1:
@@ -246,7 +263,14 @@ def import_annotations(
             reviewer = reviewer.get("id")
         require(type(reviewer) is int and reviewer > 0, "REVIEW_REVIEWER_ID_REQUIRED")
         annotation_id = annotation.get("id")
-        require(type(annotation_id) is int and annotation_id > 0, "REVIEW_ANNOTATION_ID_REQUIRED")
+        require(
+            (type(annotation_id) is int and annotation_id > 0)
+            or (
+                isinstance(annotation_id, str)
+                and re.fullmatch(r"[A-Za-z0-9_-]{1,128}", annotation_id) is not None
+            ),
+            "REVIEW_ANNOTATION_ID_REQUIRED",
+        )
         values = annotation.get("result")
         require(isinstance(values, list), "REVIEW_ANNOTATION_RESULT_INVALID")
         fields: dict[str, Any] = {}
@@ -254,6 +278,7 @@ def import_annotations(
             require(isinstance(item, dict) and item.get("from_name") in {"decision", "issues", "revision", "notes"}
                     and item.get("from_name") not in fields and item.get("to_name") == "photo",
                     "REVIEW_ANNOTATION_FIELDS_INVALID")
+            require(isinstance(item.get("value"), dict), "REVIEW_ANNOTATION_VALUE_INVALID")
             fields[item["from_name"]] = item
         decision_field = fields.get("decision", {})
         choices = decision_field.get("value", {}).get("choices")
@@ -288,7 +313,7 @@ def import_annotations(
         "schema_version": "npi-label-studio-human-review-v1",
         "status": "HUMAN_REVIEW_RECORDED_PENDING_OWNER" if not blockers else "HUMAN_REVIEW_INCOMPLETE",
         "review_count": len(decisions), "records": decisions, "blockers": blockers,
-        "original_tasks_sha256": sha(canonical(list(original_tasks))),
+        "original_tasks_sha256": sha(original_tasks_bytes),
         "imported_export_sha256": sha(canonical(exported)),
         "execution_authorized": False, "production_bundle_created": False,
     }
@@ -367,7 +392,9 @@ def main(argv: list[str] | None = None) -> int:
             original = read_json_file(args.original_tasks)
             require(is_sha(args.original_tasks_sha256) and sha(original) == args.original_tasks_sha256,
                     "REVIEW_ORIGINAL_TASKS_HASH_MISMATCH")
-            result = import_annotations(parse(read_json_file(args.annotations)), original_tasks=parse(original))
+            result = import_annotations(
+                parse(read_json_file(args.annotations)), original_tasks_bytes=original,
+            )
         output = canonical(result)
         # Explicit, fresh, Owner-controlled external destination only. Not a
         # protected-source writer or a replacement for the native runtime I/O.

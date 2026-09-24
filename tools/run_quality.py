@@ -64,14 +64,19 @@ def check_pytest() -> tuple[str, str]:
 
 def check_contract_integrity() -> tuple[str, str]:
     """Validate archival immutable files and current mutable authorization state."""
-    from nightly_photo_intelligence_pipeline.preflight import (
-        PASS as PREFLIGHT_PASS,
-    )
-    from nightly_photo_intelligence_pipeline.preflight import (
-        _check_authorization,
-        _check_git_baselines,
-        _check_handoff,
-    )
+    try:
+        from nightly_photo_intelligence_pipeline.preflight import (
+            PASS as PREFLIGHT_PASS,
+        )
+        from nightly_photo_intelligence_pipeline.preflight import (
+            _check_authorization,
+            _check_git_baselines,
+            _check_handoff,
+        )
+    except ModuleNotFoundError as exc:
+        if exc.name == "yaml":
+            return FAIL, "contract integrity requires missing dependency: PyYAML"
+        raise
 
     results = [_check_handoff(), _check_authorization(), _check_git_baselines()]
     failed = [result.name for result in results if result.status != PREFLIGHT_PASS]
