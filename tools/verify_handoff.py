@@ -78,6 +78,7 @@ REAL20_LEDGER_PROOF_BASE_SHA = "ca706a67fff61980700c9275353efea62ae8cc81"
 REAL20_LEDGER_PROOF_FOLLOWUP_BASE_SHA = "3abb18d282d4e7f8983c52a70142dbdcd8098bfa"
 REAL20_LEDGER_PROOF_REVIEW_HEAD_BASE_SHA = "7f497ac9dfc836d3b38f1f06e19fb03141c59f78"
 REAL20_LEDGER_PROOF_ATTESTATION_FIX_BASE_SHA = "3ab5f12e4cd79a8457aa014a5534492bf65b395e"
+REAL20_LEDGER_PROOF_SYNTAX_FIX_BASE_SHA = "1e0c43f98af181d8d9739e2336e1177d225b4d93"
 
 errors: list[str] = []
 passes: list[str] = []
@@ -1030,6 +1031,11 @@ def check_baselines() -> None:
             and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "43")
             and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "42")
         )
+        or (
+            git("rev-parse", "HEAD^") == (0, REAL20_LEDGER_PROOF_SYNTAX_FIX_BASE_SHA)
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "44")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "43")
+        )
     ):
         fail("N2B2 review candidate must be exactly one direct child of N2B1P")
     elif git("rev-list", "--merges", "HEAD") != (0, ""):
@@ -1253,6 +1259,7 @@ def main() -> int:
         (0, REAL20_LEDGER_PROOF_FOLLOWUP_BASE_SHA),
         (0, REAL20_LEDGER_PROOF_REVIEW_HEAD_BASE_SHA),
         (0, REAL20_LEDGER_PROOF_ATTESTATION_FIX_BASE_SHA),
+        (0, REAL20_LEDGER_PROOF_SYNTAX_FIX_BASE_SHA),
     }:
         print(
             "HANDOFF_VALID: Real20 transition code-only candidate; production N2B2 remains LOCKED"
