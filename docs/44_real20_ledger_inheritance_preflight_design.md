@@ -16,30 +16,29 @@
 
 ## 选定架构
 
-1. Owner 在已配置的 runtime parent 下预置一个专用、Git 外的合成 ACL 探针目录。它与真实执行 ledger、output、cache 和照片源隔离。探针目录的 DACL 策略必须与 ledger 预期策略字节一致；探针位置从可信 runtime 配置推导，不接受任意 CLI 路径。
-2. Owner 预置一个独立清理身份，其删除/ACL 权限仅限探针目录。Git 中不存密码、token 或通用命令；runner 不修改 ACL，也不 impersonate 清理身份。
-3. 在支持的 Windows worker 上，以实际 Real20 runner token 执行 native preflight。通过 bound handles 绑定 probe 与配置 ledger，核对对象身份及 DACL policy digest；只在 probe 下创建唯一 synthetic claim 和允许的 reservation/terminal 文件名。
+1. Owner 在已配置 runtime parent 下预置专用、Git 外的合成 ACL 探针目录。它与真实执行 ledger、output、cache 和照片源分离；位置从可信 runtime 配置推导，不接受任意 CLI 路径。探针根与 ledger 根的 DACL policy digest 必须一致。
+2. Owner 预置独立清理身份，其删除/ACL 权限仅限探针目录。Git 中不存密码或 token；runner 不修改 ACL，也不 impersonate 清理身份。
+3. `npi real20 ledger-probe` 在实际 runner identity 下运行：绑定 probe 与配置 ledger 的句柄、核对对象身份和 DACL policy digest，并只在 probe 下创建唯一 synthetic claim 与允许的 reservation/terminal 文件名。该命令不读取照片、不创建真实 ledger reservation，也不需要 Real20 lease。
 4. 对 parent、fresh claim、fresh files 检查有效权限。claim directory 必须拒绝 `DELETE_CHILD`、`DELETE`、`WRITE_DAC`、`WRITE_OWNER`；ledger files 必须拒绝 `FILE_WRITE_DATA`、`DELETE`、`WRITE_DAC`、`WRITE_OWNER`，同时允许 `FILE_APPEND_DATA`。未知 `AccessCheck` 结果失败关闭。
-5. runner 关闭全部 handles 后，将仅含 nonce 的 probe 对象交由独立清理身份处理。记录脱敏清理结果；只有确认 probe 对象已移除才报告成功。失败时不做宽泛递归清理或 ACL 修复。
-6. 成功结果绑定进 Owner-protected `real20_runtime_identity.json`，并随既有 candidate-bound credential/anchor hash 绑定。结果包含 ledger/probe DACL policy digest、runner-token identity fingerprint、probe result 和 UTC freshness window。`admit()` 在 `_reservation()` 之前重新检查当前 ledger 是否符合绑定策略。DACL 或运行身份改变即要求重新探测并重新签发控制材料。
+5. `npi real20 ledger-probe-clean` 由独立清理身份运行，只接收 probe nonce 与对象 identity，删除对应的 synthetic probe 并返回清理证明；它不能访问真实 ledger、source、output 或 cache。失败时不做宽泛递归清理或 ACL 修复。
+6. Owner 将探测与清理证明嵌入现有固定受保护控制 `real20_runtime_identity.json` 的 `ledger_acl_probe` 字段。该字段包含 ledger/probe DACL policy digest、runner/cleanup identity fingerprints、probe result 和 UTC freshness window；现有 runtime-identity SHA 绑定继续把它带入 credential/anchor。Real20 的 pre-reservation gate 校验该证明与实时 ledger DACL/identity；不匹配就不能调用 `_reservation()`。DACL 或运行身份改变后必须重新探测并重新准备 candidate-bound controls。
 
-探针只证明隔离合成 sibling resource 上的继承策略，不在真实 ledger 中创建 claim。真实 ledger 的根目录和父目录有效权限检查继续保留；append-only handles、terminal records、commit markers 和 mutation-denial assertions 均不得删除或放宽。
+探针只证明隔离合成 sibling resource 上的继承策略，不在真实 ledger 中创建 claim。探针与 ledger 的策略摘要、文件系统对象身份和 runner token 必须绑定一致。真实 ledger 的根目录和父目录有效权限检查继续保留；append-only handles、terminal records、commit markers 和 mutation-denial assertions 均不得删除或放宽。
 
 ## 数据流与失败语义
 
 ```text
 固定 Owner controls + candidate identity
-  → 绑定 synthetic probe / ledger identity 和 DACL
-  → 实际 runner token 创建 synthetic claim 与 append-only files
-  → 检查新对象的有效权限
-  → 独立 cleanup identity 仅移除 nonce-scoped probe
-  → 验证清理结果并绑定 runtime identity
-  → 既有 source/runtime/data admission gates
+  → `ledger-probe` 在实际 runner token 下创建 synthetic claim/files
+  → 检查新对象的有效权限并生成 nonce-bound probe 结果
+  → `ledger-probe-clean` 由独立 cleanup identity 清理并返回证明
+  → Owner 将 probe/cleanup 证明嵌入 runtime identity
+  → pre-reservation gate 重检 ledger DACL/identity、worker/native operators、source/data/phase gates
   → one-shot reservation
   → 仅在 Owner controls 全部有效后进入 Real20 worker
 ```
 
-探针创建、AccessCheck、DACL 比较、identity、freshness 或清理任一失败，均须在真实 reservation 前停止。探针不消耗真实凭证。一旦真实 reservation 建立，既有一次性语义不变：后续失败仍消耗许可并尝试写入 terminal record；源完整性成功/失败后都要复核。
+探针创建、AccessCheck、DACL 比较、identity、freshness 或清理任一失败，均须在真实 reservation 前停止。探针不消耗真实凭证。`ledger_acl_probe` 是现有 Owner-protected runtime identity 的组成部分，不是 lease，也不能单独授权照片读取。一旦真实 reservation 建立，既有一次性语义不变：后续失败仍消耗许可并尝试写入 terminal record；源完整性成功/失败后都要复核。
 
 ## 范围与不变量
 
@@ -60,4 +59,4 @@
 
 ## 尚缺的 Owner runtime setup
 
-当前控制材料未提供 probe 目录位置或清理身份。Owner 必须预置它们，并将脱敏 identity/policy digest 绑定到新的受保护 runtime-identity record；完成之前不得把 native inheritance 证明记为 PASS。agent 不会创建系统用户、安装 service/scheduled task，或扩大 ACL 来取得该身份。
+当前控制材料未提供 probe 目录或 cleanup identity。Owner 必须预置 probe/cleanup identities，并将脱敏 identity、policy digest、清理结果和 freshness window 写入现有受保护 runtime identity；完成之前不得把 native inheritance 证明记为 PASS。agent 不会创建系统用户、安装 service/scheduled task，或扩大 ACL 来取得该身份。
