@@ -743,10 +743,9 @@ def run_real20(
     output_root: Path,
     cache_root: Path | None = None,
     device: str = "cuda",
-    ledger_attestation_probe: Callable[[Any], Mapping[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Public entry: bind executing code and Owner controls before source access."""
-    from .admission import admit
+    from .admission import _live_ledger_attestation, admit
 
     executing_root = Path(__file__).resolve().parents[3]
     if project_root.resolve() != executing_root:
@@ -767,7 +766,7 @@ def run_real20(
         cache_root=cache_root,
         runtime_identity_path=runtime_identity_path,
         model_identity_path=model_identity_path,
-        ledger_attestation_probe=ledger_attestation_probe,
+        ledger_attestation_probe=_live_ledger_attestation,
     )
 
     def revalidate(ledger_handle: Any) -> None:
@@ -783,7 +782,7 @@ def run_real20(
             cache_root=cache_root,
             runtime_identity_path=runtime_identity_path,
             model_identity_path=model_identity_path,
-            ledger_attestation_probe=ledger_attestation_probe,
+            ledger_attestation_probe=_live_ledger_attestation,
         )
         if current != admission_baseline:
             raise Real20Error("REAL20_ADMISSION_CHANGED")

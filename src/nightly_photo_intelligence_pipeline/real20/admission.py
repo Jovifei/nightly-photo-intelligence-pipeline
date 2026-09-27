@@ -30,6 +30,12 @@ _LEDGER_MUTATION_RIGHTS = (0x40, 0x10000, 0x40000, 0x80000)
 _LEDGER_PARENT_MUTATION_RIGHTS = (0x40, 0x40000, 0x80000)
 
 
+def _live_ledger_attestation(_ledger: BoundDirectory) -> Mapping[str, str]:
+    """Owner/R2 native attestor seam; unavailable until native setup is authorized."""
+
+    raise Real20Error("REAL20_LEDGER_PROBE_LIVE_ATTESTATION_UNAVAILABLE")
+
+
 def control_bytes(path: Path) -> bytes:
     """Read a regular control through native bound directories; reject aliases."""
     try:

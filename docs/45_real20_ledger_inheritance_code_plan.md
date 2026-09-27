@@ -21,7 +21,7 @@ Add focused tests in `tests/test_real20_runner.py`, `tests/test_real20_admission
 
 - Add a strict, versioned v2 parser/schema for `real20_runtime_identity.json`: top-level `schema_version`, `runtime_observation`, `ledger_acl_probe`; require exactly `models`, `worker`, `vision`, `qwen` observation domains and preserve their nested semantics. Historic v1 may be read as evidence but cannot enter new Real20 admission.
 - In `src/nightly_photo_intelligence_pipeline/real20/runner.py`, keep the existing whole-control canonical digest for credential/anchor binding and compare `runtime_probe()` only with the nested observation digest. Validate proof structure and live ledger identity/policy before `_reservation()`; retain the post-claim guard and one-shot consumption behavior.
-- Admission receives a narrow injected live-attestation seam and requires exact runner identity, ledger policy and ledger object matches; absent or mismatched attestation fails before reservation, backend construction and image open.
+- Admission receives a module-owned live-attestation seam and requires exact runner identity, ledger policy and real-ledger object matches; absent or mismatched attestation fails before reservation, backend construction and image open. The public `run_real20()` API cannot supply an attestor override. The proof keeps separate `probe_object_sha256` (synthetic sibling) and `ledger_object_sha256` (real ledger context).
 - Keep `real20/admission.py` fail closed and do not introduce a caller-controlled bypass. Error codes must distinguish missing/invalid/stale proof without exposing private path/SID material.
 
 ## P3 — Synthetic probe generation and separate cleanup

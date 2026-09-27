@@ -395,6 +395,7 @@ def test_admit_uses_configured_path_in_plan_and_validates_bound_object(
             "ledger_policy_sha256": "c" * 64,
             "probe_policy_sha256": "c" * 64,
             "probe_object_sha256": "d" * 64,
+            "ledger_object_sha256": "f" * 64,
             "created_at_utc": (now - timedelta(minutes=5)).isoformat(),
             "expires_at_utc": (now + timedelta(hours=1)).isoformat(),
         },
@@ -429,7 +430,7 @@ def test_admit_uses_configured_path_in_plan_and_validates_bound_object(
         "ledger_attestation_probe": lambda _handle: {
             "runner_identity_sha256": "a" * 64,
             "ledger_policy_sha256": "c" * 64,
-            "ledger_object_sha256": "d" * 64,
+            "ledger_object_sha256": "f" * 64,
         },
     }
     first = admission.admit(**kwargs)
@@ -445,7 +446,7 @@ def test_admit_uses_configured_path_in_plan_and_validates_bound_object(
                 "ledger_attestation_probe": lambda _handle: {
                     "runner_identity_sha256": "e" * 64,
                     "ledger_policy_sha256": "c" * 64,
-                    "ledger_object_sha256": "d" * 64,
+                    "ledger_object_sha256": "f" * 64,
                 },
             }
         )

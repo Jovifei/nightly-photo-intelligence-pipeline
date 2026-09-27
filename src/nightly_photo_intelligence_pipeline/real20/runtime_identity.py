@@ -22,6 +22,7 @@ _PROBE_FIELDS = {
     "ledger_policy_sha256",
     "probe_policy_sha256",
     "probe_object_sha256",
+    "ledger_object_sha256",
     "created_at_utc",
     "expires_at_utc",
 }
@@ -125,7 +126,7 @@ def validate_ledger_acl_probe(
         )
     if current_ledger_object_sha256 is not None:
         _require(
-            proof["probe_object_sha256"] == current_ledger_object_sha256,
+            proof["ledger_object_sha256"] == current_ledger_object_sha256,
             "REAL20_LEDGER_PROBE_OBJECT_MISMATCH",
         )
     created = _parse_utc(proof["created_at_utc"], "REAL20_LEDGER_PROBE_TIME_INVALID")

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -26,6 +27,7 @@ def _proof(*, status: str = "ADMISSION_ELIGIBLE") -> dict[str, object]:
         "ledger_policy_sha256": "c" * 64,
         "probe_policy_sha256": "c" * 64,
         "probe_object_sha256": "d" * 64,
+        "ledger_object_sha256": "f" * 64,
         "created_at_utc": "2026-09-27T11:00:00Z",
         "expires_at_utc": "2026-09-27T13:00:00Z",
     }
@@ -98,7 +100,7 @@ def test_live_binding_mismatch_fails_closed(attestation: dict[str, str], message
                 "current_runner_identity_sha256", "a" * 64
             ),
             current_ledger_policy_sha256=attestation.get("current_ledger_policy_sha256", "c" * 64),
-            current_ledger_object_sha256=attestation.get("current_ledger_object_sha256", "d" * 64),
+            current_ledger_object_sha256=attestation.get("current_ledger_object_sha256", "f" * 64),
             require_live_binding=True,
         )
 
@@ -115,6 +117,12 @@ def test_missing_runtime_observation_domain_fails_closed() -> None:
     del value["runtime_observation"]["qwen"]
     with pytest.raises(Real20Error, match="REAL20_RUNTIME_OBSERVATION_FIELDS_INVALID"):
         validate_runtime_identity(value, now=NOW)
+
+
+def test_public_run_does_not_expose_attestation_override() -> None:
+    from nightly_photo_intelligence_pipeline.real20.runner import run_real20
+
+    assert "ledger_attestation_probe" not in inspect.signature(run_real20).parameters
 
 
 def test_invalid_probe_fails_before_reservation(monkeypatch: pytest.MonkeyPatch) -> None:

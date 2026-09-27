@@ -2086,11 +2086,11 @@ Plan: `docs/45_real20_ledger_inheritance_code_plan.md`; exact parent `ca706a67ff
 
 ### Review
 
-- Current result: `REMOTE_CHANGES_REQUIRED_REMEDIATION_IN_PROGRESS` for review HEAD `7f497ac9dfc836d3b38f1f06e19fb03141c59f78`; direct parent is `3abb18d...`, code-stage base is `ca706a6...`.
+- Current result: `REMOTE_CHANGES_REQUIRED_REMEDIATION_IN_PROGRESS` for review HEAD `7f497ac9dfc836d3b38f1f06e19fb03141c59f78`; remediation commit is being re-verified before push.
 
 Remote review corrections now being implemented:
 
-- [ ] Bind `ledger_acl_probe` to injected live runner/ledger identity, policy and object attestations.
-- [ ] Make runtime observation top-level domains strict and add unknown/missing-domain negatives.
+- [x] Bind `ledger_acl_probe` to module-owned live runner/ledger identity, policy and real-ledger object attestations; public `run_real20()` cannot supply an override.
+- [x] Make runtime observation top-level domains strict and add unknown/missing-domain negatives.
 - [ ] Refresh final-SHA tests, quality evidence and remote review after the remediation commit.
 - A code-only `DONE` must be backed by fresh final-SHA tests and remote review; it cannot stand for native R2, Real20, production Bundle/App or scale-up.

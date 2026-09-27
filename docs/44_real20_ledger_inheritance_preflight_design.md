@@ -39,7 +39,7 @@
 
 `ledger-probe` 只生成 Git 外、脱敏的候选证明；`ledger-probe-clean` 由独立清理身份生成清理证明。继承观察可以独立记录为 `PROBE_PASS`，但只有清理证明存在且有效，整份证明才能成为 `ADMISSION_ELIGIBLE`；清理失败时保留真实的观察结果，同时拒绝准入。两份证明完成且被 Owner 审核后，才组装并封存 v2 `real20_runtime_identity.json`，之后再创建绑定其整体摘要的 credential/anchor。探针命令不得原地改写已封存或已绑定凭证的控制文件；否则整体摘要变化会使凭证失效。
 
-回归测试必须至少证明：仅改变 `ledger_acl_probe` 时整体控制摘要改变而 `runtime_observation` 摘要不变；改变 `runtime_observation` 时两种摘要均改变；实时探针只比较观察子对象；修改已绑定 proof 使 credential/anchor 失效；缺失/过期/清理失败/身份或策略不匹配时都在 reservation 前拒绝。
+`ledger_acl_probe` 必须分别记录 `probe_object_sha256`（隔离 synthetic sibling）和 `ledger_object_sha256`（真实 ledger 对象上下文）；两者不能混用。回归测试必须至少证明：仅改变 `ledger_acl_probe` 时整体控制摘要改变而 `runtime_observation` 摘要不变；改变 `runtime_observation` 时两种摘要均改变；实时探针只比较观察子对象；修改已绑定 proof 使 credential/anchor 失效；缺失/过期/清理失败/身份、策略或真实 ledger 对象不匹配时都在 reservation 前拒绝。
 
 ## 数据流与失败语义
 
