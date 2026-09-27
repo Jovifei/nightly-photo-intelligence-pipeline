@@ -58,6 +58,7 @@ REAL20_LEDGER_PROOF_FOLLOWUP_BASE = "3abb18d282d4e7f8983c52a70142dbdcd8098bfa"
 REAL20_LEDGER_PROOF_REVIEW_HEAD_BASE = "7f497ac9dfc836d3b38f1f06e19fb03141c59f78"
 REAL20_LEDGER_PROOF_ATTESTATION_FIX_BASE = "3ab5f12e4cd79a8457aa014a5534492bf65b395e"
 REAL20_LEDGER_PROOF_SYNTAX_FIX_BASE = "1e0c43f98af181d8d9739e2336e1177d225b4d93"
+REAL20_LEDGER_OBJECT_DIGEST_FIX_BASE = "831e1ae1c67d28dac618b445b5be3ef726900644"
 
 SENSITIVE_SUFFIXES = (
     ".db",
@@ -319,6 +320,15 @@ def _is_real20_ledger_proof_syntax_fix_candidate(project_root: Path) -> bool:
     )
 
 
+def _is_real20_ledger_object_digest_fix_candidate(project_root: Path) -> bool:
+    return (
+        _git(project_root, "rev-parse", "HEAD^").stdout.strip()
+        == REAL20_LEDGER_OBJECT_DIGEST_FIX_BASE
+        and _git(project_root, "rev-list", "--count", f"{N2B1P_BASELINE}..HEAD").stdout.strip()
+        == "44"
+    )
+
+
 def test_git_approved_tags_and_ancestry_are_exact(project_root: Path) -> None:
     assert _git(project_root, "rev-parse", N0_TAG).stdout.strip() == N0_BASELINE
     assert _git(project_root, "rev-parse", N1_TAG).stdout.strip() == N1_BASELINE
@@ -411,6 +421,8 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
         candidate_offset = 42
     elif _is_real20_ledger_proof_syntax_fix_candidate(project_root):
         candidate_offset = 43
+    elif _is_real20_ledger_object_digest_fix_candidate(project_root):
+        candidate_offset = 44
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         candidate_offset = 1
     else:
@@ -577,6 +589,12 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
             _git(project_root, "rev-parse", "HEAD^").stdout.strip()
             == REAL20_LEDGER_PROOF_SYNTAX_FIX_BASE
         )
+    elif _is_real20_ledger_object_digest_fix_candidate(project_root):
+        assert post_n2b1r == 45
+        assert (
+            _git(project_root, "rev-parse", "HEAD^").stdout.strip()
+            == REAL20_LEDGER_OBJECT_DIGEST_FIX_BASE
+        )
     else:
         assert post_n2b1r == 1 + candidate_offset
         parent = _git(project_root, "rev-parse", "HEAD^").stdout.strip()
@@ -683,6 +701,8 @@ def test_n2b1p_candidate_is_resolved_not_hardcoded(project_root: Path) -> None:
         expected_count = 43
     elif _is_real20_ledger_proof_syntax_fix_candidate(project_root):
         expected_count = 44
+    elif _is_real20_ledger_object_digest_fix_candidate(project_root):
+        expected_count = 45
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         expected_count = 2
     else:

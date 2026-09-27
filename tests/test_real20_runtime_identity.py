@@ -105,6 +105,20 @@ def test_live_binding_mismatch_fails_closed(attestation: dict[str, str], message
         )
 
 
+def test_invalid_ledger_object_digest_fails_even_when_live_value_matches() -> None:
+    value = _identity()
+    value["ledger_acl_probe"]["ledger_object_sha256"] = "invalid"  # type: ignore[index]
+    with pytest.raises(Real20Error, match="REAL20_LEDGER_PROBE_DIGEST_INVALID"):
+        validate_runtime_identity(
+            value,
+            now=NOW,
+            current_runner_identity_sha256="a" * 64,
+            current_ledger_policy_sha256="c" * 64,
+            current_ledger_object_sha256="invalid",
+            require_live_binding=True,
+        )
+
+
 def test_unknown_runtime_observation_field_fails_closed() -> None:
     value = _identity()
     value["runtime_observation"]["unknown"] = {}

@@ -95,6 +95,7 @@ def validate_ledger_acl_probe(
         "ledger_policy_sha256",
         "probe_policy_sha256",
         "probe_object_sha256",
+        "ledger_object_sha256",
     ):
         _digest(proof[key])
     _require(
