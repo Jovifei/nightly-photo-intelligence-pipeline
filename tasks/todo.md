@@ -2076,15 +2076,15 @@ Plan: `docs/45_real20_ledger_inheritance_code_plan.md`; exact parent `ca706a67ff
 
 - [x] Read current contract/state and capture the inherited docs-only baseline: handoff 6 PASS / 2 FAIL (successor topology and root MANIFEST); no source or model action.
 - [x] Ask the bound ChatGPT Project to resolve the runtime identity digest conflict; draft the v2 clarification in `docs/44` and self-check `git diff --check`.
-- [ ] Jovi reviews the revised `docs/44` and explicitly confirms the bounded code-only implementation and branch push scope.
-- [ ] RED tests prove missing, stale, failed, tampered or mismatched probe proof stops before reservation/backend/image open; verify separate live-observation and whole-control digests.
-- [ ] Implement versioned v2 runtime identity validation, synthetic ledger-probe and independently cleaned proof without Owner ACL/system changes.
-- [ ] Run focused Real20 and full supported quality matrix; record actual exits, skip/NOT_AVAILABLE states and no real-data/model execution.
-- [ ] Register one direct successor in topology guards, build MANIFEST from Git index, create one ordinary commit, and verify handoff/preflight on its clean exact SHA.
-- [ ] Ordinary-push only the verified code-only review branch; read back remote SHA and obtain remote ChatGPT independent review.
+- [x] Jovi authorized continuation of the bounded code-only implementation and branch push scope in the 2026-09-27 execution instruction.
+- [x] RED tests prove missing, stale, failed, tampered or mismatched probe proof stops before reservation/backend/image open; live-observation and whole-control digests are separated.
+- [x] Implement versioned v2 runtime identity validation and fail-closed ledger-probe readiness/cleanup commands without Owner ACL/system changes; native probe remains `NOT_AVAILABLE` until Owner inputs exist.
+- [x] Run focused Real20 and full supported quality matrix; Python 3.12 result is `829 passed, 1 skipped, 95 subtests`; no real-data/model execution.
+- [x] Register the direct successor in topology guards, build MANIFEST from Git index, create commit `3abb18d282d4e7f8983c52a70142dbdcd8098bfa`, and verify handoff/preflight on its clean exact SHA.
+- [x] Ordinary-push the verified code-only review branch; remote branch readback is complete; remote ChatGPT independent review is pending.
 - [ ] Use review result to request the next bounded stage plan; retain R2 `NOT_RUN` and production `N2B2=LOCKED` until separate gates.
 
 ### Review
 
-- Current result: `DESIGN_CLARIFICATION_DRAFT_AWAITING_JOVI_REVIEW`. No implementation test or push has run in this new branch.
+- Current result: `CODE_ONLY_CANDIDATE_PUSHED_AWAITING_REMOTE_REVIEW` at `3abb18d282d4e7f8983c52a70142dbdcd8098bfa`.
 - A code-only `DONE` must be backed by fresh final-SHA tests and remote review; it cannot stand for native R2, Real20, production Bundle/App or scale-up.
