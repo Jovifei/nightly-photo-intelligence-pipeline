@@ -3,12 +3,14 @@
 from typing import Any
 
 from .contracts import EXIF_ALLOWLIST, Real20Error
+from .ledger_bootstrap import check_ledger_bootstrap
 from .ledger_probe import load_probe_configuration, probe_status, require_probe_configuration
 from .runtime_identity import RuntimeIdentity, validate_ledger_acl_probe, validate_runtime_identity
 
 __all__ = [
     "EXIF_ALLOWLIST",
     "Real20Error",
+    "check_ledger_bootstrap",
     "load_probe_configuration",
     "probe_status",
     "require_probe_configuration",

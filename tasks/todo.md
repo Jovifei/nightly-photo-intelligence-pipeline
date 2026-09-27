@@ -2094,3 +2094,34 @@ Remote review corrections now being implemented:
 - [x] Make runtime observation top-level domains strict and add unknown/missing-domain negatives.
 - [ ] Refresh final-SHA tests, quality evidence and remote review after the remediation commit.
 - A code-only `DONE` must be backed by fresh final-SHA tests and remote review; it cannot stand for native R2, Real20, production Bundle/App or scale-up.
+
+## Cache recovery and R2 bootstrap code gate — 2026-09-27
+
+Baseline: `af1adc5fbbc58f3155944756d6877dac2dce9b2b`.
+Execution branch: `codex/npi-pilot-app-20260927`.
+
+- [x] Create a new isolated worktree from the reviewed code-only baseline.
+- [x] Bind the new worktree to the dedicated C2C Project connector and verify
+  the remote workspace identity.
+- [x] Confirm the approved N2B1P cache root is missing; no fallback cache or
+  unrelated runtime is accepted.
+- [x] Confirm the exact approved quarantine run identity is absent from the
+  checked-in evidence; no network download or guessed quarantine search is
+  authorized in this slice.
+- [x] Add RED tests for the missing Real20 ledger/bootstrap boundary, including
+  the nonzero CLI exit for missing probe configuration.
+- [x] Add a read-only, configuration-derived `ledger-bootstrap-check` gate;
+  it must not create directories, change ACLs, impersonate, reserve, open
+  photos, or load models.
+- [x] Run the focused N2B1P, Real20 bootstrap, admission, runtime identity and
+  lifecycle suites: 47 passed, then 12 passed for the Git/topology and
+  bootstrap regression set.
+- [x] Record `CACHE_BLOCKED_QUARANTINE_IDENTITY_MISSING` and
+  `R2_BOOTSTRAP_CODE_GATE_GREEN` truthfully; stop before model/CUDA/photo/R2
+  execution and await exact-SHA remote review.
+- [ ] Recover the exact three N2B1P cache payloads; the checked-in evidence has
+  no quarantine run identity, so this remains blocked without a new Owner-bound
+  evidence handoff.
+- [ ] Execute native R2, model/CUDA qualification, Real20, mature-component
+  promotion, Bundle v1, Pilot, or App integration; each remains behind its
+  separate gate and remote review.

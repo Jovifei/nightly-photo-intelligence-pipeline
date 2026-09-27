@@ -1569,6 +1569,19 @@ def real20_prepare(
     typer.echo(json_strict_dump(result))
 
 
+@real20_app.command("ledger-bootstrap-check")
+def real20_ledger_bootstrap_check(
+    project_root: Path = typer.Option(..., "--project-root"),
+) -> None:
+    """Check the fixed ledger bootstrap boundary without mutating it."""
+    from .real20 import check_ledger_bootstrap
+
+    result = check_ledger_bootstrap(project_root)
+    typer.echo(json_strict_dump(result))
+    if result["status"] != "READY_EXISTING_LEDGER":
+        raise typer.Exit(code=1)
+
+
 @real20_app.command("ledger-probe")
 def real20_ledger_probe(
     project_root: Path = typer.Option(..., "--project-root"),
