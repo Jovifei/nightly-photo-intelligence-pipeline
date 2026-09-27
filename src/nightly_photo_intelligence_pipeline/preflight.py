@@ -1227,6 +1227,11 @@ def _check_git_baselines() -> CheckResult:
             and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "35")
             and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "36")
         )
+        real20_native_ledger_qualification_topology = (
+            git("rev-parse", "HEAD^") == (0, "9696e814b875b974fefceb8a39a5d14aa1c92d77")
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "36")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "37")
+        )
         portability_record_ok = True
         if (
             portability_candidate
@@ -1253,6 +1258,7 @@ def _check_git_baselines() -> CheckResult:
             or real20_terminal_evidence_topology
             or real20_native_ledger_topology
             or real20_native_ledger_followup_topology
+            or real20_native_ledger_qualification_topology
         ):
             record_path = root / "research" / "N2B1P_manifest_portability_remediation.json"
             schema_path = root / "schemas" / "n2b1p_manifest_portability_remediation_v1.schema.json"
@@ -1330,7 +1336,8 @@ def _check_git_baselines() -> CheckResult:
             or real20_preflight_receipt_topology
             or real20_terminal_evidence_topology
             or real20_native_ledger_topology
-            or real20_native_ledger_followup_topology,
+            or real20_native_ledger_followup_topology
+            or real20_native_ledger_qualification_topology,
             portability_record_ok,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),
@@ -1356,7 +1363,8 @@ def _check_git_baselines() -> CheckResult:
                 "runtime candidate; a Real20 transition code-only candidate may follow "
                 "the R0 delivery; the native ledger-closure candidate may follow the "
                 "current transition candidate; a native ledger acceptance follow-up may "
-                "follow that candidate; "
+                "follow that candidate; the final code-qualified Real20 successor may "
+                "follow the native acceptance candidate; "
                 "no merge; worktree clean"
             ),
         )

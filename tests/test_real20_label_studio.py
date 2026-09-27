@@ -1,4 +1,5 @@
 """Label Studio protocol tests; synthetic evaluation JSON and explicit preview URIs."""
+
 from __future__ import annotations
 
 import copy
@@ -8,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from referencing.exceptions import NoSuchResource
 
 from nightly_photo_intelligence_pipeline.real20 import review_exchange as bridge
 
@@ -16,18 +18,43 @@ def example() -> tuple[bytes, dict[str, Any]]:
     assets, previews = [], {}
     for index, case_id in enumerate(bridge.CASE_IDS, 1):
         if index == 20:
-            assets.append({"case_id": case_id, "action": "REFERENCE_ONLY", "duplicate_of": "real20-019"})
+            assets.append(
+                {"case_id": case_id, "action": "REFERENCE_ONLY", "duplicate_of": "real20-019"}
+            )
             continue
         image_sha = f"{index:064x}"
-        facts = {"schema_version": "1.2", "case_id": case_id, "image_sha256": image_sha,
-                 "person_count": 1, "fact_ids": ["fact-person-count"]}
+        facts = {
+            "schema_version": "1.2",
+            "case_id": case_id,
+            "image_sha256": image_sha,
+            "person_count": 1,
+            "fact_ids": ["fact-person-count"],
+        }
         facts["fact_digest"] = bridge.sha(bridge.canonical(facts)[:-1])
-        assets.append({"case_id": case_id, "action": "INFER_ONCE", "source_sha256": image_sha,
-                       "facts": facts, "exif": {}, "interpretation": {"advice": "Synthetic advice only"}})
-        previews[case_id] = {"image_url": f"/data/local-files/?d=real20-previews/{case_id}.jpg", "source_sha256": image_sha}
-    result = {"schema_version": "npi-real20-evaluation-v1", "status": "REAL20_COMPLETE",
-              "candidate_commit": "a" * 40, "review_decision": "PENDING_HUMAN_REVIEW",
-              "sqlite_write": False, "app_write": False, "production_bundle": False, "assets": assets}
+        assets.append(
+            {
+                "case_id": case_id,
+                "action": "INFER_ONCE",
+                "source_sha256": image_sha,
+                "facts": facts,
+                "exif": {},
+                "interpretation": {"advice": "Synthetic advice only"},
+            }
+        )
+        previews[case_id] = {
+            "image_url": f"/data/local-files/?d=real20-previews/{case_id}.jpg",
+            "source_sha256": image_sha,
+        }
+    result = {
+        "schema_version": "npi-real20-evaluation-v1",
+        "status": "REAL20_COMPLETE",
+        "candidate_commit": "a" * 40,
+        "review_decision": "PENDING_HUMAN_REVIEW",
+        "sqlite_write": False,
+        "app_write": False,
+        "production_bundle": False,
+        "assets": assets,
+    }
     return bridge.canonical(result), previews
 
 
@@ -39,16 +66,29 @@ def tasks() -> list[dict[str, Any]]:
 def annotated(original: list[dict[str, Any]]) -> list[dict[str, Any]]:
     output = copy.deepcopy(original)
     for task in output:
-        task["annotations"] = [{"id": f"annotation-{task['id']}", "task": task["id"],
-                                "completed_by": 7, "was_cancelled": False,
-                                "result": [{"from_name": "decision", "to_name": "photo", "type": "choices",
-                                            "value": {"choices": ["ACCEPT"]}}]}]
+        task["annotations"] = [
+            {
+                "id": f"annotation-{task['id']}",
+                "task": task["id"],
+                "completed_by": 7,
+                "was_cancelled": False,
+                "result": [
+                    {
+                        "from_name": "decision",
+                        "to_name": "photo",
+                        "type": "choices",
+                        "value": {"choices": ["ACCEPT"]},
+                    }
+                ],
+            }
+        ]
     return output
 
 
 def import_review(exported: object, original: list[dict[str, Any]]) -> dict[str, Any]:
     return bridge.import_annotations(
-        exported, original_tasks_bytes=bridge.canonical(original),
+        exported,
+        original_tasks_bytes=bridge.canonical(original),
     )
 
 
@@ -60,7 +100,17 @@ def test_export_is_deterministic_and_has_no_approval() -> None:
     assert len(one) == 20 and all(not task["annotations"] for task in one)
     assert one[-1]["data"]["duplicate_of"] == "real20-019"
     assert one[-1]["data"]["image"] == one[-2]["data"]["image"]
-    assert all(result["from_name"] != "decision" for task in one for prediction in task["predictions"] for result in prediction["result"])
+    assert all(
+        result["from_name"] != "decision"
+        for task in one
+        for prediction in task["predictions"]
+        for result in prediction["result"]
+    )
+
+
+def test_binding_registry_refuses_remote_schema_retrieval() -> None:
+    with pytest.raises(NoSuchResource):
+        bridge._BINDING_REGISTRY.get_or_retrieve("https://remote.invalid/schema.json")
 
 
 def test_roundtrip_records_human_choices_but_never_owner_approval() -> None:
@@ -70,7 +120,9 @@ def test_roundtrip_records_human_choices_but_never_owner_approval() -> None:
     assert result["status"] == "HUMAN_REVIEW_RECORDED_PENDING_OWNER"
     assert result["records"][0]["annotation_id"] == "annotation-1"
     assert not result["execution_authorized"] and not result["production_bundle_created"]
-    assert all(not row["owner_approved"] and not row["bundle_eligible"] for row in result["records"])
+    assert all(
+        not row["owner_approved"] and not row["bundle_eligible"] for row in result["records"]
+    )
 
 
 def test_predictions_are_not_human_reviews() -> None:
@@ -202,11 +254,18 @@ def test_changed_prediction_rejected() -> None:
         import_review(output, original)
 
 
-@pytest.mark.parametrize("url", ["https://remote.invalid/photo.jpg", "file://" + "/private/photo.jpg",
-                                "/data/local-files/?d=../photo.jpg", "/data/local-files/?d=%2fprivate.jpg",
-                                "/data/local-files/?d=real20-previews/real20-001.jpg&d=x",
-                                "/data/local-files/?d=real20-previews/real20-001.jpg:stream",
-                                "/data/local-files/?d=real20-previews/real20-002.jpg"])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://remote.invalid/photo.jpg",
+        "file://" + "/private/photo.jpg",
+        "/data/local-files/?d=../photo.jpg",
+        "/data/local-files/?d=%2fprivate.jpg",
+        "/data/local-files/?d=real20-previews/real20-001.jpg&d=x",
+        "/data/local-files/?d=real20-previews/real20-001.jpg:stream",
+        "/data/local-files/?d=real20-previews/real20-002.jpg",
+    ],
+)
 def test_only_explicit_local_preview_mapping(url: str) -> None:
     data, previews = example()
     previews["real20-001"]["image_url"] = url
@@ -248,7 +307,7 @@ def test_edit_requires_reason_and_reviewer_not_bool() -> None:
         import_review(output, original)
 
 
-@pytest.mark.parametrize("data", [b'{"a":1,"a":2}', b'{"a":NaN}', b'{"a":1e999}', b'{}\\n'])
+@pytest.mark.parametrize("data", [b'{"a":1,"a":2}', b'{"a":NaN}', b'{"a":1e999}', b"{}\\n"])
 def test_strict_input_json(data: bytes) -> None:
     with pytest.raises(ValueError):
         bridge.parse(data)
@@ -258,9 +317,14 @@ def test_ui_control_names_match_exported_results() -> None:
     root = Path(__file__).resolve().parents[1]
     path = root / "integrations/label_studio/review_config.xml"
     if not path.is_file():
-        path = Path(bridge.__file__).resolve().parents[3] / "integrations/label_studio/review_config.xml"
+        path = (
+            Path(bridge.__file__).resolve().parents[3]
+            / "integrations/label_studio/review_config.xml"
+        )
     tree = ET.parse(path)
-    controls = {element.attrib["name"]: element for element in tree.iter() if "name" in element.attrib}
+    controls = {
+        element.attrib["name"]: element for element in tree.iter() if "name" in element.attrib
+    }
     assert set(controls) == {"photo", "facts", "advice", "decision", "issues", "revision", "notes"}
     assert controls["decision"].attrib["toName"] == "photo"
     assert {c.attrib["value"] for c in controls["decision"]} == bridge.DECISIONS
@@ -286,17 +350,43 @@ def test_cli_export_import_and_source_boundary(tmp_path: Path) -> None:
     evaluation.write_bytes(data)
     mapping.write_bytes(bridge.canonical(previews))
     before = {p.name: p.read_bytes() for p in (evaluation, mapping)}
-    argv = ["export", "--evaluation", str(evaluation), "--evaluation-sha256", bridge.sha(data),
-            "--preview-map", str(mapping), "--source-root", str(source), "--out", str(output)]
+    argv = [
+        "export",
+        "--evaluation",
+        str(evaluation),
+        "--evaluation-sha256",
+        bridge.sha(data),
+        "--preview-map",
+        str(mapping),
+        "--source-root",
+        str(source),
+        "--out",
+        str(output),
+    ]
     assert bridge.main(argv) == 0
     assert not source.exists()
     original = bridge.parse(output.read_bytes())
     annotation_file = tmp_path / "annotations.json"
     annotation_file.write_bytes(bridge.canonical(annotated(original)))
     result = tmp_path / "review.json"
-    assert bridge.main(["import", "--annotations", str(annotation_file),
-                        "--original-tasks", str(output), "--original-tasks-sha256", bridge.sha(output.read_bytes()),
-                        "--source-root", str(source), "--out", str(result)]) == 0
+    assert (
+        bridge.main(
+            [
+                "import",
+                "--annotations",
+                str(annotation_file),
+                "--original-tasks",
+                str(output),
+                "--original-tasks-sha256",
+                bridge.sha(output.read_bytes()),
+                "--source-root",
+                str(source),
+                "--out",
+                str(result),
+            ]
+        )
+        == 0
+    )
     assert bridge.parse(result.read_bytes())["review_count"] == 20
     assert not bridge.parse(result.read_bytes())["production_bundle_created"]
     original_output = output.read_bytes()

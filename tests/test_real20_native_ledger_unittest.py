@@ -1,4 +1,5 @@
 """Stdlib-only Windows acceptance probes for the append-only Real20 ledger."""
+
 from __future__ import annotations
 
 import ctypes
@@ -17,7 +18,6 @@ from nightly_photo_intelligence_pipeline.windows_bound_promotion import (
     _file_access,
     bind_existing_directory,
 )
-
 
 _FORBIDDEN_LEDGER_HANDLE_RIGHTS = 0x000D0040
 
@@ -118,9 +118,7 @@ def _load_admission_module():
 
 class TestAppendOnlyAccessMask(unittest.TestCase):
     def test_append_only_profile_requests_creation_and_write_without_delete(self) -> None:
-        directory_mask = _directory_access(
-            True, append_only=True, allow_subdirectories=True
-        )
+        directory_mask = _directory_access(True, append_only=True, allow_subdirectories=True)
         claim_mask = _directory_access(True, append_only=True, allow_subdirectories=False)
         file_mask = _file_access(True, append_only=True)
 
@@ -140,15 +138,17 @@ class TestAppendOnlyAccessMask(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="npi-real20-file-dacl-") as temp:
             ledger_path = Path(temp) / "ledger"
             ledger_path.mkdir()
-            with bind_existing_directory(
-                ledger_path, writable=True, append_only=True, security_check=True
-            ) as ledger:
-                with ledger.create_directory("a" * 64) as claim:
-                    with self.assertRaisesRegex(NpiError, "APPEND_ONLY_DACL_NOT_DENIED"):
-                        claim.create_file("reservation.json")
-                    self.assertIn("reservation.json", claim.list_names())
-                    with claim.open_file("reservation.json") as empty_file:
-                        self.assertEqual(empty_file.read_all(max_bytes=16), b"")
+            with (
+                bind_existing_directory(
+                    ledger_path, writable=True, append_only=True, security_check=True
+                ) as ledger,
+                ledger.create_directory("a" * 64) as claim,
+            ):
+                with self.assertRaisesRegex(NpiError, "APPEND_ONLY_DACL_NOT_DENIED"):
+                    claim.create_file("reservation.json")
+                self.assertIn("reservation.json", claim.list_names())
+                with claim.open_file("reservation.json") as empty_file:
+                    self.assertEqual(empty_file.read_all(max_bytes=16), b"")
 
     def test_bound_append_only_claim_writes_and_reopens_without_delete_rights(self) -> None:
         with tempfile.TemporaryDirectory(prefix="npi-real20-append-only-") as temp:
@@ -157,11 +157,15 @@ class TestAppendOnlyAccessMask(unittest.TestCase):
             claim_name = "a" * 64
             reservation_bytes = _reservation_bytes(claim_name)
             with bind_existing_directory(ledger_path, writable=True, append_only=True) as ledger:
-                self.assertEqual(_granted_access(ledger._handle) & _FORBIDDEN_LEDGER_HANDLE_RIGHTS, 0)
+                self.assertEqual(
+                    _granted_access(ledger._handle) & _FORBIDDEN_LEDGER_HANDLE_RIGHTS, 0
+                )
                 with self.assertRaisesRegex(NpiError, "APPEND_ONLY_NAME_DENIED"):
                     ledger.create_file("unscoped.json")
                 with ledger.create_directory(claim_name) as claim:
-                    self.assertEqual(_granted_access(claim._handle) & _FORBIDDEN_LEDGER_HANDLE_RIGHTS, 0)
+                    self.assertEqual(
+                        _granted_access(claim._handle) & _FORBIDDEN_LEDGER_HANDLE_RIGHTS, 0
+                    )
                     self.assertEqual(_granted_access(claim._handle) & 0x00000004, 0)
                     with self.assertRaises(NpiError):
                         claim.create_directory("nested")
@@ -217,7 +221,9 @@ class TestAppendOnlyAccessMask(unittest.TestCase):
                 ) as ledger:
                     for right in (0x00000040, 0x00010000, 0x00040000, 0x00080000):
                         result = ledger.access_check(right)
-                        self.assertIs(result.granted, False, msg=f"right={right:#x} result={result!r}")
+                        self.assertIs(
+                            result.granted, False, msg=f"right={right:#x} result={result!r}"
+                        )
                         self.assertIsNone(result.win32_error)
                     for right in (0x00000040, 0x00040000, 0x00080000):
                         parent = ledger.parent_access_check(right)
@@ -293,8 +299,13 @@ class TestAppendOnlyAccessMask(unittest.TestCase):
     def _open_security_handle(path: Path) -> int:
         kernel = ctypes.WinDLL("kernel32", use_last_error=True)
         kernel.CreateFileW.argtypes = [
-            ctypes.c_wchar_p, ctypes.c_ulong, ctypes.c_ulong, ctypes.c_void_p,
-            ctypes.c_ulong, ctypes.c_ulong, ctypes.c_void_p,
+            ctypes.c_wchar_p,
+            ctypes.c_ulong,
+            ctypes.c_ulong,
+            ctypes.c_void_p,
+            ctypes.c_ulong,
+            ctypes.c_ulong,
+            ctypes.c_void_p,
         ]
         kernel.CreateFileW.restype = ctypes.c_void_p
         handle = kernel.CreateFileW(str(path), 0x00040000, 7, None, 3, 0x02000000, None)
@@ -308,7 +319,12 @@ class TestAppendOnlyAccessMask(unittest.TestCase):
         kernel = ctypes.WinDLL("kernel32", use_last_error=True)
         descriptor = ctypes.c_void_p()
         convert = advapi.ConvertStringSecurityDescriptorToSecurityDescriptorW
-        convert.argtypes = [ctypes.c_wchar_p, ctypes.c_ulong, ctypes.POINTER(ctypes.c_void_p), ctypes.c_void_p]
+        convert.argtypes = [
+            ctypes.c_wchar_p,
+            ctypes.c_ulong,
+            ctypes.POINTER(ctypes.c_void_p),
+            ctypes.c_void_p,
+        ]
         convert.restype = ctypes.c_int
         set_security = advapi.SetKernelObjectSecurity
         set_security.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_void_p]
@@ -354,9 +370,13 @@ class TestAppendOnlyAccessMask(unittest.TestCase):
                 )
                 self.assertEqual(terminal["status"], "COMPLETE")
                 self.assertEqual(terminal["schema_version"], "npi-real20-ledger-terminal-v1")
-                self.assertTrue(claim._closed, "terminal writer must close before reopen verification")
+                self.assertTrue(
+                    claim._closed, "terminal writer must close before reopen verification"
+                )
                 with ledger.open_directory(credential_sha, writable=True) as reopened:
-                    self.assertEqual(ledger_api.read_terminal_record(reopened, credential_sha), terminal)
+                    self.assertEqual(
+                        ledger_api.read_terminal_record(reopened, credential_sha), terminal
+                    )
                     with self.assertRaisesRegex(ValueError, "TERMINAL_ALREADY_STARTED"):
                         ledger_api.append_terminal_record(
                             ledger,
@@ -405,38 +425,40 @@ class TestAppendOnlyAccessMask(unittest.TestCase):
             ledger_path = Path(temp) / "ledger"
             ledger_path.mkdir()
             credential_sha = "a" * 64
-            with bind_existing_directory(ledger_path, writable=True, append_only=True) as ledger:
-                with ledger.create_directory(credential_sha) as claim:
-                    reservation_bytes = _reservation_bytes(credential_sha)
-                    with claim.create_file("reservation.json") as reservation:
-                        reservation.write(reservation_bytes)
-                        reservation.flush()
-                    record = {
-                        "schema_version": "npi-real20-ledger-terminal-v1",
-                        "credential_sha256": credential_sha,
-                        "reservation_sha256": sha256(reservation_bytes),
-                        "status": "COMPLETE",
-                        "evidence_status": "PERSISTENCE_FAILED",
-                        "evidence_sha256": None,
-                        "finished_at_utc": "2026-09-24T00:00:00+00:00",
-                    }
-                    record_bytes = canonical(record)
-                    record_sha = sha256(record_bytes)
-                    record_name = "terminal-v1-" + record_sha + ".json"
-                    commit = {
-                        "schema_version": "npi-real20-ledger-terminal-commit-v1",
-                        "credential_sha256": credential_sha,
-                        "record_name": record_name,
-                        "record_sha256": record_sha,
-                    }
-                    with claim.create_file(record_name) as handle:
-                        handle.write(record_bytes)
-                        handle.flush()
-                    with claim.create_file("terminal-commit-v1-" + record_sha + ".json") as handle:
-                        handle.write(canonical(commit))
-                        handle.flush()
-                    with self.assertRaisesRegex(ValueError, "TERMINAL_EVIDENCE_INVALID"):
-                        ledger_api.read_terminal_record(claim, credential_sha)
+            with (
+                bind_existing_directory(ledger_path, writable=True, append_only=True) as ledger,
+                ledger.create_directory(credential_sha) as claim,
+            ):
+                reservation_bytes = _reservation_bytes(credential_sha)
+                with claim.create_file("reservation.json") as reservation:
+                    reservation.write(reservation_bytes)
+                    reservation.flush()
+                record = {
+                    "schema_version": "npi-real20-ledger-terminal-v1",
+                    "credential_sha256": credential_sha,
+                    "reservation_sha256": sha256(reservation_bytes),
+                    "status": "COMPLETE",
+                    "evidence_status": "PERSISTENCE_FAILED",
+                    "evidence_sha256": None,
+                    "finished_at_utc": "2026-09-24T00:00:00+00:00",
+                }
+                record_bytes = canonical(record)
+                record_sha = sha256(record_bytes)
+                record_name = "terminal-v1-" + record_sha + ".json"
+                commit = {
+                    "schema_version": "npi-real20-ledger-terminal-commit-v1",
+                    "credential_sha256": credential_sha,
+                    "record_name": record_name,
+                    "record_sha256": record_sha,
+                }
+                with claim.create_file(record_name) as handle:
+                    handle.write(record_bytes)
+                    handle.flush()
+                with claim.create_file("terminal-commit-v1-" + record_sha + ".json") as handle:
+                    handle.write(canonical(commit))
+                    handle.flush()
+                with self.assertRaisesRegex(ValueError, "TERMINAL_EVIDENCE_INVALID"):
+                    ledger_api.read_terminal_record(claim, credential_sha)
 
     def test_terminal_reader_rejects_complete_without_reservation(self) -> None:
         from nightly_photo_intelligence_pipeline.engineering.common import sha256
@@ -446,34 +468,36 @@ class TestAppendOnlyAccessMask(unittest.TestCase):
             ledger_path = Path(temp) / "ledger"
             ledger_path.mkdir()
             credential_sha = "a" * 64
-            with bind_existing_directory(ledger_path, writable=True, append_only=True) as ledger:
-                with ledger.create_directory(credential_sha) as claim:
-                    record = {
-                        "schema_version": "npi-real20-ledger-terminal-v1",
-                        "credential_sha256": credential_sha,
-                        "reservation_sha256": None,
-                        "status": "COMPLETE",
-                        "evidence_status": "PERSISTED",
-                        "evidence_sha256": "f" * 64,
-                        "finished_at_utc": "2026-09-24T00:00:00+00:00",
-                    }
-                    record_bytes = canonical(record)
-                    record_sha = sha256(record_bytes)
-                    record_name = "terminal-v1-" + record_sha + ".json"
-                    commit = {
-                        "schema_version": "npi-real20-ledger-terminal-commit-v1",
-                        "credential_sha256": credential_sha,
-                        "record_name": record_name,
-                        "record_sha256": record_sha,
-                    }
-                    with claim.create_file(record_name) as handle:
-                        handle.write(record_bytes)
-                        handle.flush()
-                    with claim.create_file("terminal-commit-v1-" + record_sha + ".json") as handle:
-                        handle.write(canonical(commit))
-                        handle.flush()
-                    with self.assertRaisesRegex(ValueError, "TERMINAL_RESERVATION_INVALID"):
-                        ledger_api.read_terminal_record(claim, credential_sha)
+            with (
+                bind_existing_directory(ledger_path, writable=True, append_only=True) as ledger,
+                ledger.create_directory(credential_sha) as claim,
+            ):
+                record = {
+                    "schema_version": "npi-real20-ledger-terminal-v1",
+                    "credential_sha256": credential_sha,
+                    "reservation_sha256": None,
+                    "status": "COMPLETE",
+                    "evidence_status": "PERSISTED",
+                    "evidence_sha256": "f" * 64,
+                    "finished_at_utc": "2026-09-24T00:00:00+00:00",
+                }
+                record_bytes = canonical(record)
+                record_sha = sha256(record_bytes)
+                record_name = "terminal-v1-" + record_sha + ".json"
+                commit = {
+                    "schema_version": "npi-real20-ledger-terminal-commit-v1",
+                    "credential_sha256": credential_sha,
+                    "record_name": record_name,
+                    "record_sha256": record_sha,
+                }
+                with claim.create_file(record_name) as handle:
+                    handle.write(record_bytes)
+                    handle.flush()
+                with claim.create_file("terminal-commit-v1-" + record_sha + ".json") as handle:
+                    handle.write(canonical(commit))
+                    handle.flush()
+                with self.assertRaisesRegex(ValueError, "TERMINAL_RESERVATION_INVALID"):
+                    ledger_api.read_terminal_record(claim, credential_sha)
 
 
 if __name__ == "__main__":

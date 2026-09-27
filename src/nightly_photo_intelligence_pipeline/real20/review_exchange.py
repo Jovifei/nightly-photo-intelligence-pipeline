@@ -4,6 +4,7 @@ No Label Studio server is installed or contacted. No image is opened. Model
 predictions and human annotations stay separate; imported choices never grant
 execution authority or make a production Bundle. All code here is NPI-authored.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -20,7 +21,6 @@ from urllib.parse import parse_qs, urlsplit
 
 from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 from referencing import Registry
-from referencing.exceptions import NoSuchResource
 
 MAX_BYTES = 16 * 1024 * 1024
 CASE_IDS = tuple(f"real20-{i:03d}" for i in range(1, 21))
@@ -39,7 +39,9 @@ def require(condition: bool, code: str) -> None:
 
 def canonical(value: object) -> bytes:
     return (
-        json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+        json.dumps(
+            value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
+        )
         + "\n"
     ).encode("utf-8")
 
@@ -70,51 +72,94 @@ def parse(data: bytes) -> Any:
 
     require(len(data) <= MAX_BYTES, "REVIEW_SIZE_LIMIT")
     try:
-        return json.loads(data.decode("utf-8"), object_pairs_hook=pairs,
-                          parse_float=finite, parse_constant=invalid)
+        return json.loads(
+            data.decode("utf-8"),
+            object_pairs_hook=pairs,
+            parse_float=finite,
+            parse_constant=invalid,
+        )
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise ReviewExchangeError("REVIEW_INVALID_JSON") from exc
 
 
-def no_remote_resource(uri: str) -> Any:
-    raise NoSuchResource(ref=uri)
-
-
 # Reuse the existing jsonschema/referencing dependencies instead of inventing
-# another validator. Only this fixed local schema is selected by the program.
+# another validator. Registry's pinned default retrieval raises instead of
+# opening remote references.
 BINDING_SCHEMA: dict[str, Any] = {
-    "type": "object", "additionalProperties": False,
-    "required": ["schema_version", "evaluation_sha256", "candidate_commit", "case_id",
-                 "source_row_sha256", "source_image_sha256", "fact_digest"],
+    "type": "object",
+    "additionalProperties": False,
+    "required": [
+        "schema_version",
+        "evaluation_sha256",
+        "candidate_commit",
+        "case_id",
+        "source_row_sha256",
+        "source_image_sha256",
+        "fact_digest",
+    ],
     "properties": {
         "schema_version": {"const": "npi-label-studio-binding-v1"},
-        "evaluation_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "minLength": 64, "maxLength": 64},
-        "candidate_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$", "minLength": 40, "maxLength": 40},
+        "evaluation_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "minLength": 64,
+            "maxLength": 64,
+        },
+        "candidate_commit": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$",
+            "minLength": 40,
+            "maxLength": 40,
+        },
         "case_id": {"enum": list(CASE_IDS)},
-        "source_row_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "minLength": 64, "maxLength": 64},
-        "source_image_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "minLength": 64, "maxLength": 64},
-        "fact_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$", "minLength": 64, "maxLength": 64},
+        "source_row_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "minLength": 64,
+            "maxLength": 64,
+        },
+        "source_image_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "minLength": 64,
+            "maxLength": 64,
+        },
+        "fact_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "minLength": 64,
+            "maxLength": 64,
+        },
     },
 }
-BINDING_VALIDATOR = Draft202012Validator(
-    BINDING_SCHEMA, registry=Registry(retrieve=no_remote_resource)
-)
+_BINDING_REGISTRY = Registry()
+BINDING_VALIDATOR = Draft202012Validator(BINDING_SCHEMA, registry=_BINDING_REGISTRY)
 
 
 def _preview_url(value: object, case_id: str) -> str:
-    require(isinstance(value, str), "REVIEW_PREVIEW_URL_INVALID")
+    if not isinstance(value, str):
+        raise ReviewExchangeError("REVIEW_PREVIEW_URL_INVALID")
     url = urlsplit(value)
     query = parse_qs(url.query, keep_blank_values=True, strict_parsing=True)
-    require(not url.scheme and not url.netloc and not url.fragment
-            and url.path == "/data/local-files/" and set(query) == {"d"}
-            and len(query["d"]) == 1, "REVIEW_REMOTE_OR_UNSCOPED_PREVIEW")
+    require(
+        not url.scheme
+        and not url.netloc
+        and not url.fragment
+        and url.path == "/data/local-files/"
+        and set(query) == {"d"}
+        and len(query["d"]) == 1,
+        "REVIEW_REMOTE_OR_UNSCOPED_PREVIEW",
+    )
     relative = query["d"][0]
     path = PurePosixPath(relative)
-    require(path.parts == ("real20-previews", path.name)
-            and relative == str(path) and path.stem == case_id
-            and path.suffix.lower() in {".jpg", ".png", ".webp"}
-            and re.fullmatch(r"real20-previews/real20-[0-9]{3}\.(jpg|png|webp)", relative) is not None,
-            "REVIEW_PREVIEW_OUTSIDE_APPROVED_SUBDIRECTORY")
+    require(
+        path.parts == ("real20-previews", path.name)
+        and relative == str(path)
+        and path.stem == case_id
+        and path.suffix.lower() in {".jpg", ".png", ".webp"}
+        and re.fullmatch(r"real20-previews/real20-[0-9]{3}\.(jpg|png|webp)", relative) is not None,
+        "REVIEW_PREVIEW_OUTSIDE_APPROVED_SUBDIRECTORY",
+    )
     return value
 
 
@@ -127,22 +172,32 @@ def export_tasks(
     image SHA. Preview pixels must be prepared separately under Owner authority;
     this converter verifies the mapping, not the preview file bytes.
     """
-    require(is_sha(expected_sha256) and sha(evaluation_bytes) == expected_sha256,
-            "REVIEW_EVALUATION_HASH_MISMATCH")
+    require(
+        is_sha(expected_sha256) and sha(evaluation_bytes) == expected_sha256,
+        "REVIEW_EVALUATION_HASH_MISMATCH",
+    )
     value = parse(evaluation_bytes)
-    require(isinstance(value, dict) and value.get("status") == "REAL20_COMPLETE"
-            and value.get("schema_version") == "npi-real20-evaluation-v1"
-            and value.get("review_decision") == "PENDING_HUMAN_REVIEW"
-            and all(value.get(key) is False for key in ("sqlite_write", "app_write", "production_bundle")),
-            "REVIEW_EVALUATION_NOT_ELIGIBLE")
+    require(
+        isinstance(value, dict)
+        and value.get("status") == "REAL20_COMPLETE"
+        and value.get("schema_version") == "npi-real20-evaluation-v1"
+        and value.get("review_decision") == "PENDING_HUMAN_REVIEW"
+        and all(
+            value.get(key) is False for key in ("sqlite_write", "app_write", "production_bundle")
+        ),
+        "REVIEW_EVALUATION_NOT_ELIGIBLE",
+    )
     rows = value.get("assets")
-    require(isinstance(rows, list) and len(rows) == 20
-            and all(isinstance(row, dict) for row in rows), "REVIEW_CASE_SET_INVALID")
+    require(
+        isinstance(rows, list) and len(rows) == 20 and all(isinstance(row, dict) for row in rows),
+        "REVIEW_CASE_SET_INVALID",
+    )
     by_id = {row.get("case_id"): row for row in rows}
     require(set(by_id) == set(CASE_IDS), "REVIEW_CASE_SET_INVALID")
     canonical_ids = {key for key, row in by_id.items() if row.get("action") == "INFER_ONCE"}
-    require(len(canonical_ids) == 19 and set(previews) == canonical_ids,
-            "REVIEW_PREVIEW_SET_INVALID")
+    require(
+        len(canonical_ids) == 19 and set(previews) == canonical_ids, "REVIEW_PREVIEW_SET_INVALID"
+    )
     tasks: list[dict[str, Any]] = []
     for ordinal, case_id in enumerate(CASE_IDS, 1):
         row = by_id[case_id]
@@ -152,19 +207,32 @@ def export_tasks(
             require(row.get("action") == "REFERENCE_ONLY", "REVIEW_DUPLICATE_REFERENCE_INVALID")
         target = by_id[target_id]
         facts = target.get("facts")
-        require(isinstance(facts, dict) and facts.get("schema_version") == "1.2"
-                and facts.get("case_id") == target_id, "REVIEW_FACTS_INVALID")
+        require(
+            isinstance(facts, dict)
+            and facts.get("schema_version") == "1.2"
+            and facts.get("case_id") == target_id,
+            "REVIEW_FACTS_INVALID",
+        )
         fact_bytes = json.dumps(
             {key: item for key, item in facts.items() if key != "fact_digest"},
-            sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
         ).encode("utf-8")
         require(sha(fact_bytes) == facts.get("fact_digest"), "REVIEW_FACT_DIGEST_MISMATCH")
         image_sha = target.get("source_sha256")
-        require(is_sha(image_sha) and facts.get("image_sha256") == image_sha,
-                "REVIEW_IMAGE_BINDING_MISMATCH")
+        require(
+            is_sha(image_sha) and facts.get("image_sha256") == image_sha,
+            "REVIEW_IMAGE_BINDING_MISMATCH",
+        )
         preview = previews[target_id]
-        require(isinstance(preview, Mapping) and set(preview) == {"image_url", "source_sha256"}
-                and preview["source_sha256"] == image_sha, "REVIEW_PREVIEW_BINDING_MISMATCH")
+        require(
+            isinstance(preview, Mapping)
+            and set(preview) == {"image_url", "source_sha256"}
+            and preview["source_sha256"] == image_sha,
+            "REVIEW_PREVIEW_BINDING_MISMATCH",
+        )
         image_url = _preview_url(preview["image_url"], target_id)
         interpretation = target.get("interpretation")
         advice = json.dumps(interpretation, ensure_ascii=False, sort_keys=True, indent=2)
@@ -179,28 +247,40 @@ def export_tasks(
         }
         require(not list(BINDING_VALIDATOR.iter_errors(binding)), "REVIEW_BINDING_SCHEMA_INVALID")
         # Do not preselect ACCEPT or create any annotations on the user's behalf.
-        tasks.append({
-            "id": ordinal,
-            "data": {
-                "case_id": case_id,
-                "duplicate_of": target_id if target_id != case_id else "none",
-                "image": image_url,
-                "facts_text": json.dumps(facts, ensure_ascii=False, sort_keys=True, indent=2),
-                "advice_text": advice,
-                "npi_binding": binding,
-            },
-            "predictions": [{
-                "model_version": str(value.get("candidate_commit")),
-                "result": [{"from_name": "revision", "to_name": "photo", "type": "textarea",
-                            "value": {"text": [advice]}}],
-            }],
-            "annotations": [],
-        })
+        tasks.append(
+            {
+                "id": ordinal,
+                "data": {
+                    "case_id": case_id,
+                    "duplicate_of": target_id if target_id != case_id else "none",
+                    "image": image_url,
+                    "facts_text": json.dumps(facts, ensure_ascii=False, sort_keys=True, indent=2),
+                    "advice_text": advice,
+                    "npi_binding": binding,
+                },
+                "predictions": [
+                    {
+                        "model_version": str(value.get("candidate_commit")),
+                        "result": [
+                            {
+                                "from_name": "revision",
+                                "to_name": "photo",
+                                "type": "textarea",
+                                "value": {"text": [advice]},
+                            }
+                        ],
+                    }
+                ],
+                "annotations": [],
+            }
+        )
     return tasks
 
 
 def import_annotations(
-    exported: object, *, original_tasks_bytes: bytes,
+    exported: object,
+    *,
+    original_tasks_bytes: bytes,
 ) -> dict[str, Any]:
     """Import human records without upgrading them to Owner or Bundle approval.
 
@@ -210,48 +290,82 @@ def import_annotations(
     Label Studio may assign new task IDs on import; the frozen case binding in
     task data, not that server-local ID, identifies each Real20 case.
     """
-    require(isinstance(exported, list) and len(exported) <= 20
-            and all(isinstance(task, dict) for task in exported), "REVIEW_EXPORT_INVALID")
+    if not isinstance(exported, list) or len(exported) > 20:
+        raise ReviewExchangeError("REVIEW_EXPORT_INVALID")
+    exported_tasks: list[dict[str, Any]] = []
+    for task in exported:
+        if not isinstance(task, dict):
+            raise ReviewExchangeError("REVIEW_EXPORT_INVALID")
+        exported_tasks.append(task)
     original_tasks = parse(original_tasks_bytes)
     require(isinstance(original_tasks, list), "REVIEW_ORIGINAL_TASKS_INVALID")
     require(len(original_tasks) == 20, "REVIEW_ORIGINAL_TASKS_INVALID")
     original_ids = [task.get("id") for task in original_tasks if isinstance(task, Mapping)]
-    require(len(original_ids) == 20 and all(type(task_id) is int and task_id > 0
-            for task_id in original_ids) and len(set(original_ids)) == 20,
-            "REVIEW_TASK_ID_INVALID")
-    require(all(isinstance(task, Mapping) and isinstance(task.get("data"), Mapping)
-                for task in original_tasks), "REVIEW_ORIGINAL_TASKS_INVALID")
+    require(
+        len(original_ids) == 20
+        and all(type(task_id) is int and task_id > 0 for task_id in original_ids)
+        and len(set(original_ids)) == 20,
+        "REVIEW_TASK_ID_INVALID",
+    )
+    require(
+        all(
+            isinstance(task, Mapping) and isinstance(task.get("data"), Mapping)
+            for task in original_tasks
+        ),
+        "REVIEW_ORIGINAL_TASKS_INVALID",
+    )
     original = {task["data"].get("case_id"): task for task in original_tasks}
     require(set(original) == set(CASE_IDS), "REVIEW_ORIGINAL_TASKS_INVALID")
-    exported_ids = [task.get("id") for task in exported]
-    require(all(type(task_id) is int and task_id > 0 for task_id in exported_ids)
-            and len(set(exported_ids)) == len(exported_ids), "REVIEW_TASK_ID_INVALID")
+    exported_ids = [task.get("id") for task in exported_tasks]
+    require(
+        all(type(task_id) is int and task_id > 0 for task_id in exported_ids)
+        and len(set(exported_ids)) == len(exported_ids),
+        "REVIEW_TASK_ID_INVALID",
+    )
     rows: dict[str, Any] = {}
     blockers: list[dict[str, str]] = []
-    for task in exported:
+    for task in exported_tasks:
         task_id = task["id"]
         data = task.get("data")
-        require(isinstance(data, dict), "REVIEW_TASK_DATA_INVALID")
+        if not isinstance(data, dict):
+            raise ReviewExchangeError("REVIEW_TASK_DATA_INVALID")
         case_id = data.get("case_id")
-        require(case_id in original and case_id not in rows, "REVIEW_UNKNOWN_OR_DUPLICATE_TASK")
+        if not isinstance(case_id, str) or case_id not in original or case_id in rows:
+            raise ReviewExchangeError("REVIEW_UNKNOWN_OR_DUPLICATE_TASK")
         source = original[case_id]
         predictions = task.get("predictions", [])
-        require(isinstance(predictions, list) and all(isinstance(p, dict) for p in predictions),
-                "REVIEW_ORIGINAL_DATA_CHANGED")
-        predicted_values = [{"model_version": p.get("model_version"), "result": p.get("result")}
-                            for p in predictions]
-        original_values = [{"model_version": p.get("model_version"), "result": p.get("result")}
-                           for p in source["predictions"]]
-        require(data == source["data"] and predicted_values == original_values,
-                "REVIEW_ORIGINAL_DATA_CHANGED")
-        require(not list(BINDING_VALIDATOR.iter_errors(data.get("npi_binding"))),
-                "REVIEW_BINDING_SCHEMA_INVALID")
+        require(
+            isinstance(predictions, list) and all(isinstance(p, dict) for p in predictions),
+            "REVIEW_ORIGINAL_DATA_CHANGED",
+        )
+        predicted_values = [
+            {"model_version": p.get("model_version"), "result": p.get("result")}
+            for p in predictions
+        ]
+        original_values = [
+            {"model_version": p.get("model_version"), "result": p.get("result")}
+            for p in source["predictions"]
+        ]
+        require(
+            data == source["data"] and predicted_values == original_values,
+            "REVIEW_ORIGINAL_DATA_CHANGED",
+        )
+        require(
+            not list(BINDING_VALIDATOR.iter_errors(data.get("npi_binding"))),
+            "REVIEW_BINDING_SCHEMA_INVALID",
+        )
         annotations = task.get("annotations", [])
-        require(isinstance(annotations, list) and all(isinstance(a, dict) for a in annotations),
-                "REVIEW_ANNOTATIONS_INVALID")
-        require(all("task" not in annotation or annotation.get("task") == task_id
-                    for annotation in annotations),
-                "REVIEW_ANNOTATION_TASK_MISMATCH")
+        require(
+            isinstance(annotations, list) and all(isinstance(a, dict) for a in annotations),
+            "REVIEW_ANNOTATIONS_INVALID",
+        )
+        require(
+            all(
+                "task" not in annotation or annotation.get("task") == task_id
+                for annotation in annotations
+            ),
+            "REVIEW_ANNOTATION_TASK_MISMATCH",
+        )
         rows[case_id] = None
         active = [item for item in annotations if item.get("was_cancelled") is False]
         if len(active) != 1:
@@ -275,35 +389,58 @@ def import_annotations(
         require(isinstance(values, list), "REVIEW_ANNOTATION_RESULT_INVALID")
         fields: dict[str, Any] = {}
         for item in values:
-            require(isinstance(item, dict) and item.get("from_name") in {"decision", "issues", "revision", "notes"}
-                    and item.get("from_name") not in fields and item.get("to_name") == "photo",
-                    "REVIEW_ANNOTATION_FIELDS_INVALID")
+            require(
+                isinstance(item, dict)
+                and item.get("from_name") in {"decision", "issues", "revision", "notes"}
+                and item.get("from_name") not in fields
+                and item.get("to_name") == "photo",
+                "REVIEW_ANNOTATION_FIELDS_INVALID",
+            )
             require(isinstance(item.get("value"), dict), "REVIEW_ANNOTATION_VALUE_INVALID")
             fields[item["from_name"]] = item
         decision_field = fields.get("decision", {})
         choices = decision_field.get("value", {}).get("choices")
-        require(decision_field.get("type") == "choices" and isinstance(choices, list)
-                and len(choices) == 1 and choices[0] in DECISIONS, "REVIEW_HUMAN_DECISION_REQUIRED")
+        require(
+            decision_field.get("type") == "choices"
+            and isinstance(choices, list)
+            and len(choices) == 1
+            and choices[0] in DECISIONS,
+            "REVIEW_HUMAN_DECISION_REQUIRED",
+        )
         issue_field = fields.get("issues", {"type": "choices", "value": {"choices": []}})
         issues = issue_field.get("value", {}).get("choices")
-        require(issue_field.get("type") == "choices" and isinstance(issues, list)
-                and all(isinstance(issue, str) and issue in ISSUES for issue in issues),
-                "REVIEW_ISSUES_INVALID")
+        require(
+            issue_field.get("type") == "choices"
+            and isinstance(issues, list)
+            and all(isinstance(issue, str) and issue in ISSUES for issue in issues),
+            "REVIEW_ISSUES_INVALID",
+        )
         text_fields: dict[str, list[str]] = {}
         for name in ("revision", "notes"):
             item = fields.get(name, {"type": "textarea", "value": {"text": []}})
             text = item.get("value", {}).get("text")
-            require(item.get("type") == "textarea" and isinstance(text, list)
-                    and all(isinstance(t, str) and len(t) <= 64000 for t in text), "REVIEW_TEXT_INVALID")
+            require(
+                item.get("type") == "textarea"
+                and isinstance(text, list)
+                and all(isinstance(t, str) and len(t) <= 64000 for t in text),
+                "REVIEW_TEXT_INVALID",
+            )
             text_fields[name] = text
-        require(choices[0] != "EDIT" or any(t.strip() for t in text_fields["notes"]),
-                "REVIEW_EDIT_REASON_REQUIRED")
+        require(
+            choices[0] != "EDIT" or any(t.strip() for t in text_fields["notes"]),
+            "REVIEW_EDIT_REASON_REQUIRED",
+        )
         rows[case_id] = {
-            "case_id": case_id, "binding": data["npi_binding"],
-            "reviewer_id": reviewer, "annotation_id": annotation_id,
-            "human_decision": choices[0], "issues": sorted(set(issues)), **text_fields,
+            "case_id": case_id,
+            "binding": data["npi_binding"],
+            "reviewer_id": reviewer,
+            "annotation_id": annotation_id,
+            "human_decision": choices[0],
+            "issues": sorted(set(issues)),
+            **text_fields,
             "annotation_sha256": sha(canonical(annotation)),
-            "owner_approved": False, "bundle_eligible": False,
+            "owner_approved": False,
+            "bundle_eligible": False,
         }
     for case_id in CASE_IDS:
         if case_id not in rows:
@@ -311,32 +448,51 @@ def import_annotations(
     decisions = [rows[key] for key in CASE_IDS if rows.get(key) is not None]
     return {
         "schema_version": "npi-label-studio-human-review-v1",
-        "status": "HUMAN_REVIEW_RECORDED_PENDING_OWNER" if not blockers else "HUMAN_REVIEW_INCOMPLETE",
-        "review_count": len(decisions), "records": decisions, "blockers": blockers,
+        "status": "HUMAN_REVIEW_RECORDED_PENDING_OWNER"
+        if not blockers
+        else "HUMAN_REVIEW_INCOMPLETE",
+        "review_count": len(decisions),
+        "records": decisions,
+        "blockers": blockers,
         "original_tasks_sha256": sha(original_tasks_bytes),
         "imported_export_sha256": sha(canonical(exported)),
-        "execution_authorized": False, "production_bundle_created": False,
+        "execution_authorized": False,
+        "production_bundle_created": False,
     }
 
 
 def read_json_file(path: Path) -> bytes:
-    require(path.is_absolute() and path.suffix == ".json" and ".." not in path.parts
-            and not str(path).startswith(("\\\\", "//"))
-            and all(":" not in p for p in path.parts[1:]), "REVIEW_CONTROL_PATH_INVALID")
+    require(
+        path.is_absolute()
+        and path.suffix == ".json"
+        and ".." not in path.parts
+        and not str(path).startswith(("\\\\", "//"))
+        and all(":" not in p for p in path.parts[1:]),
+        "REVIEW_CONTROL_PATH_INVALID",
+    )
     for parent in path.parents:
         info = parent.lstat()
-        require(not stat.S_ISLNK(info.st_mode) and not getattr(info, "st_file_attributes", 0) & 0x400,
-                "REVIEW_REPARSE_DENIED")
+        require(
+            not stat.S_ISLNK(info.st_mode) and not getattr(info, "st_file_attributes", 0) & 0x400,
+            "REVIEW_REPARSE_DENIED",
+        )
     before = path.lstat()
-    require(stat.S_ISREG(before.st_mode) and before.st_nlink == 1
-            and not getattr(before, "st_file_attributes", 0) & 0x400
-            and before.st_size <= MAX_BYTES, "REVIEW_REGULAR_JSON_REQUIRED")
+    require(
+        stat.S_ISREG(before.st_mode)
+        and before.st_nlink == 1
+        and not getattr(before, "st_file_attributes", 0) & 0x400
+        and before.st_size <= MAX_BYTES,
+        "REVIEW_REGULAR_JSON_REQUIRED",
+    )
     with path.open("rb") as handle:
         data = handle.read(MAX_BYTES + 1)
     after = path.lstat()
-    require((before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns)
-            == (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)
-            and len(data) == before.st_size, "REVIEW_INPUT_CHANGED")
+    require(
+        (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns)
+        == (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)
+        and len(data) == before.st_size,
+        "REVIEW_INPUT_CHANGED",
+    )
     return data
 
 
@@ -367,22 +523,43 @@ def main(argv: list[str] | None = None) -> int:
     try:
         # A lexical exclusion only: do not stat or traverse the original-photo
         # directory merely to perform an artifact-only review conversion.
-        require(args.source_root.is_absolute() and ".." not in args.source_root.parts
-                and not str(args.source_root).startswith(("\\\\", "//"))
-                and all(":" not in p for p in args.source_root.parts[1:]),
-                "REVIEW_SOURCE_BOUNDARY_INVALID")
-        inputs = ([args.evaluation, args.preview_map] if args.mode == "export"
-                  else [args.original_tasks, args.annotations])
-        require(all(path.is_absolute() and not _overlaps(path, args.source_root)
-                    for path in [*inputs, args.out]), "REVIEW_SOURCE_ACCESS_DENIED")
+        require(
+            args.source_root.is_absolute()
+            and ".." not in args.source_root.parts
+            and not str(args.source_root).startswith(("\\\\", "//"))
+            and all(":" not in p for p in args.source_root.parts[1:]),
+            "REVIEW_SOURCE_BOUNDARY_INVALID",
+        )
+        inputs = (
+            [args.evaluation, args.preview_map]
+            if args.mode == "export"
+            else [args.original_tasks, args.annotations]
+        )
+        require(
+            all(
+                path.is_absolute() and not _overlaps(path, args.source_root)
+                for path in [*inputs, args.out]
+            ),
+            "REVIEW_SOURCE_ACCESS_DENIED",
+        )
         require(all(args.out != path for path in inputs), "REVIEW_OUTPUT_INPUT_COLLISION")
-        require(args.out.is_absolute() and args.out.suffix == ".json"
-                and ".." not in args.out.parts and not str(args.out).startswith(("\\\\", "//"))
-                and all(":" not in part for part in args.out.parts[1:]), "REVIEW_OUTPUT_PATH_INVALID")
+        require(
+            args.out.is_absolute()
+            and args.out.suffix == ".json"
+            and ".." not in args.out.parts
+            and not str(args.out).startswith(("\\\\", "//"))
+            and all(":" not in part for part in args.out.parts[1:]),
+            "REVIEW_OUTPUT_PATH_INVALID",
+        )
         for parent in args.out.parents:
             info = parent.lstat()
-            require(stat.S_ISDIR(info.st_mode) and not getattr(info, "st_file_attributes", 0) & 0x400
-                    and not (parent / ".git").exists(), "REVIEW_OUTPUT_IN_GIT_OR_REPARSE")
+            require(
+                stat.S_ISDIR(info.st_mode)
+                and not getattr(info, "st_file_attributes", 0) & 0x400
+                and not (parent / ".git").exists(),
+                "REVIEW_OUTPUT_IN_GIT_OR_REPARSE",
+            )
+        result: object
         if args.mode == "export":
             data = read_json_file(args.evaluation)
             previews = parse(read_json_file(args.preview_map))
@@ -390,10 +567,13 @@ def main(argv: list[str] | None = None) -> int:
             result = export_tasks(data, expected_sha256=args.evaluation_sha256, previews=previews)
         else:
             original = read_json_file(args.original_tasks)
-            require(is_sha(args.original_tasks_sha256) and sha(original) == args.original_tasks_sha256,
-                    "REVIEW_ORIGINAL_TASKS_HASH_MISMATCH")
+            require(
+                is_sha(args.original_tasks_sha256) and sha(original) == args.original_tasks_sha256,
+                "REVIEW_ORIGINAL_TASKS_HASH_MISMATCH",
+            )
             result = import_annotations(
-                parse(read_json_file(args.annotations)), original_tasks_bytes=original,
+                parse(read_json_file(args.annotations)),
+                original_tasks_bytes=original,
             )
         output = canonical(result)
         # Explicit, fresh, Owner-controlled external destination only. Not a
@@ -403,11 +583,21 @@ def main(argv: list[str] | None = None) -> int:
             handle.flush()
             os.fsync(handle.fileno())
     except (OSError, ValueError, TypeError, KeyError) as exc:
-        error = str(exc) if isinstance(exc, ReviewExchangeError) else "REVIEW_INPUT_OR_OUTPUT_INVALID"
+        error = (
+            str(exc) if isinstance(exc, ReviewExchangeError) else "REVIEW_INPUT_OR_OUTPUT_INVALID"
+        )
         print(json.dumps({"status": "REVIEW_EXCHANGE_FAILED", "error_code": error}))
         return 1
-    print(json.dumps({"status": "REVIEW_EXCHANGE_WRITTEN", "sha256": sha(output),
-                      "execution_authorized": False, "production_bundle_created": False}))
+    print(
+        json.dumps(
+            {
+                "status": "REVIEW_EXCHANGE_WRITTEN",
+                "sha256": sha(output),
+                "execution_authorized": False,
+                "production_bundle_created": False,
+            }
+        )
+    )
     return 0
 
 

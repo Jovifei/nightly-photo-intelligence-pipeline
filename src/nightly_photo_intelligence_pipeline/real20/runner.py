@@ -178,7 +178,9 @@ def _reservation(ledger_root: Any, credential_sha: str, bindings_sha: str, now: 
             cleanup.callback(target.close)
             try:
                 _finish(
-                    target, status="FAILED", evidence_sha=None,
+                    target,
+                    status="FAILED",
+                    evidence_sha=None,
                     evidence_status="RESERVATION_RECORD_FAILED",
                 )
             except BaseException as terminal_error:
@@ -249,7 +251,8 @@ def _record_failed_attempt(
         failures.append(evidence_error)
     try:
         _finish(
-            reservation, status="FAILED",
+            reservation,
+            status="FAILED",
             evidence_sha=sha256(failure_bytes) if failure_bytes is not None else None,
             evidence_status="PERSISTED" if failure_bytes is not None else "PERSISTENCE_FAILED",
         )
@@ -523,7 +526,8 @@ def _run_real20(
             rows: list[dict[str, Any]] = []
             facts_by_id: dict[str, dict[str, Any]] = {}
             aliases = {
-                asset.asset_id: f"real20-{index:03d}" for index, asset in enumerate(manifest.assets, 1)
+                asset.asset_id: f"real20-{index:03d}"
+                for index, asset in enumerate(manifest.assets, 1)
             }
             for ordinal, asset in enumerate(manifest.assets, 1):
                 if not root_before.same_identity(_source_root_identity(source_resolved)):

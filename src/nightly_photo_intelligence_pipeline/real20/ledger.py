@@ -1,4 +1,5 @@
 """Append-only terminal records for one-shot Real20 credentials."""
+
 from __future__ import annotations
 
 import re
@@ -22,9 +23,7 @@ def _validate_evidence(status: object, evidence_status: object, evidence_sha: ob
     if status == "COMPLETE":
         valid = evidence_status == "PERSISTED" and _is_sha(evidence_sha)
     elif status == "FAILED":
-        valid = (
-            evidence_status == "PERSISTED" and _is_sha(evidence_sha)
-        ) or (
+        valid = (evidence_status == "PERSISTED" and _is_sha(evidence_sha)) or (
             evidence_status in ("PERSISTENCE_FAILED", "RESERVATION_RECORD_FAILED")
             and evidence_sha is None
         )
@@ -36,13 +35,19 @@ def _validate_evidence(status: object, evidence_status: object, evidence_sha: ob
 
 def _valid_reservation(value: object, credential_sha: str) -> bool:
     if not isinstance(value, dict) or set(value) != {
-        "schema_version", "status", "credential_sha256", "bindings_sha256", "reserved_at_utc"
+        "schema_version",
+        "status",
+        "credential_sha256",
+        "bindings_sha256",
+        "reserved_at_utc",
     }:
         return False
-    if value.get("schema_version") != "npi-real20-consumption-v1" \
-            or value.get("status") != "RESERVED" \
-            or value.get("credential_sha256") != credential_sha \
-            or not _is_sha(value.get("bindings_sha256")):
+    if (
+        value.get("schema_version") != "npi-real20-consumption-v1"
+        or value.get("status") != "RESERVED"
+        or value.get("credential_sha256") != credential_sha
+        or not _is_sha(value.get("bindings_sha256"))
+    ):
         return False
     try:
         timestamp = datetime.fromisoformat(value["reserved_at_utc"])
@@ -86,12 +91,19 @@ def read_terminal_record(claim: BoundDirectory, credential_sha: str) -> dict[str
     if record_name != _TERMINAL_PREFIX + record_sha + ".json":
         raise ValueError("TERMINAL_RECORD_HASH_INVALID")
     expected_fields = {
-        "schema_version", "credential_sha256", "reservation_sha256", "status",
-        "evidence_status", "evidence_sha256", "finished_at_utc",
+        "schema_version",
+        "credential_sha256",
+        "reservation_sha256",
+        "status",
+        "evidence_status",
+        "evidence_sha256",
+        "finished_at_utc",
     }
-    if set(record) != expected_fields \
-            or record.get("schema_version") != "npi-real20-ledger-terminal-v1" \
-            or record.get("credential_sha256") != credential_sha:
+    if (
+        set(record) != expected_fields
+        or record.get("schema_version") != "npi-real20-ledger-terminal-v1"
+        or record.get("credential_sha256") != credential_sha
+    ):
         raise ValueError("TERMINAL_RECORD_INVALID")
     _validate_evidence(
         record.get("status"), record.get("evidence_status"), record.get("evidence_sha256")
@@ -135,8 +147,13 @@ def append_terminal_record(
         raise ValueError("TERMINAL_BINDING_INVALID")
     _validate_evidence(status, evidence_status, evidence_sha)
     claim_name = claim.identity.final_path.rsplit("\\", 1)[-1]
-    if claim._root is not ledger or claim._closed or claim_name != credential_sha \
-            or not ledger._append_only or not claim._append_only:
+    if (
+        claim._root is not ledger
+        or claim._closed
+        or claim_name != credential_sha
+        or not ledger._append_only
+        or not claim._append_only
+    ):
         raise ValueError("TERMINAL_LEDGER_HANDLE_INVALID")
     names = claim.list_names()
     if any(name.startswith((_TERMINAL_PREFIX, _COMMIT_PREFIX)) for name in names):

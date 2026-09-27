@@ -3,6 +3,7 @@
 Native handles are explicit test doubles; Windows handle/ACL acceptance remains
 in the existing native suite. These tests do not replace the full CLI suite.
 """
+
 from __future__ import annotations
 
 import json
@@ -19,10 +20,20 @@ from nightly_photo_intelligence_pipeline.real20.contracts import Real20Error
 
 
 def public_arguments(tmp_path: Path) -> dict[str, Any]:
-    result = {name: tmp_path / name for name in (
-        "source_root", "manifest_path", "credential_path", "anchor_path",
-        "runtime_identity_path", "model_identity_path", "ledger_root", "output_root", "cache_root",
-    )}
+    result = {
+        name: tmp_path / name
+        for name in (
+            "source_root",
+            "manifest_path",
+            "credential_path",
+            "anchor_path",
+            "runtime_identity_path",
+            "model_identity_path",
+            "ledger_root",
+            "output_root",
+            "cache_root",
+        )
+    }
     result["project_root"] = Path(runner.__file__).resolve().parents[3]
     return result
 
@@ -83,8 +94,12 @@ def test_revalidation_compares_to_original_admission(tmp_path: Path, monkeypatch
         runner.run_real20(**public_arguments(tmp_path))
 
 
-@pytest.mark.parametrize("fault", [OSError("synthetic I/O"), TypeError("synthetic type"), KeyboardInterrupt()])
-def test_failed_attempt_independent_checks_and_terminal(fault: BaseException, monkeypatch: Any) -> None:
+@pytest.mark.parametrize(
+    "fault", [OSError("synthetic I/O"), TypeError("synthetic type"), KeyboardInterrupt()]
+)
+def test_failed_attempt_independent_checks_and_terminal(
+    fault: BaseException, monkeypatch: Any
+) -> None:
     events: list[str] = []
     primary = RuntimeError("synthetic runner failure")
 
@@ -92,11 +107,16 @@ def test_failed_attempt_independent_checks_and_terminal(fault: BaseException, mo
         events.append("bad_check")
         raise fault
 
-    monkeypatch.setattr(runner, "_write_bound_new", lambda *_a: events.append("evidence") or b"failure")
+    monkeypatch.setattr(
+        runner, "_write_bound_new", lambda *_a: events.append("evidence") or b"failure"
+    )
     monkeypatch.setattr(runner, "_finish", lambda *_a, **kw: events.append(kw["status"]))
     with pytest.raises(BaseExceptionGroup) as caught:
         runner._record_failed_attempt(
-            object(), object(), "a" * 64, primary=primary,
+            object(),
+            object(),
+            "a" * 64,
+            primary=primary,
             checks=[bad_check, lambda: events.append("next_check")],
         )
     assert events == ["bad_check", "next_check", "evidence", "FAILED"]
@@ -115,7 +135,9 @@ def test_evidence_failure_does_not_skip_terminal(monkeypatch: Any) -> None:
     with pytest.raises(ExceptionGroup) as caught:
         runner._record_failed_attempt(object(), object(), "a" * 64, primary=primary, checks=[])
     assert caught.value.exceptions[0] is primary
-    assert terminal == [{"status": "FAILED", "evidence_sha": None, "evidence_status": "PERSISTENCE_FAILED"}]
+    assert terminal == [
+        {"status": "FAILED", "evidence_sha": None, "evidence_status": "PERSISTENCE_FAILED"}
+    ]
 
 
 def test_terminal_failure_retains_original_and_integrity_errors(monkeypatch: Any) -> None:
@@ -134,11 +156,17 @@ def test_terminal_failure_retains_original_and_integrity_errors(monkeypatch: Any
 
 def test_failure_record_redacts_exception_messages(monkeypatch: Any) -> None:
     records: list[dict[str, Any]] = []
-    monkeypatch.setattr(runner, "_write_bound_new", lambda _d, _n, p: records.append(p) or b"failure")
+    monkeypatch.setattr(
+        runner, "_write_bound_new", lambda _d, _n, p: records.append(p) or b"failure"
+    )
     monkeypatch.setattr(runner, "_finish", lambda *_a, **_k: None)
     with pytest.raises(OSError):
         runner._record_failed_attempt(
-            object(), object(), "a" * 64, primary=OSError("PRIVATE/source/photo.jpg"), checks=[],
+            object(),
+            object(),
+            "a" * 64,
+            primary=OSError("PRIVATE/source/photo.jpg"),
+            checks=[],
         )
     assert "PRIVATE" not in json.dumps(records)
     assert records[0]["failure_types"] == ["OSError"]
@@ -250,9 +278,11 @@ def test_exitstack_attempts_every_close_after_one_close_error() -> None:
     assert events == ["last", "bad", "first"]
 
 
-def test_admit_uses_configured_path_in_plan_and_validates_bound_object(tmp_path: Path, monkeypatch: Any) -> None:
-    from hashlib import sha256 as digest
+def test_admit_uses_configured_path_in_plan_and_validates_bound_object(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
     from datetime import timedelta
+    from hashlib import sha256 as digest
 
     def canonical(value: Any) -> bytes:
         return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
@@ -260,10 +290,16 @@ def test_admit_uses_configured_path_in_plan_and_validates_bound_object(tmp_path:
     def hash_bytes(data: bytes) -> str:
         return digest(data).hexdigest()
 
-    project, runtime, source, cache, out = [tmp_path / key for key in ("project", "runtime", "source", "cache", "out")]
+    project, runtime, source, cache, out = [
+        tmp_path / key for key in ("project", "runtime", "source", "cache", "out")
+    ]
     trusted = runtime / "owner-approvals"
     ledger = runtime / "real20-execution-ledger"
-    identity = {"candidate_commit": "a" * 40, "candidate_tree": "b" * 40, "source_manifest_sha256": "c" * 64}
+    identity = {
+        "candidate_commit": "a" * 40,
+        "candidate_tree": "b" * 40,
+        "source_manifest_sha256": "c" * 64,
+    }
     handles: list[Any] = []
 
     class Bound:
@@ -283,12 +319,14 @@ def test_admit_uses_configured_path_in_plan_and_validates_bound_object(tmp_path:
     passed_handle = Bound()
     monkeypatch.setattr(admission, "BoundDirectory", Bound)
     monkeypatch.setattr(admission, "bind_existing_directory", lambda *_a, **_kw: Bound())
-    monkeypatch.setattr(admission, "protect_consumption", lambda handle: handles.append(handle))
+    monkeypatch.setattr(admission, "protect_consumption", handles.append)
     monkeypatch.setattr(admission, "candidate_identity", lambda _p: identity)
     monkeypatch.setattr(admission, "path_fingerprint", lambda _p: "source-fingerprint")
     monkeypatch.setattr(admission, "quality_matrix", lambda *_a, **_kw: {"complete": True})
     monkeypatch.setattr(admission, "validate_data_receipt", lambda _value: None)
-    monkeypatch.setattr(admission, "verify_source_read_only_capability", lambda *_a: SimpleNamespace(verified=True))
+    monkeypatch.setattr(
+        admission, "verify_source_read_only_capability", lambda *_a: SimpleNamespace(verified=True)
+    )
     checked: list[Path] = []
 
     def checked_path(path: Path, **_kw: Any) -> None:
@@ -297,42 +335,75 @@ def test_admit_uses_configured_path_in_plan_and_validates_bound_object(tmp_path:
 
     monkeypatch.setattr(admission, "checked_path", checked_path)
     monkeypatch.setattr(admission, "overlaps", lambda _a, _b: False)
-    manifest = SimpleNamespace(sha256="d" * 64, source_fingerprint="source-fingerprint",
-                               assets=[SimpleNamespace(relative_path="item.jpg")])
+    manifest = SimpleNamespace(
+        sha256="d" * 64,
+        source_fingerprint="source-fingerprint",
+        assets=[SimpleNamespace(relative_path="item.jpg")],
+    )
     monkeypatch.setattr(admission, "load_manifest", lambda _p: manifest)
     frozen, credential = b"item.jpg\n", b"fake-test-credential"
     monkeypatch.setattr(admission, "FROZEN_G1", hash_bytes(frozen))
     now = datetime.now(UTC)
     documents = {
-        "data_receipt": {"not_before_utc": (now - timedelta(hours=1)).isoformat(),
-                         "expires_at_utc": (now + timedelta(hours=1)).isoformat(),
-                         "source_root_fingerprint": "source-fingerprint", "manifest_sha256": manifest.sha256,
-                         "frozen_manifest_sha256": hash_bytes(frozen)},
+        "data_receipt": {
+            "not_before_utc": (now - timedelta(hours=1)).isoformat(),
+            "expires_at_utc": (now + timedelta(hours=1)).isoformat(),
+            "source_root_fingerprint": "source-fingerprint",
+            "manifest_sha256": manifest.sha256,
+            "frozen_manifest_sha256": hash_bytes(frozen),
+        },
         "code_review": {**identity, "verdict": "PASS_FOR_REAL20_EVALUATION"},
-        "quality": {"checks": [], "python_supported": True, "status": "PASS", "candidate_commit": identity["candidate_commit"]},
+        "quality": {
+            "checks": [],
+            "python_supported": True,
+            "status": "PASS",
+            "candidate_commit": identity["candidate_commit"],
+        },
     }
-    plan = {"source_root": str(source), "output_root": str(out), "ledger_root": str(ledger), "cache_root": str(cache)}
+    plan = {
+        "source_root": str(source),
+        "output_root": str(out),
+        "ledger_root": str(ledger),
+        "cache_root": str(cache),
+    }
     anchor = {
-        **identity, "status": "APPROVED", "owner_id": "Jovi", "purpose": "REAL20_READ_ONLY_EVALUATION",
-        "production_unlock": False, "credential_sha256": hash_bytes(credential),
-        "h3_review_sha256": admission.H3_REVIEW, "path_plan_sha256": hash_bytes(canonical(plan)),
+        **identity,
+        "status": "APPROVED",
+        "owner_id": "Jovi",
+        "purpose": "REAL20_READ_ONLY_EVALUATION",
+        "production_unlock": False,
+        "credential_sha256": hash_bytes(credential),
+        "h3_review_sha256": admission.H3_REVIEW,
+        "path_plan_sha256": hash_bytes(canonical(plan)),
         **{label + "_sha256": hash_bytes(canonical(value)) for label, value in documents.items()},
     }
     content = {
-        project / "approvals/n2b1p_runtime_configuration.json": canonical({"runtime_parent": str(runtime), "cache_root": str(cache)}),
+        project / "approvals/n2b1p_runtime_configuration.json": canonical(
+            {"runtime_parent": str(runtime), "cache_root": str(cache)}
+        ),
         project / "schemas/n2b2_real20_owner_anchor_v1.schema.json": b"{}",
         trusted / "real20_execution_anchor.json": canonical(anchor),
         trusted / "real20_frozen_manifest.txt": frozen,
         trusted / "real20_lease.json": credential,
-        **{trusted / ("real20_" + label + ".json"): canonical(value) for label, value in documents.items()},
+        **{
+            trusted / ("real20_" + label + ".json"): canonical(value)
+            for label, value in documents.items()
+        },
     }
     # This test isolates path/handle behavior, not validation of a real permit.
     monkeypatch.setattr(admission, "control_bytes", lambda path: content.get(path, b"{}"))
-    kwargs = dict(project_root=project, source_root=source, manifest_path=trusted / "real20_manifest.json",
-                  credential_path=trusted / "real20_lease.json", anchor_path=trusted / "real20_execution_anchor.json",
-                  ledger_root=ledger, output_root=out, cache_root=cache,
-                  runtime_identity_path=trusted / "real20_runtime_identity.json",
-                  model_identity_path=trusted / "real20_model_identity.json")
+    kwargs = {
+        "project_root": project,
+        "source_root": source,
+        "manifest_path": trusted / "real20_manifest.json",
+        "credential_path": trusted / "real20_lease.json",
+        "anchor_path": trusted / "real20_execution_anchor.json",
+        "ledger_root": ledger,
+        "output_root": out,
+        "cache_root": cache,
+        "runtime_identity_path": trusted / "real20_runtime_identity.json",
+        "model_identity_path": trusted / "real20_model_identity.json",
+    }
     first = admission.admit(**kwargs)
     second = admission.admit(**kwargs, bound_ledger=passed_handle)
     assert first == second and passed_handle.verified

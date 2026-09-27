@@ -2053,3 +2053,19 @@ not consume or mint a Real20 credential. The final push target remains
   exact manifest/source bindings, a runtime DACL inheritable to each newly
   created claim and ledger file with all required denials, valid credential,
   and Owner anchor are all present.
+
+## Real20 candidate qualification and R2 work order — 2026-09-27
+
+- [x] GitHub readback: transition `9696e814b875b974fefceb8a39a5d14aa1c92d77`, tree `303bd2e764fabc6426da4f19a8de0134ef023860`; remote main unchanged at `ffc4130`.
+- [x] Create clean isolated branch `codex/real20-qualification-20260926`; preserve dirty older worktrees and primary AGENTS edit.
+- [x] Install Python 3.12.10 quality dependencies from the official-hash-verified 31-wheel set. Initial pip cache supplied 3 SHA-mismatched wheels; replaced them via no-cache downloads. Verified wheel ZIPs 31/31 and `pip check` PASS. Wheel manifest SHA-256 `3cc60a7d65a3d695a0610604582be3d56e7607eddfd66aa2d179417b4eb5b41a`.
+- [x] Baseline full pytest after environment repair: 817 passed, 95 subtests, 1 permitted `winerror=1314` skip, 3 clean-tree/MANIFEST dependent failures on the dirty worktree; full matrix remains pending on the committed clean candidate.
+- [x] Add the exact `Real20 transition code-only candidate` status to `test_current_handoff_verifier_passes`; keep clean-tree and manifest checks intact.
+- [x] Native experiment proved the current default policy grants `WRITE_DAC` to a newly created claim. Inheritable Owner denial made same-token temp cleanup fail; restore the Owner-provisioned per-claim fixture and retain automatic inheritance as an R2 runtime gate. Synthetic residue: `OS_TEMP/npi-real20-access-check-rfawmei9`.
+- [x] Focused suites on the candidate: Label Studio, review lifecycle, runner, admission CLI and hardening 71/71 combined; restored native suite 8/8. Ruff, format, mypy, compile and sensitive scan pass after environment repair.
+- [x] Recheck all 31 wheel files against PyPI SHA-256 and validate ZIP CRCs (31/31); verified runtime `pip check` and direct schema imports pass.
+- [ ] Register this normal successor after `9696e81` in preflight/handoff/Git topology tests; expected counts N2B1P 36 / N2B1R 37.
+- [ ] Regenerate root MANIFEST from final Git index, run full clean-commit quality matrix, and complete independent review.
+- [ ] Create ordinary commit/push to the transition branch and read it back; keep main unchanged.
+- [ ] Write Git-external R2 worksheet with final source identity and fresh proposed UTC window; no credential, anchor or photo operation in this batch.
+- [ ] Sync verified progress to Obsidian after remote readback and verify destination hashes.

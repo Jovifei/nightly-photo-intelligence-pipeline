@@ -52,6 +52,7 @@ REAL20_PREFLIGHT_RECEIPT_BASE = "f2302fee69255ab971942c44740fe5c059a2503c"
 REAL20_DATA_SCHEMA_BASE = "6263ebd2c7c4854ca13026a678397f83ef8adcef"
 REAL20_NATIVE_LEDGER_BASE = "769aa3b1d98a86227d9a8eb53f97f4904046025d"
 REAL20_NATIVE_LEDGER_CLOSURE = "ff479dfde536bdbf5a9e0a401fd3c35d910ad774"
+REAL20_NATIVE_LEDGER_QUALIFICATION = "9696e814b875b974fefceb8a39a5d14aa1c92d77"
 
 SENSITIVE_SUFFIXES = (
     ".db",
@@ -261,6 +262,15 @@ def _is_real20_native_ledger_acceptance_followup(project_root: Path) -> bool:
     )
 
 
+def _is_real20_native_ledger_qualification_candidate(project_root: Path) -> bool:
+    return (
+        _git(project_root, "rev-parse", "HEAD^").stdout.strip()
+        == REAL20_NATIVE_LEDGER_QUALIFICATION
+        and _git(project_root, "rev-list", "--count", f"{N2B1P_BASELINE}..HEAD").stdout.strip()
+        == "36"
+    )
+
+
 def test_git_approved_tags_and_ancestry_are_exact(project_root: Path) -> None:
     assert _git(project_root, "rev-parse", N0_TAG).stdout.strip() == N0_BASELINE
     assert _git(project_root, "rev-parse", N1_TAG).stdout.strip() == N1_BASELINE
@@ -341,6 +351,8 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
         candidate_offset = 34
     elif _is_real20_native_ledger_acceptance_followup(project_root):
         candidate_offset = 35
+    elif _is_real20_native_ledger_qualification_candidate(project_root):
+        candidate_offset = 36
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         candidate_offset = 1
     else:
@@ -471,7 +483,15 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
         assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() == REAL20_NATIVE_LEDGER_BASE
     elif _is_real20_native_ledger_acceptance_followup(project_root):
         assert post_n2b1r == 36
-        assert _git(project_root, "rev-parse", "HEAD^").stdout.strip() == REAL20_NATIVE_LEDGER_CLOSURE
+        assert (
+            _git(project_root, "rev-parse", "HEAD^").stdout.strip() == REAL20_NATIVE_LEDGER_CLOSURE
+        )
+    elif _is_real20_native_ledger_qualification_candidate(project_root):
+        assert post_n2b1r == 37
+        assert (
+            _git(project_root, "rev-parse", "HEAD^").stdout.strip()
+            == REAL20_NATIVE_LEDGER_QUALIFICATION
+        )
     else:
         assert post_n2b1r == 1 + candidate_offset
         parent = _git(project_root, "rev-parse", "HEAD^").stdout.strip()
@@ -566,6 +586,8 @@ def test_n2b1p_candidate_is_resolved_not_hardcoded(project_root: Path) -> None:
         expected_count = 35
     elif _is_real20_native_ledger_acceptance_followup(project_root):
         expected_count = 36
+    elif _is_real20_native_ledger_qualification_candidate(project_root):
+        expected_count = 37
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         expected_count = 2
     else:

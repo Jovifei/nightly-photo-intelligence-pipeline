@@ -31,6 +31,7 @@ _ERROR_FILE_NOT_FOUND = 2
 _ERROR_PATH_NOT_FOUND = 3
 _ERROR_ALREADY_EXISTS = 183
 _ERROR_FILE_EXISTS = 80
+_ERROR_INVALID_HANDLE = 6
 _FILE_SHARE_READ = 0x00000001
 _FILE_SHARE_WRITE = 0x00000002
 _OPEN_EXISTING = 3
@@ -69,9 +70,7 @@ _STATUS_OBJECT_NAME_NOT_FOUND = 0xC0000034
 _STATUS_OBJECT_PATH_NOT_FOUND = 0xC000003A
 _VOLUME_NAME_GUID = 0x00000001
 _CHUNK_BYTES = 1024 * 1024
-_REAL20_TERMINAL_FILE_NAME = re.compile(
-    r"(?:terminal-v1|terminal-commit-v1)-[0-9a-f]{64}\.json"
-)
+_REAL20_TERMINAL_FILE_NAME = re.compile(r"(?:terminal-v1|terminal-commit-v1)-[0-9a-f]{64}\.json")
 _SE_FILE_OBJECT = 1
 _SECURITY_INFORMATION = 0x00000007
 _TOKEN_QUERY = 0x0008
@@ -240,28 +239,43 @@ class _WindowsNative:
         self._kernel32.LocalFree.argtypes = [ctypes.c_void_p]
         self._kernel32.LocalFree.restype = ctypes.c_void_p
         self._advapi32.GetSecurityInfo.argtypes = [
-            ctypes.c_void_p, ctypes.c_int, ctypes.c_ulong,
-            ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_void_p),
-            ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_void_p),
+            ctypes.c_void_p,
+            ctypes.c_int,
+            ctypes.c_ulong,
+            ctypes.POINTER(ctypes.c_void_p),
+            ctypes.POINTER(ctypes.c_void_p),
+            ctypes.POINTER(ctypes.c_void_p),
+            ctypes.POINTER(ctypes.c_void_p),
             ctypes.POINTER(ctypes.c_void_p),
         ]
         self._advapi32.GetSecurityInfo.restype = ctypes.c_ulong
         self._advapi32.OpenThreadToken.argtypes = [
-            ctypes.c_void_p, ctypes.c_ulong, ctypes.c_int, ctypes.POINTER(ctypes.c_void_p)
+            ctypes.c_void_p,
+            ctypes.c_ulong,
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_void_p),
         ]
         self._advapi32.OpenThreadToken.restype = ctypes.c_int
         self._advapi32.OpenProcessToken.argtypes = [
-            ctypes.c_void_p, ctypes.c_ulong, ctypes.POINTER(ctypes.c_void_p)
+            ctypes.c_void_p,
+            ctypes.c_ulong,
+            ctypes.POINTER(ctypes.c_void_p),
         ]
         self._advapi32.OpenProcessToken.restype = ctypes.c_int
         self._advapi32.DuplicateToken.argtypes = [
-            ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_void_p)
+            ctypes.c_void_p,
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_void_p),
         ]
         self._advapi32.DuplicateToken.restype = ctypes.c_int
         self._advapi32.AccessCheck.argtypes = [
-            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulong,
-            ctypes.POINTER(_GenericMapping), ctypes.c_void_p,
-            ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.c_ulong),
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_ulong,
+            ctypes.POINTER(_GenericMapping),
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_ulong),
+            ctypes.POINTER(ctypes.c_ulong),
             ctypes.POINTER(ctypes.c_int),
         ]
         self._advapi32.AccessCheck.restype = ctypes.c_int
@@ -349,8 +363,14 @@ class _WindowsNative:
         descriptor = ctypes.c_void_p()
         error = int(
             self._advapi32.GetSecurityInfo(
-                ctypes.c_void_p(handle), _SE_FILE_OBJECT, _SECURITY_INFORMATION,
-                None, None, None, None, ctypes.byref(descriptor),
+                ctypes.c_void_p(handle),
+                _SE_FILE_OBJECT,
+                _SECURITY_INFORMATION,
+                None,
+                None,
+                None,
+                None,
+                ctypes.byref(descriptor),
             )
         )
         if error:
@@ -363,20 +383,27 @@ class _WindowsNative:
             )
             if not opened:
                 error = int(ctypes.get_last_error())
-                if error != _ERROR_NO_TOKEN:
+                if error == _ERROR_NO_TOKEN:
+                    # AccessCheck requires an impersonation token, not this primary token.
+                    primary = ctypes.c_void_p()
+                    if not self._advapi32.OpenProcessToken(
+                        self._kernel32.GetCurrentProcess(),
+                        _TOKEN_QUERY | _TOKEN_DUPLICATE,
+                        ctypes.byref(primary),
+                    ):
+                        error = int(ctypes.get_last_error())
+                    else:
+                        primary_handle = primary.value
+                        if primary_handle is None:
+                            error = _ERROR_INVALID_HANDLE
+                        elif not self._advapi32.DuplicateToken(primary, 2, ctypes.byref(token)):
+                            error = int(ctypes.get_last_error())
+                            self.close(primary_handle)
+                        else:
+                            self.close(primary_handle)
+                            error = 0 if token.value is not None else _ERROR_INVALID_HANDLE
+                if error:
                     return NativeAccessCheck(None, error)
-                # AccessCheck requires an impersonation token, not this primary token.
-                primary = ctypes.c_void_p()
-                if not self._advapi32.OpenProcessToken(
-                    self._kernel32.GetCurrentProcess(), _TOKEN_QUERY | _TOKEN_DUPLICATE,
-                    ctypes.byref(primary),
-                ):
-                    return NativeAccessCheck(None, int(ctypes.get_last_error()))
-                if not self._advapi32.DuplicateToken(primary, 2, ctypes.byref(token)):
-                    error = int(ctypes.get_last_error())
-                    self.close(int(primary.value))
-                    return NativeAccessCheck(None, error)
-                self.close(int(primary.value))
             mapping = _GenericMapping(0x00120089, 0x00120116, 0x001200A0, 0x001F01FF)
             privileges = ctypes.create_string_buffer(1024)
             privilege_bytes = ctypes.c_ulong(len(privileges))
@@ -384,8 +411,14 @@ class _WindowsNative:
             access_status = ctypes.c_int()
             ctypes.set_last_error(0)
             if not self._advapi32.AccessCheck(
-                descriptor, token, desired_access, ctypes.byref(mapping), privileges,
-                ctypes.byref(privilege_bytes), ctypes.byref(granted), ctypes.byref(access_status),
+                descriptor,
+                token,
+                desired_access,
+                ctypes.byref(mapping),
+                privileges,
+                ctypes.byref(privilege_bytes),
+                ctypes.byref(granted),
+                ctypes.byref(access_status),
             ):
                 return NativeAccessCheck(None, int(ctypes.get_last_error()))
             return NativeAccessCheck(
@@ -462,9 +495,7 @@ class _WindowsNative:
                         allow_subdirectories=allow_subdirectories,
                     )
                     if directory
-                    else _file_access(
-                        writable, append_only=append_only, read_control=read_control
-                    )
+                    else _file_access(writable, append_only=append_only, read_control=read_control)
                 ),
                 ctypes.byref(attributes),
                 ctypes.byref(status),
@@ -642,7 +673,10 @@ class _WindowsNative:
 
 
 def _directory_access(
-    writable: bool, *, append_only: bool = False, read_control: bool = False,
+    writable: bool,
+    *,
+    append_only: bool = False,
+    read_control: bool = False,
     allow_subdirectories: bool = False,
 ) -> int:
     base = _FILE_LIST_DIRECTORY | _FILE_READ_ATTRIBUTES | _SYNCHRONIZE
@@ -657,9 +691,7 @@ def _directory_access(
     return base | (_READ_CONTROL if read_control else 0)
 
 
-def _file_access(
-    writable: bool, *, append_only: bool = False, read_control: bool = False
-) -> int:
+def _file_access(writable: bool, *, append_only: bool = False, read_control: bool = False) -> int:
     base = _FILE_READ_DATA | _FILE_READ_ATTRIBUTES | _SYNCHRONIZE
     if writable:
         if append_only:
@@ -732,7 +764,9 @@ class BoundDirectory(AbstractContextManager["BoundDirectory"]):
             read_control=self._security_check,
         )
         return self._child_directory(
-            handle, child_writable, append_only=child_append_only,
+            handle,
+            child_writable,
+            append_only=child_append_only,
             security_check=self._security_check,
         )
 
@@ -743,7 +777,11 @@ class BoundDirectory(AbstractContextManager["BoundDirectory"]):
         if self._append_only and not self._allow_subdirectories:
             raise _failure("NPI_PROMOTION_APPEND_ONLY_MUTATION_DENIED")
         handle = self._native.open_relative(
-            self._handle, name, directory=True, create=True, writable=True,
+            self._handle,
+            name,
+            directory=True,
+            create=True,
+            writable=True,
             append_only=self._append_only,
             read_control=self._security_check,
         )
@@ -752,7 +790,11 @@ class BoundDirectory(AbstractContextManager["BoundDirectory"]):
         )
 
     def _child_directory(
-        self, handle: int, writable: bool, *, append_only: bool = False,
+        self,
+        handle: int,
+        writable: bool,
+        *,
+        append_only: bool = False,
         security_check: bool = False,
     ) -> BoundDirectory:
         description = self._native.describe(handle)
@@ -767,8 +809,13 @@ class BoundDirectory(AbstractContextManager["BoundDirectory"]):
             self._native.close(handle)
             raise _failure("NPI_PROMOTION_PATH_ESCAPED_BOUND_ROOT")
         return BoundDirectory(
-            self._native, handle, root, description.identity, writable,
-            _append_only=append_only, _security_check=security_check,
+            self._native,
+            handle,
+            root,
+            description.identity,
+            writable,
+            _append_only=append_only,
+            _security_check=security_check,
             _parent=self,
         )
 
@@ -790,7 +837,11 @@ class BoundDirectory(AbstractContextManager["BoundDirectory"]):
         ):
             raise _failure("NPI_PROMOTION_APPEND_ONLY_NAME_DENIED")
         handle = self._native.open_relative(
-            self._handle, name, directory=False, create=True, writable=True,
+            self._handle,
+            name,
+            directory=False,
+            create=True,
+            writable=True,
             append_only=self._append_only,
             read_control=self._security_check,
         )
@@ -806,9 +857,7 @@ class BoundDirectory(AbstractContextManager["BoundDirectory"]):
                 raise
         return file
 
-    def _child_file(
-        self, handle: int, writable: bool, *, append_only: bool = False
-    ) -> BoundFile:
+    def _child_file(self, handle: int, writable: bool, *, append_only: bool = False) -> BoundFile:
         description = self._native.describe(handle)
         root = self._root or self
         if description.attributes & _FILE_ATTRIBUTE_REPARSE_POINT or description.reparse_tag:
@@ -821,7 +870,11 @@ class BoundDirectory(AbstractContextManager["BoundDirectory"]):
             self._native.close(handle)
             raise _failure("NPI_PROMOTION_PATH_ESCAPED_BOUND_ROOT")
         return BoundFile(
-            self._native, handle, root, description.identity, writable,
+            self._native,
+            handle,
+            root,
+            description.identity,
+            writable,
             _append_only=append_only,
         )
 
