@@ -426,6 +426,11 @@ def test_admit_uses_configured_path_in_plan_and_validates_bound_object(
         "cache_root": cache,
         "runtime_identity_path": trusted / "real20_runtime_identity.json",
         "model_identity_path": trusted / "real20_model_identity.json",
+        "ledger_attestation_probe": lambda _handle: {
+            "runner_identity_sha256": "a" * 64,
+            "ledger_policy_sha256": "c" * 64,
+            "ledger_object_sha256": "d" * 64,
+        },
     }
     first = admission.admit(**kwargs)
     second = admission.admit(**kwargs, bound_ledger=passed_handle)
@@ -433,5 +438,16 @@ def test_admit_uses_configured_path_in_plan_and_validates_bound_object(
     assert handles[-1] is passed_handle and ledger in checked
     with pytest.raises(Real20Error, match="LEDGER_OBJECT_CHANGED"):
         admission.admit(**kwargs, bound_ledger=Bound("different-native-object"))
+    with pytest.raises(Real20Error, match="RUNNER_IDENTITY_MISMATCH"):
+        admission.admit(
+            **{
+                **kwargs,
+                "ledger_attestation_probe": lambda _handle: {
+                    "runner_identity_sha256": "e" * 64,
+                    "ledger_policy_sha256": "c" * 64,
+                    "ledger_object_sha256": "d" * 64,
+                },
+            }
+        )
     with pytest.raises(Real20Error, match="LEDGER_PATH_REQUIRED"):
         admission.admit(**{**kwargs, "ledger_root": passed_handle})

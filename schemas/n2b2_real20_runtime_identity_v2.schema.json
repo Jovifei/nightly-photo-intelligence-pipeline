@@ -8,7 +8,14 @@
     "schema_version": {"const": "2.0"},
     "runtime_observation": {
       "type": "object",
-      "additionalProperties": true
+      "additionalProperties": false,
+      "required": ["models", "worker", "vision", "qwen"],
+      "properties": {
+        "models": {"type": "object", "additionalProperties": true},
+        "worker": {"type": "object", "additionalProperties": true},
+        "vision": {"type": "object", "additionalProperties": true},
+        "qwen": {"type": "object", "additionalProperties": true}
+      }
     },
     "ledger_acl_probe": {
       "$ref": "#/$defs/ledgerAclProbe"

@@ -35,7 +35,7 @@
 
 正式 Schema 必须严格定义这三个顶层成员和每个子对象，拒绝额外字段。credential/anchor 继续绑定**整个 v2 控制对象**的 canonical SHA-256，包含 `ledger_acl_probe`；实时 `runtime_probe()` 只与 `runtime_observation` 子对象的 canonical SHA-256 比较。`ledger_acl_probe` 由 admission 独立检查。v1 可用于解释历史证据，但不能满足新的 Real20 admission；未知版本、额外字段、缺失子对象或类型错误都失败关闭。不得把 ACL 字段塞进实时 GPU/模型探针，也不得降级整体凭证绑定。
 
-执行顺序是：严格读取并验证完整 v2 与 credential/anchor → 验证 `ledger_acl_probe` 的版本、结果、身份、策略、对象和 freshness → 验证实时 `runtime_observation` → 在已绑定**真实 ledger** 句柄上，仅以非变更方式重检 ledger 根和父目录的有效权限、runner identity、对象/策略绑定及其他 admission 门 → `_reservation()`。不得在真实 ledger 创建、重放或清理 synthetic probe，也不得修复或修改 ACL。上述四层任一失败时，`_reservation()` 调用次数必须为零。静态控制检查应先于可能较重的运行时探针；准确位置可由实现保持上述先后约束。
+执行顺序是：严格读取并验证完整 v2 与 credential/anchor → 从 live attestation 获取并匹配 runner identity、ledger policy digest 和 ledger object identity，再验证 `ledger_acl_probe` 的版本、结果、身份、策略、对象和 freshness → 验证实时 `runtime_observation` → 在已绑定**真实 ledger** 句柄上，仅以非变更方式重检 ledger 根和父目录的有效权限、runner identity、对象/策略绑定及其他 admission 门 → `_reservation()`。缺少 live attestation 也必须失败关闭；不得退回结构字段自洽即通过。不得在真实 ledger 创建、重放或清理 synthetic probe，也不得修复或修改 ACL。上述四层任一失败时，`_reservation()` 调用次数必须为零。静态控制检查应先于可能较重的运行时探针；准确位置可由实现保持上述先后约束。
 
 `ledger-probe` 只生成 Git 外、脱敏的候选证明；`ledger-probe-clean` 由独立清理身份生成清理证明。继承观察可以独立记录为 `PROBE_PASS`，但只有清理证明存在且有效，整份证明才能成为 `ADMISSION_ELIGIBLE`；清理失败时保留真实的观察结果，同时拒绝准入。两份证明完成且被 Owner 审核后，才组装并封存 v2 `real20_runtime_identity.json`，之后再创建绑定其整体摘要的 credential/anchor。探针命令不得原地改写已封存或已绑定凭证的控制文件；否则整体摘要变化会使凭证失效。
 

@@ -7,6 +7,7 @@ The Owner creates the anchor and receipts externally after independent review.
 from __future__ import annotations
 
 import stat
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -92,6 +93,7 @@ def admit(
     runtime_identity_path: Path,
     model_identity_path: Path,
     bound_ledger: BoundDirectory | None = None,
+    ledger_attestation_probe: Callable[[BoundDirectory], Mapping[str, str]] | None = None,
 ) -> dict[str, Any]:
     controls = (
         manifest_path,
@@ -119,11 +121,6 @@ def admit(
     expected_anchor = trusted / "real20_execution_anchor.json"
     _require(anchor_path == expected_anchor, "REAL20_UNTRUSTED_ANCHOR_PATH")
     runtime_identity = strict_json(control_bytes(runtime_identity_path))
-    validate_runtime_identity(
-        runtime_identity,
-        now=datetime.now(UTC),
-        require_v2=True,
-    )
     # Paths belong in hashes/lexical checks; live handles belong in object checks.
     # Never stringify BoundDirectory (its repr is not an Owner-approved path).
     _require(isinstance(ledger_root, Path), "REAL20_LEDGER_PATH_REQUIRED")
@@ -139,9 +136,27 @@ def admit(
                 bound_ledger.identity == configured_ledger.identity,
                 "REAL20_LEDGER_OBJECT_CHANGED",
             )
-            protect_consumption(bound_ledger)
+            live_ledger = bound_ledger
         else:
-            protect_consumption(configured_ledger)
+            live_ledger = configured_ledger
+        if ledger_attestation_probe is None:
+            raise Real20Error("REAL20_LEDGER_PROBE_LIVE_ATTESTATION_UNAVAILABLE")
+        try:
+            live_attestation = ledger_attestation_probe(live_ledger)
+        except Real20Error:
+            raise
+        except Exception as exc:  # noqa: BLE001 - fail closed at the gate
+            raise Real20Error("REAL20_LEDGER_PROBE_LIVE_ATTESTATION_UNAVAILABLE") from exc
+        validate_runtime_identity(
+            runtime_identity,
+            now=datetime.now(UTC),
+            require_v2=True,
+            current_runner_identity_sha256=live_attestation.get("runner_identity_sha256"),
+            current_ledger_policy_sha256=live_attestation.get("ledger_policy_sha256"),
+            current_ledger_object_sha256=live_attestation.get("ledger_object_sha256"),
+            require_live_binding=True,
+        )
+        protect_consumption(live_ledger)
     _require(cache_root == Path(config["cache_root"]), "REAL20_CACHE_BINDING_INVALID")
     protected_files = [
         expected_anchor,

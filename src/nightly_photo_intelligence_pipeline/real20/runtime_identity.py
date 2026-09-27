@@ -62,6 +62,10 @@ def validate_ledger_acl_probe(
     value: object,
     *,
     now: datetime,
+    current_runner_identity_sha256: str | None = None,
+    current_ledger_policy_sha256: str | None = None,
+    current_ledger_object_sha256: str | None = None,
+    require_live_binding: bool = False,
 ) -> dict[str, Any]:
     """Validate the finalized, redacted proof used for new admission."""
 
@@ -100,6 +104,30 @@ def validate_ledger_acl_probe(
         proof["ledger_policy_sha256"] == proof["probe_policy_sha256"],
         "REAL20_LEDGER_PROBE_POLICY_MISMATCH",
     )
+    if require_live_binding and any(
+        value is None
+        for value in (
+            current_runner_identity_sha256,
+            current_ledger_policy_sha256,
+            current_ledger_object_sha256,
+        )
+    ):
+        raise Real20Error("REAL20_LEDGER_PROBE_LIVE_ATTESTATION_UNAVAILABLE")
+    if current_runner_identity_sha256 is not None:
+        _require(
+            proof["runner_identity_sha256"] == current_runner_identity_sha256,
+            "REAL20_LEDGER_PROBE_RUNNER_IDENTITY_MISMATCH",
+        )
+    if current_ledger_policy_sha256 is not None:
+        _require(
+            proof["ledger_policy_sha256"] == current_ledger_policy_sha256,
+            "REAL20_LEDGER_PROBE_LIVE_POLICY_MISMATCH",
+        )
+    if current_ledger_object_sha256 is not None:
+        _require(
+            proof["probe_object_sha256"] == current_ledger_object_sha256,
+            "REAL20_LEDGER_PROBE_OBJECT_MISMATCH",
+        )
     created = _parse_utc(proof["created_at_utc"], "REAL20_LEDGER_PROBE_TIME_INVALID")
     expires = _parse_utc(proof["expires_at_utc"], "REAL20_LEDGER_PROBE_TIME_INVALID")
     current = now.astimezone(UTC)
@@ -112,6 +140,10 @@ def validate_runtime_identity(
     *,
     now: datetime,
     require_v2: bool = True,
+    current_runner_identity_sha256: str | None = None,
+    current_ledger_policy_sha256: str | None = None,
+    current_ledger_object_sha256: str | None = None,
+    require_live_binding: bool = False,
 ) -> RuntimeIdentity:
     """Validate v2 identity; legacy v1 is accepted only by low-level tests."""
 
@@ -130,7 +162,19 @@ def validate_runtime_identity(
     _require(set(control) == _IDENTITY_FIELDS, "REAL20_RUNTIME_IDENTITY_FIELDS_INVALID")
     observation = control["runtime_observation"]
     _require(isinstance(observation, dict), "REAL20_RUNTIME_OBSERVATION_INVALID")
-    proof = validate_ledger_acl_probe(control["ledger_acl_probe"], now=now)
+    _require(
+        set(observation) == {"models", "worker", "vision", "qwen"}
+        and all(isinstance(observation[key], dict) for key in observation),
+        "REAL20_RUNTIME_OBSERVATION_FIELDS_INVALID",
+    )
+    proof = validate_ledger_acl_probe(
+        control["ledger_acl_probe"],
+        now=now,
+        current_runner_identity_sha256=current_runner_identity_sha256,
+        current_ledger_policy_sha256=current_ledger_policy_sha256,
+        current_ledger_object_sha256=current_ledger_object_sha256,
+        require_live_binding=require_live_binding,
+    )
     return RuntimeIdentity(
         control=control,
         observation=cast(dict[str, Any], observation),

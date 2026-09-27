@@ -81,6 +81,42 @@ def test_expired_probe_fails_closed() -> None:
         validate_runtime_identity(_identity(proof=proof), now=NOW)
 
 
+@pytest.mark.parametrize(
+    "attestation, message",
+    [
+        ({"current_runner_identity_sha256": "e" * 64}, "RUNNER_IDENTITY_MISMATCH"),
+        ({"current_ledger_policy_sha256": "e" * 64}, "LIVE_POLICY_MISMATCH"),
+        ({"current_ledger_object_sha256": "e" * 64}, "OBJECT_MISMATCH"),
+    ],
+)
+def test_live_binding_mismatch_fails_closed(attestation: dict[str, str], message: str) -> None:
+    with pytest.raises(Real20Error, match=message):
+        validate_runtime_identity(
+            _identity(),
+            now=NOW,
+            current_runner_identity_sha256=attestation.get(
+                "current_runner_identity_sha256", "a" * 64
+            ),
+            current_ledger_policy_sha256=attestation.get("current_ledger_policy_sha256", "c" * 64),
+            current_ledger_object_sha256=attestation.get("current_ledger_object_sha256", "d" * 64),
+            require_live_binding=True,
+        )
+
+
+def test_unknown_runtime_observation_field_fails_closed() -> None:
+    value = _identity()
+    value["runtime_observation"]["unknown"] = {}
+    with pytest.raises(Real20Error, match="REAL20_RUNTIME_OBSERVATION_FIELDS_INVALID"):
+        validate_runtime_identity(value, now=NOW)
+
+
+def test_missing_runtime_observation_domain_fails_closed() -> None:
+    value = _identity()
+    del value["runtime_observation"]["qwen"]
+    with pytest.raises(Real20Error, match="REAL20_RUNTIME_OBSERVATION_FIELDS_INVALID"):
+        validate_runtime_identity(value, now=NOW)
+
+
 def test_invalid_probe_fails_before_reservation(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
     invalid = _identity(proof=_proof(status="PROBE_PASS"))

@@ -4,7 +4,7 @@ Status: design-review candidate, 2026-09-27. The Owner's acceptance of the updat
 
 ## P0 — Bind the exact candidate and baseline
 
-- Parent: `ca706a67fff61980700c9275353efea62ae8cc81`. Work only on `codex/real20-ledger-proof-20260927` in its isolated checkout. Preserve the other chat's checkout and dirty primary `AGENTS.md`.
+- Code-stage base: `ca706a67fff61980700c9275353efea62ae8cc81`. Implementation commit: `3abb18d282d4e7f8983c52a70142dbdcd8098bfa`. Review HEAD: `7f497ac9dfc836d3b38f1f06e19fb03141c59f78`, whose direct parent is `3abb18d...`; the two-commit chain is intentional and registered by the topology guards. Work only on `codex/real20-ledger-proof-20260927` in its isolated checkout. Preserve the other chat's checkout and dirty primary `AGENTS.md`.
 - `python tools/verify_handoff.py` currently reports 6 PASS / 2 FAIL for the docs-only parent: successor topology and root index manifest are stale. Preserve that result as baseline RED. The final candidate must repair both without weakening historic cases or rewriting published commits.
 - Review `MASTER_EXECUTION_CONTRACT.md`, `PROJECT_STATE.json`, `docs/44`, relevant `tasks/lessons.md`, Real20 code/tests and the selected Python 3.12 interpreter. No dependency or model installation.
 
@@ -19,15 +19,16 @@ Add focused tests in `tests/test_real20_runner.py`, `tests/test_real20_admission
 
 ## P2 — Minimal v2 control and runner checks
 
-- Add a strict, versioned v2 parser/schema for `real20_runtime_identity.json`: top-level `schema_version`, `runtime_observation`, `ledger_acl_probe`; preserve existing `models`, `worker`, `vision`, `qwen` semantics inside observation. Historic v1 may be read as evidence but cannot enter new Real20 admission.
+- Add a strict, versioned v2 parser/schema for `real20_runtime_identity.json`: top-level `schema_version`, `runtime_observation`, `ledger_acl_probe`; require exactly `models`, `worker`, `vision`, `qwen` observation domains and preserve their nested semantics. Historic v1 may be read as evidence but cannot enter new Real20 admission.
 - In `src/nightly_photo_intelligence_pipeline/real20/runner.py`, keep the existing whole-control canonical digest for credential/anchor binding and compare `runtime_probe()` only with the nested observation digest. Validate proof structure and live ledger identity/policy before `_reservation()`; retain the post-claim guard and one-shot consumption behavior.
+- Admission receives a narrow injected live-attestation seam and requires exact runner identity, ledger policy and ledger object matches; absent or mismatched attestation fails before reservation, backend construction and image open.
 - Keep `real20/admission.py` fail closed and do not introduce a caller-controlled bypass. Error codes must distinguish missing/invalid/stale proof without exposing private path/SID material.
 
 ## P3 — Synthetic probe generation and separate cleanup
 
 - Add narrowly scoped `npi real20 ledger-probe` and `ledger-probe-clean` commands to `cli.py`, backed by a Real20-specific module and existing bound-handle primitives in `windows_bound_promotion.py`.
 - Derive the Git-external synthetic probe sibling from trusted configuration. Reject reparse points and overlap with source, cache, output and the actual ledger. A probe under the actual runner identity creates a fresh claim and allowed file names without post-creation ACL repair, records handle-bound identities, effective-rights matrix and DACL policy digest, and writes only redacted, nonce-bound proof.
-- Only a separately configured cleanup identity may remove the precise synthetic probe object. The inheritance observation may remain `PROBE_PASS`, but failed or unverified cleanup makes the combined proof `NOT_ADMISSION_ELIGIBLE`. No system user/service, Owner ACL, production ledger or source photo is changed. Without the Owner-preprovisioned policy and cleanup identity, native inheritance qualification is `NOT_AVAILABLE`.
+- Only a separately configured cleanup identity may remove the precise synthetic probe object. The inheritance observation may remain `PROBE_PASS`, but failed or unverified cleanup makes the combined proof `NOT_ADMISSION_ELIGIBLE`. Before reservation, admission compares the proof's runner identity, ledger policy digest and ledger object identity to a live injected attestation; absent or mismatched attestation fails closed. No system user/service, Owner ACL, production ledger or source photo is changed. Without the Owner-preprovisioned policy and cleanup identity, native inheritance qualification is `NOT_AVAILABLE`.
 
 ## P4 — Focused and full verification
 
@@ -36,7 +37,7 @@ Add focused tests in `tests/test_real20_runner.py`, `tests/test_real20_admission
 
 ## P5 — One direct successor, GitHub, independent review
 
-- Extend exactly the topology guards in `tools/verify_handoff.py`, `src/nightly_photo_intelligence_pipeline/preflight.py` and `tests/test_git.py` for one direct child of `ca706a6` (N2B1P count 39; N2B1R count 40); retain every existing SHA and no-merge rule.
+- Extend exactly the topology guards in `tools/verify_handoff.py`, `src/nightly_photo_intelligence_pipeline/preflight.py` and `tests/test_git.py` for the implementation child and the documented closeout child; retain every existing SHA and no-merge rule. The final review HEAD is two commits after the code-stage base.
 - Stage only scoped files; rebuild root `MANIFEST.sha256` from Git-index blobs with `tools/print_index_manifest.py`, stage it, then create one ordinary child commit. Re-run handoff/preflight and the affected quality gates on the clean exact SHA. A RED gate blocks push.
 - If authorized by the Owner's current instruction and every gate is green, ordinary-push only this review branch and read back remote SHA; do not move `main`, merge, tag or release. Give the exact SHA and recorded outputs to the bound remote ChatGPT chat for independent code review. A review `DONE` is code-only and leaves R2 `NOT_RUN`, Real20 unperformed and production `N2B2=LOCKED`.
 
