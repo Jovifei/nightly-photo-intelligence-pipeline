@@ -20,6 +20,7 @@ from ..n2b2_synthetic.vision_facts import build_vision_facts, compute_fact_diges
 from .contracts import EXIF_ALLOWLIST, Real20Error, load_manifest, validate_credential
 from .exif import read_real20_exif
 from .identity import candidate_identity
+from .runtime_identity import validate_runtime_identity
 
 H3_CANDIDATE = "ffc4130823c1308f089b835c766e341ec2173e82"
 _IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".heic", ".webp")
@@ -400,6 +401,11 @@ def _run_real20(
     manifest = load_manifest(manifest_path)
     identity = candidate_identity(project_root)
     runtime_identity = _read_control(runtime_identity_path)
+    runtime_identity_view = validate_runtime_identity(
+        runtime_identity,
+        now=current,
+        require_v2=False,
+    )
     model_identity = _read_control(model_identity_path)
     credential_raw = control_bytes(credential_path)
     anchor = _read_control(anchor_path)
@@ -409,7 +415,7 @@ def _run_real20(
         "project_state_sha256": identity["project_state_sha256"],
         "manifest_sha256": manifest.sha256,
         "source_fingerprint_sha256": sha256(manifest.source_fingerprint.encode("utf-8")),
-        "runtime_identity_sha256": sha256(canonical(runtime_identity)),
+        "runtime_identity_sha256": runtime_identity_view.control_digest,
         "model_identity_sha256": sha256(canonical(model_identity)),
     }
     credential_sha = validate_credential(
@@ -458,7 +464,7 @@ def _run_real20(
     if runtime_probe is None:
         raise Real20Error("REAL20_RUNTIME_PROBE_REQUIRED")
     observed_runtime = runtime_probe()
-    if sha256(canonical(observed_runtime)) != expected["runtime_identity_sha256"]:
+    if sha256(canonical(observed_runtime)) != runtime_identity_view.observation_digest:
         raise Real20Error("REAL20_RUNTIME_IDENTITY_DRIFT")
     if revalidate is not None and model_identity != observed_runtime.get("models"):
         raise Real20Error("REAL20_MODEL_IDENTITY_DRIFT")
@@ -577,7 +583,9 @@ def _run_real20(
                     if list(Draft202012Validator(schema).iter_errors(facts)):
                         raise Real20Error("REAL20_FACT_CONTRACT_INVALID")
                 interpretation = (
-                    reasoning(data, facts, runtime_identity) if reasoning is not None else None
+                    reasoning(data, facts, runtime_identity_view.observation)
+                    if reasoning is not None
+                    else None
                 )
                 rows.append(
                     {

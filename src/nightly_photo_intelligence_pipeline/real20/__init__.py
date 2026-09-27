@@ -3,8 +3,21 @@
 from typing import Any
 
 from .contracts import EXIF_ALLOWLIST, Real20Error
+from .ledger_probe import load_probe_configuration, probe_status, require_probe_configuration
+from .runtime_identity import RuntimeIdentity, validate_ledger_acl_probe, validate_runtime_identity
 
-__all__ = ["EXIF_ALLOWLIST", "Real20Error", "prepare_real20", "run_real20"]
+__all__ = [
+    "EXIF_ALLOWLIST",
+    "Real20Error",
+    "load_probe_configuration",
+    "probe_status",
+    "require_probe_configuration",
+    "RuntimeIdentity",
+    "validate_ledger_acl_probe",
+    "validate_runtime_identity",
+    "prepare_real20",
+    "run_real20",
+]
 
 
 def __getattr__(name: str) -> Any:

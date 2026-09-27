@@ -377,12 +377,35 @@ def test_admit_uses_configured_path_in_plan_and_validates_bound_object(
         "path_plan_sha256": hash_bytes(canonical(plan)),
         **{label + "_sha256": hash_bytes(canonical(value)) for label, value in documents.items()},
     }
+    runtime_identity = {
+        "schema_version": "2.0",
+        "runtime_observation": {
+            "models": {"pose": "test"},
+            "worker": {"python": "3.12"},
+            "vision": {"device": "cpu"},
+            "qwen": {"model_id": "test"},
+        },
+        "ledger_acl_probe": {
+            "contract_version": "npi-real20-ledger-acl-probe-v1",
+            "status": "ADMISSION_ELIGIBLE",
+            "inheritance_status": "PROBE_PASS",
+            "cleanup_status": "CLEANUP_PASS",
+            "runner_identity_sha256": "a" * 64,
+            "cleanup_identity_sha256": "b" * 64,
+            "ledger_policy_sha256": "c" * 64,
+            "probe_policy_sha256": "c" * 64,
+            "probe_object_sha256": "d" * 64,
+            "created_at_utc": (now - timedelta(minutes=5)).isoformat(),
+            "expires_at_utc": (now + timedelta(hours=1)).isoformat(),
+        },
+    }
     content = {
         project / "approvals/n2b1p_runtime_configuration.json": canonical(
             {"runtime_parent": str(runtime), "cache_root": str(cache)}
         ),
         project / "schemas/n2b2_real20_owner_anchor_v1.schema.json": b"{}",
         trusted / "real20_execution_anchor.json": canonical(anchor),
+        trusted / "real20_runtime_identity.json": canonical(runtime_identity),
         trusted / "real20_frozen_manifest.txt": frozen,
         trusted / "real20_lease.json": credential,
         **{

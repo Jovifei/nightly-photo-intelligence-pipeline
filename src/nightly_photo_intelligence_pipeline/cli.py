@@ -1569,6 +1569,32 @@ def real20_prepare(
     typer.echo(json_strict_dump(result))
 
 
+@real20_app.command("ledger-probe")
+def real20_ledger_probe(
+    project_root: Path = typer.Option(..., "--project-root"),
+) -> None:
+    """Report isolated probe readiness without touching the real ledger."""
+    from .real20 import probe_status
+
+    result = probe_status(project_root)
+    typer.echo(json_strict_dump(result))
+    if result["status"] != "READY":
+        raise typer.Exit(code=1)
+
+
+@real20_app.command("ledger-probe-clean")
+def real20_ledger_probe_clean(
+    project_root: Path = typer.Option(..., "--project-root"),
+) -> None:
+    """Report cleanup readiness; never broad-cleans or repairs ACLs."""
+    from .real20 import probe_status
+
+    result = probe_status(project_root)
+    typer.echo(json_strict_dump(result))
+    if result["status"] != "READY":
+        raise typer.Exit(code=1)
+
+
 @real20_app.command("run")
 def real20_run(
     project_root: Path = typer.Option(..., "--project-root"),

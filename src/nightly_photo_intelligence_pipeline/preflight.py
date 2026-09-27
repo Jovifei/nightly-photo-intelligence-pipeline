@@ -1232,6 +1232,11 @@ def _check_git_baselines() -> CheckResult:
             and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "36")
             and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "37")
         )
+        real20_ledger_proof_topology = (
+            git("rev-parse", "HEAD^") == (0, "ca706a67fff61980700c9275353efea62ae8cc81")
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "39")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "40")
+        )
         portability_record_ok = True
         if (
             portability_candidate
@@ -1259,6 +1264,7 @@ def _check_git_baselines() -> CheckResult:
             or real20_native_ledger_topology
             or real20_native_ledger_followup_topology
             or real20_native_ledger_qualification_topology
+            or real20_ledger_proof_topology
         ):
             record_path = root / "research" / "N2B1P_manifest_portability_remediation.json"
             schema_path = root / "schemas" / "n2b1p_manifest_portability_remediation_v1.schema.json"
@@ -1337,7 +1343,8 @@ def _check_git_baselines() -> CheckResult:
             or real20_terminal_evidence_topology
             or real20_native_ledger_topology
             or real20_native_ledger_followup_topology
-            or real20_native_ledger_qualification_topology,
+            or real20_native_ledger_qualification_topology
+            or real20_ledger_proof_topology,
             portability_record_ok,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),

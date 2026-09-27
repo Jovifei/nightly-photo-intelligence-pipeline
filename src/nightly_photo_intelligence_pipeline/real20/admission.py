@@ -21,6 +21,7 @@ from ..ingest.read_only_capability import (
 from ..windows_bound_promotion import BoundDirectory, bind_existing_directory
 from .contracts import Real20Error, load_manifest, validate_data_receipt
 from .identity import candidate_identity
+from .runtime_identity import validate_runtime_identity
 
 FROZEN_G1 = "29eee5fdb8e16c85649752501c4b722d2b4d071950c8a989add040e895a75c47"
 H3_REVIEW = "820f76ba48c5d55fd66b83f158afe7b12b62aad0315df710a57163ea407ffc33"
@@ -117,6 +118,12 @@ def admit(
         _require(actual == trusted / name, "REAL20_UNTRUSTED_CONTROL_PATH")
     expected_anchor = trusted / "real20_execution_anchor.json"
     _require(anchor_path == expected_anchor, "REAL20_UNTRUSTED_ANCHOR_PATH")
+    runtime_identity = strict_json(control_bytes(runtime_identity_path))
+    validate_runtime_identity(
+        runtime_identity,
+        now=datetime.now(UTC),
+        require_v2=True,
+    )
     # Paths belong in hashes/lexical checks; live handles belong in object checks.
     # Never stringify BoundDirectory (its repr is not an Owner-approved path).
     _require(isinstance(ledger_root, Path), "REAL20_LEDGER_PATH_REQUIRED")

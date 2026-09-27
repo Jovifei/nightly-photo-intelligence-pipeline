@@ -2069,3 +2069,22 @@ not consume or mint a Real20 credential. The final push target remains
 - [ ] Create ordinary commit/push to the transition branch and read it back; keep main unchanged.
 - [ ] Write Git-external R2 worksheet with final source identity and fresh proposed UTC window; no credential, anchor or photo operation in this batch.
 - [ ] Sync verified progress to Obsidian after remote readback and verify destination hashes.
+
+## Real20 ledger inheritance code-only candidate — 2026-09-27
+
+Plan: `docs/45_real20_ledger_inheritance_code_plan.md`; exact parent `ca706a67fff61980700c9275353efea62ae8cc81`. This new section tracks a separate candidate and does not reclassify the older unchecked R1 closeout items above.
+
+- [x] Read current contract/state and capture the inherited docs-only baseline: handoff 6 PASS / 2 FAIL (successor topology and root MANIFEST); no source or model action.
+- [x] Ask the bound ChatGPT Project to resolve the runtime identity digest conflict; draft the v2 clarification in `docs/44` and self-check `git diff --check`.
+- [ ] Jovi reviews the revised `docs/44` and explicitly confirms the bounded code-only implementation and branch push scope.
+- [ ] RED tests prove missing, stale, failed, tampered or mismatched probe proof stops before reservation/backend/image open; verify separate live-observation and whole-control digests.
+- [ ] Implement versioned v2 runtime identity validation, synthetic ledger-probe and independently cleaned proof without Owner ACL/system changes.
+- [ ] Run focused Real20 and full supported quality matrix; record actual exits, skip/NOT_AVAILABLE states and no real-data/model execution.
+- [ ] Register one direct successor in topology guards, build MANIFEST from Git index, create one ordinary commit, and verify handoff/preflight on its clean exact SHA.
+- [ ] Ordinary-push only the verified code-only review branch; read back remote SHA and obtain remote ChatGPT independent review.
+- [ ] Use review result to request the next bounded stage plan; retain R2 `NOT_RUN` and production `N2B2=LOCKED` until separate gates.
+
+### Review
+
+- Current result: `DESIGN_CLARIFICATION_DRAFT_AWAITING_JOVI_REVIEW`. No implementation test or push has run in this new branch.
+- A code-only `DONE` must be backed by fresh final-SHA tests and remote review; it cannot stand for native R2, Real20, production Bundle/App or scale-up.

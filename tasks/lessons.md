@@ -361,3 +361,14 @@
 - For temporary Windows DACL tests, retain a recovery handle before applying
   OWNER RIGHTS/WRITE_DAC denial. Reset the synthetic ACL in `finally` before
   cleanup; never leave a temporary fixture unremovable after a failed probe.
+
+## 2026-09-27 C2C stage-planning and governance stop
+
+- A remote PLAN is not a code authorization. Preserve the distinction between
+  a plan, a design review, a code-only candidate, native R2, Real20 execution,
+  and production phase unlocks. A 6/2 handoff result caused by topology and
+  MANIFEST drift must be repaired on a final candidate, not retried blindly.
+- When the runtime identity contains both live model/GPU observations and an
+  Owner-bound filesystem proof, bind the whole control to credential/anchor
+  digests but compare live probes only to their observation subtree. A real
+  ledger recheck is non-mutating; synthetic inheritance probes stay isolated.
