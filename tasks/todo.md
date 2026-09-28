@@ -2125,3 +2125,30 @@ Execution branch: `codex/npi-pilot-app-20260927`.
 - [ ] Execute native R2, model/CUDA qualification, Real20, mature-component
   promotion, Bundle v1, Pilot, or App integration; each remains behind its
   separate gate and remote review.
+
+## Route B cache re-provision and Python 3.12 control-plane candidate — 2026-09-28
+
+Remote PLAN: `N2B1P_VERSIONED_REPROVISION_AND_PY312_TOOLING_GATE`; base
+`b40a1526961de9230cbc1da45e41a162fb3b7ee1`.
+
+- [x] Rebind exact HEAD and clean tree; re-read the governing contract, state,
+  N2B1R/N2B1P evidence, runtime configuration, promotion code and bootstrap
+  code without searching external storage.
+- [x] Confirm Route A is unavailable: the original cache object identity and
+  quarantine run ID are not available; all three canonical verifiers remain
+  `FileNotFoundError`.
+- [x] Inventory Python 3.12.10 read-only: pinned package set is known from
+  `pyproject.toml`, but the interpreter has no pytest/Ruff/mypy/jsonschema/
+  referencing/Pillow/project package; no installation was performed.
+- [x] Add versioned Route B task/schema/runtime DRAFT and separate B-cache vs
+  B-source authorities; legacy N2B1P evidence remains immutable.
+- [x] Add separate Python 3.12 tooling task/schema/approval DRAFT with pinned
+  runtime/dev versions and explicit no-model/no-network boundaries.
+- [x] Add read-only control-plane checks and RED coverage: exact historical
+  three-artifact binding, no arbitrary roots, no network-enabled B-cache,
+  Owner-root attestation failures, missing B-source evidence, and no install.
+- [ ] Materialize Owner approval or execute cache/tooling provisioning; DRAFT
+  controls are not authorization.
+- [ ] Run Route B acquisition/promotion, supported Python 3.12 quality matrix,
+  model/CUDA, photo/EXIF, SQLite, Real20, Bundle/App or Pilot; all remain
+  `NOT_RUN` until separate approvals and external review.

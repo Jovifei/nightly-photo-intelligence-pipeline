@@ -1,0 +1,22 @@
+schema_version: "1.0"
+approval_type: "OWNER_PY312_QUALITY_ENVIRONMENT"
+status: "DRAFT_NOT_AUTHORIZED"
+owner_id: "Jovi"
+scope: "TOOLING_ONLY_NO_MODEL_OR_NETWORK"
+contract_ref: "tasks/tooling_python312_quality_environment_v1.yaml"
+installation_authority:
+  venv: "NOT_AUTHORIZED"
+  local_wheelhouse: "OWNER_APPROVAL_REQUIRED"
+  network: "DENY"
+  model_packages: "FORBIDDEN"
+prohibited_actions:
+  - "model_weight_download"
+  - "torch_or_cuda_install"
+  - "network_package_retrieval"
+  - "system_python_mutation"
+  - "driver_or_cuda_configuration"
+  - "photo_exif_sqlite_access"
+  - "real20_lease_or_reservation"
+mandatory_stop:
+  value: true
+  next_action: "EXTERNAL_REVIEW_PY312_TOOLING_CONTROL_PLANE"

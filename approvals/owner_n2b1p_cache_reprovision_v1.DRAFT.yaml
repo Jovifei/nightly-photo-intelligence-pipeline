@@ -1,0 +1,22 @@
+schema_version: "1.0"
+approval_type: "OWNER_N2B1P_CACHE_REPROVISION"
+status: "DRAFT_NOT_AUTHORIZED"
+owner_id: "Jovi"
+scope: "VERSIONED_CONTROL_PLANE_ONLY"
+contract_ref: "tasks/phase_n2b1p_cache_reprovision_v1.yaml"
+execution_authority:
+  b_cache: "NOT_AUTHORIZED"
+  b_source: "NOT_AUTHORIZED"
+  network: "DENY"
+prohibited_actions:
+  - "cache_root_creation"
+  - "cache_root_acl_repair"
+  - "quarantine_search"
+  - "network_download"
+  - "direct_download_to_cache"
+  - "historical_evidence_rewrite"
+  - "model_load_or_inference"
+  - "photo_exif_sqlite_or_real20_access"
+mandatory_stop:
+  value: true
+  next_action: "EXTERNAL_REVIEW_ROUTE_B_CONTROL_PLANE"

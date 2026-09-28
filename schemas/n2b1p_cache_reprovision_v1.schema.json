@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b1p_cache_reprovision_v1.schema.json",
+  "title": "N2B1P versioned cache re-provision control plane",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "phase",
+    "capability",
+    "contract_type",
+    "status",
+    "owner_decision",
+    "superseded_runtime_configuration",
+    "successor_runtime_configuration",
+    "artifacts",
+    "authorities",
+    "prohibited_actions",
+    "mandatory_stop"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "phase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "status"],
+      "properties": {
+        "id": {"const": "N2B1P"},
+        "title": {"const": "Versioned local-research cache re-provision control plane"},
+        "status": {"const": "DRAFT_NOT_AUTHORIZED"}
+      }
+    },
+    "capability": {"const": "N2B1P_CACHE_REPROVISION_CONTROL_PLANE"},
+    "contract_type": {"const": "N2B1P_CACHE_REPROVISION_CONTROL_PLANE"},
+    "status": {"const": "DRAFT_NOT_AUTHORIZED"},
+    "owner_decision": {"const": "PENDING_OWNER_APPROVAL"},
+    "superseded_runtime_configuration": {"$ref": "#/$defs/runtime_binding"},
+    "successor_runtime_configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "configuration_version", "configuration_digest", "cache_root_identity", "provisioning_status"],
+      "properties": {
+        "path": {"const": "approvals/n2b1p_reprovision_runtime_configuration.DRAFT.json"},
+        "configuration_version": {"const": "N2B1P_REPROVISION_RUNTIME_CONFIGURATION_V1"},
+        "configuration_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "cache_root_identity": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "provisioning_status": {"const": "OWNER_PROVISION_REQUIRED"}
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/artifact"}
+    },
+    "authorities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["b_cache", "b_source"],
+      "properties": {
+        "b_cache": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["operation", "status", "network_access"],
+          "properties": {
+            "operation": {"const": "COPY_ONLY_FROM_APPROVED_QUARANTINE"},
+            "status": {"const": "NOT_AUTHORIZED"},
+            "network_access": {"const": "DENY"}
+          }
+        },
+        "b_source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["operation", "status", "allowed_domains", "evidence_required"],
+          "properties": {
+            "operation": {"const": "SEPARATE_SOURCE_ACQUISITION"},
+            "status": {"const": "NOT_AUTHORIZED"},
+            "allowed_domains": {
+              "type": "array",
+              "const": ["download.pytorch.org"]
+            },
+            "evidence_required": {"const": "NEW_IMMUTABLE_QUARANTINE_TRANSFER_RECORD"}
+          }
+        }
+      }
+    },
+    "prohibited_actions": {
+      "type": "array",
+      "minItems": 10,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "mandatory_stop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "next_action"],
+      "properties": {
+        "value": {"const": true},
+        "next_action": {"const": "EXTERNAL_REVIEW_ROUTE_B_CONTROL_PLANE"}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "runtime_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "configuration_digest", "cache_root_identity"],
+      "properties": {
+        "path": {"const": "approvals/n2b1p_runtime_configuration.json"},
+        "configuration_digest": {"$ref": "#/$defs/sha256"},
+        "cache_root_identity": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "revision", "filename", "byte_count", "local_sha256", "transfer_manifest_sha256"],
+      "properties": {
+        "id": {
+          "enum": [
+            "torchvision-keypointrcnn-resnet50-fpn-coco-v1",
+            "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1",
+            "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1"
+          ]
+        },
+        "revision": {"const": "torchvision-v0.22.1"},
+        "filename": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{4,191}$"},
+        "byte_count": {"type": "integer", "minimum": 1},
+        "local_sha256": {"$ref": "#/$defs/sha256"},
+        "transfer_manifest_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

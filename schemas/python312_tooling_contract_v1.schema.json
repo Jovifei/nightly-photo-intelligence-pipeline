@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/python312_tooling_contract_v1.schema.json",
+  "title": "Python 3.12 quality tooling control-plane draft",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "phase", "capability", "interpreter", "packages", "source_policy", "prohibited_actions", "mandatory_stop"],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "phase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "status"],
+      "properties": {
+        "id": {"const": "PY312_TOOLING"},
+        "title": {"const": "Supported Python 3.12 quality tooling control plane"},
+        "status": {"const": "DRAFT_NOT_AUTHORIZED"}
+      }
+    },
+    "capability": {"const": "PY312_QUALITY_TOOLING_CONTROL_PLANE"},
+    "interpreter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["python_constraint", "executable_ref", "venv_root_ref"],
+      "properties": {
+        "python_constraint": {"const": ">=3.12,<3.13"},
+        "executable_ref": {"const": "OWNER_TO_PROVIDE_PYTHON312_EXECUTABLE"},
+        "venv_root_ref": {"const": "OWNER_TO_PROVIDE_GIT_EXTERNAL_VENV"}
+      }
+    },
+    "packages": {
+      "type": "array",
+      "minItems": 9,
+      "uniqueItems": true,
+      "items": {"type": "object", "additionalProperties": false, "required": ["name", "version", "purpose"], "properties": {"name": {"type": "string"}, "version": {"type": "string", "pattern": "^[0-9][A-Za-z0-9.+-]*$"}, "purpose": {"enum": ["runtime", "dev"]}}}
+    },
+    "source_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preferred", "network", "model_packages"],
+      "properties": {
+        "preferred": {"const": "OWNER_APPROVED_LOCAL_WHEELHOUSE_NO_INDEX"},
+        "network": {"const": "SEPARATE_TOOLING_APPROVAL_REQUIRED"},
+        "model_packages": {"const": "FORBIDDEN"}
+      }
+    },
+    "prohibited_actions": {"type": "array", "minItems": 8, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "mandatory_stop": {
+      "type": "object", "additionalProperties": false, "required": ["value", "next_action"],
+      "properties": {"value": {"const": true}, "next_action": {"const": "EXTERNAL_REVIEW_PY312_TOOLING_CONTROL_PLANE"}}
+    }
+  }
+}

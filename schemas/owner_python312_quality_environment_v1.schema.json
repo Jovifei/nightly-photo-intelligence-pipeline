@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/owner_python312_quality_environment_v1.schema.json",
+  "title": "Owner draft approval for Python 3.12 quality tooling",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "approval_type", "status", "owner_id", "scope", "contract_ref", "installation_authority", "prohibited_actions", "mandatory_stop"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "approval_type": {"const": "OWNER_PY312_QUALITY_ENVIRONMENT"},
+    "status": {"const": "DRAFT_NOT_AUTHORIZED"},
+    "owner_id": {"const": "Jovi"},
+    "scope": {"const": "TOOLING_ONLY_NO_MODEL_OR_NETWORK"},
+    "contract_ref": {"const": "tasks/tooling_python312_quality_environment_v1.yaml"},
+    "installation_authority": {
+      "type": "object", "additionalProperties": false, "required": ["venv", "local_wheelhouse", "network", "model_packages"],
+      "properties": {"venv": {"const": "NOT_AUTHORIZED"}, "local_wheelhouse": {"const": "OWNER_APPROVAL_REQUIRED"}, "network": {"const": "DENY"}, "model_packages": {"const": "FORBIDDEN"}}
+    },
+    "prohibited_actions": {"type": "array", "minItems": 7, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "mandatory_stop": {
+      "type": "object", "additionalProperties": false, "required": ["value", "next_action"],
+      "properties": {"value": {"const": true}, "next_action": {"const": "EXTERNAL_REVIEW_PY312_TOOLING_CONTROL_PLANE"}}
+    }
+  }
+}

@@ -1,0 +1,36 @@
+contract_version: "1.0"
+phase:
+  id: "PY312_TOOLING"
+  title: "Supported Python 3.12 quality tooling control plane"
+  status: "DRAFT_NOT_AUTHORIZED"
+capability: "PY312_QUALITY_TOOLING_CONTROL_PLANE"
+interpreter:
+  python_constraint: ">=3.12,<3.13"
+  executable_ref: "OWNER_TO_PROVIDE_PYTHON312_EXECUTABLE"
+  venv_root_ref: "OWNER_TO_PROVIDE_GIT_EXTERNAL_VENV"
+packages:
+  - {name: "typer", version: "0.26.8", purpose: "runtime"}
+  - {name: "pydantic", version: "2.13.4", purpose: "runtime"}
+  - {name: "pyyaml", version: "6.0.3", purpose: "runtime"}
+  - {name: "pillow", version: "12.3.0", purpose: "runtime"}
+  - {name: "pytest", version: "9.1.1", purpose: "dev"}
+  - {name: "ruff", version: "0.15.21", purpose: "dev"}
+  - {name: "mypy", version: "2.3.0", purpose: "dev"}
+  - {name: "jsonschema", version: "4.26.0", purpose: "dev"}
+  - {name: "referencing", version: "0.37.0", purpose: "dev"}
+source_policy:
+  preferred: "OWNER_APPROVED_LOCAL_WHEELHOUSE_NO_INDEX"
+  network: "SEPARATE_TOOLING_APPROVAL_REQUIRED"
+  model_packages: "FORBIDDEN"
+prohibited_actions:
+  - "model_weight_download"
+  - "torch_or_cuda_install"
+  - "network_package_retrieval"
+  - "system_python_mutation"
+  - "driver_or_cuda_configuration"
+  - "photo_exif_sqlite_access"
+  - "real20_lease_or_reservation"
+  - "app_or_bundle_write"
+mandatory_stop:
+  value: true
+  next_action: "EXTERNAL_REVIEW_PY312_TOOLING_CONTROL_PLANE"

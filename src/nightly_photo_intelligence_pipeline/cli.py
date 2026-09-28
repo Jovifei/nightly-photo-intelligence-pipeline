@@ -94,6 +94,13 @@ real20_app = typer.Typer(
     add_completion=False,
 )
 app.add_typer(real20_app, name="real20")
+n2b1p_app = typer.Typer(
+    name="n2b1p",
+    help="N2B1P versioned cache and tooling control-plane checks.",
+    no_args_is_help=True,
+    add_completion=False,
+)
+app.add_typer(n2b1p_app, name="n2b1p")
 
 
 def _resolve_runtime_root() -> Path:
@@ -1542,6 +1549,32 @@ def json_strict_dump(obj: object) -> str:
     import json  # noqa: PLC0415
 
     return json.dumps(obj, sort_keys=True, indent=2, ensure_ascii=False)
+
+
+@n2b1p_app.command("reprovision-check")
+def n2b1p_reprovision_check(
+    project_root: Path = typer.Option(..., "--project-root"),
+) -> None:
+    """Validate the Route B successor control plane without provisioning anything."""
+    from .n2b1p_reprovision import check_reprovision_control_plane
+
+    result = check_reprovision_control_plane(project_root)
+    typer.echo(json_strict_dump(result))
+    if result["status"] != "ROUTE_B_CONTROL_PLANE_READY":
+        raise typer.Exit(code=1)
+
+
+@n2b1p_app.command("tooling-check")
+def n2b1p_tooling_check(
+    project_root: Path = typer.Option(..., "--project-root"),
+) -> None:
+    """Validate the Python 3.12 tooling draft without installing dependencies."""
+    from .n2b1p_reprovision import check_python312_tooling_control_plane
+
+    result = check_python312_tooling_control_plane(project_root)
+    typer.echo(json_strict_dump(result))
+    if result["status"] != "PY312_TOOLING_CONTROL_PLANE_READY":
+        raise typer.Exit(code=1)
 
 
 @real20_app.command("prepare")

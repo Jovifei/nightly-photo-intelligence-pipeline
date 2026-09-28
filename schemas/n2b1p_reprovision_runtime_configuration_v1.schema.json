@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b1p_reprovision_runtime_configuration_v1.schema.json",
+  "title": "N2B1P versioned successor runtime configuration draft",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "configuration_version",
+    "status",
+    "runtime_parent_ref",
+    "work_root_ref",
+    "snapshot_root",
+    "cache_root_ref",
+    "quarantine_root_ref",
+    "cache_root_identity",
+    "configuration_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "configuration_version": {"const": "N2B1P_REPROVISION_RUNTIME_CONFIGURATION_V1"},
+    "status": {"const": "DRAFT_NOT_AUTHORIZED"},
+    "runtime_parent_ref": {"const": "OWNER_TO_PROVIDE_EXTERNAL_RUNTIME_PARENT"},
+    "work_root_ref": {"const": "OWNER_TO_PROVIDE_EXTERNAL_WORK_ROOT"},
+    "snapshot_root": {"const": "NOT_APPLICABLE_N2B1P_SOURCE_ACCESS_FORBIDDEN"},
+    "cache_root_ref": {"const": "OWNER_PREPROVISIONED_EXTERNAL_CACHE_ROOT"},
+    "quarantine_root_ref": {"const": "OWNER_IDENTIFIED_EXTERNAL_QUARANTINE_ROOT"},
+    "cache_root_identity": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "configuration_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

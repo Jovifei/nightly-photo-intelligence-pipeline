@@ -1,0 +1,62 @@
+contract_version: "1.0"
+phase:
+  id: "N2B1P"
+  title: "Versioned local-research cache re-provision control plane"
+  status: "DRAFT_NOT_AUTHORIZED"
+capability: "N2B1P_CACHE_REPROVISION_CONTROL_PLANE"
+contract_type: "N2B1P_CACHE_REPROVISION_CONTROL_PLANE"
+status: "DRAFT_NOT_AUTHORIZED"
+owner_decision: "PENDING_OWNER_APPROVAL"
+superseded_runtime_configuration:
+  path: "approvals/n2b1p_runtime_configuration.json"
+  configuration_digest: "462e999671c2073ef8d02cbeaccd561cbc1f4734c4f312baee079a8134040bfd"
+  cache_root_identity: "15cb613d6ecb39247799adca13c6fcbfd9c9edb72c223db7cebf1ee975d7b2ba"
+successor_runtime_configuration:
+  path: "approvals/n2b1p_reprovision_runtime_configuration.DRAFT.json"
+  configuration_version: "N2B1P_REPROVISION_RUNTIME_CONFIGURATION_V1"
+  configuration_digest: "0000000000000000000000000000000000000000000000000000000000000000"
+  cache_root_identity: "0000000000000000000000000000000000000000000000000000000000000000"
+  provisioning_status: "OWNER_PROVISION_REQUIRED"
+artifacts:
+  - id: "torchvision-keypointrcnn-resnet50-fpn-coco-v1"
+    revision: "torchvision-v0.22.1"
+    filename: "keypointrcnn_resnet50_fpn_coco-fc266e95.pth"
+    byte_count: 237034793
+    local_sha256: "fc266e953d2b302cdcbb9ae66f71f6b0d4649928bf02dc573961e361e4918926"
+    transfer_manifest_sha256: "90da3eb000813841a980dcbaf8e1b31fdde15283a9d6b969156c5eb0ae21ce43"
+  - id: "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1"
+    revision: "torchvision-v0.22.1"
+    filename: "lraspp_mobilenet_v3_large-d234d4ea.pth"
+    byte_count: 13097061
+    local_sha256: "d234d4eae9d55d5f76de18b77cf0dc62c66fe5c5482758209d00f950c92bb280"
+    transfer_manifest_sha256: "d25cc430637cf19ebab31cd5aa99e344b4da58cd2b04db245c165181e3ff1f12"
+  - id: "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1"
+    revision: "torchvision-v0.22.1"
+    filename: "deeplabv3_mobilenet_v3_large-fc3c493d.pth"
+    byte_count: 44356159
+    local_sha256: "fc3c493d68e89cc31ef488c803d5d7dd2f3190fb570598faa49fef69be8e5e70"
+    transfer_manifest_sha256: "676054e8b2c366f591a1bbe1b4521e2ef7abdb08197534ca95eb11d434dd0cae"
+authorities:
+  b_cache:
+    operation: "COPY_ONLY_FROM_APPROVED_QUARANTINE"
+    status: "NOT_AUTHORIZED"
+    network_access: "DENY"
+  b_source:
+    operation: "SEPARATE_SOURCE_ACQUISITION"
+    status: "NOT_AUTHORIZED"
+    allowed_domains: ["download.pytorch.org"]
+    evidence_required: "NEW_IMMUTABLE_QUARANTINE_TRANSFER_RECORD"
+prohibited_actions:
+  - "legacy_runtime_configuration_rewrite"
+  - "arbitrary_cache_or_quarantine_path"
+  - "direct_download_to_cache"
+  - "network_without_separate_source_approval"
+  - "model_load_or_inference"
+  - "cuda_execution"
+  - "photo_or_exif_read"
+  - "sqlite_ingest_write"
+  - "dependency_install"
+  - "real20_lease_or_reservation"
+mandatory_stop:
+  value: true
+  next_action: "EXTERNAL_REVIEW_ROUTE_B_CONTROL_PLANE"
