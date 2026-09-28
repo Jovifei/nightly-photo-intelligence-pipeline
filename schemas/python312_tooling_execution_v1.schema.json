@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/python312_tooling_execution_v1.schema.json",
+  "title": "Python 3.12 quality environment execution contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "phase", "capability", "reviewed_code", "route", "interpreter", "packages", "source", "execution_steps", "acceptance", "prohibited_actions", "mandatory_stop"],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "phase": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "title", "status"],
+      "properties": {
+        "id": {"const": "PY312_TOOLING_EXECUTION"},
+        "title": {"const": "Python 3.12 quality environment execution"},
+        "status": {"const": "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"}
+      }
+    },
+    "capability": {"const": "PY312_QUALITY_ENVIRONMENT_EXECUTION"},
+    "reviewed_code": {
+      "type": "object", "additionalProperties": false,
+      "required": ["commit", "parent", "control_plane_task", "control_plane_approval"],
+      "properties": {
+        "commit": {"const": "a2c338b2fe9467d9668566eadfe0b1fc094df526"},
+        "parent": {"const": "7e3b9d6894eee292cba43e3d08627426938b39f1"},
+        "control_plane_task": {"const": "tasks/tooling_python312_quality_environment_v1.yaml"},
+        "control_plane_approval": {"const": "approvals/owner_python312_quality_environment_v1.DRAFT.yaml"}
+      }
+    },
+    "route": {
+      "type": "object", "additionalProperties": false,
+      "required": ["selected", "local_wheelhouse_search", "historical_manifest_sha256", "historical_manifest_authority"],
+      "properties": {
+        "selected": {"const": "NETWORK_REACQUISITION"},
+        "local_wheelhouse_search": {"const": "NOT_AVAILABLE"},
+        "historical_manifest_sha256": {"const": "3cc60a7d65a3d695a0610604582be3d56e7607eddfd66aa2d179417b4eb5b41a"},
+        "historical_manifest_authority": {"const": "HISTORICAL_EVIDENCE_ONLY"}
+      }
+    },
+    "interpreter": {
+      "type": "object", "additionalProperties": false,
+      "required": ["python_constraint", "expected_version", "implementation", "platform", "abi", "executable_ref", "venv_root_ref"],
+      "properties": {
+        "python_constraint": {"const": ">=3.12,<3.13"},
+        "expected_version": {"const": "3.12.10"},
+        "implementation": {"const": "CPython"},
+        "platform": {"const": "win_amd64"},
+        "abi": {"const": "cp312"},
+        "executable_ref": {"const": "OWNER_TO_PROVIDE_PYTHON312_EXECUTABLE"},
+        "venv_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260928"}
+      }
+    },
+    "packages": {
+      "type": "object", "additionalProperties": false,
+      "required": ["direct_pins", "transitive_policy", "forbidden_names"],
+      "properties": {
+        "direct_pins": {
+          "type": "array", "minItems": 9, "maxItems": 9, "uniqueItems": true,
+          "items": {"oneOf": [
+            {"const": {"name": "typer", "version": "0.26.8", "purpose": "runtime"}},
+            {"const": {"name": "pydantic", "version": "2.13.4", "purpose": "runtime"}},
+            {"const": {"name": "pyyaml", "version": "6.0.3", "purpose": "runtime"}},
+            {"const": {"name": "pillow", "version": "12.3.0", "purpose": "runtime"}},
+            {"const": {"name": "pytest", "version": "9.1.1", "purpose": "dev"}},
+            {"const": {"name": "ruff", "version": "0.15.21", "purpose": "dev"}},
+            {"const": {"name": "mypy", "version": "2.3.0", "purpose": "dev"}},
+            {"const": {"name": "jsonschema", "version": "4.26.0", "purpose": "dev"}},
+            {"const": {"name": "referencing", "version": "0.37.0", "purpose": "dev"}}
+          ]}
+        },
+        "transitive_policy": {"const": "COMPLETE_CLOSED_WHEEL_ONLY_DEPENDENCY_CLOSURE"},
+        "forbidden_names": {
+          "type": "array", "minItems": 13, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1},
+          "allOf": [
+            {"contains": {"const": "torch"}}, {"contains": {"const": "torchvision"}},
+            {"contains": {"const": "transformers"}}, {"contains": {"const": "mmpose"}},
+            {"contains": {"const": "sam2"}}, {"contains": {"const": "cuda-python"}}
+          ]
+        }
+      }
+    },
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["mode", "allowed_domains", "https_only", "reject_redirects_outside_allowed_domains", "quarantine_root_ref", "wheelhouse_root_ref", "manifest_ref", "wheel_only", "source_distributions", "direct_network_install", "network_after_quarantine"],
+      "properties": {
+        "mode": {"const": "OFFICIAL_PYPI_QUARANTINE_THEN_OFFLINE_INSTALL"},
+        "allowed_domains": {"const": ["pypi.org", "files.pythonhosted.org"]},
+        "https_only": {"const": true},
+        "reject_redirects_outside_allowed_domains": {"const": true},
+        "quarantine_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-quarantine-20260928"},
+        "wheelhouse_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260928"},
+        "manifest_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260928/manifest.json"},
+        "wheel_only": {"const": true},
+        "source_distributions": {"const": "FORBIDDEN"},
+        "direct_network_install": {"const": false},
+        "network_after_quarantine": {"const": "FORBIDDEN"}
+      }
+    },
+    "execution_steps": {"type": "array", "minItems": 8, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "acceptance": {"type": "array", "minItems": 9, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "prohibited_actions": {
+      "type": "array", "minItems": 12, "uniqueItems": true, "items": {"type": "string", "minLength": 1},
+      "allOf": [
+        {"contains": {"const": "model_weight_download"}}, {"contains": {"const": "torch_or_cuda_install"}},
+        {"contains": {"const": "photo_content_or_exif_read"}}, {"contains": {"const": "sqlite_ingest_write"}},
+        {"contains": {"const": "direct_network_install"}}, {"contains": {"const": "source_distribution_install"}}
+      ]
+    },
+    "mandatory_stop": {
+      "type": "object", "additionalProperties": false,
+      "required": ["value", "next_action"],
+      "properties": {"value": {"const": true}, "next_action": {"const": "EXTERNAL_REVIEW_PY312_ENVIRONMENT_QUALIFICATION"}}
+    }
+  }
+}

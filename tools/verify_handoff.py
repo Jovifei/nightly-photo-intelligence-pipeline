@@ -83,6 +83,7 @@ REAL20_LEDGER_OBJECT_DIGEST_FIX_BASE_SHA = "831e1ae1c67d28dac618b445b5be3ef72690
 REAL20_CACHE_R2_CODE_GATE_BASE_SHA = "af1adc5fbbc58f3155944756d6877dac2dce9b2b"
 ROUTE_B_CONTROL_PLANE_BASE_SHA = "b40a1526961de9230cbc1da45e41a162fb3b7ee1"
 ROUTE_B_CONTROL_PLANE_REMEDIATION_BASE_SHA = "7e3b9d6894eee292cba43e3d08627426938b39f1"
+PY312_TOOLING_APPROVAL_PACKET_BASE_SHA = "a2c338b2fe9467d9668566eadfe0b1fc094df526"
 
 errors: list[str] = []
 passes: list[str] = []
@@ -1060,6 +1061,11 @@ def check_baselines() -> None:
             and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "48")
             and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "47")
         )
+        or (
+            git("rev-parse", "HEAD^") == (0, PY312_TOOLING_APPROVAL_PACKET_BASE_SHA)
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "49")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "48")
+        )
     ):
         fail("N2B2 review candidate must be exactly one direct child of N2B1P")
     elif git("rev-list", "--merges", "HEAD") != (0, ""):
@@ -1288,6 +1294,7 @@ def main() -> int:
         (0, REAL20_CACHE_R2_CODE_GATE_BASE_SHA),
         (0, ROUTE_B_CONTROL_PLANE_BASE_SHA),
         (0, ROUTE_B_CONTROL_PLANE_REMEDIATION_BASE_SHA),
+        (0, PY312_TOOLING_APPROVAL_PACKET_BASE_SHA),
     }:
         print(
             "HANDOFF_VALID: Real20 transition code-only candidate; production N2B2 remains LOCKED"

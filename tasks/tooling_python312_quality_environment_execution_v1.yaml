@@ -1,0 +1,100 @@
+contract_version: "1.0"
+phase:
+  id: "PY312_TOOLING_EXECUTION"
+  title: "Python 3.12 quality environment execution"
+  status: "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"
+capability: "PY312_QUALITY_ENVIRONMENT_EXECUTION"
+reviewed_code:
+  commit: "a2c338b2fe9467d9668566eadfe0b1fc094df526"
+  parent: "7e3b9d6894eee292cba43e3d08627426938b39f1"
+  control_plane_task: "tasks/tooling_python312_quality_environment_v1.yaml"
+  control_plane_approval: "approvals/owner_python312_quality_environment_v1.DRAFT.yaml"
+route:
+  selected: "NETWORK_REACQUISITION"
+  local_wheelhouse_search: "NOT_AVAILABLE"
+  historical_manifest_sha256: "3cc60a7d65a3d695a0610604582be3d56e7607eddfd66aa2d179417b4eb5b41a"
+  historical_manifest_authority: "HISTORICAL_EVIDENCE_ONLY"
+interpreter:
+  python_constraint: ">=3.12,<3.13"
+  expected_version: "3.12.10"
+  implementation: "CPython"
+  platform: "win_amd64"
+  abi: "cp312"
+  executable_ref: "OWNER_TO_PROVIDE_PYTHON312_EXECUTABLE"
+  venv_root_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260928"
+packages:
+  direct_pins:
+    - {name: "typer", version: "0.26.8", purpose: "runtime"}
+    - {name: "pydantic", version: "2.13.4", purpose: "runtime"}
+    - {name: "pyyaml", version: "6.0.3", purpose: "runtime"}
+    - {name: "pillow", version: "12.3.0", purpose: "runtime"}
+    - {name: "pytest", version: "9.1.1", purpose: "dev"}
+    - {name: "ruff", version: "0.15.21", purpose: "dev"}
+    - {name: "mypy", version: "2.3.0", purpose: "dev"}
+    - {name: "jsonschema", version: "4.26.0", purpose: "dev"}
+    - {name: "referencing", version: "0.37.0", purpose: "dev"}
+  transitive_policy: "COMPLETE_CLOSED_WHEEL_ONLY_DEPENDENCY_CLOSURE"
+  forbidden_names:
+    - "torch"
+    - "torchvision"
+    - "torchaudio"
+    - "tensorflow"
+    - "onnxruntime"
+    - "transformers"
+    - "diffusers"
+    - "ultralytics"
+    - "open-clip-torch"
+    - "mmpose"
+    - "sam2"
+    - "ollama"
+    - "cuda-python"
+source:
+  mode: "OFFICIAL_PYPI_QUARANTINE_THEN_OFFLINE_INSTALL"
+  allowed_domains:
+    - "pypi.org"
+    - "files.pythonhosted.org"
+  https_only: true
+  reject_redirects_outside_allowed_domains: true
+  quarantine_root_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-quarantine-20260928"
+  wheelhouse_root_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260928"
+  manifest_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260928/manifest.json"
+  wheel_only: true
+  source_distributions: "FORBIDDEN"
+  direct_network_install: false
+  network_after_quarantine: "FORBIDDEN"
+execution_steps:
+  - "verify the reviewed commit and this approval packet before creating any directory"
+  - "create fresh Git-external quarantine and wheelhouse roots under the approved download root"
+  - "download only the exact direct pins and their complete Python-3.12 win_amd64 wheel closure into quarantine"
+  - "reject unexpected package names, source archives, redirects, domains, hashes, or platform tags"
+  - "freeze a path-redacted wheel manifest with URL, final domain, filename, size, and SHA-256"
+  - "promote verified wheels into the content-addressed wheelhouse without deleting quarantine"
+  - "create one Git-external venv and install offline with --no-index and --find-links only"
+  - "run imports, CLI checks, pip check, focused tests, full pytest, Ruff, mypy, schema checks, and sensitive scan"
+  - "record the complete installed inventory and network-zero offline-install evidence"
+acceptance:
+  - "Python 3.12.x only and system Python unchanged"
+  - "all nine direct pins exact"
+  - "complete transitive closure is wheel-only and hash-bound"
+  - "pip check passes"
+  - "pytest, ruff, mypy, jsonschema, referencing, Pillow, Typer, Pydantic, and PyYAML import successfully"
+  - "no forbidden model, CUDA, or vision package is present"
+  - "offline installation makes zero network requests"
+  - "PYTHONPATH=src is used; editable installation is not required"
+  - "quality result stops at PY312_ENVIRONMENT_QUALIFIED_AWAITING_EXTERNAL_REVIEW"
+prohibited_actions:
+  - "model_weight_download"
+  - "torch_or_cuda_install"
+  - "model_or_vision_package_install"
+  - "system_python_mutation"
+  - "driver_or_cuda_configuration"
+  - "photo_content_or_exif_read"
+  - "sqlite_ingest_write"
+  - "real20_lease_or_reservation"
+  - "ledger_or_probe_bootstrap"
+  - "direct_network_install"
+  - "source_distribution_install"
+  - "app_bundle_pilot_or_openclaw_write"
+mandatory_stop:
+  value: true
+  next_action: "EXTERNAL_REVIEW_PY312_ENVIRONMENT_QUALIFICATION"

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/owner_python312_quality_environment_execution_v1.schema.json",
+  "title": "Owner Python 3.12 quality environment execution authorization",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "approval_type", "status", "owner_id", "reviewed_code_commit", "task_ref", "schema_ref", "scope", "execution_authority", "network_authority", "package_scope", "storage_scope", "prohibited_actions", "mandatory_stop"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "approval_type": {"const": "OWNER_PY312_QUALITY_ENVIRONMENT_EXECUTION"},
+    "status": {"const": "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"},
+    "owner_id": {"const": "Jovi"},
+    "reviewed_code_commit": {"const": "a2c338b2fe9467d9668566eadfe0b1fc094df526"},
+    "task_ref": {"const": "tasks/tooling_python312_quality_environment_execution_v1.yaml"},
+    "schema_ref": {"const": "schemas/owner_python312_quality_environment_execution_v1.schema.json"},
+    "scope": {"const": "PYTHON312_QUALITY_ENVIRONMENT_ONLY"},
+    "execution_authority": {
+      "type": "object", "additionalProperties": false,
+      "required": ["python_constraint", "venv", "system_python", "editable_install"],
+      "properties": {
+        "python_constraint": {"const": ">=3.12,<3.13"},
+        "venv": {"const": "ONE_GIT_EXTERNAL_VENV"},
+        "system_python": {"const": "UNCHANGED"},
+        "editable_install": {"const": "NOT_REQUIRED"}
+      }
+    },
+    "network_authority": {
+      "type": "object", "additionalProperties": false,
+      "required": ["route", "domains", "quarantine_first", "offline_install", "network_after_quarantine"],
+      "properties": {
+        "route": {"const": "OFFICIAL_PYPI_REACQUISITION_ONLY"},
+        "domains": {"const": ["pypi.org", "files.pythonhosted.org"]},
+        "quarantine_first": {"const": true},
+        "offline_install": {"const": true},
+        "network_after_quarantine": {"const": "FORBIDDEN"}
+      }
+    },
+    "package_scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["direct_pins_ref", "closure", "model_packages"],
+      "properties": {
+        "direct_pins_ref": {"const": "tasks/tooling_python312_quality_environment_execution_v1.yaml#packages.direct_pins"},
+        "closure": {"const": "COMPLETE_HASH_BOUND_WHEEL_ONLY"},
+        "model_packages": {"const": "FORBIDDEN"}
+      }
+    },
+    "storage_scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["download_root_ref", "quarantine_root_ref", "wheelhouse_root_ref", "git_tracking", "reparse_points"],
+      "properties": {
+        "download_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD"},
+        "quarantine_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-quarantine-20260928"},
+        "wheelhouse_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260928"},
+        "git_tracking": {"const": "FORBIDDEN"},
+        "reparse_points": {"const": "FORBIDDEN"}
+      }
+    },
+    "prohibited_actions": {
+      "type": "array", "minItems": 12, "uniqueItems": true, "items": {"type": "string", "minLength": 1},
+      "allOf": [
+        {"contains": {"const": "model_weight_download"}}, {"contains": {"const": "torch_or_cuda_install"}},
+        {"contains": {"const": "system_python_mutation"}}, {"contains": {"const": "photo_content_or_exif_read"}},
+        {"contains": {"const": "sqlite_ingest_write"}}, {"contains": {"const": "direct_network_install"}}
+      ]
+    },
+    "mandatory_stop": {
+      "type": "object", "additionalProperties": false,
+      "required": ["value", "next_action"],
+      "properties": {"value": {"const": true}, "next_action": {"const": "EXTERNAL_REVIEW_PY312_ENVIRONMENT_QUALIFICATION"}}
+    }
+  }
+}

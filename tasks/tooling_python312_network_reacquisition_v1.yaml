@@ -1,0 +1,62 @@
+contract_version: "1.0"
+phase:
+  id: "PY312_NETWORK_REACQUISITION"
+  title: "Python 3.12 wheelhouse network reacquisition"
+  status: "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"
+capability: "PY312_NETWORK_WHEELHOUSE_REACQUISITION"
+reviewed_code_commit: "a2c338b2fe9467d9668566eadfe0b1fc094df526"
+owner_authority:
+  owner_id: "Jovi"
+  local_wheelhouse_search: "NOT_AVAILABLE"
+  selected_route: "NETWORK_REACQUISITION"
+  execution_requires_external_review: true
+scope:
+  interpreter: "CPython >=3.12,<3.13"
+  platform: "win_amd64"
+  abi: "cp312"
+  direct_pins_ref: "tasks/tooling_python312_quality_environment_execution_v1.yaml#packages.direct_pins"
+  transitive_policy: "ONLY_DEPENDENCIES_REQUIRED_BY_THE_NINE_DIRECT_PINS"
+  wheel_only: true
+  source_distributions: false
+allowed_network:
+  scheme: "HTTPS"
+  domains:
+    - "pypi.org"
+    - "files.pythonhosted.org"
+  redirect_policy: "FINAL_DOMAIN_MUST_BE_IN_ALLOWED_DOMAINS"
+  authentication: "NONE"
+  proxy_or_custom_index: "FORBIDDEN"
+  git_or_source_repository: "FORBIDDEN"
+storage:
+  download_root_ref: "E_CLAUDE_ALLOW_DOWNLOAD"
+  quarantine_root_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-quarantine-20260928"
+  wheelhouse_root_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260928"
+  manifest_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260928/manifest.json"
+  git_tracking: "FORBIDDEN"
+  source_overlap: "FORBIDDEN"
+  reparse_points: "FORBIDDEN"
+  quarantine_cleanup: "FORBIDDEN_UNTIL_REVIEW_CLOSURE"
+network_procedure:
+  - "verify exact reviewed commit, task, approval, and schema before network access"
+  - "create fresh quarantine under the approved download root"
+  - "use pip download or an equivalent wheel-only downloader with explicit Python 3.12 win_amd64 selection"
+  - "allow only the two official domains and HTTPS"
+  - "capture final URL, domain, filename, size, SHA-256, and wheel metadata for every file"
+  - "reject any unexpected dependency, model package, source archive, redirect, or platform tag"
+  - "freeze and validate the complete manifest before promotion"
+  - "promote by content address, retain quarantine, then disconnect network"
+prohibitions:
+  - "no pip install while network is enabled"
+  - "no --extra-index-url, custom index, git URL, local uncontrolled path, or unauthenticated mirror"
+  - "no torch, torchvision, torchaudio, CUDA, model, VLM, pose, segmentation, or embedding package"
+  - "no system Python, global site-packages, driver, proxy, DNS, or OS configuration mutation"
+  - "no photo, EXIF, SQLite, ledger, probe, lease, model, App, Pilot, or OpenClaw operation"
+stop_conditions:
+  - "any approval/schema/commit mismatch"
+  - "any domain, redirect, hash, filename, size, wheel tag, or dependency closure mismatch"
+  - "any forbidden package or source distribution"
+  - "quarantine or wheelhouse path is missing, overlapping, reparse, or inside Git"
+  - "network remains available during offline installation"
+mandatory_stop:
+  value: true
+  next_action: "PY312_ENVIRONMENT_QUALIFIED_AWAITING_EXTERNAL_REVIEW"

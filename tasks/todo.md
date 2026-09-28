@@ -2165,3 +2165,34 @@ Remote PLAN: `N2B1P_VERSIONED_REPROVISION_AND_PY312_TOOLING_GATE`; base
   tooling-pin removal.
 - [ ] Re-run final focused/static evidence and obtain remote exact-SHA review;
   cache, dependency installation, and all later stages remain blocked.
+
+## Python 3.12 network-tooling approval packet — 2026-09-28
+
+The bounded search under the Owner-approved download root found no complete,
+NPI-bound 31-wheel wheelhouse. This packet does not download or install
+anything; it creates a separately reviewable authority for a future,
+quarantine-first network reacquisition.
+
+### Plan
+
+- [x] Preserve the exact reviewed control-plane parent `a2c338b2...` and the
+  read-only search result showing no qualified local wheelhouse.
+- [ ] Add a versioned execution task, Owner authorization, and closed Schemas
+  for Python 3.12 quality-environment provisioning and network wheelhouse
+  reacquisition.
+- [ ] Bind the packet to the exact nine direct pins, Python 3.12 ABI/platform,
+  official package domains, a fresh Git-external quarantine, and an offline
+  wheel-only installation; prohibit models, CUDA, photos, EXIF, SQLite, and
+  system-Python mutation.
+- [ ] Run schema/semantic checks and focused/static quality checks, commit one
+  linear candidate, and send its exact SHA to remote GPT for review.
+- [ ] Only after remote exact-SHA approval create the quarantine and download
+  the complete dependency closure under `E_CLAUDE_ALLOW_DOWNLOAD`; never install
+  directly from the network.
+
+### Review
+
+- Status: `OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW`.
+- Local wheelhouse route: `NOT_AVAILABLE` from bounded read-only search.
+- Network download/install: `NOT_RUN`; no system or project environment was
+  changed and no model/CUDA/photo capability was entered.

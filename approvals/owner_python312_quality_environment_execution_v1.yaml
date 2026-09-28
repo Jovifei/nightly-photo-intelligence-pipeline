@@ -1,0 +1,45 @@
+schema_version: "1.0"
+approval_type: "OWNER_PY312_QUALITY_ENVIRONMENT_EXECUTION"
+status: "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"
+owner_id: "Jovi"
+reviewed_code_commit: "a2c338b2fe9467d9668566eadfe0b1fc094df526"
+task_ref: "tasks/tooling_python312_quality_environment_execution_v1.yaml"
+schema_ref: "schemas/owner_python312_quality_environment_execution_v1.schema.json"
+scope: "PYTHON312_QUALITY_ENVIRONMENT_ONLY"
+execution_authority:
+  python_constraint: ">=3.12,<3.13"
+  venv: "ONE_GIT_EXTERNAL_VENV"
+  system_python: "UNCHANGED"
+  editable_install: "NOT_REQUIRED"
+network_authority:
+  route: "OFFICIAL_PYPI_REACQUISITION_ONLY"
+  domains: ["pypi.org", "files.pythonhosted.org"]
+  quarantine_first: true
+  offline_install: true
+  network_after_quarantine: "FORBIDDEN"
+package_scope:
+  direct_pins_ref: "tasks/tooling_python312_quality_environment_execution_v1.yaml#packages.direct_pins"
+  closure: "COMPLETE_HASH_BOUND_WHEEL_ONLY"
+  model_packages: "FORBIDDEN"
+storage_scope:
+  download_root_ref: "E_CLAUDE_ALLOW_DOWNLOAD"
+  quarantine_root_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-quarantine-20260928"
+  wheelhouse_root_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260928"
+  git_tracking: "FORBIDDEN"
+  reparse_points: "FORBIDDEN"
+prohibited_actions:
+  - "model_weight_download"
+  - "torch_or_cuda_install"
+  - "model_or_vision_package_install"
+  - "system_python_mutation"
+  - "driver_or_cuda_configuration"
+  - "photo_content_or_exif_read"
+  - "sqlite_ingest_write"
+  - "real20_lease_or_reservation"
+  - "ledger_or_probe_bootstrap"
+  - "direct_network_install"
+  - "source_distribution_install"
+  - "app_bundle_pilot_or_openclaw_write"
+mandatory_stop:
+  value: true
+  next_action: "EXTERNAL_REVIEW_PY312_ENVIRONMENT_QUALIFICATION"

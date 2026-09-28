@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/python312_tooling_network_approval_v1.schema.json",
+  "title": "Python 3.12 network wheelhouse reacquisition authorization",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "phase", "capability", "reviewed_code_commit", "owner_authority", "scope", "allowed_network", "storage", "network_procedure", "prohibitions", "stop_conditions", "mandatory_stop"],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "phase": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "title", "status"],
+      "properties": {
+        "id": {"const": "PY312_NETWORK_REACQUISITION"},
+        "title": {"const": "Python 3.12 wheelhouse network reacquisition"},
+        "status": {"const": "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"}
+      }
+    },
+    "capability": {"const": "PY312_NETWORK_WHEELHOUSE_REACQUISITION"},
+    "reviewed_code_commit": {"const": "a2c338b2fe9467d9668566eadfe0b1fc094df526"},
+    "owner_authority": {
+      "type": "object", "additionalProperties": false,
+      "required": ["owner_id", "local_wheelhouse_search", "selected_route", "execution_requires_external_review"],
+      "properties": {
+        "owner_id": {"const": "Jovi"},
+        "local_wheelhouse_search": {"const": "NOT_AVAILABLE"},
+        "selected_route": {"const": "NETWORK_REACQUISITION"},
+        "execution_requires_external_review": {"const": true}
+      }
+    },
+    "scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["interpreter", "platform", "abi", "direct_pins_ref", "transitive_policy", "wheel_only", "source_distributions"],
+      "properties": {
+        "interpreter": {"const": "CPython >=3.12,<3.13"},
+        "platform": {"const": "win_amd64"},
+        "abi": {"const": "cp312"},
+        "direct_pins_ref": {"const": "tasks/tooling_python312_quality_environment_execution_v1.yaml#packages.direct_pins"},
+        "transitive_policy": {"const": "ONLY_DEPENDENCIES_REQUIRED_BY_THE_NINE_DIRECT_PINS"},
+        "wheel_only": {"const": true},
+        "source_distributions": {"const": false}
+      }
+    },
+    "allowed_network": {
+      "type": "object", "additionalProperties": false,
+      "required": ["scheme", "domains", "redirect_policy", "authentication", "proxy_or_custom_index", "git_or_source_repository"],
+      "properties": {
+        "scheme": {"const": "HTTPS"},
+        "domains": {"const": ["pypi.org", "files.pythonhosted.org"]},
+        "redirect_policy": {"const": "FINAL_DOMAIN_MUST_BE_IN_ALLOWED_DOMAINS"},
+        "authentication": {"const": "NONE"},
+        "proxy_or_custom_index": {"const": "FORBIDDEN"},
+        "git_or_source_repository": {"const": "FORBIDDEN"}
+      }
+    },
+    "storage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["download_root_ref", "quarantine_root_ref", "wheelhouse_root_ref", "manifest_ref", "git_tracking", "source_overlap", "reparse_points", "quarantine_cleanup"],
+      "properties": {
+        "download_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD"},
+        "quarantine_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-quarantine-20260928"},
+        "wheelhouse_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260928"},
+        "manifest_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260928/manifest.json"},
+        "git_tracking": {"const": "FORBIDDEN"},
+        "source_overlap": {"const": "FORBIDDEN"},
+        "reparse_points": {"const": "FORBIDDEN"},
+        "quarantine_cleanup": {"const": "FORBIDDEN_UNTIL_REVIEW_CLOSURE"}
+      }
+    },
+    "network_procedure": {"type": "array", "minItems": 8, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "prohibitions": {"type": "array", "minItems": 5, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "stop_conditions": {"type": "array", "minItems": 5, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "mandatory_stop": {
+      "type": "object", "additionalProperties": false,
+      "required": ["value", "next_action"],
+      "properties": {"value": {"const": true}, "next_action": {"const": "PY312_ENVIRONMENT_QUALIFIED_AWAITING_EXTERNAL_REVIEW"}}
+    }
+  }
+}
