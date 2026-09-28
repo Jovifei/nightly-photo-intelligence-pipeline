@@ -2218,4 +2218,5 @@ quarantine-first network reacquisition.
 
 Review status: `CHANGES_REQUIRED_PRE_NETWORK_BINDING` at
 `6ea7fdd00da068d570838d4d071bb1b41e3b4b12`; storage-binding/evidence-hash
-remediation is local and remains uncommitted pending verification.
+remediation is committed in `957955d1258768503d09f7c3802411aec027b518`
+and awaiting exact-SHA review. Network remains `NOT_RUN`.
