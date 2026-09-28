@@ -2177,14 +2177,14 @@ quarantine-first network reacquisition.
 
 - [x] Preserve the exact reviewed control-plane parent `a2c338b2...` and the
   read-only search result showing no qualified local wheelhouse.
-- [ ] Add a versioned execution task, Owner authorization, and closed Schemas
+- [x] Add a versioned execution task, Owner authorization, and closed Schemas
   for Python 3.12 quality-environment provisioning and network wheelhouse
   reacquisition.
-- [ ] Bind the packet to the exact nine direct pins, Python 3.12 ABI/platform,
+- [x] Bind the packet to the exact nine direct pins, Python 3.12 ABI/platform,
   official package domains, a fresh Git-external quarantine, and an offline
   wheel-only installation; prohibit models, CUDA, photos, EXIF, SQLite, and
   system-Python mutation.
-- [ ] Run schema/semantic checks and focused/static quality checks, commit one
+- [x] Run schema/semantic checks and focused/static quality checks, commit one
   linear candidate, and send its exact SHA to remote GPT for review.
 - [ ] Only after remote exact-SHA approval create the quarantine and download
   the complete dependency closure under `E_CLAUDE_ALLOW_DOWNLOAD`; never install
@@ -2196,3 +2196,22 @@ quarantine-first network reacquisition.
 - Local wheelhouse route: `NOT_AVAILABLE` from bounded read-only search.
 - Network download/install: `NOT_RUN`; no system or project environment was
   changed and no model/CUDA/photo capability was entered.
+
+### Remote review remediation — 2026-09-28
+
+- [x] Record the exact-SHA verdict: code, topology, manifest, package/domain
+  scope and static checks are acceptable; approval sequencing requires repair.
+- [x] Make environment execution offline-only and bind it to future reviewed
+  wheelhouse evidence instead of embedding network authority.
+- [x] Make network reacquisition stop at
+  `PY312_WHEELHOUSE_QUALIFIED_AWAITING_EXTERNAL_REVIEW`, with no venv or
+  package installation during network access.
+- [x] Add the closed wheelhouse evidence schema for resolved dependency
+  relationships, wheel filename/size/SHA-256, source URL/final domain, wheel
+  tags, root attestation and canonical manifest SHA-256.
+- [ ] Commit this remediation and obtain the next remote exact-SHA review;
+  network remains `NOT_RUN` until that review passes.
+
+Review status: `CHANGES_REQUIRED_APPROVAL_PACKET_ONLY` at
+`0494e866efcd9a11329d3631d97b032dc1dd60b0`; remediation is local and remains
+uncommitted pending verification.

@@ -2,7 +2,7 @@ contract_version: "1.0"
 phase:
   id: "PY312_TOOLING_EXECUTION"
   title: "Python 3.12 quality environment execution"
-  status: "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"
+  status: "OWNER_AUTHORIZED_AWAITING_WHEELHOUSE_EVIDENCE"
 capability: "PY312_QUALITY_ENVIRONMENT_EXECUTION"
 reviewed_code:
   commit: "a2c338b2fe9467d9668566eadfe0b1fc094df526"
@@ -49,27 +49,25 @@ packages:
     - "ollama"
     - "cuda-python"
 source:
-  mode: "OFFICIAL_PYPI_QUARANTINE_THEN_OFFLINE_INSTALL"
-  allowed_domains:
-    - "pypi.org"
-    - "files.pythonhosted.org"
-  https_only: true
-  reject_redirects_outside_allowed_domains: true
-  quarantine_root_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-quarantine-20260928"
-  wheelhouse_root_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260928"
-  manifest_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260928/manifest.json"
+  mode: "OWNER_APPROVED_QUALIFIED_WHEELHOUSE_NO_INDEX"
+  network_access: "DENY"
+  download: "FORBIDDEN"
+  quarantine_creation: "FORBIDDEN"
+  wheelhouse_root_ref: "OWNER_TO_PROVIDE_REVIEWED_WHEELHOUSE_ROOT"
+  wheelhouse_object_identity_sha256: "OWNER_TO_PROVIDE_REVIEWED_WHEELHOUSE_OBJECT_IDENTITY_SHA256"
+  manifest_ref: "OWNER_TO_PROVIDE_REVIEWED_WHEELHOUSE_MANIFEST"
+  manifest_sha256: "OWNER_TO_PROVIDE_REVIEWED_WHEELHOUSE_MANIFEST_SHA256"
   wheel_only: true
   source_distributions: "FORBIDDEN"
   direct_network_install: false
   network_after_quarantine: "FORBIDDEN"
 execution_steps:
-  - "verify the reviewed commit and this approval packet before creating any directory"
-  - "create fresh Git-external quarantine and wheelhouse roots under the approved download root"
-  - "download only the exact direct pins and their complete Python-3.12 win_amd64 wheel closure into quarantine"
-  - "reject unexpected package names, source archives, redirects, domains, hashes, or platform tags"
-  - "freeze a path-redacted wheel manifest with URL, final domain, filename, size, and SHA-256"
-  - "promote verified wheels into the content-addressed wheelhouse without deleting quarantine"
-  - "create one Git-external venv and install offline with --no-index and --find-links only"
+  - "verify the reviewed commit, final install approval, wheelhouse evidence, manifest SHA-256, and object identity before creating any venv"
+  - "verify the wheelhouse is Owner-provided, Git-external, non-reparse, outside Git, and non-overlapping"
+  - "verify every resolved wheel is present exactly once, hash-bound, wheel-only, and covered by the reviewed closure manifest"
+  - "verify the nine direct pins and complete transitive closure against the reviewed evidence without resolving new packages"
+  - "reject any model, CUDA, source-distribution, custom-index, or unexpected platform wheel before installation"
+  - "create one Git-external venv and install offline with --no-index, --find-links, and the reviewed hash set only"
   - "run imports, CLI checks, pip check, focused tests, full pytest, Ruff, mypy, schema checks, and sensitive scan"
   - "record the complete installed inventory and network-zero offline-install evidence"
 acceptance:
@@ -97,4 +95,4 @@ prohibited_actions:
   - "app_bundle_pilot_or_openclaw_write"
 mandatory_stop:
   value: true
-  next_action: "EXTERNAL_REVIEW_PY312_ENVIRONMENT_QUALIFICATION"
+  next_action: "EXTERNAL_REVIEW_PY312_INSTALL_APPROVAL_AFTER_WHEELHOUSE"

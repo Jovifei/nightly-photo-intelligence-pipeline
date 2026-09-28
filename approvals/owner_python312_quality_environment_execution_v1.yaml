@@ -1,6 +1,6 @@
 schema_version: "1.0"
 approval_type: "OWNER_PY312_QUALITY_ENVIRONMENT_EXECUTION"
-status: "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"
+status: "OWNER_AUTHORIZED_AWAITING_WHEELHOUSE_EVIDENCE"
 owner_id: "Jovi"
 reviewed_code_commit: "a2c338b2fe9467d9668566eadfe0b1fc094df526"
 task_ref: "tasks/tooling_python312_quality_environment_execution_v1.yaml"
@@ -12,11 +12,18 @@ execution_authority:
   system_python: "UNCHANGED"
   editable_install: "NOT_REQUIRED"
 network_authority:
-  route: "OFFICIAL_PYPI_REACQUISITION_ONLY"
-  domains: ["pypi.org", "files.pythonhosted.org"]
-  quarantine_first: true
+  network_access: "DENY"
+  route: "REVIEWED_WHEELHOUSE_ONLY"
+  download: "FORBIDDEN"
+  quarantine_creation: "FORBIDDEN"
   offline_install: true
   network_after_quarantine: "FORBIDDEN"
+wheelhouse_binding:
+  evidence_schema_ref: "schemas/python312_wheelhouse_evidence_v1.schema.json"
+  wheelhouse_root_ref: "OWNER_TO_PROVIDE_REVIEWED_WHEELHOUSE_ROOT"
+  wheelhouse_object_identity_sha256: "OWNER_TO_PROVIDE_REVIEWED_WHEELHOUSE_OBJECT_IDENTITY_SHA256"
+  manifest_ref: "OWNER_TO_PROVIDE_REVIEWED_WHEELHOUSE_MANIFEST"
+  manifest_sha256: "OWNER_TO_PROVIDE_REVIEWED_WHEELHOUSE_MANIFEST_SHA256"
 package_scope:
   direct_pins_ref: "tasks/tooling_python312_quality_environment_execution_v1.yaml#packages.direct_pins"
   closure: "COMPLETE_HASH_BOUND_WHEEL_ONLY"
@@ -42,4 +49,4 @@ prohibited_actions:
   - "app_bundle_pilot_or_openclaw_write"
 mandatory_stop:
   value: true
-  next_action: "EXTERNAL_REVIEW_PY312_ENVIRONMENT_QUALIFICATION"
+  next_action: "EXTERNAL_REVIEW_PY312_INSTALL_APPROVAL_AFTER_WHEELHOUSE"

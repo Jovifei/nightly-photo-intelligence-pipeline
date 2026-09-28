@@ -13,7 +13,7 @@
       "properties": {
         "id": {"const": "PY312_TOOLING_EXECUTION"},
         "title": {"const": "Python 3.12 quality environment execution"},
-        "status": {"const": "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"}
+        "status": {"const": "OWNER_AUTHORIZED_AWAITING_WHEELHOUSE_EVIDENCE"}
       }
     },
     "capability": {"const": "PY312_QUALITY_ENVIRONMENT_EXECUTION"},
@@ -82,15 +82,16 @@
     },
     "source": {
       "type": "object", "additionalProperties": false,
-      "required": ["mode", "allowed_domains", "https_only", "reject_redirects_outside_allowed_domains", "quarantine_root_ref", "wheelhouse_root_ref", "manifest_ref", "wheel_only", "source_distributions", "direct_network_install", "network_after_quarantine"],
+      "required": ["mode", "network_access", "download", "quarantine_creation", "wheelhouse_root_ref", "wheelhouse_object_identity_sha256", "manifest_ref", "manifest_sha256", "wheel_only", "source_distributions", "direct_network_install", "network_after_quarantine"],
       "properties": {
-        "mode": {"const": "OFFICIAL_PYPI_QUARANTINE_THEN_OFFLINE_INSTALL"},
-        "allowed_domains": {"const": ["pypi.org", "files.pythonhosted.org"]},
-        "https_only": {"const": true},
-        "reject_redirects_outside_allowed_domains": {"const": true},
-        "quarantine_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-quarantine-20260928"},
-        "wheelhouse_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260928"},
-        "manifest_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260928/manifest.json"},
+        "mode": {"const": "OWNER_APPROVED_QUALIFIED_WHEELHOUSE_NO_INDEX"},
+        "network_access": {"const": "DENY"},
+        "download": {"const": "FORBIDDEN"},
+        "quarantine_creation": {"const": "FORBIDDEN"},
+        "wheelhouse_root_ref": {"const": "OWNER_TO_PROVIDE_REVIEWED_WHEELHOUSE_ROOT"},
+        "wheelhouse_object_identity_sha256": {"const": "OWNER_TO_PROVIDE_REVIEWED_WHEELHOUSE_OBJECT_IDENTITY_SHA256"},
+        "manifest_ref": {"const": "OWNER_TO_PROVIDE_REVIEWED_WHEELHOUSE_MANIFEST"},
+        "manifest_sha256": {"const": "OWNER_TO_PROVIDE_REVIEWED_WHEELHOUSE_MANIFEST_SHA256"},
         "wheel_only": {"const": true},
         "source_distributions": {"const": "FORBIDDEN"},
         "direct_network_install": {"const": false},
@@ -110,7 +111,7 @@
     "mandatory_stop": {
       "type": "object", "additionalProperties": false,
       "required": ["value", "next_action"],
-      "properties": {"value": {"const": true}, "next_action": {"const": "EXTERNAL_REVIEW_PY312_ENVIRONMENT_QUALIFICATION"}}
+      "properties": {"value": {"const": true}, "next_action": {"const": "EXTERNAL_REVIEW_PY312_INSTALL_APPROVAL_AFTER_WHEELHOUSE"}}
     }
   }
 }

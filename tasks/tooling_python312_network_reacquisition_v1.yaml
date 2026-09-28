@@ -36,6 +36,21 @@ storage:
   source_overlap: "FORBIDDEN"
   reparse_points: "FORBIDDEN"
   quarantine_cleanup: "FORBIDDEN_UNTIL_REVIEW_CLOSURE"
+  download_root_object_identity_sha256: "OWNER_TO_PROVIDE_DOWNLOAD_ROOT_OBJECT_IDENTITY_SHA256"
+  download_root_path_attestation_ref: "OWNER_TO_PROVIDE_DOWNLOAD_ROOT_PATH_ATTESTATION"
+  download_root_non_reparse: true
+  download_root_outside_git: true
+  download_root_overlap_check: "REQUIRED"
+execution_controls:
+  package_install_during_network: false
+  venv_creation_during_network: false
+  model_or_cuda_install: false
+  wheelhouse_promotion_before_manifest_review: false
+  quarantine_retention: true
+wheelhouse_evidence:
+  schema_ref: "schemas/python312_wheelhouse_evidence_v1.schema.json"
+  status_after_network: "PY312_WHEELHOUSE_QUALIFIED_AWAITING_EXTERNAL_REVIEW"
+  required_fields: ["manifest_sha256", "wheelhouse_object_identity_sha256", "resolved_packages", "download_root_attestation"]
 network_procedure:
   - "verify exact reviewed commit, task, approval, and schema before network access"
   - "create fresh quarantine under the approved download root"
@@ -59,4 +74,4 @@ stop_conditions:
   - "network remains available during offline installation"
 mandatory_stop:
   value: true
-  next_action: "PY312_ENVIRONMENT_QUALIFIED_AWAITING_EXTERNAL_REVIEW"
+  next_action: "PY312_WHEELHOUSE_QUALIFIED_AWAITING_EXTERNAL_REVIEW"

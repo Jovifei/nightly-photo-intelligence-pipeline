@@ -41,7 +41,7 @@
     },
     "storage": {
       "type": "object", "additionalProperties": false,
-      "required": ["download_root_ref", "quarantine_root_ref", "wheelhouse_root_ref", "manifest_ref", "git_tracking", "source_overlap", "reparse_points", "quarantine_cleanup"],
+      "required": ["download_root_ref", "quarantine_root_ref", "wheelhouse_root_ref", "manifest_ref", "git_tracking", "source_overlap", "reparse_points", "quarantine_cleanup", "download_root_object_identity_sha256", "download_root_path_attestation_ref", "download_root_non_reparse", "download_root_outside_git", "download_root_overlap_check"],
       "properties": {
         "download_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD"},
         "quarantine_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-quarantine-20260928"},
@@ -51,6 +51,11 @@
         "source_overlap": {"const": "FORBIDDEN"},
         "reparse_points": {"const": "FORBIDDEN"},
         "quarantine_cleanup": {"const": "FORBIDDEN_UNTIL_REVIEW_CLOSURE"}
+        ,"download_root_object_identity_sha256": {"const": "OWNER_TO_PROVIDE_DOWNLOAD_ROOT_OBJECT_IDENTITY_SHA256"}
+        ,"download_root_path_attestation_ref": {"const": "OWNER_TO_PROVIDE_DOWNLOAD_ROOT_PATH_ATTESTATION"}
+        ,"download_root_non_reparse": {"const": true}
+        ,"download_root_outside_git": {"const": true}
+        ,"download_root_overlap_check": {"const": "REQUIRED"}
       }
     },
     "execution_authority": {
@@ -63,11 +68,31 @@
         "installation_before_review": {"const": false}
       }
     },
+    "execution_controls": {
+      "type": "object", "additionalProperties": false,
+      "required": ["package_install_during_network", "venv_creation_during_network", "model_or_cuda_install", "wheelhouse_promotion_before_manifest_review", "quarantine_retention"],
+      "properties": {
+        "package_install_during_network": {"const": false},
+        "venv_creation_during_network": {"const": false},
+        "model_or_cuda_install": {"const": false},
+        "wheelhouse_promotion_before_manifest_review": {"const": false},
+        "quarantine_retention": {"const": true}
+      }
+    },
+    "wheelhouse_evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_ref", "status_after_network", "required_fields"],
+      "properties": {
+        "schema_ref": {"const": "schemas/python312_wheelhouse_evidence_v1.schema.json"},
+        "status_after_network": {"const": "PY312_WHEELHOUSE_QUALIFIED_AWAITING_EXTERNAL_REVIEW"},
+        "required_fields": {"const": ["manifest_sha256", "wheelhouse_object_identity_sha256", "resolved_packages", "download_root_attestation"]}
+      }
+    },
     "prohibitions": {"type": "array", "minItems": 5, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
     "mandatory_stop": {
       "type": "object", "additionalProperties": false,
       "required": ["value", "next_action"],
-      "properties": {"value": {"const": true}, "next_action": {"const": "PY312_ENVIRONMENT_QUALIFIED_AWAITING_EXTERNAL_REVIEW"}}
+      "properties": {"value": {"const": true}, "next_action": {"const": "PY312_WHEELHOUSE_QUALIFIED_AWAITING_EXTERNAL_REVIEW"}}
     }
   }
 }
