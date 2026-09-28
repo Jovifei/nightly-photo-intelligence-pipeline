@@ -31,8 +31,21 @@
     "packages": {
       "type": "array",
       "minItems": 9,
+      "maxItems": 9,
       "uniqueItems": true,
-      "items": {"type": "object", "additionalProperties": false, "required": ["name", "version", "purpose"], "properties": {"name": {"type": "string"}, "version": {"type": "string", "pattern": "^[0-9][A-Za-z0-9.+-]*$"}, "purpose": {"enum": ["runtime", "dev"]}}}
+      "items": {
+        "oneOf": [
+          {"const": {"name": "typer", "version": "0.26.8", "purpose": "runtime"}},
+          {"const": {"name": "pydantic", "version": "2.13.4", "purpose": "runtime"}},
+          {"const": {"name": "pyyaml", "version": "6.0.3", "purpose": "runtime"}},
+          {"const": {"name": "pillow", "version": "12.3.0", "purpose": "runtime"}},
+          {"const": {"name": "pytest", "version": "9.1.1", "purpose": "dev"}},
+          {"const": {"name": "ruff", "version": "0.15.21", "purpose": "dev"}},
+          {"const": {"name": "mypy", "version": "2.3.0", "purpose": "dev"}},
+          {"const": {"name": "jsonschema", "version": "4.26.0", "purpose": "dev"}},
+          {"const": {"name": "referencing", "version": "0.37.0", "purpose": "dev"}}
+        ]
+      }
     },
     "source_policy": {
       "type": "object",
@@ -44,7 +57,19 @@
         "model_packages": {"const": "FORBIDDEN"}
       }
     },
-    "prohibited_actions": {"type": "array", "minItems": 8, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "prohibited_actions": {
+      "type": "array", "minItems": 8, "uniqueItems": true, "items": {"type": "string", "minLength": 1},
+      "allOf": [
+        {"contains": {"const": "model_weight_download"}},
+        {"contains": {"const": "torch_or_cuda_install"}},
+        {"contains": {"const": "network_package_retrieval"}},
+        {"contains": {"const": "system_python_mutation"}},
+        {"contains": {"const": "driver_or_cuda_configuration"}},
+        {"contains": {"const": "photo_exif_sqlite_access"}},
+        {"contains": {"const": "real20_lease_or_reservation"}},
+        {"contains": {"const": "app_or_bundle_write"}}
+      ]
+    },
     "mandatory_stop": {
       "type": "object", "additionalProperties": false, "required": ["value", "next_action"],
       "properties": {"value": {"const": true}, "next_action": {"const": "EXTERNAL_REVIEW_PY312_TOOLING_CONTROL_PLANE"}}

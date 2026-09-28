@@ -2152,3 +2152,16 @@ Remote PLAN: `N2B1P_VERSIONED_REPROVISION_AND_PY312_TOOLING_GATE`; base
 - [ ] Run Route B acquisition/promotion, supported Python 3.12 quality matrix,
   model/CUDA, photo/EXIF, SQLite, Real20, Bundle/App or Pilot; all remain
   `NOT_RUN` until separate approvals and external review.
+
+### Remote exact-SHA remediation — 2026-09-28
+
+- [x] Remote review confirmed the architecture split and found three code-only
+  enforcement gaps: B-source history was under-bound, root identity was
+  self-asserted, and successor task/runtime bindings were not cross-checked.
+- [x] Strengthen B-source tuple binding, successor runtime digest/identity
+  binding, exact artifact/package schemas, and required prohibition fields.
+- [x] Add RED regressions for changed source hashes/sizes, fourth/missing
+  artifacts, root identity mismatch, successor drift, and schema prohibition or
+  tooling-pin removal.
+- [ ] Re-run final focused/static evidence and obtain remote exact-SHA review;
+  cache, dependency installation, and all later stages remain blocked.

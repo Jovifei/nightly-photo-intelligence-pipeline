@@ -16,7 +16,18 @@
       "type": "object", "additionalProperties": false, "required": ["venv", "local_wheelhouse", "network", "model_packages"],
       "properties": {"venv": {"const": "NOT_AUTHORIZED"}, "local_wheelhouse": {"const": "OWNER_APPROVAL_REQUIRED"}, "network": {"const": "DENY"}, "model_packages": {"const": "FORBIDDEN"}}
     },
-    "prohibited_actions": {"type": "array", "minItems": 7, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "prohibited_actions": {
+      "type": "array", "minItems": 7, "uniqueItems": true, "items": {"type": "string", "minLength": 1},
+      "allOf": [
+        {"contains": {"const": "model_weight_download"}},
+        {"contains": {"const": "torch_or_cuda_install"}},
+        {"contains": {"const": "network_package_retrieval"}},
+        {"contains": {"const": "system_python_mutation"}},
+        {"contains": {"const": "driver_or_cuda_configuration"}},
+        {"contains": {"const": "photo_exif_sqlite_access"}},
+        {"contains": {"const": "real20_lease_or_reservation"}}
+      ]
+    },
     "mandatory_stop": {
       "type": "object", "additionalProperties": false, "required": ["value", "next_action"],
       "properties": {"value": {"const": true}, "next_action": {"const": "EXTERNAL_REVIEW_PY312_TOOLING_CONTROL_PLANE"}}

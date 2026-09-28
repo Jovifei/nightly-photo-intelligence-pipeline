@@ -141,6 +141,24 @@ def validate_reprovision_document(
         raise GateNotAuthorizedError("B-source authority is not separate and unauthorized")
 
 
+def validate_successor_runtime_binding(
+    document: Mapping[str, object], runtime: Mapping[str, object]
+) -> None:
+    """Bind the successor task's digest and object identity to its runtime draft."""
+    successor = document.get("successor_runtime_configuration")
+    if not isinstance(successor, Mapping):
+        raise GateNotAuthorizedError("Route B successor runtime binding is missing")
+    for field in ("configuration_digest", "cache_root_identity"):
+        if successor.get(field) != runtime.get(field):
+            raise GateNotAuthorizedError(f"Route B successor runtime {field} mismatch")
+    if runtime.get("status") != "DRAFT_NOT_AUTHORIZED":
+        raise GateNotAuthorizedError("Route B successor runtime is executable")
+    if runtime.get("configuration_digest") != "0" * 64:
+        raise GateNotAuthorizedError("Route B successor runtime digest is not a DRAFT placeholder")
+    if runtime.get("cache_root_identity") != "0" * 64:
+        raise GateNotAuthorizedError("Route B successor cache identity is not a DRAFT placeholder")
+
+
 def _historical_runtime(project_root: Path) -> tuple[str, str]:
     runtime = _json(project_root, "approvals/n2b1p_runtime_configuration.json")
     digest = runtime.get("configuration_digest")
@@ -166,6 +184,7 @@ def load_reprovision_control_plane(project_root: Path) -> dict[str, object]:
         runtime,
         "Route B runtime",
     )
+    validate_successor_runtime_binding(task, runtime)
     historical_digest, historical_identity = _historical_runtime(project_root)
     historical_artifacts = _historical_artifacts(project_root)
     validate_reprovision_document(
@@ -189,7 +208,9 @@ def load_reprovision_control_plane(project_root: Path) -> dict[str, object]:
     }
 
 
-def validate_owner_provisioned_root(attestation: Mapping[str, object]) -> None:
+def validate_owner_provisioned_root(
+    attestation: Mapping[str, object], *, expected_identity: str
+) -> None:
     """Validate a future Owner root attestation without opening that root."""
     required = {
         "status": "OWNER_PREPROVISIONED",
@@ -198,26 +219,44 @@ def validate_owner_provisioned_root(attestation: Mapping[str, object]) -> None:
         "outside_runtime": True,
         "outside_source": True,
         "outside_quarantine": True,
-        "identity_matches": True,
     }
     if any(attestation.get(key) != value for key, value in required.items()):
         raise GateNotAuthorizedError("Route B Owner root attestation is not eligible")
     identity = attestation.get("object_identity_sha256")
-    if (
-        not isinstance(identity, str)
-        or len(identity) != 64
-        or set(identity) - set("0123456789abcdef")
-    ):
+    if identity != expected_identity:
         raise GateNotAuthorizedError("Route B Owner root identity is invalid")
 
 
-def validate_b_source_record(record: Mapping[str, object]) -> None:
+def validate_b_source_record(
+    record: Mapping[str, object],
+    *,
+    historical_artifacts: Mapping[str, Mapping[str, object]],
+) -> None:
     """Require a future immutable B-source record before B-cache can run."""
     if record.get("status") != "B_SOURCE_BYTES_READY":
         raise GateNotAuthorizedError("B-source evidence is not ready")
+    if record.get("source_mode") not in {
+        "LOCAL_OWNER_IDENTIFIED",
+        "NETWORK_REACQUISITION_SEPARATE_APPROVAL",
+    }:
+        raise GateNotAuthorizedError("B-source evidence mode is invalid")
     artifacts = record.get("artifacts")
     if not isinstance(artifacts, list) or len(artifacts) != 3:
         raise GateNotAuthorizedError("B-source evidence must bind exactly three artifacts")
+    actual = {str(item.get("id")): item for item in artifacts if isinstance(item, Mapping)}
+    if set(actual) != _ARTIFACT_IDS:
+        raise GateNotAuthorizedError("B-source artifact IDs do not match history")
+    for artifact_id, expected in historical_artifacts.items():
+        item = actual[artifact_id]
+        for field in (
+            "revision",
+            "filename",
+            "byte_count",
+            "local_sha256",
+            "transfer_manifest_sha256",
+        ):
+            if item.get(field) != expected.get(field):
+                raise GateNotAuthorizedError(f"B-source historical binding mismatch: {field}")
 
 
 def check_reprovision_control_plane(project_root: Path) -> dict[str, object]:
@@ -277,4 +316,5 @@ __all__ = [
     "validate_b_source_record",
     "validate_owner_provisioned_root",
     "validate_reprovision_document",
+    "validate_successor_runtime_binding",
 ]

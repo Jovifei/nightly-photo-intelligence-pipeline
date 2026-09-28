@@ -22,7 +22,19 @@
         "network": {"const": "DENY"}
       }
     },
-    "prohibited_actions": {"type": "array", "minItems": 8, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "prohibited_actions": {
+      "type": "array", "minItems": 8, "uniqueItems": true, "items": {"type": "string", "minLength": 1},
+      "allOf": [
+        {"contains": {"const": "cache_root_creation"}},
+        {"contains": {"const": "cache_root_acl_repair"}},
+        {"contains": {"const": "quarantine_search"}},
+        {"contains": {"const": "network_download"}},
+        {"contains": {"const": "direct_download_to_cache"}},
+        {"contains": {"const": "historical_evidence_rewrite"}},
+        {"contains": {"const": "model_load_or_inference"}},
+        {"contains": {"const": "photo_exif_sqlite_or_real20_access"}}
+      ]
+    },
     "mandatory_stop": {
       "type": "object",
       "additionalProperties": false,

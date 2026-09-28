@@ -1272,6 +1272,11 @@ def _check_git_baselines() -> CheckResult:
             and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "46")
             and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "47")
         )
+        route_b_control_plane_remediation_topology = (
+            git("rev-parse", "HEAD^") == (0, "7e3b9d6894eee292cba43e3d08627426938b39f1")
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "47")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "48")
+        )
         portability_record_ok = True
         if (
             portability_candidate
@@ -1307,6 +1312,7 @@ def _check_git_baselines() -> CheckResult:
             or real20_ledger_object_digest_fix_topology
             or real20_cache_r2_code_gate_topology
             or route_b_control_plane_topology
+            or route_b_control_plane_remediation_topology
         ):
             record_path = root / "research" / "N2B1P_manifest_portability_remediation.json"
             schema_path = root / "schemas" / "n2b1p_manifest_portability_remediation_v1.schema.json"
@@ -1393,7 +1399,8 @@ def _check_git_baselines() -> CheckResult:
             or real20_ledger_proof_syntax_fix_topology
             or real20_ledger_object_digest_fix_topology
             or real20_cache_r2_code_gate_topology
-            or route_b_control_plane_topology,
+            or route_b_control_plane_topology
+            or route_b_control_plane_remediation_topology,
             portability_record_ok,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),

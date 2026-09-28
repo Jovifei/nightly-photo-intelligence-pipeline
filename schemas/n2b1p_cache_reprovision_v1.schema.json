@@ -42,8 +42,8 @@
       "properties": {
         "path": {"const": "approvals/n2b1p_reprovision_runtime_configuration.DRAFT.json"},
         "configuration_version": {"const": "N2B1P_REPROVISION_RUNTIME_CONFIGURATION_V1"},
-        "configuration_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-        "cache_root_identity": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "configuration_digest": {"const": "0000000000000000000000000000000000000000000000000000000000000000"},
+        "cache_root_identity": {"const": "0000000000000000000000000000000000000000000000000000000000000000"},
         "provisioning_status": {"const": "OWNER_PROVISION_REQUIRED"}
       }
     },
@@ -89,7 +89,19 @@
       "type": "array",
       "minItems": 10,
       "uniqueItems": true,
-      "items": {"type": "string", "minLength": 1}
+      "items": {"type": "string", "minLength": 1},
+      "allOf": [
+        {"contains": {"const": "legacy_runtime_configuration_rewrite"}},
+        {"contains": {"const": "arbitrary_cache_or_quarantine_path"}},
+        {"contains": {"const": "direct_download_to_cache"}},
+        {"contains": {"const": "network_without_separate_source_approval"}},
+        {"contains": {"const": "model_load_or_inference"}},
+        {"contains": {"const": "cuda_execution"}},
+        {"contains": {"const": "photo_or_exif_read"}},
+        {"contains": {"const": "sqlite_ingest_write"}},
+        {"contains": {"const": "dependency_install"}},
+        {"contains": {"const": "real20_lease_or_reservation"}}
+      ]
     },
     "mandatory_stop": {
       "type": "object",
@@ -109,28 +121,16 @@
       "required": ["path", "configuration_digest", "cache_root_identity"],
       "properties": {
         "path": {"const": "approvals/n2b1p_runtime_configuration.json"},
-        "configuration_digest": {"$ref": "#/$defs/sha256"},
-        "cache_root_identity": {"$ref": "#/$defs/sha256"}
+        "configuration_digest": {"const": "462e999671c2073ef8d02cbeaccd561cbc1f4734c4f312baee079a8134040bfd"},
+        "cache_root_identity": {"const": "15cb613d6ecb39247799adca13c6fcbfd9c9edb72c223db7cebf1ee975d7b2ba"}
       }
     },
     "artifact": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "revision", "filename", "byte_count", "local_sha256", "transfer_manifest_sha256"],
-      "properties": {
-        "id": {
-          "enum": [
-            "torchvision-keypointrcnn-resnet50-fpn-coco-v1",
-            "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1",
-            "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1"
-          ]
-        },
-        "revision": {"const": "torchvision-v0.22.1"},
-        "filename": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{4,191}$"},
-        "byte_count": {"type": "integer", "minimum": 1},
-        "local_sha256": {"$ref": "#/$defs/sha256"},
-        "transfer_manifest_sha256": {"$ref": "#/$defs/sha256"}
-      }
+      "oneOf": [
+        {"const": {"id": "torchvision-keypointrcnn-resnet50-fpn-coco-v1", "revision": "torchvision-v0.22.1", "filename": "keypointrcnn_resnet50_fpn_coco-fc266e95.pth", "byte_count": 237034793, "local_sha256": "fc266e953d2b302cdcbb9ae66f71f6b0d4649928bf02dc573961e361e4918926", "transfer_manifest_sha256": "90da3eb000813841a980dcbaf8e1b31fdde15283a9d6b969156c5eb0ae21ce43"}},
+        {"const": {"id": "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1", "revision": "torchvision-v0.22.1", "filename": "lraspp_mobilenet_v3_large-d234d4ea.pth", "byte_count": 13097061, "local_sha256": "d234d4eae9d55d5f76de18b77cf0dc62c66fe5c5482758209d00f950c92bb280", "transfer_manifest_sha256": "d25cc430637cf19ebab31cd5aa99e344b4da58cd2b04db245c165181e3ff1f12"}},
+        {"const": {"id": "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1", "revision": "torchvision-v0.22.1", "filename": "deeplabv3_mobilenet_v3_large-fc3c493d.pth", "byte_count": 44356159, "local_sha256": "fc3c493d68e89cc31ef488c803d5d7dd2f3190fb570598faa49fef69be8e5e70", "transfer_manifest_sha256": "676054e8b2c366f591a1bbe1b4521e2ef7abdb08197534ca95eb11d434dd0cae"}}
+      ]
     }
   }
 }
