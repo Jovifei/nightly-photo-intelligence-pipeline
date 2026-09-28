@@ -1287,6 +1287,11 @@ def _check_git_baselines() -> CheckResult:
             and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "49")
             and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "50")
         )
+        py312_storage_binding_remediation_topology = (
+            git("rev-parse", "HEAD^") == (0, "6ea7fdd00da068d570838d4d071bb1b41e3b4b12")
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "50")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "51")
+        )
         portability_record_ok = True
         if (
             portability_candidate
@@ -1325,6 +1330,7 @@ def _check_git_baselines() -> CheckResult:
             or route_b_control_plane_remediation_topology
             or py312_tooling_approval_packet_topology
             or py312_tooling_network_sequencing_remediation_topology
+            or py312_storage_binding_remediation_topology
         ):
             record_path = root / "research" / "N2B1P_manifest_portability_remediation.json"
             schema_path = root / "schemas" / "n2b1p_manifest_portability_remediation_v1.schema.json"
@@ -1414,7 +1420,8 @@ def _check_git_baselines() -> CheckResult:
             or route_b_control_plane_topology
             or route_b_control_plane_remediation_topology
             or py312_tooling_approval_packet_topology
-            or py312_tooling_network_sequencing_remediation_topology,
+            or py312_tooling_network_sequencing_remediation_topology
+            or py312_storage_binding_remediation_topology,
             portability_record_ok,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),

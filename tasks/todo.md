@@ -2192,7 +2192,7 @@ quarantine-first network reacquisition.
 
 ### Review
 
-- Status: `OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW`.
+- Status: `OWNER_AUTHORIZED_AWAITING_STORAGE_BINDING`.
 - Local wheelhouse route: `NOT_AVAILABLE` from bounded read-only search.
 - Network download/install: `NOT_RUN`; no system or project environment was
   changed and no model/CUDA/photo capability was entered.
@@ -2209,9 +2209,13 @@ quarantine-first network reacquisition.
 - [x] Add the closed wheelhouse evidence schema for resolved dependency
   relationships, wheel filename/size/SHA-256, source URL/final domain, wheel
   tags, root attestation and canonical manifest SHA-256.
+- [x] Add the unresolved storage-binding gate and replace the rejected-parent
+  evidence binding with control-plane plus task/approval/schema SHA bindings.
+- [x] Add negative tests for unresolved storage identity, missing path
+  attestation, changed authority digests, and rejected-parent evidence binding.
 - [ ] Commit this remediation and obtain the next remote exact-SHA review;
   network remains `NOT_RUN` until that review passes.
 
-Review status: `CHANGES_REQUIRED_APPROVAL_PACKET_ONLY` at
-`0494e866efcd9a11329d3631d97b032dc1dd60b0`; remediation is local and remains
-uncommitted pending verification.
+Review status: `CHANGES_REQUIRED_PRE_NETWORK_BINDING` at
+`6ea7fdd00da068d570838d4d071bb1b41e3b4b12`; storage-binding/evidence-hash
+remediation is local and remains uncommitted pending verification.

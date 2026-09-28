@@ -64,6 +64,7 @@ ROUTE_B_CONTROL_PLANE_BASE = "b40a1526961de9230cbc1da45e41a162fb3b7ee1"
 ROUTE_B_CONTROL_PLANE_REMEDIATION_BASE = "7e3b9d6894eee292cba43e3d08627426938b39f1"
 PY312_TOOLING_APPROVAL_PACKET_BASE = "a2c338b2fe9467d9668566eadfe0b1fc094df526"
 PY312_TOOLING_NETWORK_SEQUENCING_REMEDIATION_BASE = "0494e866efcd9a11329d3631d97b032dc1dd60b0"
+PY312_STORAGE_BINDING_REMEDIATION_BASE = "6ea7fdd00da068d570838d4d071bb1b41e3b4b12"
 
 SENSITIVE_SUFFIXES = (
     ".db",
@@ -377,6 +378,15 @@ def _is_py312_tooling_network_sequencing_remediation_candidate(project_root: Pat
     )
 
 
+def _is_py312_storage_binding_remediation_candidate(project_root: Path) -> bool:
+    return (
+        _git(project_root, "rev-parse", "HEAD^").stdout.strip()
+        == PY312_STORAGE_BINDING_REMEDIATION_BASE
+        and _git(project_root, "rev-list", "--count", f"{N2B1P_BASELINE}..HEAD").stdout.strip()
+        == "50"
+    )
+
+
 def test_git_approved_tags_and_ancestry_are_exact(project_root: Path) -> None:
     assert _git(project_root, "rev-parse", N0_TAG).stdout.strip() == N0_BASELINE
     assert _git(project_root, "rev-parse", N1_TAG).stdout.strip() == N1_BASELINE
@@ -481,6 +491,8 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
         candidate_offset = 48
     elif _is_py312_tooling_network_sequencing_remediation_candidate(project_root):
         candidate_offset = 49
+    elif _is_py312_storage_binding_remediation_candidate(project_root):
+        candidate_offset = 50
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         candidate_offset = 1
     else:
@@ -680,6 +692,12 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
             _git(project_root, "rev-parse", "HEAD^").stdout.strip()
             == PY312_TOOLING_NETWORK_SEQUENCING_REMEDIATION_BASE
         )
+    elif _is_py312_storage_binding_remediation_candidate(project_root):
+        assert post_n2b1r == 51
+        assert (
+            _git(project_root, "rev-parse", "HEAD^").stdout.strip()
+            == PY312_STORAGE_BINDING_REMEDIATION_BASE
+        )
     else:
         assert post_n2b1r == 1 + candidate_offset
         parent = _git(project_root, "rev-parse", "HEAD^").stdout.strip()
@@ -798,6 +816,8 @@ def test_n2b1p_candidate_is_resolved_not_hardcoded(project_root: Path) -> None:
         expected_count = 49
     elif _is_py312_tooling_network_sequencing_remediation_candidate(project_root):
         expected_count = 50
+    elif _is_py312_storage_binding_remediation_candidate(project_root):
+        expected_count = 51
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         expected_count = 2
     else:

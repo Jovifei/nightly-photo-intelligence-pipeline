@@ -4,11 +4,14 @@
   "title": "Qualified Python 3.12 wheelhouse evidence",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "status", "reviewed_code_commit", "interpreter", "direct_pin_roots", "resolved_packages", "download_root_attestation", "wheelhouse_object_identity_sha256", "manifest", "prohibitions", "mandatory_stop"],
+  "required": ["schema_version", "status", "control_plane_commit", "network_task_sha256", "network_owner_approval_sha256", "network_schema_sha256", "interpreter", "direct_pin_roots", "resolved_packages", "download_root_attestation", "wheelhouse_object_identity_sha256", "manifest", "prohibitions", "mandatory_stop"],
   "properties": {
     "schema_version": {"const": "1.0"},
     "status": {"const": "PY312_WHEELHOUSE_QUALIFIED_AWAITING_EXTERNAL_REVIEW"},
-    "reviewed_code_commit": {"const": "0494e866efcd9a11329d3631d97b032dc1dd60b0"},
+    "control_plane_commit": {"const": "a2c338b2fe9467d9668566eadfe0b1fc094df526"},
+    "network_task_sha256": {"pattern": "^[0-9a-f]{64}$"},
+    "network_owner_approval_sha256": {"pattern": "^[0-9a-f]{64}$"},
+    "network_schema_sha256": {"pattern": "^[0-9a-f]{64}$"},
     "interpreter": {
       "type": "object", "additionalProperties": false,
       "required": ["implementation", "version", "platform", "abi"],

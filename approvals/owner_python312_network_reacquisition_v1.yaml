@@ -1,6 +1,6 @@
 schema_version: "1.0"
 approval_type: "OWNER_PY312_NETWORK_REACQUISITION"
-status: "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"
+status: "OWNER_AUTHORIZED_AWAITING_STORAGE_BINDING"
 owner_id: "Jovi"
 reviewed_code_commit: "a2c338b2fe9467d9668566eadfe0b1fc094df526"
 task_ref: "tasks/tooling_python312_network_reacquisition_v1.yaml"
@@ -35,9 +35,12 @@ storage:
   download_root_non_reparse: true
   download_root_outside_git: true
   download_root_overlap_check: "REQUIRED"
+  binding_status: "UNRESOLVED_OWNER_STORAGE_BINDING"
 execution_authority:
-  owner_authorized: true
+  owner_authorized: false
   external_exact_sha_review_required: true
+  storage_binding_required: true
+  network_download_before_storage_binding: false
   network_download_before_review: false
   installation_before_review: false
 execution_controls:
@@ -58,4 +61,4 @@ prohibitions:
   - "no photo, EXIF, SQLite, ledger, probe, lease, model, App, Pilot, or OpenClaw operation"
 mandatory_stop:
   value: true
-  next_action: "PY312_WHEELHOUSE_QUALIFIED_AWAITING_EXTERNAL_REVIEW"
+  next_action: "PY312_NETWORK_APPROVAL_AWAITING_STORAGE_BINDING"

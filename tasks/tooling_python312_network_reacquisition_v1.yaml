@@ -2,7 +2,7 @@ contract_version: "1.0"
 phase:
   id: "PY312_NETWORK_REACQUISITION"
   title: "Python 3.12 wheelhouse network reacquisition"
-  status: "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"
+  status: "OWNER_AUTHORIZED_AWAITING_STORAGE_BINDING"
 capability: "PY312_NETWORK_WHEELHOUSE_REACQUISITION"
 reviewed_code_commit: "a2c338b2fe9467d9668566eadfe0b1fc094df526"
 owner_authority:
@@ -10,6 +10,7 @@ owner_authority:
   local_wheelhouse_search: "NOT_AVAILABLE"
   selected_route: "NETWORK_REACQUISITION"
   execution_requires_external_review: true
+  execution_requires_storage_binding: true
 scope:
   interpreter: "CPython >=3.12,<3.13"
   platform: "win_amd64"
@@ -41,6 +42,7 @@ storage:
   download_root_non_reparse: true
   download_root_outside_git: true
   download_root_overlap_check: "REQUIRED"
+  binding_status: "UNRESOLVED_OWNER_STORAGE_BINDING"
 execution_controls:
   package_install_during_network: false
   venv_creation_during_network: false
@@ -74,4 +76,4 @@ stop_conditions:
   - "network remains available during offline installation"
 mandatory_stop:
   value: true
-  next_action: "PY312_WHEELHOUSE_QUALIFIED_AWAITING_EXTERNAL_REVIEW"
+  next_action: "PY312_NETWORK_APPROVAL_AWAITING_STORAGE_BINDING"

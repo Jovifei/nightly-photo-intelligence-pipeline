@@ -13,19 +13,20 @@
       "properties": {
         "id": {"const": "PY312_NETWORK_REACQUISITION"},
         "title": {"const": "Python 3.12 wheelhouse network reacquisition"},
-        "status": {"const": "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"}
+        "status": {"const": "OWNER_AUTHORIZED_AWAITING_STORAGE_BINDING"}
       }
     },
     "capability": {"const": "PY312_NETWORK_WHEELHOUSE_REACQUISITION"},
     "reviewed_code_commit": {"const": "a2c338b2fe9467d9668566eadfe0b1fc094df526"},
     "owner_authority": {
       "type": "object", "additionalProperties": false,
-      "required": ["owner_id", "local_wheelhouse_search", "selected_route", "execution_requires_external_review"],
+      "required": ["owner_id", "local_wheelhouse_search", "selected_route", "execution_requires_external_review", "execution_requires_storage_binding"],
       "properties": {
         "owner_id": {"const": "Jovi"},
         "local_wheelhouse_search": {"const": "NOT_AVAILABLE"},
         "selected_route": {"const": "NETWORK_REACQUISITION"},
-        "execution_requires_external_review": {"const": true}
+        "execution_requires_external_review": {"const": true},
+        "execution_requires_storage_binding": {"const": true}
       }
     },
     "scope": {
@@ -55,7 +56,7 @@
     },
     "storage": {
       "type": "object", "additionalProperties": false,
-      "required": ["download_root_ref", "quarantine_root_ref", "wheelhouse_root_ref", "manifest_ref", "git_tracking", "source_overlap", "reparse_points", "quarantine_cleanup", "download_root_object_identity_sha256", "download_root_path_attestation_ref", "download_root_non_reparse", "download_root_outside_git", "download_root_overlap_check"],
+      "required": ["download_root_ref", "quarantine_root_ref", "wheelhouse_root_ref", "manifest_ref", "git_tracking", "source_overlap", "reparse_points", "quarantine_cleanup", "download_root_object_identity_sha256", "download_root_path_attestation_ref", "download_root_non_reparse", "download_root_outside_git", "download_root_overlap_check", "binding_status"],
       "properties": {
         "download_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD"},
         "quarantine_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-quarantine-20260928"},
@@ -69,7 +70,8 @@
         ,"download_root_path_attestation_ref": {"const": "OWNER_TO_PROVIDE_DOWNLOAD_ROOT_PATH_ATTESTATION"}
         ,"download_root_non_reparse": {"const": true}
         ,"download_root_outside_git": {"const": true}
-        ,"download_root_overlap_check": {"const": "REQUIRED"}
+        ,"download_root_overlap_check": {"const": "REQUIRED"},
+        "binding_status": {"const": "UNRESOLVED_OWNER_STORAGE_BINDING"}
       }
     },
     "execution_controls": {
@@ -98,7 +100,7 @@
     "mandatory_stop": {
       "type": "object", "additionalProperties": false,
       "required": ["value", "next_action"],
-      "properties": {"value": {"const": true}, "next_action": {"const": "PY312_WHEELHOUSE_QUALIFIED_AWAITING_EXTERNAL_REVIEW"}}
+      "properties": {"value": {"const": true}, "next_action": {"const": "PY312_NETWORK_APPROVAL_AWAITING_STORAGE_BINDING"}}
     }
   }
 }
