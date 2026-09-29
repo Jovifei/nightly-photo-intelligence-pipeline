@@ -2291,3 +2291,29 @@ offline-only approval is awaiting remote exact-SHA review; installation remains
 
 Current status: `PRE_INSTALL_REVALIDATION_IMPLEMENTED_AWAITING_LOCAL_TESTS`;
 no venv has been created and no package has been installed.
+
+### Remote-approved offline Python 3.12 quality environment — 2026-09-29
+
+- [x] Remote exact-SHA review marked `4f91837dd10ca6997969036037ec0229a366c0c9`
+  `DONE` for the pre-install revalidation gate and approved this bounded next
+  stage.
+- [x] Generate the 30-package reviewed lock outside Git; lock SHA is
+  `b5f7988d5edd2d334f577222c75ec4097f76805a90e41041f04a223a5550723e`.
+- [x] Probe approved pip `25.0.1` targeting support without creating a venv;
+  probe passed with network not requested.
+- [x] Run final admission, create a fresh external venv with `--without-pip`,
+  verify no ensurepip seed, and install exactly the 30 reviewed wheels offline
+  with hash checking and no dependency resolution.
+- [x] Verify exact 30-package inventory, Python 3.12.10 identity, and offline
+  `pip check`; run focused tests (`11 passed`), full pytest (`881 passed,
+  2 failed, 1 skipped, 95 subtests`), Ruff, format, mypy, sensitive scan, and
+  diff checks. The two full-suite failures remain the known N2B1P cache and
+  current authorization blockers.
+- [x] Revalidate interpreter, wheelhouse, quarantine, venv boundary, inventory,
+  and Git clean state after testing. External qualification evidence SHA:
+  `bae2f9ecff356f0ee728d315df81ebefa521985a6ef612d5638f5aa2f6389942`.
+- [ ] Submit the qualification checkpoint exact SHA for remote review and stop
+  until the next plan; model/CUDA/photo/EXIF/SQLite/Real20/Bundle/Pilot/App,
+  push to main, merge, and release remain locked.
+
+Current status: `PY312_ENVIRONMENT_QUALIFIED_AWAITING_EXTERNAL_REVIEW`.

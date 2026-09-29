@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/python312_environment_qualification_checkpoint_v1.schema.json",
+  "title": "Python 3.12 offline environment qualification checkpoint v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "reviewed_code_commit", "parent_commit", "review_scope", "evidence", "interpreter", "wheelhouse", "qualification", "mandatory_stop"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "status": {"const": "PY312_ENVIRONMENT_QUALIFIED_AWAITING_EXTERNAL_REVIEW"},
+    "reviewed_code_commit": {"const": "4f91837dd10ca6997969036037ec0229a366c0c9"},
+    "parent_commit": {"const": "b697f5e9a957cb8f79998b2f9acdae07a214b397"},
+    "review_scope": {"const": "PY312_PREINSTALL_REVALIDATION_AND_OFFLINE_INSTALL_GATE"},
+    "evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["lock_ref", "lock_sha256", "preinstall_ref", "preinstall_sha256", "venv_create_ref", "venv_create_sha256", "venv_postcreate_ref", "venv_postcreate_sha256", "offline_install_ref", "offline_install_sha256", "inventory_ref", "inventory_sha256", "qualification_ref", "qualification_sha256"],
+      "properties": {
+        "lock_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260929/py312-reviewed-lock-20260929.txt"},
+        "lock_sha256": {"const": "b5f7988d5edd2d334f577222c75ec4097f76805a90e41041f04a223a5550723e"},
+        "preinstall_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260929/py312-preinstall-admission.txt"},
+        "preinstall_sha256": {"const": "ce05a9c4740eeb69a523801d94db136693e6fabf5f6f99e22aaf48da4185f625"},
+        "venv_create_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260929/py312-venv-create.txt"},
+        "venv_create_sha256": {"const": "e3796d719a141d78c40d7077833cc49038fc986c06097cd3ea6ccdeafa224fdc"},
+        "venv_postcreate_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260929/py312-venv-postcreate.txt"},
+        "venv_postcreate_sha256": {"const": "e69609906ab9ec1b40454eb65532755c885c5f351e0d4b143ab2fbf269e52be6"},
+        "offline_install_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260929/py312-offline-install.txt"},
+        "offline_install_sha256": {"const": "f75a0560ae508b176b6eeae798db44c605dac78b557efc6afbee51ec889c52ef"},
+        "inventory_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260929/py312-environment-inventory.txt"},
+        "inventory_sha256": {"const": "680863e5b27307fb8bf5ad8bf4295bddb6694047dd9e9825bf5eb33c058fc317"},
+        "qualification_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260929/py312-qualification-evidence.json"},
+        "qualification_sha256": {"const": "bae2f9ecff356f0ee728d315df81ebefa521985a6ef612d5638f5aa2f6389942"}
+      }
+    },
+    "interpreter": {
+      "type": "object", "additionalProperties": false,
+      "required": ["implementation", "version", "platform", "abi", "executable_sha256", "executable_size", "attestation_sha256", "system_python_unchanged"],
+      "properties": {
+        "implementation": {"const": "CPython"}, "version": {"const": "3.12.10"}, "platform": {"const": "win_amd64"}, "abi": {"const": "cp312"},
+        "executable_sha256": {"const": "4d6f5f81a4bca11191c4c7c6b43632694d0a4ce74e068619d8fdc161d469859a"}, "executable_size": {"const": 104952},
+        "attestation_sha256": {"const": "91f1837615232b7cd6b854ce30cd2229f05008c4ee4119717a414252878ff4b0"}, "system_python_unchanged": {"const": true}
+      }
+    },
+    "wheelhouse": {
+      "type": "object", "additionalProperties": false,
+      "required": ["object_identity_sha256", "manifest_sha256", "package_set_sha256", "wheel_count", "quarantine_retained"],
+      "properties": {
+        "object_identity_sha256": {"const": "947a76cc0664753186393aa348d4c0ac26d9f151f73f71fa3d3acde1fb3558cd"},
+        "manifest_sha256": {"const": "d8ce2acbb34efa3c7424c387984b2ad97bda80b80ec7631e0d95f8dadaf48ce4"},
+        "package_set_sha256": {"const": "daa3e0ac9936d3aad5b369bfb5f6f5b159dcb9ff11aa7195a9aee4da9758090a"},
+        "wheel_count": {"const": 30}, "quarantine_retained": {"const": true}
+      }
+    },
+    "qualification": {
+      "type": "object", "additionalProperties": false,
+      "required": ["venv_root_ref", "venv_nonreparse_external", "installed_distribution_count", "pip_check", "focused_tests", "full_pytest", "known_blockers", "static_quality", "network_access", "model_cuda_photo_exif_sqlite_real20_bundle_pilot_app"],
+      "properties": {
+        "venv_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929"}, "venv_nonreparse_external": {"const": true},
+        "installed_distribution_count": {"const": 30}, "pip_check": {"const": "PASS"}, "focused_tests": {"const": "11 passed"},
+        "full_pytest": {"const": "881 passed, 2 failed, 1 skipped, 95 subtests"},
+        "known_blockers": {"const": ["N2B1P canonical cache FileNotFoundError", "current authorization synthetic preflight remains blocked"]},
+        "static_quality": {"type": "object", "additionalProperties": false, "required": ["schema_validation", "sensitive_scan", "ruff_check", "ruff_format", "mypy", "git_diff_check"], "properties": {"schema_validation": {"const": "PASS"}, "sensitive_scan": {"const": "PASS"}, "ruff_check": {"const": "PASS"}, "ruff_format": {"const": "PASS"}, "mypy": {"const": "PASS"}, "git_diff_check": {"const": "PASS"}}},
+        "network_access": {"const": "DENY"}, "model_cuda_photo_exif_sqlite_real20_bundle_pilot_app": {"const": "NOT_RUN"}
+      }
+    },
+    "mandatory_stop": {"type": "object", "additionalProperties": false, "required": ["value", "next_action"], "properties": {"value": {"const": true}, "next_action": {"const": "EXTERNAL_REVIEW_PY312_ENVIRONMENT_QUALIFICATION"}}}
+  }
+}
