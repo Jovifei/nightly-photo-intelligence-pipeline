@@ -2348,7 +2348,7 @@ cache promotion and model/CUDA execution remain `NOT_RUN`.
 ### B-source official network reacquisition control packet — 2026-09-30
 
 - [x] Reproduce the current handoff blocker: the historical N2B1P cache root is
-  unavailable, so full handoff remains fail-closed (`7 pass, 1 fail`).
+  unavailable, so full handoff remains fail-closed (`8 pass, 1 fail`).
 - [x] Trace the synthetic preflight test mismatch: schema 1.7 dispatches to the
   active N2B1P authorization, whose cache checks must remain blocking; do not
   weaken authorization to make the test exit zero.
@@ -2375,11 +2375,16 @@ cache promotion and model/CUDA execution remain `NOT_RUN`.
 - [x] Preserve truthful cache/handoff failures: full handoff was 8 pass / 1 fail
   (`FileNotFoundError` for the historical cache). No network, model, GPU, photo,
   EXIF, SQLite, or cache action occurred.
-- [ ] Run full quality again from a clean managed checkout. A prior run at
-  `c0376fd` had 945 passed, 2 expected cache-related failures, 1 Windows skip,
-  and 95 subtests; its topology failure is fixed by the follow-up.
-- [ ] Commit a review candidate locally, then submit that exact SHA for remote
-  review. Do not download or promote payloads in this control-packet stage.
+- [x] Run full quality from a clean managed checkout: 946 passed, 2 failed,
+  1 Windows native-permission test skipped, 95 subtests. Ruff check/format,
+  mypy (102 source files), schema validation, and sensitive scan passed.
+  `git_stage_baselines=PASS`; the two failures remain the missing-cache handoff
+  and authorization checks. No authorization gate was weakened.
+- [x] Commit the review candidate locally. The exact final tip will be recorded
+  by the ChatGPT handoff after this status update is committed. Do not push or
+  download/promote payloads in this control-packet stage.
+- [ ] Submit the clean final tip SHA to remote GPT for exact-SHA review. The
+  required ChatGPT connector setup is awaiting the guided manual UI action.
 - [ ] After remote `DONE`, continue to the separately gated acquisition
   implementation/execution stage and obtain a second exact-SHA review of the
   resulting bytes before any cache promotion.
@@ -2390,9 +2395,9 @@ created an untracked `uv.lock`. Automatic review blocked deleting either path;
 neither is staged or committed. Continue from a clean managed checkout and keep
 all future Python checks on the approved external quality interpreter.
 
-Current status: `B_SOURCE_NETWORK_REACQUISITION_V1_PREFLIGHT_TOPOLOGY_FIXED_AWAITING_CLEAN_REVIEW`;
-focused controls pass; local exact-SHA review is pending a clean checkout and
-ChatGPT connector setup. Network acquisition and all model/photo execution remain `NOT_RUN`.
+Current status: `B_SOURCE_NETWORK_REACQUISITION_V1_LOCAL_REVIEW_READY_AWAITING_REMOTE_GPT`;
+the clean candidate passes `REVIEW_ELIGIBILITY`; exact-SHA remote review is
+pending connector setup. Network acquisition and all model/photo execution remain `NOT_RUN`.
 
 ### Route B root-attestation repair — 2026-09-29
 
