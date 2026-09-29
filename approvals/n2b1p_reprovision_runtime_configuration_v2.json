@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "configuration_version": "N2B1P_REPROVISION_RUNTIME_CONFIGURATION_V2",
+  "status": "DRAFT_NOT_AUTHORIZED",
+  "runtime_parent_ref": "OWNER_TO_IDENTIFY_EXTERNAL_RUNTIME_PARENT",
+  "work_root_ref": "OWNER_TO_IDENTIFY_EXTERNAL_WORK_ROOT",
+  "snapshot_root": "NOT_APPLICABLE_N2B1P_SOURCE_ACCESS_FORBIDDEN",
+  "cache_root_ref": "E_CLAUDE_ALLOW_DOWNLOAD/npi-n2b1p-cache-v2-20260929",
+  "cache_root_identity": "c030b04ce53a7bff949061c81178474576db62502013468ca967c11a646b9b6f",
+  "source_root_ref": "OWNER_TO_IDENTIFY_EXTERNAL_QUARANTINE_ROOT",
+  "source_root_identity": "0000000000000000000000000000000000000000000000000000000000000000",
+  "python_qualification_commit": "639a503fa3c04c5fcc8640d8bee372377f3953d1",
+  "python_qualification_checkpoint_sha256": "4974afbb1a022fdba0ffe6647a9fcb549d18234b69c864b35c7a2896e84ab128",
+  "configuration_digest": "f0f71d63eddf92204339b0b6842eec9468aa5e10ca9535870ff7c48194d97476"
+}

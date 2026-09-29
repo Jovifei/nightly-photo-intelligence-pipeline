@@ -1,0 +1,26 @@
+schema_version: "1.0"
+approval_type: "OWNER_N2B1P_CACHE_REPROVISION_V2"
+status: "DRAFT_NOT_AUTHORIZED"
+owner_id: "Jovi"
+scope: "VERSIONED_CONTROL_PLANE_ONLY"
+contract_ref: "tasks/phase_n2b1p_cache_reprovision_v2.yaml"
+runtime_configuration_ref: "approvals/n2b1p_reprovision_runtime_configuration_v2.json"
+source_evidence_ref: "research/N2B1P_b_source_evidence_v1.json"
+python_qualification_commit: "639a503fa3c04c5fcc8640d8bee372377f3953d1"
+python_qualification_checkpoint_sha256: "4974afbb1a022fdba0ffe6647a9fcb549d18234b69c864b35c7a2896e84ab128"
+execution_authority:
+  b_cache: "NOT_AUTHORIZED"
+  b_source: "NOT_AUTHORIZED"
+  network: "DENY"
+prohibited_actions:
+  - "cache_root_acl_repair"
+  - "arbitrary_quarantine_search"
+  - "network_download"
+  - "direct_download_to_cache"
+  - "historical_evidence_rewrite"
+  - "model_load_or_inference"
+  - "photo_exif_sqlite_or_real20_access"
+  - "push_merge_pull_request_or_release"
+mandatory_stop:
+  value: true
+  next_action: "EXTERNAL_REVIEW_ROUTE_B_CONTROL_PLANE_V2"

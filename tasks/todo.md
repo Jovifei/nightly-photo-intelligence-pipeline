@@ -2317,3 +2317,30 @@ no venv has been created and no package has been installed.
   push to main, merge, and release remain locked.
 
 Current status: `PY312_ENVIRONMENT_QUALIFIED_AWAITING_EXTERNAL_REVIEW`.
+
+### Remote-approved next plan — Route B cache recovery packet — 2026-09-29
+
+- [x] Record remote qualification `DONE` and the technical-route boundary:
+  Python quality venv must remain separate from Torch/CUDA runtime; further
+  Git remote writes require a separately scoped approval under the repository
+  authority records.
+- [x] Pre-provision and read-only handle-attest the fresh empty external cache
+  root `E_CLAUDE_ALLOW_DOWNLOAD/npi-n2b1p-cache-v2-20260929`; identity is
+  `c030b04ce53a7bff949061c81178474576db62502013468ca967c11a646b9b6f`.
+- [x] Create a closed, still `DRAFT_NOT_AUTHORIZED` v2 task/Owner approval,
+  runtime configuration, and exact three-artifact B-source evidence packet.
+  The packet deliberately leaves the Owner-identified quarantine source and
+  B-cache/B-source authorities unresolved; no arbitrary disk search or cache
+  promotion has run.
+- [x] Add schema and negative-test coverage for runtime digest, source
+  evidence, exact artifact tuples, and the not-authorized stop.
+- [ ] Obtain external review and scoped Owner approval for the Route B packet;
+  only then identify the exact source root and run a handle-bound copy,
+  idempotent revalidation, and cache checkpoint. Network reacquisition is a
+  separate fallback and is not authorized by this packet.
+- [ ] After the cache checkpoint receives review, prepare a separate
+  synthetic-only N2B2 visual/CUDA continuity authorization. Do not use the
+  Python quality venv for Torch/CUDA and do not run Qwen/S20/photos/EXIF/SQLite.
+
+Current status: `N2B1P_ROUTE_B_CONTROL_PLANE_DRAFT_AWAITING_EXTERNAL_REVIEW`;
+cache promotion and model/CUDA execution remain `NOT_RUN`.

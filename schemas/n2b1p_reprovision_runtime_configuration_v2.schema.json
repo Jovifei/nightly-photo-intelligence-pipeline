@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b1p_reprovision_runtime_configuration_v2.schema.json",
+  "title": "N2B1P Route B reprovision runtime configuration v2",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "configuration_version", "status", "runtime_parent_ref", "work_root_ref", "snapshot_root", "cache_root_ref", "cache_root_identity", "source_root_ref", "source_root_identity", "python_qualification_commit", "python_qualification_checkpoint_sha256", "configuration_digest"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "configuration_version": {"const": "N2B1P_REPROVISION_RUNTIME_CONFIGURATION_V2"},
+    "status": {"const": "DRAFT_NOT_AUTHORIZED"},
+    "runtime_parent_ref": {"const": "OWNER_TO_IDENTIFY_EXTERNAL_RUNTIME_PARENT"},
+    "work_root_ref": {"const": "OWNER_TO_IDENTIFY_EXTERNAL_WORK_ROOT"},
+    "snapshot_root": {"const": "NOT_APPLICABLE_N2B1P_SOURCE_ACCESS_FORBIDDEN"},
+    "cache_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-n2b1p-cache-v2-20260929"},
+    "cache_root_identity": {"const": "c030b04ce53a7bff949061c81178474576db62502013468ca967c11a646b9b6f"},
+    "source_root_ref": {"const": "OWNER_TO_IDENTIFY_EXTERNAL_QUARANTINE_ROOT"},
+    "source_root_identity": {"const": "0000000000000000000000000000000000000000000000000000000000000000"},
+    "python_qualification_commit": {"const": "639a503fa3c04c5fcc8640d8bee372377f3953d1"},
+    "python_qualification_checkpoint_sha256": {"const": "4974afbb1a022fdba0ffe6647a9fcb549d18234b69c864b35c7a2896e84ab128"},
+    "configuration_digest": {"const": "f0f71d63eddf92204339b0b6842eec9468aa5e10ca9535870ff7c48194d97476"}
+  }
+}

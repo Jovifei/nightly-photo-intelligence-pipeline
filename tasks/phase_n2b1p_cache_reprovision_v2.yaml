@@ -1,0 +1,45 @@
+contract_version: "1.0"
+phase:
+  id: "N2B1P"
+  title: "Route B versioned local-research cache re-provision"
+  status: "DRAFT_NOT_AUTHORIZED"
+capability: "N2B1P_CACHE_REPROVISION_V2"
+contract_type: "N2B1P_CACHE_REPROVISION_CONTROL_PLANE"
+status: "DRAFT_NOT_AUTHORIZED"
+owner_decision: "PENDING_OWNER_APPROVAL"
+predecessor:
+  task_ref: "tasks/phase_n2b1p_cache_reprovision_v1.yaml"
+  status: "DRAFT_NOT_AUTHORIZED"
+python_qualification:
+  checkpoint_commit: "639a503fa3c04c5fcc8640d8bee372377f3953d1"
+  checkpoint_sha256: "4974afbb1a022fdba0ffe6647a9fcb549d18234b69c864b35c7a2896e84ab128"
+runtime_configuration:
+  path: "approvals/n2b1p_reprovision_runtime_configuration_v2.json"
+  configuration_version: "N2B1P_REPROVISION_RUNTIME_CONFIGURATION_V2"
+  configuration_digest: "f0f71d63eddf92204339b0b6842eec9468aa5e10ca9535870ff7c48194d97476"
+  cache_root_identity: "c030b04ce53a7bff949061c81178474576db62502013468ca967c11a646b9b6f"
+source_evidence:
+  path: "research/N2B1P_b_source_evidence_v1.json"
+  sha256: "15289bf6b2cf827bcd538edf5f71784b2d1490575916c81dea873c8e9073f002"
+artifacts:
+  - {id: "torchvision-keypointrcnn-resnet50-fpn-coco-v1", revision: "torchvision-v0.22.1", filename: "keypointrcnn_resnet50_fpn_coco-fc266e95.pth", byte_count: 237034793, local_sha256: "fc266e953d2b302cdcbb9ae66f71f6b0d4649928bf02dc573961e361e4918926", transfer_manifest_sha256: "90da3eb000813841a980dcbaf8e1b31fdde15283a9d6b969156c5eb0ae21ce43"}
+  - {id: "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1", revision: "torchvision-v0.22.1", filename: "lraspp_mobilenet_v3_large-d234d4ea.pth", byte_count: 13097061, local_sha256: "d234d4eae9d55d5f76de18b77cf0dc62c66fe5c5482758209d00f950c92bb280", transfer_manifest_sha256: "d25cc430637cf19ebab31cd5aa99e344b4da58cd2b04db245c165181e3ff1f12"}
+  - {id: "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1", revision: "torchvision-v0.22.1", filename: "deeplabv3_mobilenet_v3_large-fc3c493d.pth", byte_count: 44356159, local_sha256: "fc3c493d68e89cc31ef488c803d5d7dd2f3190fb570598faa49fef69be8e5e70", transfer_manifest_sha256: "676054e8b2c366f591a1bbe1b4521e2ef7abdb08197534ca95eb11d434dd0cae"}
+authorities:
+  b_cache: {operation: "COPY_ONLY_FROM_OWNER_IDENTIFIED_QUARANTINE", status: "NOT_AUTHORIZED", network_access: "DENY"}
+  b_source: {operation: "SEPARATE_SOURCE_ACQUISITION", status: "NOT_AUTHORIZED", allowed_domains: ["download.pytorch.org"], evidence_required: "NEW_IMMUTABLE_QUARANTINE_TRANSFER_RECORD"}
+prohibited_actions:
+  - "legacy_runtime_configuration_rewrite"
+  - "arbitrary_cache_or_quarantine_path"
+  - "direct_download_to_cache"
+  - "network_without_separate_source_approval"
+  - "model_load_or_inference"
+  - "cuda_execution"
+  - "photo_or_exif_read"
+  - "sqlite_ingest_write"
+  - "dependency_install"
+  - "real20_lease_or_reservation"
+  - "push_merge_pull_request_or_release"
+mandatory_stop:
+  value: true
+  next_action: "EXTERNAL_REVIEW_ROUTE_B_CONTROL_PLANE_V2"

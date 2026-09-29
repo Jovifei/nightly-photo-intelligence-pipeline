@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/owner_n2b1p_cache_reprovision_v2.schema.json",
+  "title": "Owner Route B N2B1P cache reprovision approval v2",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "approval_type", "status", "owner_id", "scope", "contract_ref", "runtime_configuration_ref", "source_evidence_ref", "python_qualification_commit", "python_qualification_checkpoint_sha256", "execution_authority", "prohibited_actions", "mandatory_stop"],
+  "properties": {
+    "schema_version": {"const": "1.0"}, "approval_type": {"const": "OWNER_N2B1P_CACHE_REPROVISION_V2"}, "status": {"const": "DRAFT_NOT_AUTHORIZED"}, "owner_id": {"const": "Jovi"}, "scope": {"const": "VERSIONED_CONTROL_PLANE_ONLY"},
+    "contract_ref": {"const": "tasks/phase_n2b1p_cache_reprovision_v2.yaml"}, "runtime_configuration_ref": {"const": "approvals/n2b1p_reprovision_runtime_configuration_v2.json"}, "source_evidence_ref": {"const": "research/N2B1P_b_source_evidence_v1.json"},
+    "python_qualification_commit": {"const": "639a503fa3c04c5fcc8640d8bee372377f3953d1"}, "python_qualification_checkpoint_sha256": {"const": "4974afbb1a022fdba0ffe6647a9fcb549d18234b69c864b35c7a2896e84ab128"},
+    "execution_authority": {"type": "object", "additionalProperties": false, "required": ["b_cache", "b_source", "network"], "properties": {"b_cache": {"const": "NOT_AUTHORIZED"}, "b_source": {"const": "NOT_AUTHORIZED"}, "network": {"const": "DENY"}}},
+    "prohibited_actions": {"type": "array", "minItems": 8, "uniqueItems": true, "items": {"type": "string"}},
+    "mandatory_stop": {"type": "object", "additionalProperties": false, "required": ["value", "next_action"], "properties": {"value": {"const": true}, "next_action": {"const": "EXTERNAL_REVIEW_ROUTE_B_CONTROL_PLANE_V2"}}}
+  }
+}
