@@ -2251,6 +2251,11 @@ V2 network result: review PASS was received; acquisition reached quarantine
 only with 30 wheels. Promotion and install remain `NOT_RUN` pending checkpoint
 review. External manifest SHA: `8e1650a9...b234e27`.
 
+Wheelhouse promotion result: quick3 review PASS; 30/30 package set promoted
+identically into the content-addressed wheelhouse. Promotion is `PASS`,
+installation remains `NOT_RUN`, and the durable promotion checkpoint is pending
+exact-SHA review before the install approval is materialized.
+
 V2 evidence status: hash refresh committed in `909c80b79a62fe1f6d5dbce0cb3f4e7449204289`;
 quarantine acquisition is complete with 30 wheels, and the durable checkpoint
 is the current review candidate. Promotion and installation remain `NOT_RUN`.

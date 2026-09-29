@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/python312_wheelhouse_promotion_checkpoint_v2.schema.json",
+  "title": "Python 3.12 promoted wheelhouse checkpoint v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "reviewed_code_commit", "control_plane_commit", "network_task_sha256", "network_owner_approval_sha256", "network_schema_sha256", "network_owner_approval_schema_sha256", "storage", "quarantine", "wheelhouse", "mandatory_stop"],
+  "properties": {
+    "schema_version": {"const": "2.0"},
+    "status": {"const": "PY312_WHEELHOUSE_PROMOTION_REVIEW_PASS"},
+    "reviewed_code_commit": {"const": "e1a8e1683ef462f16cc748ec16714fcfbc027e13"},
+    "control_plane_commit": {"const": "a2c338b2fe9467d9668566eadfe0b1fc094df526"},
+    "network_task_sha256": {"const": "f3a2452cf6677929804452b2108c23987d2ad710f27cc6eb27194ccb774c28ce"},
+    "network_owner_approval_sha256": {"const": "ce70cb412d55d06a869bb08790de0e00446021fa8fbcdbcd8ab7e23cea3839ab"},
+    "network_schema_sha256": {"const": "0e4f9953e45f59bf4ea42b1f725812bc4132f5f7585f9846da44b7b1f67447f9"},
+    "network_owner_approval_schema_sha256": {"const": "0c097e4c36df67e2dfba6452e89d3e9cd6ccc99b5e0b3d563abf596e4a5fc1ff"},
+    "storage": {"type": "object", "additionalProperties": false, "required": ["root_ref", "object_identity_sha256", "attestation_sha256", "non_reparse", "outside_git", "non_overlapping"], "properties": {"root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD"}, "object_identity_sha256": {"const": "08ecb7a0ebe151c1e4484f13177d534cbb2117745a3d9719f2b3338fa4285b90"}, "attestation_sha256": {"const": "6501002f9d0e144f2f19fb71e3b3bab1e0f290803e02df07c5f25815b5f9322f"}, "non_reparse": {"const": true}, "outside_git": {"const": true}, "non_overlapping": {"const": true}}},
+    "quarantine": {"type": "object", "additionalProperties": false, "required": ["manifest_sha256", "wheel_count", "retained"], "properties": {"manifest_sha256": {"const": "8e1650a9a2e7631a17e2f13af28f185cbca471e6c15765cfb3f31d843b234e27"}, "wheel_count": {"const": 30}, "retained": {"const": true}}},
+    "wheelhouse": {"type": "object", "additionalProperties": false, "required": ["root_ref", "object_identity_sha256", "manifest_ref", "manifest_sha256", "package_set_sha256", "wheel_count", "direct_pins", "dependency_closure", "promotion", "installation"], "properties": {"root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260929"}, "object_identity_sha256": {"const": "947a76cc0664753186393aa348d4c0ac26d9f151f73f71fa3d3acde1fb3558cd"}, "manifest_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260929/manifest.json"}, "manifest_sha256": {"const": "d8ce2acbb34efa3c7424c387984b2ad97bda80b80ec7631e0d95f8dadaf48ce4"}, "package_set_sha256": {"const": "daa3e0ac9936d3aad5b369bfb5f6f5b159dcb9ff11aa7195a9aee4da9758090a"}, "wheel_count": {"const": 30}, "direct_pins": {"const": "9/9"}, "dependency_closure": {"const": "PASS"}, "promotion": {"const": "PASS"}, "installation": {"const": "NOT_RUN"}}},
+    "mandatory_stop": {"const": "PY312_INSTALL_APPROVAL_AFTER_WHEELHOUSE_REVIEW"}
+  }
+}
