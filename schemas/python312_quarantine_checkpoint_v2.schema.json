@@ -31,9 +31,9 @@
       "required": ["root_ref", "object_identity_sha256", "manifest_ref", "manifest_sha256", "wheel_count", "source_distributions", "forbidden_model_packages", "network_domains", "zip_crc", "direct_pins", "dependency_closure", "platform_tags", "promotion", "installation"],
       "properties": {
         "root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-quarantine-20260929"},
-        "object_identity_sha256": {"pattern": "^[0-9a-f]{64}$"},
-        "manifest_ref": {"type": "string", "minLength": 1},
-        "manifest_sha256": {"pattern": "^[0-9a-f]{64}$"},
+        "object_identity_sha256": {"const": "73d8bb17bf7a617792484805d05c9ee73639d4d56bea61b6a06238419f52ac63"},
+        "manifest_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260929/py312-quarantine-manifest-v2.json"},
+        "manifest_sha256": {"const": "8e1650a9a2e7631a17e2f13af28f185cbca471e6c15765cfb3f31d843b234e27"},
         "wheel_count": {"const": 30},
         "source_distributions": {"const": 0},
         "forbidden_model_packages": {"const": 0},

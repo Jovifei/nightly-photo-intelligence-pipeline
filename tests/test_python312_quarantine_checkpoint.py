@@ -36,11 +36,22 @@ def test_quarantine_checkpoint_is_schema_valid_and_stopped() -> None:
 
 def test_quarantine_checkpoint_rejects_manifest_or_count_drift() -> None:
     checkpoint = _checkpoint()
-    forged = copy.deepcopy(checkpoint)
-    forged["quarantine"]["manifest_sha256"] = "0" * 64
-    forged["quarantine"]["wheel_count"] = 31
-    errors = _errors(forged)
-    assert any("was expected" in error or "30" in error for error in errors)
+    forged_hash = copy.deepcopy(checkpoint)
+    forged_hash["quarantine"]["manifest_sha256"] = "0" * 64
+    assert _errors(forged_hash)
+    forged_count = copy.deepcopy(checkpoint)
+    forged_count["quarantine"]["wheel_count"] = 31
+    assert _errors(forged_count)
+
+
+def test_quarantine_checkpoint_rejects_identity_and_reference_drift() -> None:
+    checkpoint = _checkpoint()
+    forged_identity = copy.deepcopy(checkpoint)
+    forged_identity["quarantine"]["object_identity_sha256"] = "0" * 64
+    assert _errors(forged_identity)
+    forged_ref = copy.deepcopy(checkpoint)
+    forged_ref["quarantine"]["manifest_ref"] = "other-manifest.json"
+    assert _errors(forged_ref)
 
 
 def test_quarantine_checkpoint_keeps_install_and_promotion_fail_closed() -> None:
