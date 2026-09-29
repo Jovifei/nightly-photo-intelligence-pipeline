@@ -2246,3 +2246,7 @@ locally in the committed candidate awaiting exact-SHA review.
   SQLite, cache, and R2 actions unperformed pending external exact-SHA review.
 - [ ] Submit the v2 bound network approval to remote GPT; only after review
   PASS may the quarantine be created and dependency closure downloaded.
+
+V2 evidence status: `CHANGES_REQUIRED_V2_EVIDENCE_HASH_REFRESH` at
+`0938f7c7f7e5133567d76711ef39ea14cc1ffc8c`; the four v2 authority hashes are
+being refreshed against the current MANIFEST before network execution.

@@ -43,3 +43,21 @@ def test_bound_network_v2_uses_concrete_storage_identity() -> None:
         "6501002f9d0e144f2f19fb71e3b3bab1e0f290803e02df07c5f25815b5f9322f"
     )
     assert task["owner_authority"]["execution_requires_external_review"] is True
+
+
+def test_v2_evidence_hash_constants_match_manifest() -> None:
+    schema = json.loads(
+        (ROOT / "schemas/python312_wheelhouse_evidence_v2.schema.json").read_text(encoding="utf-8")
+    )
+    manifest = {}
+    for line in (ROOT / "MANIFEST.sha256").read_text(encoding="utf-8").splitlines():
+        digest, path = line.split("  ", 1)
+        manifest[path] = digest
+    paths = {
+        "network_task_sha256": "tasks/tooling_python312_network_reacquisition_v2.yaml",
+        "network_owner_approval_sha256": "approvals/owner_python312_network_reacquisition_v2.yaml",
+        "network_schema_sha256": "schemas/python312_tooling_network_approval_v2.schema.json",
+        "network_owner_approval_schema_sha256": "schemas/owner_python312_network_reacquisition_v2.schema.json",
+    }
+    for field, path in paths.items():
+        assert schema["properties"][field]["const"] == manifest[path]

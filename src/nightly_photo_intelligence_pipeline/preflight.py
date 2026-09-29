@@ -1312,6 +1312,11 @@ def _check_git_baselines() -> CheckResult:
             and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "54")
             and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "55")
         )
+        py312_network_v2_evidence_hash_refresh_topology = (
+            git("rev-parse", "HEAD^") == (0, "0938f7c7f7e5133567d76711ef39ea14cc1ffc8c")
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "55")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "56")
+        )
         portability_record_ok = True
         if (
             portability_candidate
@@ -1355,6 +1360,7 @@ def _check_git_baselines() -> CheckResult:
             or py312_evidence_hash_binding_topology
             or py312_network_storage_bound_approval_topology
             or py312_network_v2_evidence_schema_topology
+            or py312_network_v2_evidence_hash_refresh_topology
         ):
             record_path = root / "research" / "N2B1P_manifest_portability_remediation.json"
             schema_path = root / "schemas" / "n2b1p_manifest_portability_remediation_v1.schema.json"
@@ -1449,7 +1455,8 @@ def _check_git_baselines() -> CheckResult:
             or py312_storage_binding_bookkeeping_topology
             or py312_evidence_hash_binding_topology
             or py312_network_storage_bound_approval_topology
-            or py312_network_v2_evidence_schema_topology,
+            or py312_network_v2_evidence_schema_topology
+            or py312_network_v2_evidence_hash_refresh_topology,
             portability_record_ok,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),
