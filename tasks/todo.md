@@ -2344,3 +2344,15 @@ Current status: `PY312_ENVIRONMENT_QUALIFIED_AWAITING_EXTERNAL_REVIEW`.
 
 Current status: `N2B1P_ROUTE_B_CONTROL_PLANE_DRAFT_AWAITING_EXTERNAL_REVIEW`;
 cache promotion and model/CUDA execution remain `NOT_RUN`.
+
+### Route B root-attestation repair — 2026-09-29
+
+- [x] Remote review found one concrete gap: the preprovisioned cache-root
+  evidence was reported but not bound into the committed v2 task, approval,
+  runtime configuration, and closed schemas.
+- [x] Bind the cache-root attestation SHA, empty/non-reparse/external/non-overlap
+  flags, and the unchanged historical runtime-boundary digest through every
+  v2 control document and negative test.
+- [ ] Commit this direct successor and obtain remote exact-SHA review. Source
+  identification remains `NOT_RUN`; no cache promotion or network fallback is
+  allowed until the packet receives `DONE` and a separate Owner Gate A decision.

@@ -3,20 +3,27 @@
   "$id": "https://schemas.npi.local/n2b1p_reprovision_runtime_configuration_v2.schema.json",
   "title": "N2B1P Route B reprovision runtime configuration v2",
   "type": "object", "additionalProperties": false,
-  "required": ["schema_version", "configuration_version", "status", "runtime_parent_ref", "work_root_ref", "snapshot_root", "cache_root_ref", "cache_root_identity", "source_root_ref", "source_root_identity", "python_qualification_commit", "python_qualification_checkpoint_sha256", "configuration_digest"],
+  "required": ["schema_version", "configuration_version", "status", "runtime_parent_ref", "work_root_ref", "runtime_boundary_configuration_ref", "runtime_boundary_configuration_sha256", "runtime_boundary_configuration_unchanged", "snapshot_root", "cache_root_ref", "cache_root_identity", "cache_root_attestation_ref", "cache_root_attestation_sha256", "cache_root_empty", "cache_root_non_reparse", "cache_root_outside_git", "cache_root_outside_runtime", "cache_root_outside_source", "cache_root_outside_quarantine", "source_root_ref", "source_root_identity", "python_qualification_commit", "python_qualification_checkpoint_sha256", "configuration_digest"],
   "properties": {
     "schema_version": {"const": "1.0"},
     "configuration_version": {"const": "N2B1P_REPROVISION_RUNTIME_CONFIGURATION_V2"},
     "status": {"const": "DRAFT_NOT_AUTHORIZED"},
-    "runtime_parent_ref": {"const": "OWNER_TO_IDENTIFY_EXTERNAL_RUNTIME_PARENT"},
-    "work_root_ref": {"const": "OWNER_TO_IDENTIFY_EXTERNAL_WORK_ROOT"},
+    "runtime_parent_ref": {"const": "TRACKED_HISTORICAL_N2B1P_RUNTIME_CONFIGURATION_V1"},
+    "work_root_ref": {"const": "TRACKED_HISTORICAL_N2B1P_WORK_ROOT_BOUNDARY"},
+    "runtime_boundary_configuration_ref": {"const": "approvals/n2b1p_runtime_configuration.json"},
+    "runtime_boundary_configuration_sha256": {"const": "f8d6a2779f85a2944d60b2a94ff99c392f45fe5adefbfead3441a3ce72fa682b"},
+    "runtime_boundary_configuration_unchanged": {"const": true},
     "snapshot_root": {"const": "NOT_APPLICABLE_N2B1P_SOURCE_ACCESS_FORBIDDEN"},
     "cache_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-n2b1p-cache-v2-20260929"},
     "cache_root_identity": {"const": "c030b04ce53a7bff949061c81178474576db62502013468ca967c11a646b9b6f"},
+    "cache_root_attestation_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260929/n2b1p-route-b-cache-root-preprovision.txt"},
+    "cache_root_attestation_sha256": {"const": "3e3c76a87cee9bc359ab9d283555c28855d6c918aeab863c1a46302da14f203e"},
+    "cache_root_empty": {"const": true}, "cache_root_non_reparse": {"const": true}, "cache_root_outside_git": {"const": true},
+    "cache_root_outside_runtime": {"const": true}, "cache_root_outside_source": {"const": true}, "cache_root_outside_quarantine": {"const": true},
     "source_root_ref": {"const": "OWNER_TO_IDENTIFY_EXTERNAL_QUARANTINE_ROOT"},
     "source_root_identity": {"const": "0000000000000000000000000000000000000000000000000000000000000000"},
     "python_qualification_commit": {"const": "639a503fa3c04c5fcc8640d8bee372377f3953d1"},
     "python_qualification_checkpoint_sha256": {"const": "4974afbb1a022fdba0ffe6647a9fcb549d18234b69c864b35c7a2896e84ab128"},
-    "configuration_digest": {"const": "f0f71d63eddf92204339b0b6842eec9468aa5e10ca9535870ff7c48194d97476"}
+    "configuration_digest": {"const": "e77d0c775a1b1c98cf0146fde5a702b555373dd7c9147b587ab5d0bad590a043"}
   }
 }

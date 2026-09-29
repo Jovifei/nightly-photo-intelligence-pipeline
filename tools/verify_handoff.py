@@ -99,6 +99,7 @@ PY312_INSTALL_INTERPRETER_BOUND_BASE_SHA = "f2518e86e879f017176ed4fb20afe2c62e85
 PY312_PREINSTALL_REVALIDATION_BASE_SHA = "b697f5e9a957cb8f79998b2f9acdae07a214b397"
 PY312_ENVIRONMENT_QUALIFICATION_BASE_SHA = "4f91837dd10ca6997969036037ec0229a366c0c9"
 N2B1P_ROUTE_B_PACKET_BASE_SHA = "639a503fa3c04c5fcc8640d8bee372377f3953d1"
+N2B1P_ROUTE_B_ATTESTATION_BASE_SHA = "9ea47d24454ae3dc2a4f14e90420d01d8602f961"
 
 errors: list[str] = []
 passes: list[str] = []
@@ -1156,6 +1157,11 @@ def check_baselines() -> None:
             and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "64")
             and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "63")
         )
+        or (
+            git("rev-parse", "HEAD^") == (0, N2B1P_ROUTE_B_ATTESTATION_BASE_SHA)
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "65")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "64")
+        )
     ):
         fail("N2B2 review candidate must be exactly one direct child of N2B1P")
     elif git("rev-list", "--merges", "HEAD") != (0, ""):
@@ -1400,6 +1406,7 @@ def main() -> int:
         (0, PY312_PREINSTALL_REVALIDATION_BASE_SHA),
         (0, PY312_ENVIRONMENT_QUALIFICATION_BASE_SHA),
         (0, N2B1P_ROUTE_B_PACKET_BASE_SHA),
+        (0, N2B1P_ROUTE_B_ATTESTATION_BASE_SHA),
     }:
         print(
             "HANDOFF_VALID: Real20 transition code-only candidate; production N2B2 remains LOCKED"

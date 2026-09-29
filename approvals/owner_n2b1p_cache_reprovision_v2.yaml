@@ -6,6 +6,16 @@ scope: "VERSIONED_CONTROL_PLANE_ONLY"
 contract_ref: "tasks/phase_n2b1p_cache_reprovision_v2.yaml"
 runtime_configuration_ref: "approvals/n2b1p_reprovision_runtime_configuration_v2.json"
 source_evidence_ref: "research/N2B1P_b_source_evidence_v1.json"
+runtime_boundary_configuration_ref: "approvals/n2b1p_runtime_configuration.json"
+runtime_boundary_configuration_sha256: "f8d6a2779f85a2944d60b2a94ff99c392f45fe5adefbfead3441a3ce72fa682b"
+cache_root_attestation_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260929/n2b1p-route-b-cache-root-preprovision.txt"
+cache_root_attestation_sha256: "3e3c76a87cee9bc359ab9d283555c28855d6c918aeab863c1a46302da14f203e"
+cache_root_empty: true
+cache_root_non_reparse: true
+cache_root_outside_git: true
+cache_root_outside_runtime: true
+cache_root_outside_source: true
+cache_root_outside_quarantine: true
 python_qualification_commit: "639a503fa3c04c5fcc8640d8bee372377f3953d1"
 python_qualification_checkpoint_sha256: "4974afbb1a022fdba0ffe6647a9fcb549d18234b69c864b35c7a2896e84ab128"
 execution_authority:

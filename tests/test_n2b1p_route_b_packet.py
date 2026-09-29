@@ -43,6 +43,9 @@ def test_route_b_packet_is_closed_and_not_authorized() -> None:
     assert task["authorities"]["b_cache"]["status"] == "NOT_AUTHORIZED"
     assert task["authorities"]["b_source"]["status"] == "NOT_AUTHORIZED"
     assert task["authorities"]["b_cache"]["network_access"] == "DENY"
+    assert task["cache_root_attestation"]["empty"] is True
+    assert task["cache_root_attestation"]["outside_runtime"] is True
+    assert task["runtime_boundary"]["inherited_unchanged"] is True
 
 
 def test_route_b_packet_rejects_source_digest_drift() -> None:
@@ -53,4 +56,19 @@ def test_route_b_packet_rejects_source_digest_drift() -> None:
         (ROOT / "research/N2B1P_b_source_evidence_v1.json").read_text(encoding="utf-8")
     )
     document["artifacts"][0]["local_sha256"] = "0" * 64
+    assert list(Draft202012Validator(schema).iter_errors(document))
+
+
+def test_route_b_packet_rejects_cache_root_attestation_drift() -> None:
+    schema = json.loads(
+        (ROOT / "schemas/n2b1p_reprovision_runtime_configuration_v2.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    document = json.loads(
+        (ROOT / "approvals/n2b1p_reprovision_runtime_configuration_v2.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    document["cache_root_attestation_sha256"] = "0" * 64
     assert list(Draft202012Validator(schema).iter_errors(document))

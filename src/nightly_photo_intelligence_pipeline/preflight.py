@@ -1357,6 +1357,11 @@ def _check_git_baselines() -> CheckResult:
             and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "63")
             and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "64")
         )
+        n2b1p_route_b_attestation_topology = (
+            git("rev-parse", "HEAD^") == (0, "9ea47d24454ae3dc2a4f14e90420d01d8602f961")
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "64")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "65")
+        )
         portability_record_ok = True
         if (
             portability_candidate
@@ -1409,6 +1414,7 @@ def _check_git_baselines() -> CheckResult:
             or py312_preinstall_revalidation_topology
             or py312_environment_qualification_topology
             or n2b1p_route_b_packet_topology
+            or n2b1p_route_b_attestation_topology
         ):
             record_path = root / "research" / "N2B1P_manifest_portability_remediation.json"
             schema_path = root / "schemas" / "n2b1p_manifest_portability_remediation_v1.schema.json"
@@ -1512,7 +1518,8 @@ def _check_git_baselines() -> CheckResult:
             or py312_install_interpreter_bound_topology
             or py312_preinstall_revalidation_topology
             or py312_environment_qualification_topology
-            or n2b1p_route_b_packet_topology,
+            or n2b1p_route_b_packet_topology
+            or n2b1p_route_b_attestation_topology,
             portability_record_ok,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),

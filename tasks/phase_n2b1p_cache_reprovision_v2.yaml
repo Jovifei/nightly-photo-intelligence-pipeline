@@ -16,8 +16,21 @@ python_qualification:
 runtime_configuration:
   path: "approvals/n2b1p_reprovision_runtime_configuration_v2.json"
   configuration_version: "N2B1P_REPROVISION_RUNTIME_CONFIGURATION_V2"
-  configuration_digest: "f0f71d63eddf92204339b0b6842eec9468aa5e10ca9535870ff7c48194d97476"
+  configuration_digest: "e77d0c775a1b1c98cf0146fde5a702b555373dd7c9147b587ab5d0bad590a043"
   cache_root_identity: "c030b04ce53a7bff949061c81178474576db62502013468ca967c11a646b9b6f"
+runtime_boundary:
+  configuration_ref: "approvals/n2b1p_runtime_configuration.json"
+  configuration_sha256: "f8d6a2779f85a2944d60b2a94ff99c392f45fe5adefbfead3441a3ce72fa682b"
+  inherited_unchanged: true
+cache_root_attestation:
+  ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260929/n2b1p-route-b-cache-root-preprovision.txt"
+  sha256: "3e3c76a87cee9bc359ab9d283555c28855d6c918aeab863c1a46302da14f203e"
+  empty: true
+  non_reparse: true
+  outside_git: true
+  outside_runtime: true
+  outside_source: true
+  outside_quarantine: true
 source_evidence:
   path: "research/N2B1P_b_source_evidence_v1.json"
   sha256: "15289bf6b2cf827bcd538edf5f71784b2d1490575916c81dea873c8e9073f002"
