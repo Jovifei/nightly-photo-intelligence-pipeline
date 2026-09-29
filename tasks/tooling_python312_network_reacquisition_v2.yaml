@@ -28,6 +28,7 @@ execution_controls:
   model_or_cuda_install: false
   wheelhouse_promotion_before_manifest_review: false
   quarantine_retention: true
+wheelhouse_evidence_schema_ref: "schemas/python312_wheelhouse_evidence_v2.schema.json"
 scope:
   interpreter: "CPython >=3.12,<3.13"
   platform: "win_amd64"

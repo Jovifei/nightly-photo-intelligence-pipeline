@@ -21,6 +21,7 @@ execution_authority:
   venv_creation_during_network: false
   network_download_before_review: false
   installation_before_review: false
+wheelhouse_evidence_schema_ref: "schemas/python312_wheelhouse_evidence_v2.schema.json"
 scope:
   interpreter: "CPython >=3.12,<3.13"
   platform: "win_amd64"

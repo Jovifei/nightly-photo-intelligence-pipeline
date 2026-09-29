@@ -68,6 +68,7 @@ PY312_STORAGE_BINDING_REMEDIATION_BASE = "6ea7fdd00da068d570838d4d071bb1b41e3b4b
 PY312_STORAGE_BINDING_BOOKKEEPING_BASE = "957955d1258768503d09f7c3802411aec027b518"
 PY312_EVIDENCE_HASH_BINDING_BASE = "8e6bdf849518da5554dbff20b4949401c86fef67"
 PY312_NETWORK_STORAGE_BOUND_APPROVAL_BASE = "e1a8e1683ef462f16cc748ec16714fcfbc027e13"
+PY312_NETWORK_V2_EVIDENCE_SCHEMA_BASE = "4981c747e83c7bebba732e487fbc5fd92a5e5590"
 
 SENSITIVE_SUFFIXES = (
     ".db",
@@ -416,6 +417,15 @@ def _is_py312_network_storage_bound_approval_candidate(project_root: Path) -> bo
     )
 
 
+def _is_py312_network_v2_evidence_schema_candidate(project_root: Path) -> bool:
+    return (
+        _git(project_root, "rev-parse", "HEAD^").stdout.strip()
+        == PY312_NETWORK_V2_EVIDENCE_SCHEMA_BASE
+        and _git(project_root, "rev-list", "--count", f"{N2B1P_BASELINE}..HEAD").stdout.strip()
+        == "54"
+    )
+
+
 def test_git_approved_tags_and_ancestry_are_exact(project_root: Path) -> None:
     assert _git(project_root, "rev-parse", N0_TAG).stdout.strip() == N0_BASELINE
     assert _git(project_root, "rev-parse", N1_TAG).stdout.strip() == N1_BASELINE
@@ -528,6 +538,8 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
         candidate_offset = 52
     elif _is_py312_network_storage_bound_approval_candidate(project_root):
         candidate_offset = 53
+    elif _is_py312_network_v2_evidence_schema_candidate(project_root):
+        candidate_offset = 54
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         candidate_offset = 1
     else:
@@ -751,6 +763,12 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
             _git(project_root, "rev-parse", "HEAD^").stdout.strip()
             == PY312_NETWORK_STORAGE_BOUND_APPROVAL_BASE
         )
+    elif _is_py312_network_v2_evidence_schema_candidate(project_root):
+        assert post_n2b1r == 55
+        assert (
+            _git(project_root, "rev-parse", "HEAD^").stdout.strip()
+            == PY312_NETWORK_V2_EVIDENCE_SCHEMA_BASE
+        )
     else:
         assert post_n2b1r == 1 + candidate_offset
         parent = _git(project_root, "rev-parse", "HEAD^").stdout.strip()
@@ -877,6 +895,8 @@ def test_n2b1p_candidate_is_resolved_not_hardcoded(project_root: Path) -> None:
         expected_count = 53
     elif _is_py312_network_storage_bound_approval_candidate(project_root):
         expected_count = 54
+    elif _is_py312_network_v2_evidence_schema_candidate(project_root):
+        expected_count = 55
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         expected_count = 2
     else:

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/python312_wheelhouse_evidence_v2.schema.json",
+  "title": "Bound Python 3.12 wheelhouse evidence v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "control_plane_commit", "network_task_sha256", "network_owner_approval_sha256", "network_schema_sha256", "network_owner_approval_schema_sha256", "interpreter", "direct_pin_roots", "resolved_packages", "download_root_attestation", "wheelhouse_object_identity_sha256", "manifest", "prohibitions", "mandatory_stop"],
+  "properties": {
+    "schema_version": {"const": "2.0"},
+    "status": {"const": "PY312_WHEELHOUSE_QUALIFIED_AWAITING_EXTERNAL_REVIEW"},
+    "control_plane_commit": {"const": "a2c338b2fe9467d9668566eadfe0b1fc094df526"},
+    "network_task_sha256": {"const": "e3c55c50df00658fa8956e7c4b95b35087e95285e3257cb8031b6f8c5b92c989"},
+    "network_owner_approval_sha256": {"const": "9d615b9aded155b17bf1c8ae5271c13dc34431d0171cbda11b67573b17d43033"},
+    "network_schema_sha256": {"const": "0a7d086c270264dbf8b6734bec74501225e890b98b2d44c1ede638f790d3911b"},
+    "network_owner_approval_schema_sha256": {"const": "105d48ac87a56af7f34662efe419295f8854951fcaad065ce288aeeb493a5e59"},
+    "interpreter": {"type": "object", "additionalProperties": false, "required": ["implementation", "version", "platform", "abi"], "properties": {"implementation": {"const": "CPython"}, "version": {"pattern": "^3\\.12\\.[0-9]+$"}, "platform": {"const": "win_amd64"}, "abi": {"const": "cp312"}}},
+    "direct_pin_roots": {"type": "array", "minItems": 9, "maxItems": 9, "uniqueItems": true, "items": {"oneOf": [{"const": {"name": "typer", "version": "0.26.8"}}, {"const": {"name": "pydantic", "version": "2.13.4"}}, {"const": {"name": "pyyaml", "version": "6.0.3"}}, {"const": {"name": "pillow", "version": "12.3.0"}}, {"const": {"name": "pytest", "version": "9.1.1"}}, {"const": {"name": "ruff", "version": "0.15.21"}}, {"const": {"name": "mypy", "version": "2.3.0"}}, {"const": {"name": "jsonschema", "version": "4.26.0"}}, {"const": {"name": "referencing", "version": "0.37.0"}}]}},
+    "resolved_packages": {"type": "array", "minItems": 9, "uniqueItems": true, "items": {"type": "object", "additionalProperties": false, "required": ["name", "version", "filename", "size", "sha256", "wheel_tags", "source_url", "final_domain", "depends_on"], "properties": {"name": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+$"}, "version": {"type": "string", "minLength": 1}, "filename": {"type": "string", "pattern": "^[^/\\\\]+\\.whl$"}, "size": {"type": "integer", "minimum": 1}, "sha256": {"pattern": "^[0-9a-f]{64}$"}, "wheel_tags": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}, "source_url": {"type": "string", "pattern": "^https://(pypi\\.org|files\\.pythonhosted\\.org)/"}, "final_domain": {"enum": ["pypi.org", "files.pythonhosted.org"]}, "depends_on": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}}}},
+    "download_root_attestation": {"type": "object", "additionalProperties": false, "required": ["object_identity_sha256", "outside_git", "non_reparse", "non_overlapping", "path_ref", "attestation_sha256"], "properties": {"object_identity_sha256": {"const": "08ecb7a0ebe151c1e4484f13177d534cbb2117745a3d9719f2b3338fa4285b90"}, "outside_git": {"const": true}, "non_reparse": {"const": true}, "non_overlapping": {"const": true}, "path_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD"}, "attestation_sha256": {"const": "6501002f9d0e144f2f19fb71e3b3bab1e0f290803e02df07c5f25815b5f9322f"}}},
+    "wheelhouse_object_identity_sha256": {"pattern": "^[0-9a-f]{64}$"},
+    "manifest": {"type": "object", "additionalProperties": false, "required": ["path_ref", "sha256", "entry_count", "canonicalization"], "properties": {"path_ref": {"type": "string", "minLength": 1}, "sha256": {"pattern": "^[0-9a-f]{64}$"}, "entry_count": {"type": "integer", "minimum": 9}, "canonicalization": {"const": "sorted_relative_filename_size_sha256_url_domain_tags"}}},
+    "prohibitions": {"type": "object", "additionalProperties": false, "required": ["package_install_during_network", "venv_creation_during_network", "model_packages", "source_distributions", "custom_index", "quarantine_retained"], "properties": {"package_install_during_network": {"const": false}, "venv_creation_during_network": {"const": false}, "model_packages": {"const": false}, "source_distributions": {"const": false}, "custom_index": {"const": false}, "quarantine_retained": {"const": true}}},
+    "mandatory_stop": {"type": "object", "additionalProperties": false, "required": ["value", "next_action"], "properties": {"value": {"const": true}, "next_action": {"const": "EXTERNAL_REVIEW_PY312_WHEELHOUSE"}}}
+  }
+}

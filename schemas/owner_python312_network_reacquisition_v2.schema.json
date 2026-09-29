@@ -4,7 +4,7 @@
   "title": "Owner bound Python 3.12 network acquisition approval",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "approval_type", "status", "owner_id", "reviewed_code_commit", "control_plane_commit", "task_ref", "schema_ref", "storage", "execution_authority", "scope", "allowed_network", "mandatory_stop"],
+  "required": ["schema_version", "approval_type", "status", "owner_id", "reviewed_code_commit", "control_plane_commit", "task_ref", "schema_ref", "storage", "execution_authority", "wheelhouse_evidence_schema_ref", "scope", "allowed_network", "mandatory_stop"],
   "properties": {
     "schema_version": {"const": "1.0"},
     "approval_type": {"const": "OWNER_PY312_NETWORK_REACQUISITION_V2"},
@@ -14,6 +14,7 @@
     "control_plane_commit": {"const": "a2c338b2fe9467d9668566eadfe0b1fc094df526"},
     "task_ref": {"const": "tasks/tooling_python312_network_reacquisition_v2.yaml"},
     "schema_ref": {"const": "schemas/owner_python312_network_reacquisition_v2.schema.json"},
+    "wheelhouse_evidence_schema_ref": {"const": "schemas/python312_wheelhouse_evidence_v2.schema.json"},
     "storage": {"type": "object", "additionalProperties": false, "required": ["download_root_ref", "download_root_object_identity_sha256", "path_attestation_ref", "path_attestation_sha256", "non_reparse", "outside_git", "non_overlapping"], "properties": {"download_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD"}, "download_root_object_identity_sha256": {"const": "08ecb7a0ebe151c1e4484f13177d534cbb2117745a3d9719f2b3338fa4285b90"}, "path_attestation_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260929/download-root-storage-attestation-v1.json"}, "path_attestation_sha256": {"const": "6501002f9d0e144f2f19fb71e3b3bab1e0f290803e02df07c5f25815b5f9322f"}, "non_reparse": {"const": true}, "outside_git": {"const": true}, "non_overlapping": {"const": true}}},
     "execution_authority": {"type": "object", "additionalProperties": false, "required": ["owner_authorized", "external_exact_sha_review_required", "package_install_during_network", "venv_creation_during_network", "network_download_before_review", "installation_before_review"], "properties": {"owner_authorized": {"const": true}, "external_exact_sha_review_required": {"const": true}, "package_install_during_network": {"const": false}, "venv_creation_during_network": {"const": false}, "network_download_before_review": {"const": false}, "installation_before_review": {"const": false}}},
     "scope": {"type": "object", "additionalProperties": false, "required": ["interpreter", "platform", "abi", "direct_pins_ref", "transitive_policy", "wheel_only", "source_distributions"], "properties": {"interpreter": {"const": "CPython >=3.12,<3.13"}, "platform": {"const": "win_amd64"}, "abi": {"const": "cp312"}, "direct_pins_ref": {"const": "tasks/tooling_python312_quality_environment_execution_v1.yaml#packages.direct_pins"}, "transitive_policy": {"const": "ONLY_DEPENDENCIES_REQUIRED_BY_THE_NINE_DIRECT_PINS"}, "wheel_only": {"const": true}, "source_distributions": {"const": false}}},
