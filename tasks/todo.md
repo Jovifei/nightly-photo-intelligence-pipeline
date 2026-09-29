@@ -2244,8 +2244,12 @@ locally in the committed candidate awaiting exact-SHA review.
   current code SHA and concrete storage attestation.
 - [x] Keep network, venv creation, package install, model, photo, EXIF,
   SQLite, cache, and R2 actions unperformed pending external exact-SHA review.
-- [ ] Submit the v2 bound network approval to remote GPT; only after review
+- [x] Submit the v2 bound network approval to remote GPT; review PASS allowed
   PASS may the quarantine be created and dependency closure downloaded.
+
+V2 network result: review PASS was received; acquisition reached quarantine
+only with 30 wheels. Promotion and install remain `NOT_RUN` pending checkpoint
+review. External manifest SHA: `8e1650a9...b234e27`.
 
 V2 evidence status: `CHANGES_REQUIRED_V2_EVIDENCE_HASH_REFRESH` at
 `0938f7c7f7e5133567d76711ef39ea14cc1ffc8c`; the four v2 authority hashes are
