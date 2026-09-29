@@ -1,0 +1,148 @@
+contract_version: "1.0"
+phase:
+  id: "N2B1P"
+  title: "B-source exact-weight network reacquisition control packet"
+  status: "LOCKED"
+capability: "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
+contract_type: "B_SOURCE_NETWORK_REACQUISITION_CONTROL_PACKET"
+status: "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"
+scope_status: "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"
+owner_decision: "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"
+owner_authorized: true
+execution_status: "NOT_RUN"
+execution_authority: "NOT_AUTHORIZED"
+network_download_before_external_review: false
+pre_download_external_review: "PASS_REQUIRED"
+review_candidate:
+  status: "REVIEW_CANDIDATE"
+  class: "CONTROL_PLANE_ONLY"
+  task_id: "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
+  review_scope: "B_SOURCE_NETWORK_REACQUISITION_V1_CONTROL_PACKET_ONLY"
+  task_schema_ref: "schemas/n2b1p_b_source_network_reacquisition_v1.schema.json"
+  owner_approval_ref: "approvals/owner_n2b1p_b_source_network_reacquisition_v1.yaml"
+  owner_approval_schema_ref: "schemas/owner_n2b1p_b_source_network_reacquisition_v1.schema.json"
+  runtime_configuration_ref: "approvals/n2b1p_b_source_network_runtime_configuration_v1.json"
+  runtime_configuration_schema_ref: "schemas/n2b1p_b_source_network_runtime_configuration_v1.schema.json"
+  baseline_approval_ref: "approvals/phase_completion_N2B1P.yaml"
+  immutable_baseline_ref: "approvals/phase_completion_N2B1P.yaml"
+  external_exact_sha_review_required: true
+  execution_before_review: false
+  allowed_change_categories:
+    - "task_contract"
+    - "owner_approval"
+    - "schema"
+    - "tests"
+    - "governance_tool"
+    - "control_plane_code"
+    - "manifest"
+    - "todo_status"
+    - "task_tracking"
+approval_ref: "approvals/owner_n2b1p_b_source_network_reacquisition_v1.yaml"
+runtime_configuration:
+  path: "approvals/n2b1p_b_source_network_runtime_configuration_v1.json"
+  configuration_version: "N2B1P_B_SOURCE_NETWORK_RUNTIME_CONFIGURATION_V1"
+  configuration_digest: "a60178368e6d37dcf713dc004d9799048a0f9dfd957cc49e5c619753787c39d8"
+historical_bindings:
+  n2b1r_register: "research/N2B1R_local_research_artifact_register.json"
+  n2b1r_acquisition_evidence: "research/N2B1R_acquisition_evidence.json"
+  n2b1p_owner_approval: "approvals/owner_n2b1p_cache_promotion.yaml"
+  n2b1p_promotion_evidence: "research/N2B1P_cache_promotion_evidence.json"
+  runtime_boundary_configuration: "approvals/n2b1p_runtime_configuration.json"
+  runtime_boundary_configuration_sha256: "f8d6a2779f85a2944d60b2a94ff99c392f45fe5adefbfead3441a3ce72fa682b"
+existing_b_cache_control:
+  task_ref: "tasks/phase_n2b1p_cache_reprovision_v2.yaml"
+  runtime_configuration_ref: "approvals/n2b1p_reprovision_runtime_configuration_v2.json"
+  task_status: "DRAFT_NOT_AUTHORIZED"
+  b_cache_status: "NOT_AUTHORIZED"
+  network_access: "DENY"
+  destination_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-n2b1p-cache-v2-20260929"
+  destination_identity_sha256: "c030b04ce53a7bff949061c81178474576db62502013468ca967c11a646b9b6f"
+quarantine:
+  root_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-n2b1p-b-source-quarantine-20260930-e9110783"
+  object_identity_sha256: "ff0fc35900d4f60d906e8dbcc8d806e8d1360aee4290326049925353667f9000"
+  attestation_version: "V2"
+  attestation_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-n2b1p-b-source-quarantine-20260930-e9110783.attestation-v2.json"
+  attestation_sha256: "27d298c6f7b2ea146f8668edd3c7a4af75b5b9a9cfae0a9ab767ce666acc37e0"
+  attested_empty: true
+  attested_non_reparse: true
+  attested_root_bound: true
+  empty: true
+  non_reparse: true
+  outside_git: true
+  outside_runtime: true
+  outside_source: true
+  outside_cache_root: true
+  outside_cache: true
+  outside_photo_source: true
+  outside_python_venv: true
+  outside_route_b_cache_root: true
+  outside_quality_python_venv: true
+  outside_historical_runtime_parent: true
+  outside_historical_runtime_work: true
+  outside_historical_cache_root: true
+  outside_prior_quarantine: true
+  historical_runtime_configuration_ref: "approvals/n2b1p_runtime_configuration.json"
+  historical_runtime_configuration_sha256: "f8d6a2779f85a2944d60b2a94ff99c392f45fe5adefbfead3441a3ce72fa682b"
+  historical_cache_root_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-model-cache"
+  historical_cache_root_identity_sha256: "15cb613d6ecb39247799adca13c6fcbfd9c9edb72c223db7cebf1ee975d7b2ba"
+  route_b_cache_root_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-n2b1p-cache-v2-20260929"
+  route_b_cache_root_identity_sha256: "c030b04ce53a7bff949061c81178474576db62502013468ca967c11a646b9b6f"
+  quality_python_environment_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929"
+  photo_source_ref: "F_NPI_G1_SOURCE"
+download_precondition:
+  exact_payloads_missing_under_ref: "E_CLAUDE_ALLOW_DOWNLOAD"
+  check_status: "NOT_RUN"
+  required_before_any_download: true
+network_policy:
+  access: "DENY"
+  allowed_schemes: ["https"]
+  allowed_request_domains: ["download.pytorch.org"]
+  allowed_final_domains: ["download.pytorch.org"]
+  executed_request_count: 0
+  future_download_count_exact: 3
+artifacts:
+  - id: "torchvision-keypointrcnn-resnet50-fpn-coco-v1"
+    revision: "torchvision-v0.22.1"
+    url: "https://download.pytorch.org/models/keypointrcnn_resnet50_fpn_coco-fc266e95.pth"
+    filename: "keypointrcnn_resnet50_fpn_coco-fc266e95.pth"
+    byte_count: 237034793
+    local_sha256: "fc266e953d2b302cdcbb9ae66f71f6b0d4649928bf02dc573961e361e4918926"
+    sha256_kind: "HISTORICAL_LOCAL_SHA256_NOT_OFFICIAL_SHA256"
+    transfer_manifest_sha256: "90da3eb000813841a980dcbaf8e1b31fdde15283a9d6b969156c5eb0ae21ce43"
+  - id: "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1"
+    revision: "torchvision-v0.22.1"
+    url: "https://download.pytorch.org/models/lraspp_mobilenet_v3_large-d234d4ea.pth"
+    filename: "lraspp_mobilenet_v3_large-d234d4ea.pth"
+    byte_count: 13097061
+    local_sha256: "d234d4eae9d55d5f76de18b77cf0dc62c66fe5c5482758209d00f950c92bb280"
+    sha256_kind: "HISTORICAL_LOCAL_SHA256_NOT_OFFICIAL_SHA256"
+    transfer_manifest_sha256: "d25cc430637cf19ebab31cd5aa99e344b4da58cd2b04db245c165181e3ff1f12"
+  - id: "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1"
+    revision: "torchvision-v0.22.1"
+    url: "https://download.pytorch.org/models/deeplabv3_mobilenet_v3_large-fc3c493d.pth"
+    filename: "deeplabv3_mobilenet_v3_large-fc3c493d.pth"
+    byte_count: 44356159
+    local_sha256: "fc3c493d68e89cc31ef488c803d5d7dd2f3190fb570598faa49fef69be8e5e70"
+    sha256_kind: "HISTORICAL_LOCAL_SHA256_NOT_OFFICIAL_SHA256"
+    transfer_manifest_sha256: "676054e8b2c366f591a1bbe1b4521e2ef7abdb08197534ca95eb11d434dd0cae"
+quality_environment:
+  python_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929"
+  role: "PYTHON_QUALITY_ONLY"
+  torch_or_cuda_usage: "DENY"
+allowed_now:
+  - "read-only validation of this packet and its tracked historical bindings"
+allowed_after_external_review_only:
+  - "if the exact payloads are absent under E_CLAUDE_ALLOW_DOWNLOAD, reacquire exactly the three bound files from their exact HTTPS URLs into the bound quarantine"
+prohibited_actions:
+  - "network_request_or_download"
+  - "external_directory_creation_or_access"
+  - "photo_or_exif_read"
+  - "model_load_or_inference"
+  - "cuda_execution"
+  - "dependency_install"
+  - "sqlite_ingest_write"
+  - "cache_or_quarantine_mutation"
+  - "push_merge_pull_request_or_release"
+mandatory_stop:
+  value: true
+  next_action: "EXTERNAL_REVIEW_B_SOURCE_NETWORK_REACQUISITION_V1_PRE_DOWNLOAD"

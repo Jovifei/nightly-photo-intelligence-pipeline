@@ -2345,6 +2345,39 @@ Current status: `PY312_ENVIRONMENT_QUALIFIED_AWAITING_EXTERNAL_REVIEW`.
 Current status: `N2B1P_ROUTE_B_CONTROL_PLANE_DRAFT_AWAITING_EXTERNAL_REVIEW`;
 cache promotion and model/CUDA execution remain `NOT_RUN`.
 
+### B-source official network reacquisition control packet — 2026-09-30
+
+- [x] Reproduce the current handoff blocker: the historical N2B1P cache root is
+  unavailable, so full handoff remains fail-closed (`7 pass, 1 fail`).
+- [x] Trace the synthetic preflight test mismatch: schema 1.7 dispatches to the
+  active N2B1P authorization, whose cache checks must remain blocking; do not
+  weaken authorization to make the test exit zero.
+- [x] Pre-provision one new empty quarantine under the approved Download root;
+  bind its non-reparse object identity and keep its attestation outside it.
+- [x] Add a separate, closed B-source network reacquisition task, conditional
+  Owner approval, runtime binding, schemas, and tamper tests. Bind only the
+  three historical TorchVision payloads, exact official URLs, exact byte
+  counts/SHA-256, and `download.pytorch.org` as the sole request/final domain.
+- [x] Keep network disabled until a code-only exact-SHA remote review returns
+  `DONE`; keep cache promotion, dependency installation, model/CUDA execution,
+  source-photo/EXIF access, SQLite writes, and Git remote writes unauthorized.
+- [x] Fix the independent reviewer's P1 finding: strict-load and schema-check
+  `PROJECT_STATE.json`, compare its raw SHA-256 with the N2B1P approval, assert
+  network/remote-write/N2B2 locks, and pin the approval's exact raw SHA-256.
+- [x] Add regressions for state byte drift, changed gate values, and replacement
+  of the pinned baseline approval; the 14 governance tests pass.
+- [ ] Run focused schema/control tests, quality checks, and handoff; record the
+  exact outcomes without converting missing cache into PASS.
+- [ ] Commit a review candidate locally, then submit that exact SHA for remote
+  review. Do not download or promote payloads in this control-packet stage.
+- [ ] After remote `DONE`, continue to the separately gated acquisition
+  implementation/execution stage and obtain a second exact-SHA review of the
+  resulting bytes before any cache promotion.
+
+Current status: `B_SOURCE_NETWORK_REACQUISITION_V1_CONTROL_PACKET_P1_FIXED_AWAITING_FINAL_GATES`;
+focused controls pass; the candidate is still uncommitted and exact-SHA external
+review is pending. Network acquisition and all model/photo execution remain `NOT_RUN`.
+
 ### Route B root-attestation repair — 2026-09-29
 
 - [x] Remote review found one concrete gap: the preprovisioned cache-root

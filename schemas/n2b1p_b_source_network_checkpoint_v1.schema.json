@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b1p_b_source_network_checkpoint_v1.schema.json",
+  "title": "B-source network pre-download stop checkpoint v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "checkpoint_type", "task_ref", "status", "scope_status",
+    "execution_status", "execution_authority", "network_access",
+    "pre_download_external_review", "runtime_configuration_digest",
+    "quarantine_root_identity_sha256", "mandatory_stop"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "checkpoint_type": {"const": "B_SOURCE_NETWORK_REACQUISITION_PRE_DOWNLOAD_CHECKPOINT_V1"},
+    "task_ref": {"const": "tasks/phase_n2b1p_b_source_network_reacquisition_v1.yaml"},
+    "status": {"const": "DRAFT_NOT_AUTHORIZED"},
+    "scope_status": {"const": "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"},
+    "execution_status": {"const": "NOT_RUN"},
+    "execution_authority": {"const": "NOT_AUTHORIZED"},
+    "network_access": {"const": "DENY"},
+    "pre_download_external_review": {"const": "PASS_REQUIRED"},
+    "runtime_configuration_digest": {"const": "a60178368e6d37dcf713dc004d9799048a0f9dfd957cc49e5c619753787c39d8"},
+    "quarantine_root_identity_sha256": {"const": "ff0fc35900d4f60d906e8dbcc8d806e8d1360aee4290326049925353667f9000"},
+    "mandatory_stop": {"const": "EXTERNAL_REVIEW_B_SOURCE_NETWORK_REACQUISITION_V1_PRE_DOWNLOAD"}
+  }
+}

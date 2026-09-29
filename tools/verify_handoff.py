@@ -195,12 +195,58 @@ def git(*args: str) -> tuple[int, str]:
     return result.returncode, result.stdout.strip()
 
 
+def linear_history_findings(root: Path, baseline_sha: str, tip: str = "HEAD") -> list[str]:
+    """Return topology violations after an immutable baseline, independent of commit count."""
+
+    if not re.fullmatch(r"[0-9a-f]{40}", baseline_sha):
+        return ["baseline is not a full Git SHA"]
+    if tip != "HEAD" and not re.fullmatch(r"[0-9a-f]{40}", tip):
+        return ["candidate tip is not a full Git SHA"]
+    try:
+        ancestry = subprocess.run(
+            ["git", "-C", str(root), "merge-base", "--is-ancestor", baseline_sha, tip],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return [f"cannot inspect baseline ancestry: {type(exc).__name__}"]
+    if ancestry.returncode != 0:
+        return ["immutable baseline is not an ancestor of HEAD"]
+
+    results: dict[str, subprocess.CompletedProcess[str]] = {}
+    for label, args in (
+        ("merge commits", ["rev-list", "--merges", f"{baseline_sha}..{tip}"]),
+        ("parent graph", ["rev-list", "--parents", f"{baseline_sha}..{tip}"]),
+    ):
+        try:
+            result = subprocess.run(
+                ["git", "-C", str(root), *args],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=10,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return [f"cannot inspect {label}: {type(exc).__name__}"]
+        if result.returncode != 0:
+            return [f"cannot inspect {label}"]
+        results[label] = result
+
+    findings: list[str] = []
+    if results["merge commits"].stdout.strip():
+        findings.append("candidate range contains a merge commit")
+    graph = results["parent graph"].stdout.splitlines()
+    if any(len(row.split()) != 2 for row in graph):
+        findings.append("candidate range is not one-parent linear history")
+    return findings
+
+
 def is_portability_chain() -> bool:
-    head = git("rev-parse", "HEAD")
-    return head == (0, N2B1P_PORTABILITY_CANDIDATE_SHA) or git("rev-parse", "HEAD^") == (
-        0,
-        N2B1P_PORTABILITY_CANDIDATE_SHA,
-    )
+    return git(
+        "merge-base", "--is-ancestor", N2B1P_PORTABILITY_CANDIDATE_SHA, "HEAD"
+    )[0] == 0
 
 
 def check_portability_record() -> bool:
@@ -770,409 +816,26 @@ def check_baselines() -> None:
     mismatched = [tag for tag, commit in expected.items() if git("rev-parse", tag) != (0, commit)]
     if mismatched:
         fail("immutable baseline tag mismatch: " + ", ".join(mismatched))
-    elif git("merge-base", "--is-ancestor", expected["n2b0-7-approved-2026-07-29"], "HEAD")[0] != 0:
-        fail("N2B0.7 approved baseline is not an ancestor of HEAD")
-    elif git("merge-base", "--is-ancestor", N2B1R_SHA, "HEAD")[0] != 0:
-        fail("N2B1R evidence commit is not an ancestor of HEAD")
-    elif is_portability_chain() and not check_portability_record():
-        pass
-    elif git("rev-parse", "HEAD") == (0, N2B1P_SHA) and git(
-        "rev-list", "--count", f"{N2B1R_SHA}..HEAD"
-    ) != (0, "1"):
-        fail("N2B1P baseline must contain exactly one post-N2B1R commit")
-    elif git("rev-parse", "HEAD") == (0, N2B1P_PORTABILITY_CANDIDATE_SHA) and git(
-        "rev-list", "--count", f"{N2B1R_SHA}..HEAD"
-    ) != (0, "2"):
-        fail("bounded N2B1P portability candidate has unexpected ancestry")
-    elif git("rev-parse", "HEAD^") == (0, N2B1P_PORTABILITY_CANDIDATE_SHA) and (
-        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "3")
-        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "2")
+        return
+
+    for label, baseline in (
+        ("N2B0.7", expected["n2b0-7-approved-2026-07-29"]),
+        ("N2B1R", N2B1R_SHA),
+        ("N2B1P", N2B1P_SHA),
     ):
-        fail("N2B2 integration candidate must be exactly one child of portability remediation")
-    elif git("rev-parse", "HEAD") == (0, REVIEW_TOOLING_OVERLAY_SHA) and (
-        git("rev-parse", "HEAD^") != (0, N2B2_RUNTIME_REVALIDATION_SHA)
-        or git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "5")
-        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "4")
-    ):
-        fail("review-tooling overlay must be one direct child of the frozen runtime candidate")
-    elif git("rev-parse", "HEAD^") == (0, REVIEW_TOOLING_OVERLAY_SHA) and (
-        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "6")
-        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "5")
-    ):
-        fail("F1-F6 remediation must be one direct child of the review-tooling overlay")
-    elif git("rev-parse", "HEAD^") == (0, ENGINEERING_REPAIR_BASE_SHA) and (
-        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "7")
-        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "6")
-    ):
-        fail("engineering repair must be one direct child of the F1-F6 remediation candidate")
-    elif git("rev-parse", "HEAD^") == (0, ENGINEERING_FOLLOWUP_BASE_SHA) and (
-        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "8")
-        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "7")
-    ):
-        fail("engineering follow-up must be one direct child of the engineering repair candidate")
-    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_C_BASE_SHA) and (
-        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "9")
-        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "8")
-    ):
-        fail("audit fix C must be one direct child of the F1/F3 follow-up candidate")
-    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_D_BASE_SHA) and (
-        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "10")
-        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "9")
-    ):
-        fail("audit fix D must be one direct child of the controlled CLI candidate")
-    elif git("rev-parse", "HEAD^") == (0, E2_BASE_SHA) and (
-        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "12")
-        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "11")
-    ):
-        fail("E2 must be one direct child of the E1 delivery candidate")
-    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_CODE_SHA) and (
-        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "14")
-        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "13")
-    ):
-        fail("audit fix F verification must be one direct child of the F code candidate")
-    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_HANDOFF_SHA) and (
-        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "16")
-        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "15")
-    ):
-        fail("audit fix F final registration has unexpected ancestry")
-    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_FINAL_BASE_SHA) and (
-        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "17")
-        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "16")
-    ):
-        fail("audit fix F final candidate has unexpected ancestry")
-    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_PREFLIGHT_BASE_SHA) and (
-        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "18")
-        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "17")
-    ):
-        fail("audit fix F preflight candidate has unexpected ancestry")
-    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_FINAL_REGISTRATION_BASE_SHA) and (
-        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "19")
-        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "18")
-    ):
-        fail("audit fix F final registration has unexpected ancestry")
-    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_DOCUMENTATION_BASE_SHA) and (
-        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "20")
-        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "19")
-    ):
-        fail("audit fix F documentation candidate has unexpected ancestry")
-    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_G_BASE_SHA) and (
-        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "21")
-        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "20")
-    ):
-        fail("audit fix G candidate has unexpected ancestry")
-    elif git("rev-parse", "HEAD^") == (0, H3_BINDING_BASE_SHA) and (
-        git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") != (0, "22")
-        or git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") != (0, "21")
-    ):
-        fail("H3 review-binding candidate has unexpected ancestry")
-    elif git("rev-parse", "HEAD") != (0, N2B1P_SHA) and not (
-        (
-            git("rev-parse", "HEAD^") == (0, N2B1P_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "2")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "1")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, N2B1P_PORTABILITY_CANDIDATE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "3")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "2")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, "49e653b27884f9ba09d15ca17682e496687dc59f")
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "3")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "2")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, N2B2_S20_REVIEW_CANDIDATE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "4")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "3")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, N2B2_REVIEW_CONTROL_PLANE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "4")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "3")
-        )
-        or (
-            git("rev-parse", "HEAD") == (0, REVIEW_TOOLING_OVERLAY_SHA)
-            and git("rev-parse", "HEAD^") == (0, N2B2_RUNTIME_REVALIDATION_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "5")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "4")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REVIEW_TOOLING_OVERLAY_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "6")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "5")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, ENGINEERING_REPAIR_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "7")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "6")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, ENGINEERING_FOLLOWUP_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "8")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "7")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, AUDIT_FIX_C_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "9")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "8")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, AUDIT_FIX_D_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "10")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "9")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, E2_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "12")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "11")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_CODE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "14")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "13")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_HANDOFF_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "16")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "15")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_FINAL_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "17")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "16")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_PREFLIGHT_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "18")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "17")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_FINAL_REGISTRATION_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "19")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "18")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_DOCUMENTATION_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "20")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "19")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, AUDIT_FIX_G_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "21")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "20")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, H3_BINDING_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "22")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "21")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_R0_DELIVERY_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "24")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "23")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_R1_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "25")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "24")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_HARDENING_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "26")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "25")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_OUTPUT_BOUND_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "27")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "26")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_FINAL_REVIEW_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "28")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "27")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_FINAL_HARDENING_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "29")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "28")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_ADMISSION_WINDOW_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "30")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "29")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_LEDGER_HANDLE_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "31")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "30")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_PREFLIGHT_RECEIPT_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "32")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "31")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_DATA_SCHEMA_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "33")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "32")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_NATIVE_LEDGER_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "35")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "34")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_NATIVE_LEDGER_CLOSURE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "36")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "35")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_NATIVE_LEDGER_QUALIFICATION_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "37")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "36")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_LEDGER_PROOF_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "40")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "39")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_LEDGER_PROOF_FOLLOWUP_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "41")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "40")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_LEDGER_PROOF_REVIEW_HEAD_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "42")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "41")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_LEDGER_PROOF_ATTESTATION_FIX_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "43")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "42")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_LEDGER_PROOF_SYNTAX_FIX_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "44")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "43")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_LEDGER_OBJECT_DIGEST_FIX_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "45")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "44")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, REAL20_CACHE_R2_CODE_GATE_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "46")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "45")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, ROUTE_B_CONTROL_PLANE_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "47")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "46")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, ROUTE_B_CONTROL_PLANE_REMEDIATION_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "48")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "47")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, PY312_TOOLING_APPROVAL_PACKET_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "49")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "48")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, PY312_TOOLING_NETWORK_SEQUENCING_REMEDIATION_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "50")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "49")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, PY312_STORAGE_BINDING_REMEDIATION_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "51")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "50")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, PY312_STORAGE_BINDING_BOOKKEEPING_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "52")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "51")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, PY312_EVIDENCE_HASH_BINDING_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "53")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "52")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, PY312_NETWORK_STORAGE_BOUND_APPROVAL_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "54")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "53")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, PY312_NETWORK_V2_EVIDENCE_SCHEMA_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "55")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "54")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, PY312_NETWORK_V2_EVIDENCE_HASH_REFRESH_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "56")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "55")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, PY312_QUARANTINE_CHECKPOINT_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "57")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "56")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, PY312_QUARANTINE_CHECKPOINT_BINDING_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "58")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "57")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, PY312_WHEELHOUSE_PROMOTION_CHECKPOINT_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "59")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "58")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, PY312_INSTALL_APPROVAL_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "60")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "59")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, PY312_INSTALL_INTERPRETER_BOUND_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "61")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "60")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, PY312_PREINSTALL_REVALIDATION_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "62")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "61")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, PY312_ENVIRONMENT_QUALIFICATION_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "63")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "62")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, N2B1P_ROUTE_B_PACKET_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "64")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "63")
-        )
-        or (
-            git("rev-parse", "HEAD^") == (0, N2B1P_ROUTE_B_ATTESTATION_BASE_SHA)
-            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "65")
-            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "64")
-        )
-    ):
-        fail("N2B2 review candidate must be exactly one direct child of N2B1P")
-    elif git("rev-list", "--merges", "HEAD") != (0, ""):
-        fail("current candidate contains a merge commit")
-    elif git("rev-parse", "HEAD^") == (0, "49e653b27884f9ba09d15ca17682e496687dc59f"):
-        print(
-            "HANDOFF_VALID: bounded N2B2 S20 artifact-integrity review candidate; "
-            "production N2B2 remains LOCKED"
-        )
-    else:
-        ok("all immutable approved tags and the bounded no-merge ancestry are intact")
+        if git("merge-base", "--is-ancestor", baseline, "HEAD")[0] != 0:
+            fail(f"immutable {label} baseline is not an ancestor of HEAD")
+            return
+
+    findings = linear_history_findings(ROOT, expected["n2b0-7-approved-2026-07-29"])
+    if findings:
+        for finding in findings:
+            fail(finding)
+        return
+
+    if is_portability_chain() and not check_portability_record():
+        return
+    ok("immutable N2B0.7, N2B1R, and N2B1P ancestry is intact; candidate range is linear with no merges")
 
 
 def check_manifest() -> None:
@@ -1278,145 +941,13 @@ def main() -> int:
     if errors:
         print("HANDOFF_INVALID: current-stage work must not continue")
         return 1
-    if git("rev-parse", "HEAD") == (0, N2B1P_SHA):
-        print(
-            "HANDOFF_VALID: N2B1P local-research cache promotion only; "
-            "inference and photos remain locked"
-        )
-    elif git("rev-parse", "HEAD^") == (0, N2B1P_PORTABILITY_CANDIDATE_SHA):
-        print(
-            "HANDOFF_VALID: linear N2B1P portability plus bounded N2B2 synthetic review candidate; "
-            "production N2B2 remains LOCKED"
-        )
-    elif git("rev-parse", "HEAD^") == (0, N2B2_REVIEW_CONTROL_PLANE_SHA):
-        print(
-            "HANDOFF_VALID: one-shot Ollama runtime-identity revalidation candidate; "
-            "production N2B2 remains LOCKED"
-        )
-    elif git("rev-parse", "HEAD") == (0, REVIEW_TOOLING_OVERLAY_SHA):
-        print(
-            "HANDOFF_VALID: review-tooling overlay after the frozen runtime candidate; "
-            "production N2B2 remains LOCKED"
-        )
-    elif git("rev-parse", "HEAD^") == (0, REVIEW_TOOLING_OVERLAY_SHA):
-        print(
-            "HANDOFF_VALID: F1-F6 code-remediation candidate after the review-tooling overlay; "
-            "production N2B2 remains LOCKED"
-        )
-    elif git("rev-parse", "HEAD^") == (0, ENGINEERING_REPAIR_BASE_SHA):
-        print(
-            "HANDOFF_VALID: engineering repair candidate after the F1-F6 remediation; "
-            "production N2B2 remains LOCKED"
-        )
-    elif git("rev-parse", "HEAD^") == (0, ENGINEERING_FOLLOWUP_BASE_SHA):
-        print(
-            "HANDOFF_VALID: engineering follow-up candidate after the engineering repair; "
-            "production N2B2 remains LOCKED"
-        )
-    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_C_BASE_SHA):
-        print(
-            "HANDOFF_VALID: audit fix C candidate after the F1/F3 follow-up; "
-            "production N2B2 remains LOCKED"
-        )
-    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_D_BASE_SHA):
-        print(
-            "HANDOFF_VALID: audit fix D candidate after controlled CLI remediation; "
-            "production N2B2 remains LOCKED"
-        )
-    elif git("rev-parse", "HEAD^") == (0, E2_BASE_SHA):
-        print(
-            "HANDOFF_VALID: E2 integrated candidate after E1 worker delivery; "
-            "production N2B2 remains LOCKED"
-        )
-    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_CODE_SHA):
-        print(
-            "HANDOFF_VALID: audit fix F candidate after independent-review remediation; "
-            "production N2B2 remains LOCKED"
-        )
-    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_HANDOFF_SHA):
-        print(
-            "HANDOFF_VALID: audit fix F final candidate after remediation verification; "
-            "production N2B2 remains LOCKED"
-        )
-    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_FINAL_BASE_SHA):
-        print(
-            "HANDOFF_VALID: audit fix F final candidate after final verification; "
-            "production N2B2 remains LOCKED"
-        )
-    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_F_PREFLIGHT_BASE_SHA):
-        print(
-            "HANDOFF_VALID: E2 integrated candidate after E1 worker delivery; "
-            "audit fix F candidate after preflight registration; "
-            "production N2B2 remains LOCKED"
-        )
-    elif git("rev-parse", "HEAD^") in {
-        (0, AUDIT_FIX_F_FINAL_REGISTRATION_BASE_SHA),
-        (0, AUDIT_FIX_F_DOCUMENTATION_BASE_SHA),
-    }:
-        print(
-            "HANDOFF_VALID: E2 integrated candidate after E1 worker delivery; "
-            "audit fix F final candidate after final verification; "
-            "production N2B2 remains LOCKED"
-        )
-    elif git("rev-parse", "HEAD^") == (0, AUDIT_FIX_G_BASE_SHA):
-        print(
-            "HANDOFF_VALID: audit fix G candidate after trust-anchor, fresh-output, "
-            "and exceptional-integrity remediation; production N2B2 remains LOCKED"
-        )
-    elif git("rev-parse", "HEAD^") == (0, H3_BINDING_BASE_SHA):
-        print(
-            "HANDOFF_VALID: H3 review-binding remediation candidate; production N2B2 remains LOCKED"
-        )
-    elif git("rev-parse", "HEAD^") in {
-        (0, REAL20_R0_DELIVERY_SHA),
-        (0, REAL20_R1_BASE_SHA),
-        (0, REAL20_HARDENING_BASE_SHA),
-        (0, REAL20_OUTPUT_BOUND_BASE_SHA),
-        (0, REAL20_FINAL_REVIEW_BASE_SHA),
-        (0, REAL20_FINAL_HARDENING_BASE_SHA),
-        (0, REAL20_ADMISSION_WINDOW_BASE_SHA),
-        (0, REAL20_LEDGER_HANDLE_BASE_SHA),
-        (0, REAL20_PREFLIGHT_RECEIPT_BASE_SHA),
-        (0, REAL20_DATA_SCHEMA_BASE_SHA),
-        (0, REAL20_NATIVE_LEDGER_BASE_SHA),
-        (0, REAL20_NATIVE_LEDGER_CLOSURE_SHA),
-        (0, REAL20_NATIVE_LEDGER_QUALIFICATION_SHA),
-        (0, REAL20_LEDGER_PROOF_BASE_SHA),
-        (0, REAL20_LEDGER_PROOF_FOLLOWUP_BASE_SHA),
-        (0, REAL20_LEDGER_PROOF_REVIEW_HEAD_BASE_SHA),
-        (0, REAL20_LEDGER_PROOF_ATTESTATION_FIX_BASE_SHA),
-        (0, REAL20_LEDGER_PROOF_SYNTAX_FIX_BASE_SHA),
-        (0, REAL20_LEDGER_OBJECT_DIGEST_FIX_BASE_SHA),
-        (0, REAL20_CACHE_R2_CODE_GATE_BASE_SHA),
-        (0, ROUTE_B_CONTROL_PLANE_BASE_SHA),
-        (0, ROUTE_B_CONTROL_PLANE_REMEDIATION_BASE_SHA),
-        (0, PY312_TOOLING_APPROVAL_PACKET_BASE_SHA),
-        (0, PY312_TOOLING_NETWORK_SEQUENCING_REMEDIATION_BASE_SHA),
-        (0, PY312_STORAGE_BINDING_REMEDIATION_BASE_SHA),
-        (0, PY312_STORAGE_BINDING_BOOKKEEPING_BASE_SHA),
-        (0, PY312_EVIDENCE_HASH_BINDING_BASE_SHA),
-        (0, PY312_NETWORK_STORAGE_BOUND_APPROVAL_BASE_SHA),
-        (0, PY312_NETWORK_V2_EVIDENCE_SCHEMA_BASE_SHA),
-        (0, PY312_NETWORK_V2_EVIDENCE_HASH_REFRESH_BASE_SHA),
-        (0, PY312_QUARANTINE_CHECKPOINT_BASE_SHA),
-        (0, PY312_QUARANTINE_CHECKPOINT_BINDING_BASE_SHA),
-        (0, PY312_WHEELHOUSE_PROMOTION_CHECKPOINT_BASE_SHA),
-        (0, PY312_INSTALL_APPROVAL_BASE_SHA),
-        (0, PY312_INSTALL_INTERPRETER_BOUND_BASE_SHA),
-        (0, PY312_PREINSTALL_REVALIDATION_BASE_SHA),
-        (0, PY312_ENVIRONMENT_QUALIFICATION_BASE_SHA),
-        (0, N2B1P_ROUTE_B_PACKET_BASE_SHA),
-        (0, N2B1P_ROUTE_B_ATTESTATION_BASE_SHA),
-    }:
-        print(
-            "HANDOFF_VALID: Real20 transition code-only candidate; production N2B2 remains LOCKED"
-        )
-    else:
-        print(
-            "HANDOFF_VALID: bounded N2B2 S20 artifact-integrity review candidate; "
-            "production N2B2 remains LOCKED"
-        )
+    print(
+        "HANDOFF_VALID: current N2B1P authorization, cache, immutable-baseline, "
+        "manifest, and sensitive-path gates passed; later phase execution remains locked"
+    )
     return 0
+
+
 
 
 if __name__ == "__main__":

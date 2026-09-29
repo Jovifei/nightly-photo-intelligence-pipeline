@@ -380,3 +380,14 @@
   record only path-redacted evidence in Git, and perform a fresh interpreter,
   attestation, wheelhouse, and target-venv admission check immediately before
   creating a venv. A passed download or promotion never authorizes install.
+
+## 2026-09-30 remote-plan execution and cache-recovery correction
+
+- When Jovi has specified the remote-plan/local-execution/remote-review loop,
+  treat a web PLAN as direction only; bind implementation review to the exact
+  candidate SHA through the correct project connector. Never substitute an
+  obsolete connector or a local-only C2C plan response for exact-SHA review.
+- If a historical external cache is missing, preserve the original failure and
+  recover bytes only through a separately reviewed, source-bound acquisition
+  task. Do not weaken active authorization or rename a blocked full preflight
+  as passing to work around the cache miss.

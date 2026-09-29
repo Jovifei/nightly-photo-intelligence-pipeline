@@ -128,6 +128,18 @@
       "approval_record": "approvals/owner_n2b2_ollama_runtime_identity_revalidation_20260906.yaml",
       "project_state": "N2B2_LOCKED",
       "execution_status": "SYNTHETIC_OLLAMA_0_33_3_REVALIDATION_ONLY"
+    },
+    {
+      "kind": "BOUNDED_B_SOURCE_NETWORK_REACQUISITION_REVIEW_CANDIDATE",
+      "phase": "N2B1P",
+      "file": "phase_n2b1p_b_source_network_reacquisition_v1.yaml",
+      "capability": "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1",
+      "approval_record": "approvals/owner_n2b1p_b_source_network_reacquisition_v1.yaml",
+      "project_state": "LOCKED",
+      "candidate_status": "REVIEW_CANDIDATE",
+      "contract_status": "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW",
+      "execution_status": "NOT_RUN",
+      "network_access": "DENY"
     }
   ],
   "locked": [

@@ -1,0 +1,102 @@
+schema_version: "1.0"
+approval_type: "OWNER_N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
+status: "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"
+owner_id: "Jovi"
+owner_authorized: true
+scope_status: "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"
+source: "Jovi explicitly authorized in this conversation: only if the exact payloads are absent under E_CLAUDE_ALLOW_DOWNLOAD, reacquire exactly the three bound PyTorch weight files from their listed official HTTPS URLs. This grants the bounded download scope only; execution remains not authorized before the required pre-download external review."
+contract_ref: "tasks/phase_n2b1p_b_source_network_reacquisition_v1.yaml"
+runtime_configuration_ref: "approvals/n2b1p_b_source_network_runtime_configuration_v1.json"
+runtime_configuration_digest: "a60178368e6d37dcf713dc004d9799048a0f9dfd957cc49e5c619753787c39d8"
+network_download_before_external_review: false
+pre_download_external_review: "PASS_REQUIRED"
+execution_status: "NOT_RUN"
+execution_authority: "NOT_AUTHORIZED"
+network_access: "DENY"
+download_precondition:
+  exact_payloads_missing_under_ref: "E_CLAUDE_ALLOW_DOWNLOAD"
+  required_before_any_download: true
+quarantine:
+  root_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-n2b1p-b-source-quarantine-20260930-e9110783"
+  object_identity_sha256: "ff0fc35900d4f60d906e8dbcc8d806e8d1360aee4290326049925353667f9000"
+  attestation_version: "V2"
+  attestation_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-n2b1p-b-source-quarantine-20260930-e9110783.attestation-v2.json"
+  attestation_sha256: "27d298c6f7b2ea146f8668edd3c7a4af75b5b9a9cfae0a9ab767ce666acc37e0"
+  attested_empty: true
+  attested_non_reparse: true
+  attested_root_bound: true
+  empty: true
+  non_reparse: true
+  outside_git: true
+  outside_runtime: true
+  outside_source: true
+  outside_cache_root: true
+  outside_cache: true
+  outside_photo_source: true
+  outside_python_venv: true
+  outside_route_b_cache_root: true
+  outside_quality_python_venv: true
+  outside_historical_runtime_parent: true
+  outside_historical_runtime_work: true
+  outside_historical_cache_root: true
+  outside_prior_quarantine: true
+  historical_runtime_configuration_ref: "approvals/n2b1p_runtime_configuration.json"
+  historical_runtime_configuration_sha256: "f8d6a2779f85a2944d60b2a94ff99c392f45fe5adefbfead3441a3ce72fa682b"
+  historical_cache_root_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-model-cache"
+  historical_cache_root_identity_sha256: "15cb613d6ecb39247799adca13c6fcbfd9c9edb72c223db7cebf1ee975d7b2ba"
+  route_b_cache_root_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-n2b1p-cache-v2-20260929"
+  route_b_cache_root_identity_sha256: "c030b04ce53a7bff949061c81178474576db62502013468ca967c11a646b9b6f"
+  quality_python_environment_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929"
+  photo_source_ref: "F_NPI_G1_SOURCE"
+network_scope:
+  allowed_schemes: ["https"]
+  allowed_request_domains: ["download.pytorch.org"]
+  allowed_final_domains: ["download.pytorch.org"]
+  future_download_count_exact: 3
+artifacts:
+  - id: "torchvision-keypointrcnn-resnet50-fpn-coco-v1"
+    revision: "torchvision-v0.22.1"
+    url: "https://download.pytorch.org/models/keypointrcnn_resnet50_fpn_coco-fc266e95.pth"
+    filename: "keypointrcnn_resnet50_fpn_coco-fc266e95.pth"
+    byte_count: 237034793
+    local_sha256: "fc266e953d2b302cdcbb9ae66f71f6b0d4649928bf02dc573961e361e4918926"
+    sha256_kind: "HISTORICAL_LOCAL_SHA256_NOT_OFFICIAL_SHA256"
+    transfer_manifest_sha256: "90da3eb000813841a980dcbaf8e1b31fdde15283a9d6b969156c5eb0ae21ce43"
+  - id: "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1"
+    revision: "torchvision-v0.22.1"
+    url: "https://download.pytorch.org/models/lraspp_mobilenet_v3_large-d234d4ea.pth"
+    filename: "lraspp_mobilenet_v3_large-d234d4ea.pth"
+    byte_count: 13097061
+    local_sha256: "d234d4eae9d55d5f76de18b77cf0dc62c66fe5c5482758209d00f950c92bb280"
+    sha256_kind: "HISTORICAL_LOCAL_SHA256_NOT_OFFICIAL_SHA256"
+    transfer_manifest_sha256: "d25cc430637cf19ebab31cd5aa99e344b4da58cd2b04db245c165181e3ff1f12"
+  - id: "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1"
+    revision: "torchvision-v0.22.1"
+    url: "https://download.pytorch.org/models/deeplabv3_mobilenet_v3_large-fc3c493d.pth"
+    filename: "deeplabv3_mobilenet_v3_large-fc3c493d.pth"
+    byte_count: 44356159
+    local_sha256: "fc3c493d68e89cc31ef488c803d5d7dd2f3190fb570598faa49fef69be8e5e70"
+    sha256_kind: "HISTORICAL_LOCAL_SHA256_NOT_OFFICIAL_SHA256"
+    transfer_manifest_sha256: "676054e8b2c366f591a1bbe1b4521e2ef7abdb08197534ca95eb11d434dd0cae"
+historical_runtime_boundary:
+  configuration_ref: "approvals/n2b1p_runtime_configuration.json"
+  configuration_sha256: "f8d6a2779f85a2944d60b2a94ff99c392f45fe5adefbfead3441a3ce72fa682b"
+  unchanged: true
+quality_environment:
+  python_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929"
+  role: "PYTHON_QUALITY_ONLY"
+  torch_or_cuda_usage: "DENY"
+not_authorized:
+  - "network_download_before_external_review"
+  - "search_or_access_outside_E_CLAUDE_ALLOW_DOWNLOAD"
+  - "use_of_any_url_or_domain_outside_the_exact_allowlist"
+  - "write_to_existing_b_cache"
+  - "photo_or_exif_read"
+  - "model_load_or_inference"
+  - "cuda_execution"
+  - "dependency_install"
+  - "sqlite_ingest_write"
+  - "push_merge_pull_request_or_release"
+mandatory_stop:
+  value: true
+  next_action: "EXTERNAL_REVIEW_B_SOURCE_NETWORK_REACQUISITION_V1_PRE_DOWNLOAD"
