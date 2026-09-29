@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/python312_tooling_network_approval_v2.schema.json",
+  "title": "Bound Python 3.12 network wheelhouse acquisition task",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "phase", "capability", "reviewed_code_commit", "control_plane_commit", "owner_authority", "storage", "execution_controls", "scope", "allowed_network", "network_procedure", "prohibitions", "mandatory_stop"],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "phase": {"type": "object", "additionalProperties": false, "required": ["id", "title", "status"], "properties": {"id": {"const": "PY312_NETWORK_REACQUISITION_V2"}, "title": {"const": "Python 3.12 wheelhouse network reacquisition with bound storage"}, "status": {"const": "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"}}},
+    "capability": {"const": "PY312_NETWORK_WHEELHOUSE_REACQUISITION"},
+    "reviewed_code_commit": {"const": "e1a8e1683ef462f16cc748ec16714fcfbc027e13"},
+    "control_plane_commit": {"const": "a2c338b2fe9467d9668566eadfe0b1fc094df526"},
+    "owner_authority": {"type": "object", "additionalProperties": false, "required": ["owner_id", "selected_route", "local_wheelhouse_search", "execution_requires_external_review", "storage_binding_status"], "properties": {"owner_id": {"const": "Jovi"}, "selected_route": {"const": "NETWORK_REACQUISITION"}, "local_wheelhouse_search": {"const": "NOT_AVAILABLE"}, "execution_requires_external_review": {"const": true}, "storage_binding_status": {"const": "OWNER_STORAGE_BOUND"}}},
+    "storage": {"type": "object", "additionalProperties": false, "required": ["download_root_ref", "download_root_object_identity_sha256", "path_attestation_ref", "path_attestation_sha256", "non_reparse", "outside_git", "non_overlapping", "quarantine_root_ref", "wheelhouse_root_ref"], "properties": {"download_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD"}, "download_root_object_identity_sha256": {"const": "08ecb7a0ebe151c1e4484f13177d534cbb2117745a3d9719f2b3338fa4285b90"}, "path_attestation_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260929/download-root-storage-attestation-v1.json"}, "path_attestation_sha256": {"const": "6501002f9d0e144f2f19fb71e3b3bab1e0f290803e02df07c5f25815b5f9322f"}, "non_reparse": {"const": true}, "outside_git": {"const": true}, "non_overlapping": {"const": true}, "quarantine_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-quarantine-20260929"}, "wheelhouse_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260929"}}},
+    "execution_controls": {"type": "object", "additionalProperties": false, "required": ["package_install_during_network", "venv_creation_during_network", "model_or_cuda_install", "wheelhouse_promotion_before_manifest_review", "quarantine_retention"], "properties": {"package_install_during_network": {"const": false}, "venv_creation_during_network": {"const": false}, "model_or_cuda_install": {"const": false}, "wheelhouse_promotion_before_manifest_review": {"const": false}, "quarantine_retention": {"const": true}}},
+    "scope": {"type": "object", "additionalProperties": false, "required": ["interpreter", "platform", "abi", "direct_pins_ref", "transitive_policy", "wheel_only", "source_distributions"], "properties": {"interpreter": {"const": "CPython >=3.12,<3.13"}, "platform": {"const": "win_amd64"}, "abi": {"const": "cp312"}, "direct_pins_ref": {"const": "tasks/tooling_python312_quality_environment_execution_v1.yaml#packages.direct_pins"}, "transitive_policy": {"const": "ONLY_DEPENDENCIES_REQUIRED_BY_THE_NINE_DIRECT_PINS"}, "wheel_only": {"const": true}, "source_distributions": {"const": false}}},
+    "allowed_network": {"type": "object", "additionalProperties": false, "required": ["scheme", "domains", "redirect_policy", "authentication", "proxy_or_custom_index", "git_or_source_repository"], "properties": {"scheme": {"const": "HTTPS"}, "domains": {"const": ["pypi.org", "files.pythonhosted.org"]}, "redirect_policy": {"const": "FINAL_DOMAIN_MUST_BE_IN_ALLOWED_DOMAINS"}, "authentication": {"const": "NONE"}, "proxy_or_custom_index": {"const": "FORBIDDEN"}, "git_or_source_repository": {"const": "FORBIDDEN"}}},
+    "network_procedure": {"type": "array", "minItems": 6, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "prohibitions": {"type": "array", "minItems": 4, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "mandatory_stop": {"type": "object", "additionalProperties": false, "required": ["value", "next_action"], "properties": {"value": {"const": true}, "next_action": {"const": "PY312_WHEELHOUSE_QUALIFIED_AWAITING_EXTERNAL_REVIEW"}}}
+  }
+}

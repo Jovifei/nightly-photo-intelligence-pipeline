@@ -1,0 +1,41 @@
+schema_version: "1.0"
+approval_type: "OWNER_PY312_NETWORK_REACQUISITION_V2"
+status: "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"
+owner_id: "Jovi"
+reviewed_code_commit: "e1a8e1683ef462f16cc748ec16714fcfbc027e13"
+control_plane_commit: "a2c338b2fe9467d9668566eadfe0b1fc094df526"
+task_ref: "tasks/tooling_python312_network_reacquisition_v2.yaml"
+schema_ref: "schemas/owner_python312_network_reacquisition_v2.schema.json"
+storage:
+  download_root_ref: "E_CLAUDE_ALLOW_DOWNLOAD"
+  download_root_object_identity_sha256: "08ecb7a0ebe151c1e4484f13177d534cbb2117745a3d9719f2b3338fa4285b90"
+  path_attestation_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260929/download-root-storage-attestation-v1.json"
+  path_attestation_sha256: "6501002f9d0e144f2f19fb71e3b3bab1e0f290803e02df07c5f25815b5f9322f"
+  non_reparse: true
+  outside_git: true
+  non_overlapping: true
+execution_authority:
+  owner_authorized: true
+  external_exact_sha_review_required: true
+  package_install_during_network: false
+  venv_creation_during_network: false
+  network_download_before_review: false
+  installation_before_review: false
+scope:
+  interpreter: "CPython >=3.12,<3.13"
+  platform: "win_amd64"
+  abi: "cp312"
+  direct_pins_ref: "tasks/tooling_python312_quality_environment_execution_v1.yaml#packages.direct_pins"
+  transitive_policy: "ONLY_DEPENDENCIES_REQUIRED_BY_THE_NINE_DIRECT_PINS"
+  wheel_only: true
+  source_distributions: false
+allowed_network:
+  scheme: "HTTPS"
+  domains: ["pypi.org", "files.pythonhosted.org"]
+  redirect_policy: "FINAL_DOMAIN_MUST_BE_IN_ALLOWED_DOMAINS"
+  authentication: "NONE"
+  proxy_or_custom_index: "FORBIDDEN"
+  git_or_source_repository: "FORBIDDEN"
+mandatory_stop:
+  value: true
+  next_action: "PY312_WHEELHOUSE_QUALIFIED_AWAITING_EXTERNAL_REVIEW"

@@ -2234,3 +2234,15 @@ and awaiting exact-SHA review. Network remains `NOT_RUN`.
 Review status: `CHANGES_REQUIRED_EVIDENCE_HASH_BINDING`; the exact current
 network task/approval/schema hashes are now schema-bound and drift-tested
 locally in the committed candidate awaiting exact-SHA review.
+
+## Bound storage approval v2 — 2026-09-29
+
+- [x] Read-only bind `E_CLAUDE_ALLOW_DOWNLOAD`; observed object identity
+  `08ecb7a0...5b90`, storage attestation SHA
+  `6501002f...9322f`, non-reparse, outside Git, and non-overlapping.
+- [x] Create v2 network task/Owner approval and closed schemas bound to the
+  current code SHA and concrete storage attestation.
+- [x] Keep network, venv creation, package install, model, photo, EXIF,
+  SQLite, cache, and R2 actions unperformed pending external exact-SHA review.
+- [ ] Submit the v2 bound network approval to remote GPT; only after review
+  PASS may the quarantine be created and dependency closure downloaded.

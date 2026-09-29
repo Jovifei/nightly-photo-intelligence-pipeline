@@ -88,6 +88,7 @@ PY312_TOOLING_NETWORK_SEQUENCING_REMEDIATION_BASE_SHA = "0494e866efcd9a11329d363
 PY312_STORAGE_BINDING_REMEDIATION_BASE_SHA = "6ea7fdd00da068d570838d4d071bb1b41e3b4b12"
 PY312_STORAGE_BINDING_BOOKKEEPING_BASE_SHA = "957955d1258768503d09f7c3802411aec027b518"
 PY312_EVIDENCE_HASH_BINDING_BASE_SHA = "8e6bdf849518da5554dbff20b4949401c86fef67"
+PY312_NETWORK_STORAGE_BOUND_APPROVAL_BASE_SHA = "e1a8e1683ef462f16cc748ec16714fcfbc027e13"
 
 errors: list[str] = []
 passes: list[str] = []
@@ -1090,6 +1091,11 @@ def check_baselines() -> None:
             and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "53")
             and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "52")
         )
+        or (
+            git("rev-parse", "HEAD^") == (0, PY312_NETWORK_STORAGE_BOUND_APPROVAL_BASE_SHA)
+            and git("rev-list", "--count", f"{N2B1R_SHA}..HEAD") == (0, "54")
+            and git("rev-list", "--count", f"{N2B1P_SHA}..HEAD") == (0, "53")
+        )
     ):
         fail("N2B2 review candidate must be exactly one direct child of N2B1P")
     elif git("rev-list", "--merges", "HEAD") != (0, ""):
@@ -1323,6 +1329,7 @@ def main() -> int:
         (0, PY312_STORAGE_BINDING_REMEDIATION_BASE_SHA),
         (0, PY312_STORAGE_BINDING_BOOKKEEPING_BASE_SHA),
         (0, PY312_EVIDENCE_HASH_BINDING_BASE_SHA),
+        (0, PY312_NETWORK_STORAGE_BOUND_APPROVAL_BASE_SHA),
     }:
         print(
             "HANDOFF_VALID: Real20 transition code-only candidate; production N2B2 remains LOCKED"
