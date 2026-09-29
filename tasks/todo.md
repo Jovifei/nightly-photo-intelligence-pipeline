@@ -2263,3 +2263,8 @@ installation remains `NOT_RUN`.
 Install v2 status: offline-only approval is prepared against the exact
 wheelhouse identity/manifest and awaits remote exact-SHA review. No venv or
 package installation has occurred.
+
+Install v3 status: interpreter binding is now concrete and read-only attested
+(CPython 3.12.10, executable SHA/size, venv/pip module probes). The v3
+offline-only approval is awaiting remote exact-SHA review; installation remains
+`NOT_RUN`.

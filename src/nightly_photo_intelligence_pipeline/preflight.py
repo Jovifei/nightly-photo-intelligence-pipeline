@@ -1337,6 +1337,11 @@ def _check_git_baselines() -> CheckResult:
             and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "59")
             and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "60")
         )
+        py312_install_interpreter_bound_topology = (
+            git("rev-parse", "HEAD^") == (0, "f2518e86e879f017176ed4fb20afe2c62e85506b")
+            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "60")
+            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "61")
+        )
         portability_record_ok = True
         if (
             portability_candidate
@@ -1385,6 +1390,7 @@ def _check_git_baselines() -> CheckResult:
             or py312_quarantine_checkpoint_binding_topology
             or py312_wheelhouse_promotion_checkpoint_topology
             or py312_install_approval_topology
+            or py312_install_interpreter_bound_topology
         ):
             record_path = root / "research" / "N2B1P_manifest_portability_remediation.json"
             schema_path = root / "schemas" / "n2b1p_manifest_portability_remediation_v1.schema.json"
@@ -1484,7 +1490,8 @@ def _check_git_baselines() -> CheckResult:
             or py312_quarantine_checkpoint_topology
             or py312_quarantine_checkpoint_binding_topology
             or py312_wheelhouse_promotion_checkpoint_topology
-            or py312_install_approval_topology,
+            or py312_install_approval_topology
+            or py312_install_interpreter_bound_topology,
             portability_record_ok,
             git("rev-list", "--merges", "HEAD") == (0, ""),
             git("status", "--porcelain", "--untracked-files=all") == (0, ""),

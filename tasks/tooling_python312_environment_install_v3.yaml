@@ -1,0 +1,49 @@
+contract_version: "1.0"
+phase:
+  id: "PY312_ENVIRONMENT_INSTALL_V3"
+  title: "Offline Python 3.12 environment installation with bound interpreter"
+  status: "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"
+capability: "PY312_OFFLINE_ENVIRONMENT_INSTALL"
+reviewed_code_commit: "e1a8e1683ef462f16cc748ec16714fcfbc027e13"
+promotion_checkpoint_commit: "d37fc902f19497da23f5797d7f776e5b352f5b44"
+promotion_checkpoint_sha256: "d091edb1e7878bb98cb5b18bf7dc19465d733e88c5743f9b79cb797b9872d550"
+interpreter:
+  executable_ref: "LOCAL_PY312_APPROVED_INTERPRETER"
+  executable_sha256: "4d6f5f81a4bca11191c4c7c6b43632694d0a4ce74e068619d8fdc161d469859a"
+  executable_size: 104952
+  attestation_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260929/py312-interpreter-attestation-v1.json"
+  attestation_sha256: "91f1837615232b7cd6b854ce30cd2229f05008c4ee4119717a414252878ff4b0"
+  implementation: "CPython"
+  version: "3.12.10"
+  platform: "win_amd64"
+  abi: "cp312"
+  venv_module_available: true
+  pip_module_available: true
+  system_python_unchanged: true
+  target_venv_separate: true
+  venv_root_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929"
+wheelhouse:
+  root_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260929"
+  object_identity_sha256: "947a76cc0664753186393aa348d4c0ac26d9f151f73f71fa3d3acde1fb3558cd"
+  manifest_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260929/manifest.json"
+  manifest_sha256: "d8ce2acbb34efa3c7424c387984b2ad97bda80b80ec7631e0d95f8dadaf48ce4"
+  package_set_sha256: "daa3e0ac9936d3aad5b369bfb5f6f5b159dcb9ff11aa7195a9aee4da9758090a"
+  checkpoint_ref: "research/python312_wheelhouse_promotion_checkpoint_v2.json"
+  quarantine_retained: true
+network:
+  access: "DENY"
+  install_mode: "OFFLINE_ONLY_NO_INDEX"
+  allowed_sources: ["BOUND_WHEELHOUSE_ONLY"]
+packages:
+  direct_pins_ref: "tasks/tooling_python312_quality_environment_execution_v1.yaml#packages.direct_pins"
+  closure: "REVIEWED_COMPLETE_HASH_BOUND_WHEEL_ONLY"
+  forbidden_model_packages: true
+execution:
+  system_python: "UNCHANGED"
+  editable_install: "NOT_REQUIRED"
+  pythonpath: "src"
+  pip_check: true
+  no_network_during_install: true
+mandatory_stop:
+  value: true
+  next_action: "PY312_ENVIRONMENT_QUALIFIED_AWAITING_EXTERNAL_REVIEW"
