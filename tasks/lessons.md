@@ -391,3 +391,8 @@
   recover bytes only through a separately reviewed, source-bound acquisition
   task. Do not weaken active authorization or rename a blocked full preflight
   as passing to work around the cache miss.
+- In a governed repository, do not invoke `uv run` unless its environment is
+  already provisioned: it may silently download dependencies into a local
+  ignored `.venv` and create an untracked lockfile. Use the approved external
+  interpreter and keep accidental environment artifacts visible until safely
+  cleaned; never hide them to claim a clean review tree.

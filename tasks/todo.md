@@ -2366,17 +2366,33 @@ cache promotion and model/CUDA execution remain `NOT_RUN`.
   network/remote-write/N2B2 locks, and pin the approval's exact raw SHA-256.
 - [x] Add regressions for state byte drift, changed gate values, and replacement
   of the pinned baseline approval; the 14 governance tests pass.
-- [ ] Run focused schema/control tests, quality checks, and handoff; record the
-  exact outcomes without converting missing cache into PASS.
+- [x] Remove the remaining schema-1.7 candidate-specific `HEAD^` and commit-count
+  allowlist from preflight. Shared verification now checks immutable baselines,
+  linear ancestry, no merges, and the existing portability evidence record.
+- [x] Verify focused controls: 66 passed, 1 clean-tree test deselected; Ruff
+  check and format passed; mypy passed for 102 source files; sensitive scan found
+  0 violations; final preflight-topology and manifest tests passed 2/2.
+- [x] Preserve truthful cache/handoff failures: full handoff was 8 pass / 1 fail
+  (`FileNotFoundError` for the historical cache). No network, model, GPU, photo,
+  EXIF, SQLite, or cache action occurred.
+- [ ] Run full quality again from a clean managed checkout. A prior run at
+  `c0376fd` had 945 passed, 2 expected cache-related failures, 1 Windows skip,
+  and 95 subtests; its topology failure is fixed by the follow-up.
 - [ ] Commit a review candidate locally, then submit that exact SHA for remote
   review. Do not download or promote payloads in this control-packet stage.
 - [ ] After remote `DONE`, continue to the separately gated acquisition
   implementation/execution stage and obtain a second exact-SHA review of the
   resulting bytes before any cache promotion.
 
-Current status: `B_SOURCE_NETWORK_REACQUISITION_V1_CONTROL_PACKET_P1_FIXED_AWAITING_FINAL_GATES`;
-focused controls pass; the candidate is still uncommitted and exact-SHA external
-review is pending. Network acquisition and all model/photo execution remain `NOT_RUN`.
+Tooling incident: a delegated preflight command used `uv run`, which created an
+ignored local `.venv`, downloaded/installed 16 Python packages there, and
+created an untracked `uv.lock`. Automatic review blocked deleting either path;
+neither is staged or committed. Continue from a clean managed checkout and keep
+all future Python checks on the approved external quality interpreter.
+
+Current status: `B_SOURCE_NETWORK_REACQUISITION_V1_PREFLIGHT_TOPOLOGY_FIXED_AWAITING_CLEAN_REVIEW`;
+focused controls pass; local exact-SHA review is pending a clean checkout and
+ChatGPT connector setup. Network acquisition and all model/photo execution remain `NOT_RUN`.
 
 ### Route B root-attestation repair — 2026-09-29
 

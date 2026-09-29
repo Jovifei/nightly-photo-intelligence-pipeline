@@ -18,6 +18,9 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+from nightly_photo_intelligence_pipeline.git_governance import (  # noqa: E402
+    linear_history_findings,
+)
 CURRENT_PHASE = "N2B1P"
 CURRENT_TASK = "tasks/phase_n2b1p_local_research_cache_promotion.yaml"
 CURRENT_CAPABILITY = "N2B1P_LOCAL_RESEARCH_CACHE_PROMOTION"
@@ -193,54 +196,6 @@ def git(*args: str) -> tuple[int, str]:
     except (OSError, subprocess.TimeoutExpired) as exc:
         return -1, type(exc).__name__
     return result.returncode, result.stdout.strip()
-
-
-def linear_history_findings(root: Path, baseline_sha: str, tip: str = "HEAD") -> list[str]:
-    """Return topology violations after an immutable baseline, independent of commit count."""
-
-    if not re.fullmatch(r"[0-9a-f]{40}", baseline_sha):
-        return ["baseline is not a full Git SHA"]
-    if tip != "HEAD" and not re.fullmatch(r"[0-9a-f]{40}", tip):
-        return ["candidate tip is not a full Git SHA"]
-    try:
-        ancestry = subprocess.run(
-            ["git", "-C", str(root), "merge-base", "--is-ancestor", baseline_sha, tip],
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=10,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return [f"cannot inspect baseline ancestry: {type(exc).__name__}"]
-    if ancestry.returncode != 0:
-        return ["immutable baseline is not an ancestor of HEAD"]
-
-    results: dict[str, subprocess.CompletedProcess[str]] = {}
-    for label, args in (
-        ("merge commits", ["rev-list", "--merges", f"{baseline_sha}..{tip}"]),
-        ("parent graph", ["rev-list", "--parents", f"{baseline_sha}..{tip}"]),
-    ):
-        try:
-            result = subprocess.run(
-                ["git", "-C", str(root), *args],
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=10,
-            )
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            return [f"cannot inspect {label}: {type(exc).__name__}"]
-        if result.returncode != 0:
-            return [f"cannot inspect {label}"]
-        results[label] = result
-
-    findings: list[str] = []
-    if results["merge commits"].stdout.strip():
-        findings.append("candidate range contains a merge commit")
-    graph = results["parent graph"].stdout.splitlines()
-    if any(len(row.split()) != 2 for row in graph):
-        findings.append("candidate range is not one-parent linear history")
-    return findings
 
 
 def is_portability_chain() -> bool:

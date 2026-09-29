@@ -8,6 +8,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+from nightly_photo_intelligence_pipeline import preflight
+
 pytestmark = pytest.mark.acceptance
 
 N0_BASELINE = "72a81f5984838b74304d23263ac450ea4b5a3a9a"
@@ -108,6 +110,23 @@ def test_git_descends_from_immutable_n2b1p_baselines_linearly_without_merges(
     assert (
         _git(project_root, "rev-list", "--merges", f"{N2B1P_BASELINE}..HEAD").stdout.strip() == ""
     )
+
+
+def test_preflight_git_baselines_accepts_linear_successor_without_candidate_allowlist(
+    project_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(preflight, "find_project_root", lambda: project_root)
+    actual_run = preflight._run
+
+    def _run_without_worktree_status(args: list[str], **kwargs: object) -> tuple[int, str]:
+        if len(args) >= 4 and args[0] == "git" and args[1] == "-C" and args[3] == "status":
+            return 0, ""
+        return actual_run(args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(preflight, "_run", _run_without_worktree_status)
+    result = preflight._check_git_baselines()
+
+    assert result.status == preflight.PASS
 
 
 def test_synthetic_contract_does_not_hardcode_mutable_n2b1p_candidate_sha(

@@ -21,15 +21,13 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator, FormatChecker
 
-try:
-    from tools.verify_handoff import linear_history_findings
-except ModuleNotFoundError:  # direct `python tools/verify_review_candidate.py` execution
-    from verify_handoff import linear_history_findings
-
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = str(ROOT / "src")
 if SOURCE_ROOT not in sys.path:
     sys.path.insert(0, SOURCE_ROOT)
+from nightly_photo_intelligence_pipeline.git_governance import (  # noqa: E402
+    linear_history_findings,
+)
 from nightly_photo_intelligence_pipeline.json_strict import loads_json_strict  # noqa: E402
 from nightly_photo_intelligence_pipeline.n2b1p_integrity import (  # noqa: E402
     canonical_json_bytes,

@@ -23,6 +23,7 @@ import yaml
 from ._paths import find_project_root
 from .domain.authorization import load_authorization
 from .domain.errors import NPI_DUPLICATE_JSON_MEMBER, DuplicateJsonMemberError
+from .git_governance import linear_history_findings
 from .json_strict import load_json_strict
 from .redaction import redact_text
 
@@ -1087,467 +1088,60 @@ def _check_git_baselines() -> CheckResult:
         n2b0_7 = "f2b1c38301d71da52b855f73de8a67908cb525ef"
         n2b1r = "d3628e27334e819ba2d5944151447595e03f39f9"
         n2b1p = "9b3d5a1cc4a6f81467ad98034ca8994d1ebab043"
-        n2b1p_portability = "0fef0a8f6a2f2b2f75ce2fba3e3eef1e764037b8"
-        n2b2_gpu_candidate = "49e653b27884f9ba09d15ca17682e496687dc59f"
-        n2b2_s20_candidate = "c1008132654d32e7ac6a2032eb5d3a2c7e07cdb6"
-        n2b2_review_control_plane = "d83f96271f754763d61cedcc314fc725c840c86f"
-        n2b2_runtime_candidate = "da638bab6a61fe6fc466521cc60abcacfea9120a"
-        review_tooling_overlay = "3b453efed300dbe4d9e7f410697da1fb2d797f70"
-        engineering_repair_base = "ed8e3d9eb750505ee3cf501f6adfe91aab03fea8"
-        engineering_followup_base = "1a3eb113055248eda891793d281fd226070b82e5"
-        audit_fix_c_base = "45d4abd1099169ba6e5c92c7f7f6656e94748efb"
-        audit_fix_d_base = "ab69f2c46971e5fea0cd0bf6ca13367e964f0409"
-        e2_base = "3445f2911d7bb6bfe9fb8bdadc5ec30541adad99"
-        audit_fix_f_final_base = "4e7f7e1483728557ae6b05c543569151614b5833"
-        audit_fix_g_base = "a6a4df9e6187f524a22f52bfb258d7a4b2ab3d3a"
-        h3_binding_base = "1b9997ba0b099fd159932a8de0697f78d1fc7867"
-        real20_r0_delivery = "50d9ffac597570ceba3bfea44ff9dc6448ba85c0"
-        head = git("rev-parse", "HEAD")[1]
-        portability_candidate = head == n2b1p_portability and git("rev-parse", "HEAD^") == (
-            0,
-            n2b1p,
+        n2b1p_completion = "0fef0a8f6a2f2b2f75ce2fba3e3eef1e764037b8"
+        approved_tags = (
+            ("n0-approved-2026-07-14", n0),
+            ("n1-approved-2026-07-14", n1),
+            ("g1-approved-2026-07-19", g1),
+            ("n2b0-approved-2026-07-24", n2b0),
+            ("n2b0-5-approved-2026-07-26", n2b0_5),
+            ("n2b0-6-approved-2026-07-29", n2b0_6),
+            ("n2b0-7-approved-2026-07-29", n2b0_7),
         )
-        main_integration_topology = (
-            git("rev-parse", "HEAD^") == (0, n2b1p_portability)
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "2")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "3")
+        baseline_checks = [git("rev-parse", tag) == (0, commit) for tag, commit in approved_tags]
+        baseline_checks.extend(
+            git("merge-base", "--is-ancestor", baseline, "HEAD")[0] == 0
+            for baseline in (n2b0_7, n2b1r, n2b1p, n2b1p_completion)
         )
-        runtime_identity_revalidation_topology = (
-            git("rev-parse", "HEAD^") == (0, n2b2_review_control_plane)
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "3")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "4")
+        baseline_checks.extend(
+            (
+                not linear_history_findings(root, n2b0_7),
+                git("rev-list", "--merges", "HEAD") == (0, ""),
+                git("status", "--porcelain", "--untracked-files=all") == (0, ""),
+            )
         )
-        tooling_overlay_topology = (
-            git("rev-parse", "HEAD") == (0, review_tooling_overlay)
-            and git("rev-parse", "HEAD^") == (0, n2b2_runtime_candidate)
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "4")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "5")
-        )
-        runtime_remediation_topology = (
-            git("rev-parse", "HEAD^") == (0, review_tooling_overlay)
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "5")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "6")
-        )
-        engineering_repair_topology = (
-            git("rev-parse", "HEAD^") == (0, engineering_repair_base)
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "6")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "7")
-        )
-        engineering_followup_topology = (
-            git("rev-parse", "HEAD^") == (0, engineering_followup_base)
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "7")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "8")
-        )
-        audit_fix_c_topology = (
-            git("rev-parse", "HEAD^") == (0, audit_fix_c_base)
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "8")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "9")
-        )
-        audit_fix_d_topology = (
-            git("rev-parse", "HEAD^") == (0, audit_fix_d_base)
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "9")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "10")
-        )
-        e2_topology = (
-            git("rev-parse", "HEAD^") == (0, e2_base)
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "11")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "12")
-        )
-        audit_fix_f_topology = (
-            git("rev-parse", "HEAD^") == (0, audit_fix_f_final_base)
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "19")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "20")
-        )
-        audit_fix_g_topology = (
-            git("rev-parse", "HEAD^") == (0, audit_fix_g_base)
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "20")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "21")
-        )
-        h3_binding_topology = (
-            git("rev-parse", "HEAD^") == (0, h3_binding_base)
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "21")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "22")
-        )
-        real20_transition_topology = (
-            git("rev-parse", "HEAD^") == (0, real20_r0_delivery)
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "23")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "24")
-        ) or (
-            git("rev-parse", "HEAD^") == (0, "2ae0d76a551b18e773bfdfe33ce600b742ece631")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "24")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "25")
-        )
-        real20_admission_fix_topology = (
-            git("rev-parse", "HEAD^") == (0, "1dec64dec010336791b20d6d4897ff90e2783b02")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "25")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "26")
-        )
-        real20_output_bound_topology = (
-            git("rev-parse", "HEAD^") == (0, "1036962e2b958d1a523799ecce5a6fb605d9fe02")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "26")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "27")
-        )
-        real20_final_review_topology = (
-            git("rev-parse", "HEAD^") == (0, "832e0ffe28942bb855f281490dfa410b02155474")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "27")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "28")
-        )
-        real20_latest_hardening_topology = (
-            git("rev-parse", "HEAD^") == (0, "b56c0fc8b80f2af53ecb809f3834227a4030fe94")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "28")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "29")
-        )
-        real20_admission_window_topology = (
-            git("rev-parse", "HEAD^") == (0, "9145c9c92b0eeac700aac212818b2208d0c87844")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "29")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "30")
-        )
-        real20_ledger_handle_topology = (
-            git("rev-parse", "HEAD^") == (0, "9145c9c92b0eeac700aac212818b2208d0c87844")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "30")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "31")
-        )
-        real20_preflight_receipt_topology = (
-            git("rev-parse", "HEAD^") == (0, "f2302fee69255ab971942c44740fe5c059a2503c")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "31")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "32")
-        )
-        real20_terminal_evidence_topology = (
-            git("rev-parse", "HEAD^") == (0, "6263ebd2c7c4854ca13026a678397f83ef8adcef")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "32")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "33")
-        )
-        real20_native_ledger_topology = (
-            git("rev-parse", "HEAD^") == (0, "769aa3b1d98a86227d9a8eb53f97f4904046025d")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "34")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "35")
-        )
-        real20_native_ledger_followup_topology = (
-            git("rev-parse", "HEAD^") == (0, "ff479dfde536bdbf5a9e0a401fd3c35d910ad774")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "35")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "36")
-        )
-        real20_native_ledger_qualification_topology = (
-            git("rev-parse", "HEAD^") == (0, "9696e814b875b974fefceb8a39a5d14aa1c92d77")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "36")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "37")
-        )
-        real20_ledger_proof_topology = (
-            git("rev-parse", "HEAD^") == (0, "ca706a67fff61980700c9275353efea62ae8cc81")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "39")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "40")
-        )
-        real20_ledger_proof_followup_topology = (
-            git("rev-parse", "HEAD^") == (0, "3abb18d282d4e7f8983c52a70142dbdcd8098bfa")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "40")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "41")
-        )
-        real20_ledger_proof_review_head_topology = (
-            git("rev-parse", "HEAD^") == (0, "7f497ac9dfc836d3b38f1f06e19fb03141c59f78")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "41")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "42")
-        )
-        real20_ledger_proof_attestation_fix_topology = (
-            git("rev-parse", "HEAD^") == (0, "3ab5f12e4cd79a8457aa014a5534492bf65b395e")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "42")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "43")
-        )
-        real20_ledger_proof_syntax_fix_topology = (
-            git("rev-parse", "HEAD^") == (0, "1e0c43f98af181d8d9739e2336e1177d225b4d93")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "43")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "44")
-        )
-        real20_ledger_object_digest_fix_topology = (
-            git("rev-parse", "HEAD^") == (0, "831e1ae1c67d28dac618b445b5be3ef726900644")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "44")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "45")
-        )
-        real20_cache_r2_code_gate_topology = (
-            git("rev-parse", "HEAD^") == (0, "af1adc5fbbc58f3155944756d6877dac2dce9b2b")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "45")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "46")
-        )
-        route_b_control_plane_topology = (
-            git("rev-parse", "HEAD^") == (0, "b40a1526961de9230cbc1da45e41a162fb3b7ee1")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "46")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "47")
-        )
-        route_b_control_plane_remediation_topology = (
-            git("rev-parse", "HEAD^") == (0, "7e3b9d6894eee292cba43e3d08627426938b39f1")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "47")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "48")
-        )
-        py312_tooling_approval_packet_topology = (
-            git("rev-parse", "HEAD^") == (0, "a2c338b2fe9467d9668566eadfe0b1fc094df526")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "48")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "49")
-        )
-        py312_tooling_network_sequencing_remediation_topology = (
-            git("rev-parse", "HEAD^") == (0, "0494e866efcd9a11329d3631d97b032dc1dd60b0")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "49")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "50")
-        )
-        py312_storage_binding_remediation_topology = (
-            git("rev-parse", "HEAD^") == (0, "6ea7fdd00da068d570838d4d071bb1b41e3b4b12")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "50")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "51")
-        )
-        py312_storage_binding_bookkeeping_topology = (
-            git("rev-parse", "HEAD^") == (0, "957955d1258768503d09f7c3802411aec027b518")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "51")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "52")
-        )
-        py312_evidence_hash_binding_topology = (
-            git("rev-parse", "HEAD^") == (0, "8e6bdf849518da5554dbff20b4949401c86fef67")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "52")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "53")
-        )
-        py312_network_storage_bound_approval_topology = (
-            git("rev-parse", "HEAD^") == (0, "e1a8e1683ef462f16cc748ec16714fcfbc027e13")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "53")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "54")
-        )
-        py312_network_v2_evidence_schema_topology = (
-            git("rev-parse", "HEAD^") == (0, "4981c747e83c7bebba732e487fbc5fd92a5e5590")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "54")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "55")
-        )
-        py312_network_v2_evidence_hash_refresh_topology = (
-            git("rev-parse", "HEAD^") == (0, "0938f7c7f7e5133567d76711ef39ea14cc1ffc8c")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "55")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "56")
-        )
-        py312_quarantine_checkpoint_topology = (
-            git("rev-parse", "HEAD^") == (0, "909c80b79a62fe1f6d5dbce0cb3f4e7449204289")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "56")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "57")
-        )
-        py312_quarantine_checkpoint_binding_topology = (
-            git("rev-parse", "HEAD^") == (0, "86bfa3cbdb18939e505759b38f3bf5228a2f5f26")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "57")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "58")
-        )
-        py312_wheelhouse_promotion_checkpoint_topology = (
-            git("rev-parse", "HEAD^") == (0, "b60c6c902d075a910c0f70f4a4ef1596f0826404")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "58")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "59")
-        )
-        py312_install_approval_topology = (
-            git("rev-parse", "HEAD^") == (0, "d37fc902f19497da23f5797d7f776e5b352f5b44")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "59")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "60")
-        )
-        py312_install_interpreter_bound_topology = (
-            git("rev-parse", "HEAD^") == (0, "f2518e86e879f017176ed4fb20afe2c62e85506b")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "60")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "61")
-        )
-        py312_preinstall_revalidation_topology = (
-            git("rev-parse", "HEAD^") == (0, "b697f5e9a957cb8f79998b2f9acdae07a214b397")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "61")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "62")
-        )
-        py312_environment_qualification_topology = (
-            git("rev-parse", "HEAD^") == (0, "4f91837dd10ca6997969036037ec0229a366c0c9")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "62")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "63")
-        )
-        n2b1p_route_b_packet_topology = (
-            git("rev-parse", "HEAD^") == (0, "639a503fa3c04c5fcc8640d8bee372377f3953d1")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "63")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "64")
-        )
-        n2b1p_route_b_attestation_topology = (
-            git("rev-parse", "HEAD^") == (0, "9ea47d24454ae3dc2a4f14e90420d01d8602f961")
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "64")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "65")
-        )
-        portability_record_ok = True
-        if (
-            portability_candidate
-            or main_integration_topology
-            or runtime_identity_revalidation_topology
-            or tooling_overlay_topology
-            or runtime_remediation_topology
-            or engineering_repair_topology
-            or engineering_followup_topology
-            or audit_fix_c_topology
-            or audit_fix_d_topology
-            or e2_topology
-            or audit_fix_f_topology
-            or audit_fix_g_topology
-            or h3_binding_topology
-            or real20_transition_topology
-            or real20_admission_fix_topology
-            or real20_output_bound_topology
-            or real20_final_review_topology
-            or real20_latest_hardening_topology
-            or real20_admission_window_topology
-            or real20_ledger_handle_topology
-            or real20_preflight_receipt_topology
-            or real20_terminal_evidence_topology
-            or real20_native_ledger_topology
-            or real20_native_ledger_followup_topology
-            or real20_native_ledger_qualification_topology
-            or real20_ledger_proof_topology
-            or real20_ledger_proof_followup_topology
-            or real20_ledger_proof_review_head_topology
-            or real20_ledger_proof_attestation_fix_topology
-            or real20_ledger_proof_syntax_fix_topology
-            or real20_ledger_object_digest_fix_topology
-            or real20_cache_r2_code_gate_topology
-            or route_b_control_plane_topology
-            or route_b_control_plane_remediation_topology
-            or py312_tooling_approval_packet_topology
-            or py312_tooling_network_sequencing_remediation_topology
-            or py312_storage_binding_remediation_topology
-            or py312_storage_binding_bookkeeping_topology
-            or py312_evidence_hash_binding_topology
-            or py312_network_storage_bound_approval_topology
-            or py312_network_v2_evidence_schema_topology
-            or py312_network_v2_evidence_hash_refresh_topology
-            or py312_quarantine_checkpoint_topology
-            or py312_quarantine_checkpoint_binding_topology
-            or py312_wheelhouse_promotion_checkpoint_topology
-            or py312_install_approval_topology
-            or py312_install_interpreter_bound_topology
-            or py312_preinstall_revalidation_topology
-            or py312_environment_qualification_topology
-            or n2b1p_route_b_packet_topology
-            or n2b1p_route_b_attestation_topology
-        ):
-            record_path = root / "research" / "N2B1P_manifest_portability_remediation.json"
-            schema_path = root / "schemas" / "n2b1p_manifest_portability_remediation_v1.schema.json"
-            try:
-                record = load_json_strict(record_path)
-                schema = load_json_strict(schema_path)
-                state_sha = hashlib.sha256((root / "PROJECT_STATE.json").read_bytes()).hexdigest()
-                portability_record_ok = not _validate_schema(schema, record) and all(
-                    (
-                        record.get("candidate_kind") == "N2B1P_MANIFEST_PORTABILITY_REMEDIATION",
-                        record.get("status") == "AWAITING_EXTERNAL_REVIEW",
-                        record.get("base_commit") == n2b1p,
-                        record.get("parent_commit") == n2b1p,
-                        record.get("n2b1r_commit") == n2b1r,
-                        record.get("project_state_sha256") == state_sha,
-                        record.get("project_state_unchanged") is True,
-                        record.get("n2b2_state") == "LOCKED",
-                    )
+
+        record_path = root / "research" / "N2B1P_manifest_portability_remediation.json"
+        schema_path = root / "schemas" / "n2b1p_manifest_portability_remediation_v1.schema.json"
+        try:
+            record = load_json_strict(record_path)
+            schema = load_json_strict(schema_path)
+            state_sha = hashlib.sha256((root / "PROJECT_STATE.json").read_bytes()).hexdigest()
+            portability_record_ok = not _validate_schema(schema, record) and all(
+                (
+                    record.get("candidate_kind") == "N2B1P_MANIFEST_PORTABILITY_REMEDIATION",
+                    record.get("status") == "AWAITING_EXTERNAL_REVIEW",
+                    record.get("base_commit") == n2b1p,
+                    record.get("parent_commit") == n2b1p,
+                    record.get("n2b1r_commit") == n2b1r,
+                    record.get("project_state_sha256") == state_sha,
+                    record.get("project_state_unchanged") is True,
+                    record.get("n2b2_state") == "LOCKED",
                 )
-            except Exception:  # noqa: BLE001 - preflight reports a hard failure
-                portability_record_ok = False
-        n2b2_gpu_topology = (
-            git("rev-parse", "HEAD^") == (0, n2b1p)
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "1")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "2")
-        )
-        s20_candidate_topology = (
-            git("rev-parse", "HEAD^") == (0, n2b2_gpu_candidate)
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "2")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "3")
-        )
-        authorized_synthetic_topology = (
-            git("rev-parse", "HEAD^") == (0, n2b2_s20_candidate)
-            and git("rev-list", "--count", f"{n2b1p}..HEAD") == (0, "3")
-            and git("rev-list", "--count", f"{n2b1r}..HEAD") == (0, "4")
-        )
-        baseline_topology = head == n2b1p and git("rev-list", "--count", f"{n2b1r}..HEAD") == (
-            0,
-            "1",
-        )
-        checks = [
-            git("rev-parse", "n0-approved-2026-07-14") == (0, n0),
-            git("rev-parse", "n1-approved-2026-07-14") == (0, n1),
-            git("rev-parse", "g1-approved-2026-07-19") == (0, g1),
-            git("rev-parse", "n2b0-approved-2026-07-24") == (0, n2b0),
-            git("rev-parse", "n2b0-5-approved-2026-07-26") == (0, n2b0_5),
-            git("rev-parse", "n2b0-6-approved-2026-07-29") == (0, n2b0_6),
-            git("rev-parse", "n2b0-7-approved-2026-07-29") == (0, n2b0_7),
-            git("merge-base", "--is-ancestor", n2b0_7, "HEAD")[0] == 0,
-            git("rev-list", "--count", f"{n2b0_6}..{n2b0_7}") == (0, "1"),
-            git("rev-list", "--count", f"{n2b0_7}..{n2b1r}") == (0, "1"),
-            baseline_topology
-            or main_integration_topology
-            or n2b2_gpu_topology
-            or s20_candidate_topology
-            or authorized_synthetic_topology
-            or runtime_identity_revalidation_topology
-            or tooling_overlay_topology
-            or runtime_remediation_topology
-            or engineering_repair_topology
-            or engineering_followup_topology
-            or audit_fix_c_topology
-            or audit_fix_d_topology
-            or e2_topology
-            or audit_fix_f_topology
-            or audit_fix_g_topology
-            or h3_binding_topology
-            or real20_transition_topology
-            or real20_admission_fix_topology
-            or real20_output_bound_topology
-            or real20_final_review_topology
-            or real20_latest_hardening_topology
-            or real20_admission_window_topology
-            or real20_ledger_handle_topology
-            or real20_preflight_receipt_topology
-            or real20_terminal_evidence_topology
-            or real20_native_ledger_topology
-            or real20_native_ledger_followup_topology
-            or real20_native_ledger_qualification_topology
-            or real20_ledger_proof_topology
-            or real20_ledger_proof_followup_topology
-            or real20_ledger_proof_review_head_topology
-            or real20_ledger_proof_attestation_fix_topology
-            or real20_ledger_proof_syntax_fix_topology
-            or real20_ledger_object_digest_fix_topology
-            or real20_cache_r2_code_gate_topology
-            or route_b_control_plane_topology
-            or route_b_control_plane_remediation_topology
-            or py312_tooling_approval_packet_topology
-            or py312_tooling_network_sequencing_remediation_topology
-            or py312_storage_binding_remediation_topology
-            or py312_storage_binding_bookkeeping_topology
-            or py312_evidence_hash_binding_topology
-            or py312_network_storage_bound_approval_topology
-            or py312_network_v2_evidence_schema_topology
-            or py312_network_v2_evidence_hash_refresh_topology
-            or py312_quarantine_checkpoint_topology
-            or py312_quarantine_checkpoint_binding_topology
-            or py312_wheelhouse_promotion_checkpoint_topology
-            or py312_install_approval_topology
-            or py312_install_interpreter_bound_topology
-            or py312_preinstall_revalidation_topology
-            or py312_environment_qualification_topology
-            or n2b1p_route_b_packet_topology
-            or n2b1p_route_b_attestation_topology,
-            portability_record_ok,
-            git("rev-list", "--merges", "HEAD") == (0, ""),
-            git("status", "--porcelain", "--untracked-files=all") == (0, ""),
-        ]
+            )
+        except Exception:  # noqa: BLE001 - preflight reports a hard failure
+            portability_record_ok = False
+        baseline_checks.append(portability_record_ok)
         return result(
-            checks,
-            failure_notes="Git baseline or bounded N2B2 review-candidate topology mismatch",
+            baseline_checks,
+            failure_notes=(
+                "Immutable baseline ancestry, linear history, or portability evidence mismatch"
+            ),
             pass_evidence=(
                 "N0/N1/G1/N2A/N2B0/N2B0.5/N2B0.6/N2B0.7 tags intact; "
-                "one N2B1R and one N2B1P commit, a portability-plus-N2B2 integration, "
-                "one direct N2B2 GPU candidate, "
-                "one direct S20 candidate after 49e653b, or one bounded synthetic "
-                "authorization candidate after c100813, or one direct Ollama runtime-identity "
-                "revalidation candidate after d83f962, followed by the review-tooling overlay "
-                "and code-remediation candidate, followed by the engineering repair candidate; "
-                "an engineering follow-up candidate may follow that repair; "
-                "an audit-fix C candidate may follow the F1/F3 follow-up; "
-                "an audit-fix D candidate may follow the controlled CLI remediation; "
-                "an E2 integrated candidate may follow the E1 worker delivery; "
-                "an audit-fix F candidate may follow the E2 remediation; "
-                "an audit-fix G candidate may follow the final F candidate; "
-                "an H3 review-binding remediation candidate may follow the reviewed "
-                "runtime candidate; a Real20 transition code-only candidate may follow "
-                "the R0 delivery; the native ledger-closure candidate may follow the "
-                "current transition candidate; a native ledger acceptance follow-up may "
-                "follow that candidate; the final code-qualified Real20 successor may "
-                "follow the native acceptance candidate; "
-                "no merge; worktree clean"
+                "N2B1R and approved N2B1P completion are ancestors; "
+                "candidate history is linear with no merges; portability evidence remains bound; "
+                "worktree clean"
             ),
         )
 
