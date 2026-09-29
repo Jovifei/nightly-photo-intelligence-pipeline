@@ -372,3 +372,11 @@
   Owner-bound filesystem proof, bind the whole control to credential/anchor
   digests but compare live probes only to their observation subtree. A real
   ledger recheck is non-mutating; synthetic inheritance probes stay isolated.
+
+## 2026-09-29 bounded download and install gate correction
+
+- Network acquisition and later installation are separate remote-reviewed
+  phases. Keep all downloaded bytes under the Owner-approved external root,
+  record only path-redacted evidence in Git, and perform a fresh interpreter,
+  attestation, wheelhouse, and target-venv admission check immediately before
+  creating a venv. A passed download or promotion never authorizes install.

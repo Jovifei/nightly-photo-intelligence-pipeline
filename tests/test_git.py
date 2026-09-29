@@ -75,6 +75,7 @@ PY312_QUARANTINE_CHECKPOINT_BINDING_BASE = "86bfa3cbdb18939e505759b38f3bf5228a2f
 PY312_WHEELHOUSE_PROMOTION_CHECKPOINT_BASE = "b60c6c902d075a910c0f70f4a4ef1596f0826404"
 PY312_INSTALL_APPROVAL_BASE = "d37fc902f19497da23f5797d7f776e5b352f5b44"
 PY312_INSTALL_INTERPRETER_BOUND_BASE = "f2518e86e879f017176ed4fb20afe2c62e85506b"
+PY312_PREINSTALL_REVALIDATION_BASE = "b697f5e9a957cb8f79998b2f9acdae07a214b397"
 
 SENSITIVE_SUFFIXES = (
     ".db",
@@ -484,6 +485,15 @@ def _is_py312_install_interpreter_bound_candidate(project_root: Path) -> bool:
     )
 
 
+def _is_py312_preinstall_revalidation_candidate(project_root: Path) -> bool:
+    return (
+        _git(project_root, "rev-parse", "HEAD^").stdout.strip()
+        == PY312_PREINSTALL_REVALIDATION_BASE
+        and _git(project_root, "rev-list", "--count", f"{N2B1P_BASELINE}..HEAD").stdout.strip()
+        == "61"
+    )
+
+
 def test_git_approved_tags_and_ancestry_are_exact(project_root: Path) -> None:
     assert _git(project_root, "rev-parse", N0_TAG).stdout.strip() == N0_BASELINE
     assert _git(project_root, "rev-parse", N1_TAG).stdout.strip() == N1_BASELINE
@@ -610,6 +620,8 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
         candidate_offset = 59
     elif _is_py312_install_interpreter_bound_candidate(project_root):
         candidate_offset = 60
+    elif _is_py312_preinstall_revalidation_candidate(project_root):
+        candidate_offset = 61
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         candidate_offset = 1
     else:
@@ -874,6 +886,12 @@ def test_git_one_n2b0_7_then_n2b1r_then_one_n2b1p_commit_no_merges(project_root:
             _git(project_root, "rev-parse", "HEAD^").stdout.strip()
             == PY312_INSTALL_INTERPRETER_BOUND_BASE
         )
+    elif _is_py312_preinstall_revalidation_candidate(project_root):
+        assert post_n2b1r == 62
+        assert (
+            _git(project_root, "rev-parse", "HEAD^").stdout.strip()
+            == PY312_PREINSTALL_REVALIDATION_BASE
+        )
     else:
         assert post_n2b1r == 1 + candidate_offset
         parent = _git(project_root, "rev-parse", "HEAD^").stdout.strip()
@@ -1014,6 +1032,8 @@ def test_n2b1p_candidate_is_resolved_not_hardcoded(project_root: Path) -> None:
         expected_count = 60
     elif _is_py312_install_interpreter_bound_candidate(project_root):
         expected_count = 61
+    elif _is_py312_preinstall_revalidation_candidate(project_root):
+        expected_count = 62
     elif _git(project_root, "rev-parse", "HEAD^").stdout.strip() == N2B1P_BASELINE:
         expected_count = 2
     else:

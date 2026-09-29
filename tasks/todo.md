@@ -2268,3 +2268,26 @@ Install v3 status: interpreter binding is now concrete and read-only attested
 (CPython 3.12.10, executable SHA/size, venv/pip module probes). The v3
 offline-only approval is awaiting remote exact-SHA review; installation remains
 `NOT_RUN`.
+
+### Remote remediation — pre-install revalidation gate — 2026-09-29
+
+- [x] Encode the remote-required pre-install revalidation fields in the v3
+  task, Owner approval, and both closed schemas.
+- [x] Add a read-only admission helper that recomputes interpreter identity,
+  external attestation SHA/content, wheelhouse object/manifest/package-set
+  identities, and target-venv placement before any venv creation.
+- [x] Require the target venv under `E_CLAUDE_ALLOW_DOWNLOAD`, outside the
+  Git worktree and interpreter tree, with non-reparse ancestry; keep network
+  access `DENY` and the install step unperformed.
+- [x] Run the focused tests and the read-only pre-install admission check,
+  record a path-redacted attestation summary, then prepare the commit for
+  remote exact-SHA review. Focused tests: `10 passed` (plus one expected dirty
+  worktree test excluded before commit); Ruff, format, mypy, and sensitive scan
+  passed. Admission evidence is `PY312_PRE_INSTALL_ADMISSION_PASS`, summary
+  SHA-256 `ce05a9c4740eeb69a523801d94db136693e6fabf5f6f99e22aaf48da4185f625`.
+- [ ] Only after remote `DONE` create the external venv and perform the
+  offline hash-locked install; model, photo, EXIF, SQLite, Real20, Bundle,
+  Pilot, and App gates remain closed.
+
+Current status: `PRE_INSTALL_REVALIDATION_IMPLEMENTED_AWAITING_LOCAL_TESTS`;
+no venv has been created and no package has been installed.

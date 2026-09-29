@@ -28,6 +28,22 @@ execution_authority:
   install_mode: "OFFLINE_ONLY_NO_INDEX"
   system_python: "UNCHANGED"
   no_network_during_install: true
+pre_install_revalidation:
+  required_before_venv: true
+  attestation_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260929/py312-interpreter-attestation-v1.json"
+  executable_sha256_recompute: "4d6f5f81a4bca11191c4c7c6b43632694d0a4ce74e068619d8fdc161d469859a"
+  executable_size_recompute: 104952
+  interpreter_attestation_sha256_recompute: "91f1837615232b7cd6b854ce30cd2229f05008c4ee4119717a414252878ff4b0"
+  wheelhouse_identity_recompute: "947a76cc0664753186393aa348d4c0ac26d9f151f73f71fa3d3acde1fb3558cd"
+  wheelhouse_manifest_sha256_recompute: "d8ce2acbb34efa3c7424c387984b2ad97bda80b80ec7631e0d95f8dadaf48ce4"
+  package_set_sha256_recompute: "daa3e0ac9936d3aad5b369bfb5f6f5b159dcb9ff11aa7195a9aee4da9758090a"
+  target_venv_root_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929"
+  target_venv_under_download_root: true
+  target_venv_outside_git_worktree: true
+  target_venv_nonreparse_ancestry: true
+  wheelhouse_manifest_under_root: true
+  network_access: "DENY"
+  only_then_create_venv: true
 wheelhouse_binding:
   root_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260929"
   object_identity_sha256: "947a76cc0664753186393aa348d4c0ac26d9f151f73f71fa3d3acde1fb3558cd"
