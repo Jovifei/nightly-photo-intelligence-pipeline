@@ -2248,14 +2248,18 @@ locally in the committed candidate awaiting exact-SHA review.
   quarantine creation and dependency-closure download.
 
 V2 network result: review PASS was received; acquisition reached quarantine
-only with 30 wheels. Promotion and install remain `NOT_RUN` pending checkpoint
-review. External manifest SHA: `8e1650a9...b234e27`.
+only with 30 wheels. Promotion is now `PASS`; installation remains `NOT_RUN`.
+External manifest SHA: `8e1650a9...b234e27`.
 
 Wheelhouse promotion result: quick3 review PASS; 30/30 package set promoted
 identically into the content-addressed wheelhouse. Promotion is `PASS`,
-installation remains `NOT_RUN`, and the durable promotion checkpoint is pending
-exact-SHA review before the install approval is materialized.
+installation remains `NOT_RUN`, and the durable promotion checkpoint review is
+complete. The install approval is now being materialized separately.
 
 V2 evidence status: hash refresh committed in `909c80b79a62fe1f6d5dbce0cb3f4e7449204289`;
-quarantine acquisition is complete with 30 wheels, and the durable checkpoint
-is the current review candidate. Promotion and installation remain `NOT_RUN`.
+quarantine acquisition and wheelhouse promotion are complete with 30 wheels;
+installation remains `NOT_RUN`.
+
+Install v2 status: offline-only approval is prepared against the exact
+wheelhouse identity/manifest and awaits remote exact-SHA review. No venv or
+package installation has occurred.

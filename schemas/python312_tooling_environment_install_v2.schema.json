@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/python312_tooling_environment_install_v2.schema.json",
+  "title": "Offline Python 3.12 environment installation task",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "phase", "capability", "reviewed_code_commit", "promotion_checkpoint_commit", "promotion_checkpoint_sha256", "interpreter", "wheelhouse", "network", "packages", "execution", "acceptance", "mandatory_stop"],
+  "properties": {
+    "contract_version": {"const": "1.0"},
+    "phase": {"type": "object", "additionalProperties": false, "required": ["id", "title", "status"], "properties": {"id": {"const": "PY312_ENVIRONMENT_INSTALL_V2"}, "title": {"const": "Offline Python 3.12 environment installation from reviewed wheelhouse"}, "status": {"const": "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"}}},
+    "capability": {"const": "PY312_OFFLINE_ENVIRONMENT_INSTALL"},
+    "reviewed_code_commit": {"const": "e1a8e1683ef462f16cc748ec16714fcfbc027e13"},
+    "promotion_checkpoint_commit": {"const": "d37fc902f19497da23f5797d7f776e5b352f5b44"},
+    "promotion_checkpoint_sha256": {"const": "d091edb1e7878bb98cb5b18bf7dc19465d733e88c5743f9b79cb797b9872d550"},
+    "interpreter": {"type": "object", "additionalProperties": false, "required": ["constraint", "expected_version", "implementation", "platform", "abi", "executable_ref", "venv_root_ref"], "properties": {"constraint": {"const": ">=3.12,<3.13"}, "expected_version": {"const": "3.12.10"}, "implementation": {"const": "CPython"}, "platform": {"const": "win_amd64"}, "abi": {"const": "cp312"}, "executable_ref": {"const": "OWNER_TO_PROVIDE_PYTHON312_EXECUTABLE"}, "venv_root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929"}}},
+    "wheelhouse": {"type": "object", "additionalProperties": false, "required": ["root_ref", "object_identity_sha256", "manifest_ref", "manifest_sha256", "package_set_sha256", "checkpoint_ref", "quarantine_retained"], "properties": {"root_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260929"}, "object_identity_sha256": {"const": "947a76cc0664753186393aa348d4c0ac26d9f151f73f71fa3d3acde1fb3558cd"}, "manifest_ref": {"const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-tooling-wheelhouse-20260929/manifest.json"}, "manifest_sha256": {"const": "d8ce2acbb34efa3c7424c387984b2ad97bda80b80ec7631e0d95f8dadaf48ce4"}, "package_set_sha256": {"const": "daa3e0ac9936d3aad5b369bfb5f6f5b159dcb9ff11aa7195a9aee4da9758090a"}, "checkpoint_ref": {"const": "research/python312_wheelhouse_promotion_checkpoint_v2.json"}, "quarantine_retained": {"const": true}}},
+    "network": {"type": "object", "additionalProperties": false, "required": ["access", "install_mode", "allowed_sources"], "properties": {"access": {"const": "DENY"}, "install_mode": {"const": "OFFLINE_ONLY_NO_INDEX"}, "allowed_sources": {"const": ["BOUND_WHEELHOUSE_ONLY"]}}},
+    "packages": {"type": "object", "additionalProperties": false, "required": ["direct_pins_ref", "closure", "forbidden_model_packages"], "properties": {"direct_pins_ref": {"const": "tasks/tooling_python312_quality_environment_execution_v1.yaml#packages.direct_pins"}, "closure": {"const": "REVIEWED_COMPLETE_HASH_BOUND_WHEEL_ONLY"}, "forbidden_model_packages": {"const": true}}},
+    "execution": {"type": "object", "additionalProperties": false, "required": ["system_python", "editable_install", "pythonpath", "pip_check", "no_network_during_install"], "properties": {"system_python": {"const": "UNCHANGED"}, "editable_install": {"const": "NOT_REQUIRED"}, "pythonpath": {"const": "src"}, "pip_check": {"const": true}, "no_network_during_install": {"const": true}}},
+    "acceptance": {"type": "array", "minItems": 6, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "mandatory_stop": {"type": "object", "additionalProperties": false, "required": ["value", "next_action"], "properties": {"value": {"const": true}, "next_action": {"const": "PY312_ENVIRONMENT_QUALIFIED_AWAITING_EXTERNAL_REVIEW"}}}
+  }
+}
