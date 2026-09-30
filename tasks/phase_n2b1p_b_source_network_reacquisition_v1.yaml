@@ -133,15 +133,23 @@ allowed_now:
   - "read-only validation of this packet and its tracked historical bindings"
 allowed_after_external_review_only:
   - "if the exact payloads are absent under E_CLAUDE_ALLOW_DOWNLOAD, reacquire exactly the three bound files from their exact HTTPS URLs into the bound quarantine"
+post_review_transition:
+  required_receipt_type: "EXTERNAL_EXACT_SHA_REVIEW"
+  required_receipt_verdict: "DONE"
+  effective_execution_authority: "BOUNDED_B_SOURCE_NETWORK_REACQUISITION"
+  effective_network_access: "ALLOW_EXACT_THREE_HTTPS"
+  destination_scope: "BOUND_QUARANTINE_ONLY"
+  cache_promotion: "NOT_AUTHORIZED"
+  model_cuda_photo_sqlite_real20: "NOT_AUTHORIZED"
 prohibited_actions:
-  - "network_request_or_download"
-  - "external_directory_creation_or_access"
+  - "network_request_or_download_before_external_review"
+  - "external_directory_creation_or_access_before_external_review"
   - "photo_or_exif_read"
   - "model_load_or_inference"
   - "cuda_execution"
   - "dependency_install"
   - "sqlite_ingest_write"
-  - "cache_or_quarantine_mutation"
+  - "cache_mutation_or_quarantine_mutation_outside_bound_root"
   - "push_merge_pull_request_or_release"
 mandatory_stop:
   value: true
