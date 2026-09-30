@@ -749,6 +749,9 @@ def _validate_packet(
         "mandatory_stop": STOP_POINT,
         "artifact_count": len(_ARTIFACTS),
     }
+
+
+
 def _git_text(project_root: Path, *args: str) -> str:
     try:
         result = subprocess.run(

@@ -480,8 +480,6 @@ def test_exact_sha_review_receipt_schema_binds_candidate_and_evidence() -> None:
     assert list(validator.iter_errors(unbound_receipt))
 
 
-
-
 def test_review_eligibility_rejects_duplicate_yaml_members(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -504,7 +502,9 @@ def test_review_eligibility_rejects_unrelated_candidate_path(
     candidate_root, _ = _make_candidate_repo(tmp_path / "candidate")
     _bind_test_baseline_approval_pin(monkeypatch, candidate_root)
     readme = candidate_root / "README.md"
-    readme.write_text(readme.read_text(encoding="utf-8") + "unrelated change\n", encoding="utf-8")
+    readme.write_text(
+        readme.read_text(encoding="utf-8") + "unrelated change\n", encoding="utf-8"
+    )
     _refresh_manifests(candidate_root)
     _git(candidate_root, "commit", "-m", "unrelated path")
     with pytest.raises(ReviewEligibilityError, match="outside the declared control-packet scope"):
