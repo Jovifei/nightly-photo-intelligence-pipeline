@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import os
 import stat
+import subprocess
 from collections.abc import Mapping
 from pathlib import Path, PurePosixPath
 from typing import NoReturn, cast
@@ -22,6 +23,7 @@ from jsonschema import (  # type: ignore[import-untyped]
 )
 
 from .domain.errors import DuplicateJsonMemberError, GateNotAuthorizedError
+from .git_governance import linear_history_findings
 from .json_strict import load_json_strict
 from .n2b1p_integrity import canonical_json_bytes, sha256_bytes
 
@@ -32,6 +34,11 @@ OWNER_PATH = "approvals/owner_n2b1p_b_source_network_reacquisition_v1.yaml"
 RUNTIME_PATH = "approvals/n2b1p_b_source_network_runtime_configuration_v1.json"
 RUNTIME_DIGEST = "a60178368e6d37dcf713dc004d9799048a0f9dfd957cc49e5c619753787c39d8"
 STOP_POINT = "EXTERNAL_REVIEW_B_SOURCE_NETWORK_REACQUISITION_V1_PRE_DOWNLOAD"
+POST_REVIEW_ADMISSION_STATUS = "B_SOURCE_NETWORK_POST_REVIEW_ADMISSION_PASS"
+REVIEW_RECEIPT_SCHEMA = "external_exact_sha_review_receipt_v1.schema.json"
+REVIEW_REPORT_PATH = "review_tools/NEXT_LOCAL_CODEX_PROMPT.md"
+REVIEW_RECEIPT_FILENAME = "b-source-network-exact-sha-review-v1.json"
+REVIEW_RECEIPT_PARENT = "npi-c2c-evidence-20260930"
 _DOMAIN = "download.pytorch.org"
 _ALLOWED_DOMAINS = [_DOMAIN]
 _HISTORICAL_RUNTIME_SHA256 = "f8d6a2779f85a2944d60b2a94ff99c392f45fe5adefbfead3441a3ce72fa682b"
@@ -137,6 +144,7 @@ _SCHEMA_SHA256 = dict(
         strict=True,
     )
 )
+_SCHEMA_SHA256[REVIEW_RECEIPT_SCHEMA] = "779c3070ca7f3e865c51980b23a3fbbe2eec6c082e7b9761b83e3a49bbce8d22"
 
 
 def _deny(message: str) -> NoReturn:
@@ -741,6 +749,126 @@ def _validate_packet(
         "mandatory_stop": STOP_POINT,
         "artifact_count": len(_ARTIFACTS),
     }
+def _git_text(project_root: Path, *args: str) -> str:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(project_root), *args],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise GateNotAuthorizedError("Git state unavailable for exact-SHA admission") from exc
+    if result.returncode != 0:
+        _deny("Git state unavailable for exact-SHA admission")
+    return result.stdout.strip()
+
+
+def validate_external_exact_sha_review_receipt(
+    project_root: Path, receipt: Mapping[str, object]
+) -> dict[str, object]:
+    """Bind a DONE review receipt to the exact clean tracked candidate; never use network."""
+    packet = load_b_source_network_control_packet(project_root)
+    if packet.get("status") != READY_STATUS:
+        _deny("B-source control packet is not review-ready")
+    schema = _load_schema(project_root, REVIEW_RECEIPT_SCHEMA)
+    _validate_schema(schema, receipt, "external exact-SHA review receipt")
+    if receipt.get("verdict") != "DONE":
+        _deny("external exact-SHA review receipt is not DONE")
+    baseline = _load_yaml(project_root, "approvals/phase_completion_N2B1P.yaml")
+    baseline_data = _mapping(baseline.get("baseline"), "N2B1P baseline")
+    baseline_commit = baseline_data.get("candidate_commit")
+    if not isinstance(baseline_commit, str):
+        _deny("immutable N2B1P baseline commit is missing")
+    head = _git_text(project_root, "rev-parse", "HEAD")
+    tree = _git_text(project_root, "rev-parse", "HEAD^{tree}")
+    if _git_text(project_root, "status", "--porcelain", "--untracked-files=all"):
+        _deny("working tree must be clean for post-review admission")
+    if linear_history_findings(project_root, baseline_commit, head):
+        _deny("current HEAD is outside immutable linear N2B1P ancestry")
+    expected = {
+        "receipt_type": "EXTERNAL_EXACT_SHA_REVIEW_RECEIPT_V1",
+        "task_id": "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1",
+        "review_scope": "B_SOURCE_NETWORK_REACQUISITION_V1_CONTROL_PACKET_ONLY",
+        "reviewed_head": head,
+        "reviewed_tree": tree,
+        "immutable_baseline_commit": baseline_commit,
+        "current_manifest_sha256": _sha256_file(project_root, "MANIFEST.sha256"),
+        "task_sha256": _sha256_file(project_root, TASK_PATH),
+        "owner_approval_sha256": _sha256_file(project_root, OWNER_PATH),
+        "runtime_configuration_sha256": _sha256_file(project_root, RUNTIME_PATH),
+        "review_report_ref": REVIEW_REPORT_PATH,
+        "review_report_sha256": _sha256_file(project_root, REVIEW_REPORT_PATH),
+    }
+    for key, value in expected.items():
+        if receipt.get(key) != value:
+            _deny(f"external exact-SHA review receipt mismatch: {key}")
+    return {
+        "status": POST_REVIEW_ADMISSION_STATUS,
+        "reviewed_head": head,
+        "reviewed_tree": tree,
+        "review_receipt": "DONE_AND_EXACT_SHA_BOUND",
+        "network_scope": "EXACT_THREE_BOUND_URLS_ONLY",
+        "network_request_count": 0,
+        "cache_promotion": "NOT_AUTHORIZED",
+        "model_cuda_photo_exif_sqlite_real20": "NOT_AUTHORIZED",
+        "next_action": "LOCAL_CODEX_REVALIDATE_MISSING_PAYLOAD_PRECONDITION_THEN_BOUND_DOWNLOAD",
+    }
+
+
+def load_external_exact_sha_review_receipt(
+    project_root: Path, receipt_path: Path
+) -> dict[str, object]:
+    """Strict-load one Git-external review receipt without exposing its absolute path."""
+    try:
+        resolved = receipt_path.resolve(strict=True)
+        root = project_root.resolve(strict=True)
+    except OSError as exc:
+        raise GateNotAuthorizedError("external exact-SHA review receipt is unavailable") from exc
+    if not receipt_path.is_file() or receipt_path.is_symlink():
+        _deny("external exact-SHA review receipt must be a regular non-symlink file")
+    try:
+        resolved.relative_to(root)
+    except ValueError:
+        pass
+    else:
+        _deny("external exact-SHA review receipt must stay outside Git")
+    if resolved.name != REVIEW_RECEIPT_FILENAME or resolved.parent.name != REVIEW_RECEIPT_PARENT:
+        _deny("external exact-SHA review receipt ref is not the approved evidence ref")
+    value = load_json_strict(resolved)
+    if not isinstance(value, Mapping):
+        _deny("external exact-SHA review receipt is not an object")
+    return cast(dict[str, object], value)
+
+
+def check_external_exact_sha_review_receipt(
+    project_root: Path, receipt_path: Path
+) -> dict[str, object]:
+    """Fail closed on any receipt/current-candidate mismatch; never perform the download."""
+    try:
+        receipt = load_external_exact_sha_review_receipt(project_root, receipt_path)
+        return validate_external_exact_sha_review_receipt(project_root, receipt)
+    except (
+        DuplicateJsonMemberError,
+        GateNotAuthorizedError,
+        KeyError,
+        OSError,
+        SchemaError,
+        TypeError,
+        UnicodeError,
+        ValueError,
+    ) as exc:
+        return {
+            "status": "B_SOURCE_NETWORK_POST_REVIEW_ADMISSION_INVALID",
+            "error_code": type(exc).__name__,
+            "network_access": "DENY",
+            "network_request_count": 0,
+            "cache_promotion": "NOT_AUTHORIZED",
+            "model_cuda_photo_exif_sqlite_real20": "NOT_AUTHORIZED",
+        }
+
+
 
 
 def load_b_source_network_control_packet(project_root: Path) -> dict[str, object]:
@@ -793,5 +921,8 @@ def check_b_source_network_control_packet(project_root: Path) -> dict[str, objec
 
 __all__ = [
     "check_b_source_network_control_packet",
+    "check_external_exact_sha_review_receipt",
     "load_b_source_network_control_packet",
+    "load_external_exact_sha_review_receipt",
+    "validate_external_exact_sha_review_receipt",
 ]

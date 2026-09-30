@@ -6,6 +6,7 @@
   "additionalProperties": false,
   "required": [
     "schema_version",
+    "receipt_type",
     "task_id",
     "review_scope",
     "verdict",
@@ -16,22 +17,68 @@
     "task_sha256",
     "owner_approval_sha256",
     "runtime_configuration_sha256",
+    "review_report_ref",
     "review_report_sha256",
     "reviewed_at_utc"
   ],
   "properties": {
-    "schema_version": {"const": "1.0"},
-    "task_id": {"const": "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"},
-    "review_scope": {"const": "B_SOURCE_NETWORK_REACQUISITION_V1_CONTROL_PACKET_ONLY"},
-    "verdict": {"enum": ["DONE", "CHANGES_REQUIRED", "BLOCKED"]},
-    "reviewed_head": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
-    "reviewed_tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
-    "immutable_baseline_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
-    "current_manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "task_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "owner_approval_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "runtime_configuration_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "review_report_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "reviewed_at_utc": {"type": "string", "format": "date-time"}
+    "schema_version": {
+      "const": "1.0"
+    },
+    "receipt_type": {
+      "const": "EXTERNAL_EXACT_SHA_REVIEW_RECEIPT_V1"
+    },
+    "task_id": {
+      "const": "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
+    },
+    "review_scope": {
+      "const": "B_SOURCE_NETWORK_REACQUISITION_V1_CONTROL_PACKET_ONLY"
+    },
+    "verdict": {
+      "enum": [
+        "DONE",
+        "CHANGES_REQUIRED",
+        "BLOCKED"
+      ]
+    },
+    "reviewed_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "reviewed_tree": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "immutable_baseline_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "current_manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "task_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "owner_approval_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "runtime_configuration_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "review_report_ref": {
+      "const": "review_tools/NEXT_LOCAL_CODEX_PROMPT.md"
+    },
+    "review_report_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "reviewed_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    }
   }
 }

@@ -46,12 +46,40 @@ TASK_ID = "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
 CAPABILITY = "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
 REVIEW_SCOPE = "B_SOURCE_NETWORK_REACQUISITION_V1_CONTROL_PACKET_ONLY"
 CONTROL_PACKET_CLASS = "CONTROL_PLANE_ONLY"
+KNOWN_CHANGE_CATEGORIES = frozenset(
+    {
+        "task_contract", "owner_approval", "schema", "tests", "governance_tool",
+        "control_plane_code", "manifest", "todo_status", "task_tracking",
+    }
+)
 SHA1_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
 class ReviewEligibilityError(ValueError):
     """Raised when the exact current tree is not eligible for external review."""
+
+
+class _UniqueKeySafeLoader(yaml.SafeLoader):  # type: ignore[misc]
+    pass
+
+
+def _construct_unique_mapping(
+    loader: _UniqueKeySafeLoader, node: yaml.MappingNode, deep: bool = False
+) -> dict[object, object]:
+    loader.flatten_mapping(node)
+    result: dict[object, object] = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if key in result:
+            raise ReviewEligibilityError("duplicate YAML member")
+        result[key] = loader.construct_object(value_node, deep=deep)
+    return result
+
+
+_UniqueKeySafeLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _construct_unique_mapping
+)
 
 
 def _git(root: Path, *args: str) -> str:
@@ -93,7 +121,7 @@ def _safe_file(root: Path, relative: object) -> Path:
 def _load_yaml(root: Path, relative: object) -> dict[str, Any]:
     path = _safe_file(root, relative)
     try:
-        value = yaml.safe_load(path.read_text(encoding="utf-8"))
+        value = yaml.load(path.read_text(encoding="utf-8"), Loader=_UniqueKeySafeLoader)
     except (OSError, yaml.YAMLError) as exc:
         raise ReviewEligibilityError(f"invalid YAML document: {relative}") from exc
     if not isinstance(value, dict):
@@ -225,6 +253,68 @@ def _verify_linear_history(root: Path, baseline_commit: str) -> tuple[str, str]:
     return head, tree
 
 
+def _change_category(relative: str) -> str | None:
+    if relative in {"MANIFEST.sha256", "review_tools/MANIFEST.sha256"}:
+        return "manifest"
+    if relative == TASK_PATH:
+        return "task_contract"
+    if relative in {OWNER_PATH, RUNTIME_PATH}:
+        return "owner_approval"
+    if relative.startswith("schemas/"):
+        return "schema"
+    if relative.startswith("tests/"):
+        return "tests"
+    if relative == "tasks/todo.md":
+        return "todo_status"
+    if relative in {"tasks/index.json", "tasks/lessons.md"}:
+        return "task_tracking"
+    if relative.startswith("review_tools/") or relative in {
+        "tools/verify_review_candidate.py",
+        "tools/verify_handoff.py",
+        "src/nightly_photo_intelligence_pipeline/git_governance.py",
+        "src/nightly_photo_intelligence_pipeline/preflight.py",
+    }:
+        return "governance_tool"
+    if relative in {
+        "src/nightly_photo_intelligence_pipeline/n2b1p_b_source_network.py",
+        "src/nightly_photo_intelligence_pipeline/cli.py",
+    }:
+        return "control_plane_code"
+    return None
+
+
+def _verify_review_change_scope(
+    root: Path, baseline_commit: str, metadata: Mapping[str, object]
+) -> None:
+    declared = metadata.get("allowed_change_categories")
+    if not isinstance(declared, list) or set(declared) != KNOWN_CHANGE_CATEGORIES:
+        raise ReviewEligibilityError("review change categories are not the closed approved set")
+    introductions = [
+        item
+        for item in _git(root, "log", "--diff-filter=A", "--format=%H", "--", TASK_PATH).splitlines()
+        if item
+    ]
+    if len(introductions) != 1:
+        raise ReviewEligibilityError("active review task must have exactly one introduction commit")
+    introduction = introductions[0]
+    if linear_history_findings(root, baseline_commit, introduction):
+        raise ReviewEligibilityError("task introduction is outside immutable linear ancestry")
+    parent = _git(root, "rev-parse", f"{introduction}^")
+    rows = _git(root, "diff", "--name-status", "--find-renames", f"{parent}..HEAD").splitlines()
+    if not rows:
+        raise ReviewEligibilityError("review candidate range has no changes")
+    for row in rows:
+        parts = row.split("\t")
+        if len(parts) != 2 or parts[0] not in {"A", "M"}:
+            raise ReviewEligibilityError("review candidate contains a delete or rename")
+        relative = parts[1]
+        category = _change_category(relative)
+        if category is None or category not in declared:
+            raise ReviewEligibilityError(
+                f"review change path is outside the declared control-packet scope: {relative}"
+            )
+
+
 def _verify_project_state(root: Path, baseline: dict[str, Any]) -> None:
     state_path = _safe_file(root, PROJECT_STATE_PATH)
     try:
@@ -302,6 +392,8 @@ def _verify_packet(root: Path) -> tuple[dict[str, Any], dict[str, Any], dict[str
         not isinstance(categories, list)
         or not categories
         or not all(isinstance(item, str) and item for item in categories)
+        or len(categories) != len(KNOWN_CHANGE_CATEGORIES)
+        or set(categories) != KNOWN_CHANGE_CATEGORIES
     ):
         raise ReviewEligibilityError("review_candidate allowed change categories are invalid")
     phase = task.get("phase")
@@ -402,8 +494,12 @@ def validate_review_candidate(root: Path = ROOT) -> None:
     status = _git(resolved_root, "status", "--porcelain", "--untracked-files=all")
     if status:
         raise ReviewEligibilityError("working tree must be clean for exact-SHA review")
-    _task, _owner, _runtime, baseline_commit = _verify_packet(resolved_root)
+    task, _owner, _runtime, baseline_commit = _verify_packet(resolved_root)
     head, _tree = _verify_linear_history(resolved_root, baseline_commit)
+    metadata = task.get("review_candidate")
+    if not isinstance(metadata, Mapping):
+        raise ReviewEligibilityError("review candidate metadata is missing")
+    _verify_review_change_scope(resolved_root, baseline_commit, metadata)
     _verify_manifests(resolved_root)
     check = subprocess.run(
         ["git", "-C", str(resolved_root), "diff", "--check", f"{baseline_commit}...{head}"],

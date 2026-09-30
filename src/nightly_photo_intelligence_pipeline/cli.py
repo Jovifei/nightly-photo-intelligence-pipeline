@@ -1590,6 +1590,20 @@ def n2b1p_network_check(
         raise typer.Exit(code=1)
 
 
+@n2b1p_app.command("network-admission")
+def n2b1p_network_admission(
+    project_root: Path = typer.Option(..., "--project-root"),
+    review_receipt: Path = typer.Option(..., "--review-receipt"),
+) -> None:
+    """Validate the external DONE receipt against the exact current candidate; no network."""
+    from .n2b1p_b_source_network import check_external_exact_sha_review_receipt
+
+    result = check_external_exact_sha_review_receipt(project_root, review_receipt)
+    typer.echo(json_strict_dump(result))
+    if result["status"] != "B_SOURCE_NETWORK_POST_REVIEW_ADMISSION_PASS":
+        raise typer.Exit(code=1)
+
+
 @real20_app.command("prepare")
 def real20_prepare(
     project_root: Path = typer.Option(..., "--project-root"),

@@ -28,6 +28,10 @@ TASK_SCHEMA_PATH = "schemas/n2b1p_b_source_network_reacquisition_v1.schema.json"
 OWNER_SCHEMA_PATH = "schemas/owner_n2b1p_b_source_network_reacquisition_v1.schema.json"
 RUNTIME_SCHEMA_PATH = "schemas/n2b1p_b_source_network_runtime_configuration_v1.schema.json"
 BASELINE_APPROVAL_PATH = "approvals/phase_completion_N2B1P.yaml"
+ALLOWED_CHANGE_CATEGORIES = [
+    "task_contract", "owner_approval", "schema", "tests", "governance_tool",
+    "control_plane_code", "manifest", "todo_status", "task_tracking",
+]
 
 
 def _git(root: Path, *args: str) -> str:
@@ -180,6 +184,39 @@ def _make_candidate_repo(
     )
     project_state_sha256 = hashlib.sha256((root / "PROJECT_STATE.json").read_bytes()).hexdigest()
 
+    approved_baseline = baseline if baseline_ancestor else "a" * 40
+    baseline_approval = {
+        "status": "APPROVED",
+        "phase_id": "N2B1P",
+        "baseline": {
+            "candidate_commit": approved_baseline,
+            "project_state_sha256": project_state_sha256,
+            "immutable": True,
+        },
+    }
+    baseline_schema = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": ["status", "phase_id", "baseline"],
+        "properties": {
+            "status": {"const": "APPROVED"},
+            "phase_id": {"const": "N2B1P"},
+            "baseline": {
+                "type": "object",
+                "required": ["candidate_commit", "project_state_sha256", "immutable"],
+                "properties": {
+                    "candidate_commit": {"const": approved_baseline},
+                    "project_state_sha256": {"const": project_state_sha256},
+                    "immutable": {"const": True},
+                },
+            },
+        },
+    }
+    _write_yaml(root / BASELINE_APPROVAL_PATH, baseline_approval)
+    _write_json(root / "schemas/phase_completion_n2b1p_v1_0.schema.json", baseline_schema)
+    _refresh_manifests(root)
+    _git(root, "commit", "-m", "record immutable baseline governance")
+
     runtime_configuration = {
         "execution_authority": "NOT_AUTHORIZED",
         "network_access": "DENY",
@@ -236,37 +273,10 @@ def _make_candidate_repo(
             "immutable_baseline_ref": BASELINE_APPROVAL_PATH,
             "external_exact_sha_review_required": True,
             "execution_before_review": False,
-            "allowed_change_categories": ["control_packet_only"],
+            "allowed_change_categories": list(ALLOWED_CHANGE_CATEGORIES),
         },
     }
-    approved_baseline = baseline if baseline_ancestor else "a" * 40
-    baseline_approval = {
-        "status": "APPROVED",
-        "phase_id": "N2B1P",
-        "baseline": {
-            "candidate_commit": approved_baseline,
-            "project_state_sha256": project_state_sha256,
-            "immutable": True,
-        },
-    }
-    baseline_schema = {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "required": ["status", "phase_id", "baseline"],
-        "properties": {
-            "status": {"const": "APPROVED"},
-            "phase_id": {"const": "N2B1P"},
-            "baseline": {
-                "type": "object",
-                "required": ["candidate_commit", "project_state_sha256", "immutable"],
-                "properties": {
-                    "candidate_commit": {"const": approved_baseline},
-                    "project_state_sha256": {"const": project_state_sha256},
-                    "immutable": {"const": True},
-                },
-            },
-        },
-    }
+
 
     _write_yaml(root / BASELINE_APPROVAL_PATH, baseline_approval)
     _write_json(root / "schemas/phase_completion_n2b1p_v1_0.schema.json", baseline_schema)
@@ -276,11 +286,12 @@ def _make_candidate_repo(
     _write_yaml(root / OWNER_PATH, owner)
     _write_json(root / RUNTIME_PATH, runtime_configuration)
     _write_yaml(root / TASK_PATH, task)
-    (root / "src" / "candidate.py").parent.mkdir(parents=True, exist_ok=True)
+    candidate_code = root / "src" / "nightly_photo_intelligence_pipeline" / "n2b1p_b_source_network.py"
+    candidate_code.parent.mkdir(parents=True, exist_ok=True)
     source = "def candidate():\n    return True\n"
     if trailing_whitespace:
         source = "def candidate(): \n    return True\n"
-    (root / "src" / "candidate.py").write_text(source, encoding="utf-8")
+    candidate_code.write_text(source, encoding="utf-8")
 
     _refresh_manifests(
         root,
@@ -289,8 +300,9 @@ def _make_candidate_repo(
     # Two ordinary successors demonstrate that acceptance does not depend on a
     # frozen direct-parent SHA or a fixed commit count.
     for number in range(2):
-        (root / f"src/successor_{number}.py").write_text(
-            f"def successor_{number}():\n    return {number}\n", encoding="utf-8"
+        candidate_code.write_text(
+            candidate_code.read_text(encoding="utf-8") + f"# linear successor {number}\n",
+            encoding="utf-8",
         )
         _refresh_manifests(root)
         _git(root, "commit", "-m", f"linear successor {number}")
@@ -442,6 +454,7 @@ def test_exact_sha_review_receipt_schema_binds_candidate_and_evidence() -> None:
     )
     receipt = {
         "schema_version": "1.0",
+        "receipt_type": "EXTERNAL_EXACT_SHA_REVIEW_RECEIPT_V1",
         "task_id": TASK_ID,
         "review_scope": REVIEW_SCOPE,
         "verdict": "DONE",
@@ -452,6 +465,7 @@ def test_exact_sha_review_receipt_schema_binds_candidate_and_evidence() -> None:
         "task_sha256": "e" * 64,
         "owner_approval_sha256": "f" * 64,
         "runtime_configuration_sha256": "1" * 64,
+        "review_report_ref": "review_tools/NEXT_LOCAL_CODEX_PROMPT.md",
         "review_report_sha256": "2" * 64,
         "reviewed_at_utc": "2026-09-30T00:00:00Z",
     }
@@ -464,6 +478,37 @@ def test_exact_sha_review_receipt_schema_binds_candidate_and_evidence() -> None:
         key: value for key, value in receipt.items() if key != "review_report_sha256"
     }
     assert list(validator.iter_errors(unbound_receipt))
+
+
+
+
+def test_review_eligibility_rejects_duplicate_yaml_members(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    candidate_root, _ = _make_candidate_repo(tmp_path / "candidate")
+    _bind_test_baseline_approval_pin(monkeypatch, candidate_root)
+    task_path = candidate_root / TASK_PATH
+    task_path.write_text(
+        task_path.read_text(encoding="utf-8") + "\nowner_authorized: true\n",
+        encoding="utf-8",
+    )
+    _refresh_manifests(candidate_root)
+    _git(candidate_root, "commit", "-m", "duplicate yaml member")
+    with pytest.raises(ReviewEligibilityError, match="duplicate YAML member"):
+        validate_review_candidate(candidate_root)
+
+
+def test_review_eligibility_rejects_unrelated_candidate_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    candidate_root, _ = _make_candidate_repo(tmp_path / "candidate")
+    _bind_test_baseline_approval_pin(monkeypatch, candidate_root)
+    readme = candidate_root / "README.md"
+    readme.write_text(readme.read_text(encoding="utf-8") + "unrelated change\n", encoding="utf-8")
+    _refresh_manifests(candidate_root)
+    _git(candidate_root, "commit", "-m", "unrelated path")
+    with pytest.raises(ReviewEligibilityError, match="outside the declared control-packet scope"):
+        validate_review_candidate(candidate_root)
 
 
 def test_active_b_source_review_metadata_and_schemas_are_coherent() -> None:

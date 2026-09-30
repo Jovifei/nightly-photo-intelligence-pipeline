@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import socket
+import subprocess
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -18,6 +20,48 @@ TASK_PATH = "tasks/phase_n2b1p_b_source_network_reacquisition_v1.yaml"
 OWNER_PATH = "approvals/owner_n2b1p_b_source_network_reacquisition_v1.yaml"
 RUNTIME_PATH = "approvals/n2b1p_b_source_network_runtime_configuration_v1.json"
 REGISTER_PATH = "research/N2B1R_local_research_artifact_register.json"
+
+def _git_text(root: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(root), *args],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout.strip()
+
+
+def _valid_review_receipt(project_root: Path) -> dict[str, object]:
+    baseline = yaml.safe_load(
+        (project_root / "approvals/phase_completion_N2B1P.yaml").read_text(encoding="utf-8")
+    )
+    return {
+        "schema_version": "1.0",
+        "receipt_type": "EXTERNAL_EXACT_SHA_REVIEW_RECEIPT_V1",
+        "task_id": "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1",
+        "review_scope": "B_SOURCE_NETWORK_REACQUISITION_V1_CONTROL_PACKET_ONLY",
+        "verdict": "DONE",
+        "reviewed_head": _git_text(project_root, "rev-parse", "HEAD"),
+        "reviewed_tree": _git_text(project_root, "rev-parse", "HEAD^{tree}"),
+        "immutable_baseline_commit": baseline["baseline"]["candidate_commit"],
+        "current_manifest_sha256": hashlib.sha256(
+            (project_root / "MANIFEST.sha256").read_bytes()
+        ).hexdigest(),
+        "task_sha256": hashlib.sha256((project_root / TASK_PATH).read_bytes()).hexdigest(),
+        "owner_approval_sha256": hashlib.sha256(
+            (project_root / OWNER_PATH).read_bytes()
+        ).hexdigest(),
+        "runtime_configuration_sha256": hashlib.sha256(
+            (project_root / RUNTIME_PATH).read_bytes()
+        ).hexdigest(),
+        "review_report_ref": "review_tools/NEXT_LOCAL_CODEX_PROMPT.md",
+        "review_report_sha256": hashlib.sha256(
+            (project_root / "review_tools/NEXT_LOCAL_CODEX_PROMPT.md").read_bytes()
+        ).hexdigest(),
+        "reviewed_at_utc": "2026-09-30T00:00:00Z",
+    }
+
+
 QUARANTINE_ATTESTATION_FLAGS = (
     "empty",
     "non_reparse",
@@ -201,6 +245,56 @@ def _artifact(task: dict[str, Any]) -> dict[str, Any]:
         "false-outside-quality-python-venv",
     ],
 )
+
+
+def test_post_review_admission_binds_exact_current_head_and_report(project_root: Path) -> None:
+    receipt = _valid_review_receipt(project_root)
+    result = network.validate_external_exact_sha_review_receipt(project_root, receipt)
+    assert result["status"] == "B_SOURCE_NETWORK_POST_REVIEW_ADMISSION_PASS"
+    assert result["network_request_count"] == 0
+    assert result["cache_promotion"] == "NOT_AUTHORIZED"
+    stale = dict(receipt)
+    stale["reviewed_head"] = "0" * 40
+    with pytest.raises(network.GateNotAuthorizedError, match="reviewed_head"):
+        network.validate_external_exact_sha_review_receipt(project_root, stale)
+    blocked = dict(receipt)
+    blocked["verdict"] = "CHANGES_REQUIRED"
+    with pytest.raises(network.GateNotAuthorizedError, match="not DONE"):
+        network.validate_external_exact_sha_review_receipt(project_root, blocked)
+
+
+def test_cli_network_admission_reads_only_external_exact_receipt(
+    project_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def denied_network(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("network access attempted")
+
+    monkeypatch.setattr(socket, "socket", denied_network)
+    monkeypatch.setattr(socket, "create_connection", denied_network)
+    evidence_root = tmp_path / "npi-c2c-evidence-20260930"
+    evidence_root.mkdir()
+    receipt_path = evidence_root / "b-source-network-exact-sha-review-v1.json"
+    receipt_path.write_text(
+        json.dumps(_valid_review_receipt(project_root), sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    result = CliRunner().invoke(
+        app,
+        [
+            "n2b1p",
+            "network-admission",
+            "--project-root",
+            str(project_root),
+            "--review-receipt",
+            str(receipt_path),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["status"] == "B_SOURCE_NETWORK_POST_REVIEW_ADMISSION_PASS"
+    assert payload["network_request_count"] == 0
+
+
 def test_network_packet_fails_closed_on_binding_drift(
     project_root: Path,
     monkeypatch: pytest.MonkeyPatch,
