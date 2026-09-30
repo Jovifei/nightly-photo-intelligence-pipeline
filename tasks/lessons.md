@@ -396,3 +396,13 @@
   ignored `.venv` and create an untracked lockfile. Use the approved external
   interpreter and keep accidental environment artifacts visible until safely
   cleaned; never hide them to claim a clean review tree.
+
+## 2026-10-01 remote repository handoff correction
+
+- Reuse the Owner-selected Project and existing Cache Recovery Plan chat;
+  connection repair does not justify creating more chats.
+- Remote GPT is also a repository implementer when its GitHub write tools are
+  available and Owner-authorized. Require real commits and a committed handoff,
+  then receive and test locally before returning exact-SHA evidence.
+- Current explicit Owner review-branch push authorization takes precedence
+  over an older general no-push note; preserve separate main/release/data gates.
