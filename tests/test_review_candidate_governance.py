@@ -442,6 +442,7 @@ def test_exact_sha_review_receipt_schema_binds_candidate_and_evidence() -> None:
     )
     receipt = {
         "schema_version": "1.0",
+        "receipt_type": "EXTERNAL_EXACT_SHA_REVIEW",
         "task_id": TASK_ID,
         "review_scope": REVIEW_SCOPE,
         "verdict": "DONE",
