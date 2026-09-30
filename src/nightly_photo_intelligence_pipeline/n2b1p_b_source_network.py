@@ -751,7 +751,6 @@ def _validate_packet(
     }
 
 
-
 def _git_text(project_root: Path, *args: str) -> str:
     try:
         result = subprocess.run(
@@ -837,7 +836,18 @@ def load_external_exact_sha_review_receipt(
         pass
     else:
         _deny("external exact-SHA review receipt must stay outside Git")
-    if resolved.name != REVIEW_RECEIPT_FILENAME or resolved.parent.name != REVIEW_RECEIPT_PARENT:
+    if resolved.name != REVIEW_RECEIPT_FILENAME:
+        _deny("external exact-SHA review receipt ref is not the approved evidence ref")
+    if os.name == "nt":
+        try:
+            approved_parent = Path(
+                rf"E:\\Claude_allow\\Download\\{REVIEW_RECEIPT_PARENT}"
+            ).resolve(strict=True)
+        except OSError as exc:
+            raise GateNotAuthorizedError("approved review evidence parent is unavailable") from exc
+        if resolved.parent != approved_parent:
+            _deny("external exact-SHA review receipt is outside the approved evidence parent")
+    elif resolved.parent.name != REVIEW_RECEIPT_PARENT:
         _deny("external exact-SHA review receipt ref is not the approved evidence ref")
     value = load_json_strict(resolved)
     if not isinstance(value, Mapping):

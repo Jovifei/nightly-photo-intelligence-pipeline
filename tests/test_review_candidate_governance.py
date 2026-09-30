@@ -29,8 +29,15 @@ OWNER_SCHEMA_PATH = "schemas/owner_n2b1p_b_source_network_reacquisition_v1.schem
 RUNTIME_SCHEMA_PATH = "schemas/n2b1p_b_source_network_runtime_configuration_v1.schema.json"
 BASELINE_APPROVAL_PATH = "approvals/phase_completion_N2B1P.yaml"
 ALLOWED_CHANGE_CATEGORIES = [
-    "task_contract", "owner_approval", "schema", "tests", "governance_tool",
-    "control_plane_code", "manifest", "todo_status", "task_tracking",
+    "task_contract",
+    "owner_approval",
+    "schema",
+    "tests",
+    "governance_tool",
+    "control_plane_code",
+    "manifest",
+    "todo_status",
+    "task_tracking",
 ]
 
 
@@ -277,7 +284,6 @@ def _make_candidate_repo(
         },
     }
 
-
     _write_yaml(root / BASELINE_APPROVAL_PATH, baseline_approval)
     _write_json(root / "schemas/phase_completion_n2b1p_v1_0.schema.json", baseline_schema)
     _write_json(root / TASK_SCHEMA_PATH, _schema_for_task())
@@ -286,7 +292,9 @@ def _make_candidate_repo(
     _write_yaml(root / OWNER_PATH, owner)
     _write_json(root / RUNTIME_PATH, runtime_configuration)
     _write_yaml(root / TASK_PATH, task)
-    candidate_code = root / "src" / "nightly_photo_intelligence_pipeline" / "n2b1p_b_source_network.py"
+    candidate_code = (
+        root / "src" / "nightly_photo_intelligence_pipeline" / "n2b1p_b_source_network.py"
+    )
     candidate_code.parent.mkdir(parents=True, exist_ok=True)
     source = "def candidate():\n    return True\n"
     if trailing_whitespace:

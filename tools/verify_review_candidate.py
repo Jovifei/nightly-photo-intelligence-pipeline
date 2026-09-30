@@ -48,8 +48,15 @@ REVIEW_SCOPE = "B_SOURCE_NETWORK_REACQUISITION_V1_CONTROL_PACKET_ONLY"
 CONTROL_PACKET_CLASS = "CONTROL_PLANE_ONLY"
 KNOWN_CHANGE_CATEGORIES = frozenset(
     {
-        "task_contract", "owner_approval", "schema", "tests", "governance_tool",
-        "control_plane_code", "manifest", "todo_status", "task_tracking",
+        "task_contract",
+        "owner_approval",
+        "schema",
+        "tests",
+        "governance_tool",
+        "control_plane_code",
+        "manifest",
+        "todo_status",
+        "task_tracking",
     }
 )
 SHA1_PATTERN = re.compile(r"^[0-9a-f]{40}$")
