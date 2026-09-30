@@ -86,6 +86,14 @@ quality_environment:
   python_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929"
   role: "PYTHON_QUALITY_ONLY"
   torch_or_cuda_usage: "DENY"
+post_review_execution:
+  required_receipt_type: "EXTERNAL_EXACT_SHA_REVIEW"
+  required_receipt_verdict: "DONE"
+  execution_authority: "BOUNDED_B_SOURCE_NETWORK_REACQUISITION"
+  network_access: "ALLOW_EXACT_THREE_HTTPS"
+  destination_scope: "BOUND_QUARANTINE_ONLY"
+  cache_promotion: "NOT_AUTHORIZED"
+  model_cuda_photo_sqlite_real20: "NOT_AUTHORIZED"
 not_authorized:
   - "network_download_before_external_review"
   - "search_or_access_outside_E_CLAUDE_ALLOW_DOWNLOAD"
