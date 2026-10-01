@@ -178,3 +178,68 @@ B_SOURCE exact bytes
 ```
 
 Do not skip a gate because the control packet or review eligibility is green.
+
+## 2026-10-01 targeted local-receive repair
+
+This section supersedes the earlier remote-validation instructions where they conflict.
+
+Parent handoff commit: `d95756f4a876ed425a9b6e9be53acfe5e05d2029`.
+The final repair HEAD is the commit containing this document; verify the exact
+commit/tree from the remote ChatGPT handoff after fetch.
+
+Local Codex reported against the parent handoff:
+
+- focused four-file tests: 66 passed / 6 failed;
+- mypy: 102 files PASS;
+- five governance/verify-review failures from undefined `OWNER_PATH` and
+  `RUNTIME_PATH` in `_change_category`;
+- one Windows positive receipt fixture rejected by the fixed production receipt
+  parent;
+- Ruff findings: the two F821 names, `_change_category` PLR0911, and E501 in
+  `n2b1p_b_source_network.py` / `verify_review_candidate.py`;
+- Ruff format check reported the four remotely modified Python files unformatted.
+
+This repair is intentionally narrow:
+
+1. define and table-drive the review change-path classification, preserving the
+   closed nine-category scope while removing the undefined-name and PLR0911 path;
+2. keep the production Windows receipt parent fixed at
+   `E:\\Claude_allow\\Download\\npi-c2c-evidence-20260930`;
+3. isolate that trusted parent resolution behind
+   `_resolve_approved_review_receipt_parent` so tests can substitute a temporary
+   trusted parent without weakening production behavior;
+4. retain an explicit wrong-parent CLI negative test;
+5. clean the reported line-length/formatting defects;
+6. update both manifests and this handoff document.
+
+Remote test execution for this repair: **NOT_RUN**. GitHub write tooling has no
+repository execution terminal. No DONE receipt was issued. No network download,
+cache promotion, model/CUDA execution, photo/EXIF access, SQLite/Real20 action,
+Pilot/App action, main merge or release was run.
+
+### Required local revalidation
+
+Use the already-qualified Python 3.12 quality environment and the exact clean
+review-branch worktree. At minimum run:
+
+```text
+python -m pytest tests/test_review_candidate_governance.py tests/test_n2b1p_b_source_network_reacquisition_v1.py tests/test_git.py tests/test_schema.py -q
+python tools/verify_review_candidate.py
+python -m ruff check tools/verify_review_candidate.py src/nightly_photo_intelligence_pipeline/n2b1p_b_source_network.py tests/test_review_candidate_governance.py tests/test_n2b1p_b_source_network_reacquisition_v1.py
+python -m ruff format --check tools/verify_review_candidate.py src/nightly_photo_intelligence_pipeline/n2b1p_b_source_network.py tests/test_review_candidate_governance.py tests/test_n2b1p_b_source_network_reacquisition_v1.py
+python -m mypy src/nightly_photo_intelligence_pipeline
+python tools/verify_handoff.py
+```
+
+Also recompute/verify `MANIFEST.sha256` and
+`review_tools/MANIFEST.sha256`. The historical missing-cache handoff failure is
+expected to remain truthful until cache recovery.
+
+If these targeted checks pass, return the exact local validation results and the
+same review-branch HEAD for final exact-SHA review. Do **not** create a DONE
+receipt or start the B_SOURCE download until that final review explicitly accepts
+the repaired SHA.
+
+Downloads, Gate-B cache promotion, model/CUDA, photos/EXIF, SQLite/Real20,
+Bundle/Pilot/App, main merge and release remain independently gated.
+

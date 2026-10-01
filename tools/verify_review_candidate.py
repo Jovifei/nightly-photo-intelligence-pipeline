@@ -35,6 +35,8 @@ from nightly_photo_intelligence_pipeline.n2b1p_integrity import (  # noqa: E402
 )
 
 TASK_PATH = "tasks/phase_n2b1p_b_source_network_reacquisition_v1.yaml"
+OWNER_PATH = "approvals/owner_n2b1p_b_source_network_reacquisition_v1.yaml"
+RUNTIME_PATH = "approvals/n2b1p_b_source_network_runtime_configuration_v1.json"
 BASELINE_APPROVAL_PATH = "approvals/phase_completion_N2B1P.yaml"
 BASELINE_SCHEMA_PATH = "schemas/phase_completion_n2b1p_v1_0.schema.json"
 PROJECT_STATE_PATH = "PROJECT_STATE.json"
@@ -260,35 +262,41 @@ def _verify_linear_history(root: Path, baseline_commit: str) -> tuple[str, str]:
     return head, tree
 
 
-def _change_category(relative: str) -> str | None:
-    if relative in {"MANIFEST.sha256", "review_tools/MANIFEST.sha256"}:
-        return "manifest"
-    if relative == TASK_PATH:
-        return "task_contract"
-    if relative in {OWNER_PATH, RUNTIME_PATH}:
-        return "owner_approval"
-    if relative.startswith("schemas/"):
-        return "schema"
-    if relative.startswith("tests/"):
-        return "tests"
-    if relative == "tasks/todo.md":
-        return "todo_status"
-    if relative in {"tasks/index.json", "tasks/lessons.md"}:
-        return "task_tracking"
-    if relative.startswith("review_tools/") or relative in {
-        "tools/verify_review_candidate.py",
-        "tools/verify_handoff.py",
-        "src/nightly_photo_intelligence_pipeline/git_governance.py",
-        "src/nightly_photo_intelligence_pipeline/preflight.py",
-    }:
-        return "governance_tool"
-    if relative in {
-        "src/nightly_photo_intelligence_pipeline/n2b1p_b_source_network.py",
-        "src/nightly_photo_intelligence_pipeline/cli.py",
-    }:
-        return "control_plane_code"
-    return None
+_EXACT_CHANGE_CATEGORIES = {
+    "MANIFEST.sha256": "manifest",
+    "review_tools/MANIFEST.sha256": "manifest",
+    TASK_PATH: "task_contract",
+    OWNER_PATH: "owner_approval",
+    RUNTIME_PATH: "owner_approval",
+    "tasks/todo.md": "todo_status",
+    "tasks/index.json": "task_tracking",
+    "tasks/lessons.md": "task_tracking",
+    "tools/verify_review_candidate.py": "governance_tool",
+    "tools/verify_handoff.py": "governance_tool",
+    "src/nightly_photo_intelligence_pipeline/git_governance.py": "governance_tool",
+    "src/nightly_photo_intelligence_pipeline/preflight.py": "governance_tool",
+    "src/nightly_photo_intelligence_pipeline/n2b1p_b_source_network.py": "control_plane_code",
+    "src/nightly_photo_intelligence_pipeline/cli.py": "control_plane_code",
+}
+_PREFIX_CHANGE_CATEGORIES = (
+    ("schemas/", "schema"),
+    ("tests/", "tests"),
+    ("review_tools/", "governance_tool"),
+)
 
+
+def _change_category(relative: str) -> str | None:
+    exact = _EXACT_CHANGE_CATEGORIES.get(relative)
+    if exact is not None:
+        return exact
+    return next(
+        (
+            category
+            for prefix, category in _PREFIX_CHANGE_CATEGORIES
+            if relative.startswith(prefix)
+        ),
+        None,
+    )
 
 def _verify_review_change_scope(
     root: Path, baseline_commit: str, metadata: Mapping[str, object]
@@ -296,18 +304,23 @@ def _verify_review_change_scope(
     declared = metadata.get("allowed_change_categories")
     if not isinstance(declared, list) or set(declared) != KNOWN_CHANGE_CATEGORIES:
         raise ReviewEligibilityError("review change categories are not the closed approved set")
-    introductions = [
-        item
-        for item in _git(root, "log", "--diff-filter=A", "--format=%H", "--", TASK_PATH).splitlines()
-        if item
-    ]
+    introduced = _git(
+        root, "log", "--diff-filter=A", "--format=%H", "--", TASK_PATH
+    ).splitlines()
+    introductions = [item for item in introduced if item]
     if len(introductions) != 1:
         raise ReviewEligibilityError("active review task must have exactly one introduction commit")
     introduction = introductions[0]
     if linear_history_findings(root, baseline_commit, introduction):
         raise ReviewEligibilityError("task introduction is outside immutable linear ancestry")
     parent = _git(root, "rev-parse", f"{introduction}^")
-    rows = _git(root, "diff", "--name-status", "--find-renames", f"{parent}..HEAD").splitlines()
+    rows = _git(
+        root,
+        "diff",
+        "--name-status",
+        "--find-renames",
+        f"{parent}..HEAD",
+    ).splitlines()
     if not rows:
         raise ReviewEligibilityError("review candidate range has no changes")
     for row in rows:

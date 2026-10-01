@@ -173,7 +173,9 @@ def _artifact(task: dict[str, Any]) -> dict[str, Any]:
     )
 
 
-def test_post_review_admission_binds_exact_current_head_and_report(project_root: Path) -> None:
+def test_post_review_admission_binds_exact_current_head_and_report(
+    project_root: Path,
+) -> None:
     receipt = _valid_review_receipt(project_root)
     result = network.validate_external_exact_sha_review_receipt(project_root, receipt)
     assert result["status"] == "B_SOURCE_NETWORK_POST_REVIEW_ADMISSION_PASS"
@@ -199,6 +201,11 @@ def test_cli_network_admission_reads_only_external_exact_receipt(
     monkeypatch.setattr(socket, "create_connection", denied_network)
     evidence_root = tmp_path / "npi-c2c-evidence-20260930"
     evidence_root.mkdir()
+    monkeypatch.setattr(
+        network,
+        "_resolve_approved_review_receipt_parent",
+        lambda: evidence_root.resolve(strict=True),
+    )
     receipt_path = evidence_root / "b-source-network-exact-sha-review-v1.json"
     receipt_path.write_text(
         json.dumps(_valid_review_receipt(project_root), sort_keys=True) + "\n",
@@ -221,7 +228,43 @@ def test_cli_network_admission_reads_only_external_exact_receipt(
     assert payload["network_request_count"] == 0
 
 
+def test_cli_network_admission_rejects_wrong_external_receipt_parent(
+    project_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def denied_network(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("network access attempted")
 
+    monkeypatch.setattr(socket, "socket", denied_network)
+    monkeypatch.setattr(socket, "create_connection", denied_network)
+    approved_root = tmp_path / "npi-c2c-evidence-20260930"
+    approved_root.mkdir()
+    wrong_root = tmp_path / "wrong-evidence-parent"
+    wrong_root.mkdir()
+    monkeypatch.setattr(
+        network,
+        "_resolve_approved_review_receipt_parent",
+        lambda: approved_root.resolve(strict=True),
+    )
+    receipt_path = wrong_root / "b-source-network-exact-sha-review-v1.json"
+    receipt_path.write_text(
+        json.dumps(_valid_review_receipt(project_root), sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    result = CliRunner().invoke(
+        app,
+        [
+            "n2b1p",
+            "network-admission",
+            "--project-root",
+            str(project_root),
+            "--review-receipt",
+            str(receipt_path),
+        ],
+    )
+    assert result.exit_code == 1
+    payload = json.loads(result.output)
+    assert payload["status"] == "B_SOURCE_NETWORK_POST_REVIEW_ADMISSION_INVALID"
+    assert payload["network_request_count"] == 0
 
 @pytest.mark.parametrize(
     ("loader_name", "relative_path", "mutate"),

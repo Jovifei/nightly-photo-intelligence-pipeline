@@ -16,7 +16,10 @@ from tools.verify_review_candidate import (
     validate_review_candidate,
 )
 
-from nightly_photo_intelligence_pipeline.n2b1p_integrity import canonical_json_bytes, sha256_bytes
+from nightly_photo_intelligence_pipeline.n2b1p_integrity import (
+    canonical_json_bytes,
+    sha256_bytes,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 TASK_ID = "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
@@ -61,17 +64,22 @@ def _write_yaml(path: Path, value: object) -> None:
     path.write_text(yaml.safe_dump(value, sort_keys=False), encoding="utf-8")
 
 
-def _bind_test_baseline_approval_pin(monkeypatch: pytest.MonkeyPatch, root: Path) -> None:
+def _bind_test_baseline_approval_pin(
+    monkeypatch: pytest.MonkeyPatch, root: Path
+) -> None:
     approval_path = root / BASELINE_APPROVAL_PATH
     digest = hashlib.sha256(approval_path.read_bytes()).hexdigest()
-    monkeypatch.setattr(review_candidate, "BASELINE_APPROVAL_SHA256", digest, raising=False)
+    monkeypatch.setattr(
+        review_candidate, "BASELINE_APPROVAL_SHA256", digest, raising=False
+    )
 
 
 def _write_root_manifest(root: Path, *, corrupt: bool = False) -> None:
     tracked = _git(root, "ls-files", "-z").split("\0")
     root_paths = sorted(path for path in tracked if path and path != "MANIFEST.sha256")
     root_lines = [
-        f"{hashlib.sha256((root / path).read_bytes()).hexdigest()}  {path}" for path in root_paths
+        f"{hashlib.sha256((root / path).read_bytes()).hexdigest()}  {path}"
+        for path in root_paths
     ]
     if corrupt:
         root_lines[0] = f"{'0' * 64}  {root_paths[0]}"
@@ -189,7 +197,9 @@ def _make_candidate_repo(
         ROOT / "schemas/project_state_v1_7.schema.json",
         root / "schemas/project_state_v1_7.schema.json",
     )
-    project_state_sha256 = hashlib.sha256((root / "PROJECT_STATE.json").read_bytes()).hexdigest()
+    project_state_sha256 = hashlib.sha256(
+        (root / "PROJECT_STATE.json").read_bytes()
+    ).hexdigest()
 
     approved_baseline = baseline if baseline_ancestor else "a" * 40
     baseline_approval = {

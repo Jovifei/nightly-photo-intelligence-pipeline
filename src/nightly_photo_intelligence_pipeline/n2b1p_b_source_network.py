@@ -144,7 +144,9 @@ _SCHEMA_SHA256 = dict(
         strict=True,
     )
 )
-_SCHEMA_SHA256[REVIEW_RECEIPT_SCHEMA] = "779c3070ca7f3e865c51980b23a3fbbe2eec6c082e7b9761b83e3a49bbce8d22"
+_SCHEMA_SHA256[REVIEW_RECEIPT_SCHEMA] = (
+    "779c3070ca7f3e865c51980b23a3fbbe2eec6c082e7b9761b83e3a49bbce8d22"
+)
 
 
 def _deny(message: str) -> NoReturn:
@@ -160,7 +162,9 @@ def _is_reparse(st: os.stat_result) -> bool:
 def _repo_file(project_root: Path, relative: str) -> Path:
     """Return a regular tracked-root file without following reparse points."""
     relative_path = PurePosixPath(relative)
-    if relative_path.is_absolute() or any(part in {"", ".", ".."} for part in relative_path.parts):
+    if relative_path.is_absolute() or any(
+        part in {"", ".", ".."} for part in relative_path.parts
+    ):
         _deny("control-document reference is not project-relative")
     supplied_root = Path(project_root)
     try:
@@ -819,6 +823,20 @@ def validate_external_exact_sha_review_receipt(
     }
 
 
+def _resolve_approved_review_receipt_parent() -> Path:
+    """Resolve the fixed production review-evidence parent.
+
+    Tests may replace this resolver without weakening the production path.
+    """
+    try:
+        return Path(
+            rf"E:\Claude_allow\Download\{REVIEW_RECEIPT_PARENT}"
+        ).resolve(strict=True)
+    except OSError as exc:
+        raise GateNotAuthorizedError(
+            "approved review evidence parent is unavailable"
+        ) from exc
+
 def load_external_exact_sha_review_receipt(
     project_root: Path, receipt_path: Path
 ) -> dict[str, object]:
@@ -839,14 +857,11 @@ def load_external_exact_sha_review_receipt(
     if resolved.name != REVIEW_RECEIPT_FILENAME:
         _deny("external exact-SHA review receipt ref is not the approved evidence ref")
     if os.name == "nt":
-        try:
-            approved_parent = Path(
-                rf"E:\\Claude_allow\\Download\\{REVIEW_RECEIPT_PARENT}"
-            ).resolve(strict=True)
-        except OSError as exc:
-            raise GateNotAuthorizedError("approved review evidence parent is unavailable") from exc
+        approved_parent = _resolve_approved_review_receipt_parent()
         if resolved.parent != approved_parent:
-            _deny("external exact-SHA review receipt is outside the approved evidence parent")
+            _deny(
+                "external exact-SHA review receipt is outside the approved evidence parent"
+            )
     elif resolved.parent.name != REVIEW_RECEIPT_PARENT:
         _deny("external exact-SHA review receipt ref is not the approved evidence ref")
     value = load_json_strict(resolved)
@@ -880,8 +895,6 @@ def check_external_exact_sha_review_receipt(
             "cache_promotion": "NOT_AUTHORIZED",
             "model_cuda_photo_exif_sqlite_real20": "NOT_AUTHORIZED",
         }
-
-
 
 
 def load_b_source_network_control_packet(project_root: Path) -> dict[str, object]:
