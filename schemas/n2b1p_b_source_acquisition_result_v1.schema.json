@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b1p_b_source_acquisition_result_v1.schema.json",
+  "title": "B-source bounded network acquisition terminal result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evidence_type",
+    "status",
+    "failure_code",
+    "reviewed_head",
+    "reviewed_tree",
+    "quarantine_root_ref",
+    "quarantine_root_identity_sha256",
+    "network_request_count",
+    "artifact_results",
+    "terminal",
+    "retry_authorized",
+    "cache_promotion",
+    "model_cuda_photo_exif_sqlite_real20",
+    "mandatory_stop"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "evidence_type": {
+      "const": "B_SOURCE_NETWORK_ACQUISITION_RESULT_V1"
+    },
+    "status": {
+      "enum": [
+        "B_SOURCE_NETWORK_ACQUISITION_BLOCKED",
+        "B_SOURCE_NETWORK_ACQUISITION_FAILED",
+        "B_SOURCE_BYTES_READY_AWAITING_EXTERNAL_REVIEW"
+      ]
+    },
+    "failure_code": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reviewed_head": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        {
+          "const": "UNBOUND"
+        }
+      ]
+    },
+    "reviewed_tree": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        {
+          "const": "UNBOUND"
+        }
+      ]
+    },
+    "quarantine_root_ref": {
+      "const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-n2b1p-b-source-quarantine-20260930-e9110783"
+    },
+    "quarantine_root_identity_sha256": {
+      "oneOf": [
+        {
+          "const": "ff0fc35900d4f60d906e8dbcc8d806e8d1360aee4290326049925353667f9000"
+        },
+        {
+          "const": "UNBOUND"
+        }
+      ]
+    },
+    "network_request_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 12
+    },
+    "artifact_results": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifact_id",
+          "status",
+          "filename",
+          "requested_url",
+          "final_url",
+          "redirect_count",
+          "response_status",
+          "observed_byte_count",
+          "observed_sha256",
+          "transfer_manifest_sha256"
+        ],
+        "properties": {
+          "artifact_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "const": "PUBLISHED_VERIFIED"
+          },
+          "filename": {
+            "type": "string",
+            "minLength": 1
+          },
+          "requested_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "final_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "redirect_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "response_status": {
+            "const": 200
+          },
+          "observed_byte_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "observed_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "transfer_manifest_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "terminal": {
+      "const": true
+    },
+    "retry_authorized": {
+      "const": false
+    },
+    "cache_promotion": {
+      "const": "NOT_AUTHORIZED"
+    },
+    "model_cuda_photo_exif_sqlite_real20": {
+      "const": "NOT_AUTHORIZED"
+    },
+    "mandatory_stop": {
+      "enum": [
+        "EXTERNAL_REVIEW_B_SOURCE_ACQUISITION_FAILURE",
+        "EXTERNAL_REVIEW_B_SOURCE_BYTES_READY"
+      ]
+    }
+  }
+}
