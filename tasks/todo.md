@@ -2410,3 +2410,27 @@ pending connector setup. Network acquisition and all model/photo execution remai
 - [ ] Commit this direct successor and obtain remote exact-SHA review. Source
   identification remains `NOT_RUN`; no cache promotion or network fallback is
   allowed until the packet receives `DONE` and a separate Owner Gate A decision.
+
+### Remote bounded B-source fetcher code candidate — 2026-10-01
+
+- [x] Accept local reception candidate `2ed5ec0d4bb227aaa115026f67bf703067264ee5`
+  as review-eligible but not runtime-ready; the two historical missing-cache
+  quality failures remain truthful blockers.
+- [x] Add a code-only executor that requires the exact current DONE receipt and
+  a Git-external exact-payload absence record before constructing any network
+  transport.
+- [x] Restrict requests and redirects to HTTPS `download.pytorch.org` and the
+  exact task-bound `/models/<filename>` paths.
+- [x] Stream into existing Windows handle-bound exclusive staging, enforce exact
+  byte count and SHA-256, atomically publish by SHA directory, then reread
+  payload and transfer manifest.
+- [x] Add closed missing-precondition, transfer-manifest and terminal-result
+  schemas plus injected transport / zero-network negative tests.
+- [ ] Local Codex must validate the exact review-branch SHA and return it for a
+  fresh exact-SHA review before any DONE receipt or live acquisition.
+- [ ] Gate B cache promotion, model/CUDA continuity, photo/EXIF, SQLite/Real20,
+  Bundle/Pilot/App, main merge and release remain separately gated.
+
+Current status:
+`B_SOURCE_NETWORK_EXECUTOR_CODE_AWAITING_LOCAL_RECEIVE_AND_EXACT_SHA_REVIEW`.
+
