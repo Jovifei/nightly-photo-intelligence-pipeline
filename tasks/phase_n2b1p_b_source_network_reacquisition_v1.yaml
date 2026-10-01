@@ -15,9 +15,9 @@ network_download_before_external_review: false
 pre_download_external_review: "PASS_REQUIRED"
 review_candidate:
   status: "REVIEW_CANDIDATE"
-  class: "CONTROL_PLANE_ONLY"
+  class: "CONTROL_PLANE_AND_EXECUTOR_CODE_ONLY"
   task_id: "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
-  review_scope: "B_SOURCE_NETWORK_REACQUISITION_V1_CONTROL_PACKET_ONLY"
+  review_scope: "B_SOURCE_NETWORK_REACQUISITION_V1_EXECUTOR_CODE_ONLY"
   task_schema_ref: "schemas/n2b1p_b_source_network_reacquisition_v1.schema.json"
   owner_approval_ref: "approvals/owner_n2b1p_b_source_network_reacquisition_v1.yaml"
   owner_approval_schema_ref: "schemas/owner_n2b1p_b_source_network_reacquisition_v1.schema.json"
@@ -34,6 +34,7 @@ review_candidate:
     - "tests"
     - "governance_tool"
     - "control_plane_code"
+    - "executor_code"
     - "manifest"
     - "todo_status"
     - "task_tracking"
@@ -131,18 +132,40 @@ quality_environment:
   torch_or_cuda_usage: "DENY"
 allowed_now:
   - "read-only validation of this packet and its tracked historical bindings"
+  - "code-only review of the bounded B-source acquisition executor; no network"
 allowed_after_external_review_only:
-  - "if the exact payloads are absent under E_CLAUDE_ALLOW_DOWNLOAD, reacquire exactly the three bound files from their exact HTTPS URLs into the bound quarantine"
+  - "if a DONE receipt binds the exact executor-code HEAD and exact-payload absence evidence passes, reacquire exactly the three bound files from their exact HTTPS URLs into the bound quarantine"
+executor_candidate:
+  module_ref: "src/nightly_photo_intelligence_pipeline/n2b1p_b_source_fetcher.py"
+  test_ref: "tests/test_n2b1p_b_source_fetcher.py"
+  status: "CODE_ONLY_AWAITING_EXTERNAL_REVIEW"
+  external_exact_sha_review_required: true
+  live_network_before_review: false
+  missing_payload_precondition_schema_ref: "schemas/n2b1p_b_source_missing_payload_precondition_v1.schema.json"
+  transfer_manifest_schema_ref: "schemas/n2b1p_b_source_transfer_manifest_v1.schema.json"
+  acquisition_result_schema_ref: "schemas/n2b1p_b_source_acquisition_result_v1.schema.json"
+post_review_execution:
+  required_receipt_type: "EXTERNAL_EXACT_SHA_REVIEW_RECEIPT_V1"
+  required_receipt_verdict: "DONE"
+  required_review_scope: "B_SOURCE_NETWORK_REACQUISITION_V1_EXECUTOR_CODE_ONLY"
+  network_access: "ALLOW_EXACT_THREE_HTTPS"
+  destination_scope: "BOUND_QUARANTINE_ONLY"
+  missing_payload_precondition: "REQUIRED"
+  cache_promotion: "NOT_AUTHORIZED"
+  model_cuda_photo_exif_sqlite_real20: "NOT_AUTHORIZED"
 prohibited_actions:
-  - "network_request_or_download"
-  - "external_directory_creation_or_access"
+  - "network_request_or_download_before_external_review"
+  - "download_without_exact_done_receipt"
+  - "download_without_exact_payload_absence_evidence"
+  - "redirect_outside_download.pytorch.org"
+  - "write_outside_bound_quarantine"
+  - "cache_promotion"
   - "photo_or_exif_read"
   - "model_load_or_inference"
   - "cuda_execution"
   - "dependency_install"
   - "sqlite_ingest_write"
-  - "cache_or_quarantine_mutation"
-  - "push_merge_pull_request_or_release"
+  - "main_merge_or_release"
 mandatory_stop:
   value: true
-  next_action: "EXTERNAL_REVIEW_B_SOURCE_NETWORK_REACQUISITION_V1_PRE_DOWNLOAD"
+  next_action: "EXTERNAL_REVIEW_B_SOURCE_EXECUTOR_CODE_PRE_DOWNLOAD"
