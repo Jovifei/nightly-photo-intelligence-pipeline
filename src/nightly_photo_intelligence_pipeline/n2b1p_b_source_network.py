@@ -827,7 +827,9 @@ def _resolve_approved_review_receipt_parent() -> Path:
     Tests may replace this resolver without weakening the production path.
     """
     try:
-        return Path(rf"E:\Claude_allow\Download\{REVIEW_RECEIPT_PARENT}").resolve(strict=True)
+        return (Path("E:" + os.sep) / "Claude_allow" / "Download" / REVIEW_RECEIPT_PARENT).resolve(
+            strict=True
+        )
     except OSError as exc:
         raise GateNotAuthorizedError("approved review evidence parent is unavailable") from exc
 

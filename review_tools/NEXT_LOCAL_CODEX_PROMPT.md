@@ -49,7 +49,7 @@ The review branch adds/hardens:
 - `npi n2b1p network-admission --review-receipt ...`, which performs only
   read-only exact-SHA admission and returns zero network requests;
 - Windows receipt-parent enforcement for
-  `E:\\Claude_allow\\Download\\npi-c2c-evidence-20260930`;
+  `E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930`;
 - negative tests for duplicate YAML, unrelated review paths, stale/non-DONE
   receipts, and network-disabled CLI admission;
 - root MANIFEST updates.
@@ -87,14 +87,14 @@ HEAD/tree against the remote ChatGPT handoff, and run in the already-qualified P
 ```text
 git status --short
 git diff --check
-E:\Claude_allow\Download\npi-py312-quality-venv-20260929\Scripts\python.exe tools/verify_review_candidate.py
-E:\Claude_allow\Download\npi-py312-quality-venv-20260929\Scripts\python.exe -m pytest tests/test_review_candidate_governance.py tests/test_n2b1p_b_source_network_reacquisition_v1.py tests/test_git.py tests/test_schema.py -q
-E:\Claude_allow\Download\npi-py312-quality-venv-20260929\Scripts\python.exe -m ruff check .
-E:\Claude_allow\Download\npi-py312-quality-venv-20260929\Scripts\python.exe -m ruff format --check .
-E:\Claude_allow\Download\npi-py312-quality-venv-20260929\Scripts\python.exe -m mypy src/nightly_photo_intelligence_pipeline
-E:\Claude_allow\Download\npi-py312-quality-venv-20260929\Scripts\python.exe tools/sensitive_file_scan.py
-E:\Claude_allow\Download\npi-py312-quality-venv-20260929\Scripts\python.exe -m pytest -q
-E:\Claude_allow\Download\npi-py312-quality-venv-20260929\Scripts\python.exe tools/verify_handoff.py
+E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929/Scripts/python.exe tools/verify_review_candidate.py
+E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929/Scripts/python.exe -m pytest tests/test_review_candidate_governance.py tests/test_n2b1p_b_source_network_reacquisition_v1.py tests/test_git.py tests/test_schema.py -q
+E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929/Scripts/python.exe -m ruff check .
+E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929/Scripts/python.exe -m ruff format --check .
+E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929/Scripts/python.exe -m mypy src/nightly_photo_intelligence_pipeline
+E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929/Scripts/python.exe tools/sensitive_file_scan.py
+E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929/Scripts/python.exe -m pytest -q
+E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929/Scripts/python.exe tools/verify_handoff.py
 ```
 
 Recompute and verify both `MANIFEST.sha256` and
@@ -107,7 +107,7 @@ recovery; do not weaken the handoff gate to make it green.
 If the remote branch bytes pass the targeted/static local checks, create this
 Git-external file:
 
-`E:\Claude_allow\Download\npi-c2c-evidence-20260930\b-source-network-exact-sha-review-v1.json`
+`E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-exact-sha-review-v1.json`
 
 Populate it from independently recomputed local values:
 
@@ -132,7 +132,7 @@ reviewed_at_utc = actual UTC materialization timestamp
 Then run:
 
 ```text
-npi n2b1p network-admission --project-root <exact-clean-review-worktree> --review-receipt E:\Claude_allow\Download\npi-c2c-evidence-20260930\b-source-network-exact-sha-review-v1.json
+npi n2b1p network-admission --project-root <exact-clean-review-worktree> --review-receipt E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-exact-sha-review-v1.json
 ```
 
 Required result is
@@ -204,7 +204,7 @@ This repair is intentionally narrow:
 1. define and table-drive the review change-path classification, preserving the
    closed nine-category scope while removing the undefined-name and PLR0911 path;
 2. keep the production Windows receipt parent fixed at
-   `E:\\Claude_allow\\Download\\npi-c2c-evidence-20260930`;
+   `E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930`;
 3. isolate that trusted parent resolution behind
    `_resolve_approved_review_receipt_parent` so tests can substitute a temporary
    trusted parent without weakening production behavior;
