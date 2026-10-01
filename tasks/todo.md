@@ -2432,4 +2432,4 @@ pending connector setup. Network acquisition and all model/photo execution remai
   Bundle/Pilot/App, main merge and release remain separately gated.
 
 Current status:
-`B_SOURCE_NETWORK_EXECUTOR_CODE_AWAITING_LOCAL_RECEIVE_AND_EXACT_SHA_REVIEW`.\n
+`B_SOURCE_NETWORK_EXECUTOR_CODE_AWAITING_LOCAL_RECEIVE_AND_EXACT_SHA_REVIEW`.
