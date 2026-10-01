@@ -34,7 +34,9 @@ def _git_text(root: Path, *args: str) -> str:
 
 def _valid_review_receipt(project_root: Path) -> dict[str, object]:
     baseline = yaml.safe_load(
-        (project_root / "approvals/phase_completion_N2B1P.yaml").read_text(encoding="utf-8")
+        (project_root / "approvals/phase_completion_N2B1P.yaml").read_text(
+            encoding="utf-8"
+        )
     )
     return {
         "schema_version": "1.0",
@@ -48,7 +50,9 @@ def _valid_review_receipt(project_root: Path) -> dict[str, object]:
         "current_manifest_sha256": hashlib.sha256(
             (project_root / "MANIFEST.sha256").read_bytes()
         ).hexdigest(),
-        "task_sha256": hashlib.sha256((project_root / TASK_PATH).read_bytes()).hexdigest(),
+        "task_sha256": hashlib.sha256(
+            (project_root / TASK_PATH).read_bytes()
+        ).hexdigest(),
         "owner_approval_sha256": hashlib.sha256(
             (project_root / OWNER_PATH).read_bytes()
         ).hexdigest(),
@@ -89,10 +93,14 @@ def test_network_packet_is_ready_for_review_but_never_authorizes_execution(
     task = yaml.safe_load((project_root / TASK_PATH).read_text(encoding="utf-8"))
     owner = yaml.safe_load((project_root / OWNER_PATH).read_text(encoding="utf-8"))
 
-    assert result["status"] == (\n        "B_SOURCE_NETWORK_REACQUISITION_READY_FOR_EXTERNAL_REVIEW"\n    )
+    assert result["status"] == (
+        "B_SOURCE_NETWORK_REACQUISITION_READY_FOR_EXTERNAL_REVIEW"
+    )
     assert task["phase"]["id"] == "N2B1P"
     assert task["capability"] == "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
-    assert task["review_candidate"]["task_id"] == (\n        "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"\n    )
+    assert task["review_candidate"]["task_id"] == (
+        "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
+    )
     assert task["review_candidate"]["class"] == "CONTROL_PLANE_AND_EXECUTOR_CODE_ONLY"
     assert task["review_candidate"]["review_scope"] == (
         "B_SOURCE_NETWORK_REACQUISITION_V1_EXECUTOR_CODE_ONLY"
@@ -103,7 +111,8 @@ def test_network_packet_is_ready_for_review_but_never_authorizes_execution(
         quarantine = document["quarantine"]
         assert quarantine["attestation_version"] == "V2"
         assert quarantine["attestation_ref"] == (
-            "E_CLAUDE_ALLOW_DOWNLOAD/npi-n2b1p-b-source-quarantine-20260930-e9110783.attestation-v2.json"
+            "E_CLAUDE_ALLOW_DOWNLOAD/"
+            "npi-n2b1p-b-source-quarantine-20260930-e9110783.attestation-v2.json"
         )
         assert quarantine["attestation_sha256"] == (
             "27d298c6f7b2ea146f8668edd3c7a4af75b5b9a9cfae0a9ab767ce666acc37e0"
@@ -312,7 +321,10 @@ def test_cli_network_admission_rejects_wrong_external_receipt_parent(
         (
             "_load_json",
             RUNTIME_PATH,
-            lambda doc: doc.__setitem__("quarantine_root_ref", "E_CLAUDE_ALLOW_DOWNLOAD/other"),
+            lambda doc: doc.__setitem__(
+                "quarantine_root_ref",
+                "E_CLAUDE_ALLOW_DOWNLOAD/other",
+            ),
         ),
         (
             "_load_json",
@@ -393,7 +405,9 @@ def test_network_packet_fails_closed_when_schema_bytes_drift(
     original = network._sha256_file
 
     def altered_digest(root: Path, relative: str) -> str:
-        if relative == "schemas/n2b1p_b_source_network_runtime_configuration_v1.schema.json":
+        if relative == (
+            "schemas/n2b1p_b_source_network_runtime_configuration_v1.schema.json"
+        ):
             return "0" * 64
         return original(root, relative)
 
@@ -417,4 +431,4 @@ def test_quarantine_scope_rejects_missing_or_false_outside_flags(
     else:
         flags[flag] = False
     with pytest.raises(network.GateNotAuthorizedError):
-        network._validate_quarantine_scope_flags(flags)\n
+        network._validate_quarantine_scope_flags(flags)

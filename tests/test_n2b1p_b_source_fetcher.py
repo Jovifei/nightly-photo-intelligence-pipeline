@@ -412,7 +412,9 @@ class _FakeBoundDirectory:
         return None
 
 
-def _exact_three_test_specs(primary: fetcher.ArtifactSpec) -> list[fetcher.ArtifactSpec]:
+def _exact_three_test_specs(
+    primary: fetcher.ArtifactSpec,
+) -> list[fetcher.ArtifactSpec]:
     return [
         primary,
         _spec(b"test-two", artifact_id="artifact-two"),
@@ -487,15 +489,8 @@ def test_handle_final_path_rejects_quarantine_moved_under_cache(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     separator = chr(92)
-    approved_parent_final = (
-        separator * 2
-        + "?"
-        + separator
-        + "volume{approved}"
-        + separator
-        + "claude_allow"
-        + separator
-        + "download"
+    approved_parent_final = separator.join(
+        ("approved-volume", "claude_allow", "download")
     ).casefold()
     quarantine_final = (
         approved_parent_final
@@ -575,9 +570,7 @@ def test_publisher_path_safety_error_is_terminal_with_request_count(
 ) -> None:
     spec = _spec(b"abcd")
     _admit_for_test(monkeypatch, specs=_exact_three_test_specs(spec))
-    transport = FakeTransport(
-        {spec.url: [FakeResponse(b"abcd", content_length=4)]}
-    )
+    transport = FakeTransport({spec.url: [FakeResponse(b"abcd", content_length=4)]})
 
     class UnsafePublisher(MemoryPublisher):
         def publish(
@@ -648,4 +641,4 @@ def test_cli_persists_aggregate_terminal_result(
     assert payload["terminal_evidence_sha256"] == "c" * 64
     assert payload["terminal_evidence_ref"].endswith(
         "b-source-network-acquisition-result-v1.json"
-    )\n
+    )
