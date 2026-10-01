@@ -837,6 +837,7 @@ def _resolve_approved_review_receipt_parent() -> Path:
             "approved review evidence parent is unavailable"
         ) from exc
 
+
 def load_external_exact_sha_review_receipt(
     project_root: Path, receipt_path: Path
 ) -> dict[str, object]:

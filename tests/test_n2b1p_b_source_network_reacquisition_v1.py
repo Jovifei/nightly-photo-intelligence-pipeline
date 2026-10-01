@@ -266,6 +266,7 @@ def test_cli_network_admission_rejects_wrong_external_receipt_parent(
     assert payload["status"] == "B_SOURCE_NETWORK_POST_REVIEW_ADMISSION_INVALID"
     assert payload["network_request_count"] == 0
 
+
 @pytest.mark.parametrize(
     ("loader_name", "relative_path", "mutate"),
     [

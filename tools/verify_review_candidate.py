@@ -298,6 +298,7 @@ def _change_category(relative: str) -> str | None:
         None,
     )
 
+
 def _verify_review_change_scope(
     root: Path, baseline_commit: str, metadata: Mapping[str, object]
 ) -> None:
