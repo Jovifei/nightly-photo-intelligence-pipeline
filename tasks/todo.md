@@ -2458,7 +2458,18 @@ Remote exact-SHA review found crash windows that could leave an empty permanent 
 - [x] Atomically stage and publish the reservation before transport construction; bind the live lease and reservation handles, object identities, reviewed HEAD/tree and nonce across execution.
 - [x] Atomically stage and publish result plus terminal binding; validate recovered reservation/result/binding content and hashes before classifying a lease as completed.
 - [x] Update closed task/Owner contracts, schemas and catalog for crash recovery states and exact terminal paths.
-- [ ] Regenerate the index-derived root MANIFEST, run focused/full quality and review eligibility, commit and push only this review branch.
-- [ ] Submit the exact pushed SHA to the existing ChatGPT Project chat for independent review; keep network/download, cache promotion, GPU, photo, SQLite and downstream gates closed.
+- [x] Regenerate the index-derived root MANIFEST and commit the isolated code
+  candidate `45d92b2155aeb179d86d6c26399c6a3c99f9e4c7`.
+- [x] Run focused suites (`123 passed`), Ruff, format, mypy, schema validation,
+  sensitive scan and `verify_review_candidate.py` (all PASS).
+- [x] Run full quality: `979 passed, 2 failed, 1 skipped, 95 subtests`; both
+  failures reproduce on clean base `b964571...` (missing canonical cache and
+  current authorization-contract preflight). `verify_handoff.py` is `8 PASS /
+  1 FAIL` for the same missing canonical cache. Keep both gates truthful.
+- [ ] Push only this review branch and confirm the remote exact SHA.
+- [ ] Submit the exact pushed candidate and [review handoff](../review_tools/NEXT_LOCAL_CODEX_PROMPT.md)
+  to the existing ChatGPT Project chat for independent review and next-stage
+  planning. Keep network/download, cache promotion, GPU, photo, SQLite and
+  downstream gates closed pending their own authorization.
 
-Current status: `ONE_SHOT_CRASH_RECOVERY_LOCAL_IMPLEMENTATION_IN_PROGRESS`; no network request or download performed.
+Current status: `ONE_SHOT_CRASH_RECOVERY_CODE_CANDIDATE_AWAITING_PUSH_AND_REMOTE_EXACT_SHA_REVIEW`; no network request or download performed.
