@@ -5,31 +5,119 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schema_version", "evidence_type", "task_ref", "owner_approval_ref", "status",
-    "scope_status", "execution_status", "execution_authority", "network_access",
-    "pre_download_external_review", "runtime_configuration_digest", "artifact_count",
-    "artifacts", "quarantine_root_identity_sha256", "mandatory_stop"
+    "schema_version",
+    "evidence_type",
+    "task_ref",
+    "owner_approval_ref",
+    "status",
+    "scope_status",
+    "execution_status",
+    "execution_authority",
+    "network_access",
+    "pre_download_external_review",
+    "runtime_configuration_digest",
+    "artifact_count",
+    "artifacts",
+    "quarantine_root_identity_sha256",
+    "mandatory_stop"
   ],
   "$defs": {
-    "keypoint": {"const": {"id": "torchvision-keypointrcnn-resnet50-fpn-coco-v1", "revision": "torchvision-v0.22.1", "url": "https://download.pytorch.org/models/keypointrcnn_resnet50_fpn_coco-fc266e95.pth", "filename": "keypointrcnn_resnet50_fpn_coco-fc266e95.pth", "byte_count": 237034793, "local_sha256": "fc266e953d2b302cdcbb9ae66f71f6b0d4649928bf02dc573961e361e4918926", "sha256_kind": "HISTORICAL_LOCAL_SHA256_NOT_OFFICIAL_SHA256", "transfer_manifest_sha256": "90da3eb000813841a980dcbaf8e1b31fdde15283a9d6b969156c5eb0ae21ce43"}},
-    "lraspp": {"const": {"id": "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1", "revision": "torchvision-v0.22.1", "url": "https://download.pytorch.org/models/lraspp_mobilenet_v3_large-d234d4ea.pth", "filename": "lraspp_mobilenet_v3_large-d234d4ea.pth", "byte_count": 13097061, "local_sha256": "d234d4eae9d55d5f76de18b77cf0dc62c66fe5c5482758209d00f950c92bb280", "sha256_kind": "HISTORICAL_LOCAL_SHA256_NOT_OFFICIAL_SHA256", "transfer_manifest_sha256": "d25cc430637cf19ebab31cd5aa99e344b4da58cd2b04db245c165181e3ff1f12"}},
-    "deeplab": {"const": {"id": "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1", "revision": "torchvision-v0.22.1", "url": "https://download.pytorch.org/models/deeplabv3_mobilenet_v3_large-fc3c493d.pth", "filename": "deeplabv3_mobilenet_v3_large-fc3c493d.pth", "byte_count": 44356159, "local_sha256": "fc3c493d68e89cc31ef488c803d5d7dd2f3190fb570598faa49fef69be8e5e70", "sha256_kind": "HISTORICAL_LOCAL_SHA256_NOT_OFFICIAL_SHA256", "transfer_manifest_sha256": "676054e8b2c366f591a1bbe1b4521e2ef7abdb08197534ca95eb11d434dd0cae"}}
+    "keypoint": {
+      "const": {
+        "id": "torchvision-keypointrcnn-resnet50-fpn-coco-v1",
+        "revision": "torchvision-v0.22.1",
+        "url": "https://download.pytorch.org/models/keypointrcnn_resnet50_fpn_coco-fc266e95.pth",
+        "filename": "keypointrcnn_resnet50_fpn_coco-fc266e95.pth",
+        "byte_count": 237034793,
+        "local_sha256": "fc266e953d2b302cdcbb9ae66f71f6b0d4649928bf02dc573961e361e4918926",
+        "sha256_kind": "HISTORICAL_LOCAL_SHA256_NOT_OFFICIAL_SHA256",
+        "transfer_manifest_sha256": "90da3eb000813841a980dcbaf8e1b31fdde15283a9d6b969156c5eb0ae21ce43"
+      }
+    },
+    "lraspp": {
+      "const": {
+        "id": "torchvision-lraspp-mobilenet-v3-large-coco-voc-v1",
+        "revision": "torchvision-v0.22.1",
+        "url": "https://download.pytorch.org/models/lraspp_mobilenet_v3_large-d234d4ea.pth",
+        "filename": "lraspp_mobilenet_v3_large-d234d4ea.pth",
+        "byte_count": 13097061,
+        "local_sha256": "d234d4eae9d55d5f76de18b77cf0dc62c66fe5c5482758209d00f950c92bb280",
+        "sha256_kind": "HISTORICAL_LOCAL_SHA256_NOT_OFFICIAL_SHA256",
+        "transfer_manifest_sha256": "d25cc430637cf19ebab31cd5aa99e344b4da58cd2b04db245c165181e3ff1f12"
+      }
+    },
+    "deeplab": {
+      "const": {
+        "id": "torchvision-deeplabv3-mobilenet-v3-large-coco-voc-v1",
+        "revision": "torchvision-v0.22.1",
+        "url": "https://download.pytorch.org/models/deeplabv3_mobilenet_v3_large-fc3c493d.pth",
+        "filename": "deeplabv3_mobilenet_v3_large-fc3c493d.pth",
+        "byte_count": 44356159,
+        "local_sha256": "fc3c493d68e89cc31ef488c803d5d7dd2f3190fb570598faa49fef69be8e5e70",
+        "sha256_kind": "HISTORICAL_LOCAL_SHA256_NOT_OFFICIAL_SHA256",
+        "transfer_manifest_sha256": "676054e8b2c366f591a1bbe1b4521e2ef7abdb08197534ca95eb11d434dd0cae"
+      }
+    }
   },
   "properties": {
-    "schema_version": {"const": "1.0"},
-    "evidence_type": {"const": "B_SOURCE_NETWORK_REACQUISITION_CONTROL_EVIDENCE_V1"},
-    "task_ref": {"const": "tasks/phase_n2b1p_b_source_network_reacquisition_v1.yaml"},
-    "owner_approval_ref": {"const": "approvals/owner_n2b1p_b_source_network_reacquisition_v1.yaml"},
-    "status": {"const": "NOT_RUN"},
-    "scope_status": {"const": "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"},
-    "execution_status": {"const": "NOT_RUN"},
-    "execution_authority": {"const": "NOT_AUTHORIZED"},
-    "network_access": {"const": "DENY"},
-    "pre_download_external_review": {"const": "PASS_REQUIRED"},
-    "runtime_configuration_digest": {"const": "a60178368e6d37dcf713dc004d9799048a0f9dfd957cc49e5c619753787c39d8"},
-    "artifact_count": {"const": 3},
-    "artifacts": {"type": "array", "minItems": 3, "maxItems": 3, "prefixItems": [{"$ref": "#/$defs/keypoint"}, {"$ref": "#/$defs/lraspp"}, {"$ref": "#/$defs/deeplab"}], "items": false},
-    "quarantine_root_identity_sha256": {"const": "ff0fc35900d4f60d906e8dbcc8d806e8d1360aee4290326049925353667f9000"},
-    "mandatory_stop": {"const": "EXTERNAL_REVIEW_B_SOURCE_NETWORK_REACQUISITION_V1_PRE_DOWNLOAD"}
+    "schema_version": {
+      "const": "1.0"
+    },
+    "evidence_type": {
+      "const": "B_SOURCE_NETWORK_REACQUISITION_CONTROL_EVIDENCE_V1"
+    },
+    "task_ref": {
+      "const": "tasks/phase_n2b1p_b_source_network_reacquisition_v1.yaml"
+    },
+    "owner_approval_ref": {
+      "const": "approvals/owner_n2b1p_b_source_network_reacquisition_v1.yaml"
+    },
+    "status": {
+      "const": "NOT_RUN"
+    },
+    "scope_status": {
+      "const": "OWNER_AUTHORIZED_AWAITING_EXTERNAL_REVIEW"
+    },
+    "execution_status": {
+      "const": "NOT_RUN"
+    },
+    "execution_authority": {
+      "const": "NOT_AUTHORIZED"
+    },
+    "network_access": {
+      "const": "DENY"
+    },
+    "pre_download_external_review": {
+      "const": "PASS_REQUIRED"
+    },
+    "runtime_configuration_digest": {
+      "const": "a60178368e6d37dcf713dc004d9799048a0f9dfd957cc49e5c619753787c39d8"
+    },
+    "artifact_count": {
+      "const": 3
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "prefixItems": [
+        {
+          "$ref": "#/$defs/keypoint"
+        },
+        {
+          "$ref": "#/$defs/lraspp"
+        },
+        {
+          "$ref": "#/$defs/deeplab"
+        }
+      ],
+      "items": false
+    },
+    "quarantine_root_identity_sha256": {
+      "const": "ff0fc35900d4f60d906e8dbcc8d806e8d1360aee4290326049925353667f9000"
+    },
+    "mandatory_stop": {
+      "const": "EXTERNAL_REVIEW_B_SOURCE_EXECUTOR_CODE_PRE_DOWNLOAD"
+    }
   }
 }
