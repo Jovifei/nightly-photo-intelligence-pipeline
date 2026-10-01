@@ -19,7 +19,10 @@ from pathlib import Path
 from typing import Protocol, cast
 from urllib.parse import SplitResult, urljoin, urlsplit
 
-from jsonschema import Draft202012Validator, FormatChecker  # type: ignore[import-untyped]
+from jsonschema import (  # type: ignore[import-untyped]
+    Draft202012Validator,
+    FormatChecker,
+)
 
 from .domain.errors import GateNotAuthorizedError, NpiError
 from .json_strict import load_json_strict
@@ -368,6 +371,7 @@ def _handle_paths_overlap(left: str, right: str) -> bool:
         or second.startswith(first + separator)
     )
 
+
 def load_missing_payload_precondition(
     project_root: Path,
     evidence_path: Path,
@@ -697,7 +701,7 @@ def persist_acquisition_result(
     project_root: Path,
     result: Mapping[str, object],
 ) -> dict[str, str]:
-    """Persist one exclusive terminal record below the fixed Git-external evidence root."""
+    """Persist one exclusive terminal record below the fixed Git-external root."""
     _validate_document(project_root, _RESULT_SCHEMA, result)
     if os.name != "nt":
         raise BSourceAcquisitionError("NPI_B_SOURCE_WINDOWS_PATH_REQUIRED")
@@ -712,7 +716,10 @@ def persist_acquisition_result(
     ):
         raise BSourceAcquisitionError("NPI_B_SOURCE_EVIDENCE_INSIDE_GIT")
     payload = _canonical_json_bytes(result)
-    with bind_existing_directory(evidence_parent_path, writable=True) as evidence_parent:
+    with bind_existing_directory(
+        evidence_parent_path,
+        writable=True,
+    ) as evidence_parent:
         with evidence_parent.create_file(_RESULT_FILENAME) as target:
             target.write(payload)
             target.flush()

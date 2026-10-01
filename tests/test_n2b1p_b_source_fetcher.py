@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
-from types import SimpleNamespace
-from pathlib import Path
 from collections.abc import Mapping
+from dataclasses import dataclass
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from typer.testing import CliRunner
@@ -485,7 +485,9 @@ def _admit_for_test(
                     "filename": spec.filename,
                     "byte_count": spec.byte_count,
                     "local_sha256": spec.sha256,
-                    "transfer_manifest_sha256": spec.historical_transfer_manifest_sha256,
+                    "transfer_manifest_sha256": (
+                        spec.historical_transfer_manifest_sha256
+                    ),
                 }
                 for spec in specs
             ],
