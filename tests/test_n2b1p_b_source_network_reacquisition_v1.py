@@ -93,6 +93,11 @@ def test_network_packet_is_ready_for_review_but_never_authorizes_execution(
     assert task["phase"]["id"] == "N2B1P"
     assert task["capability"] == "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
     assert task["review_candidate"]["task_id"] == "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
+    assert task["review_candidate"]["class"] == "CONTROL_PLANE_AND_EXECUTOR_CODE_ONLY"
+    assert task["review_candidate"]["review_scope"] == (
+        "B_SOURCE_NETWORK_REACQUISITION_V1_EXECUTOR_CODE_ONLY"
+    )
+    assert task["executor_candidate"]["status"] == "CODE_ONLY_AWAITING_EXTERNAL_REVIEW"
     assert owner["approval_type"] == "OWNER_N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
     for document in (task, owner):
         quarantine = document["quarantine"]
@@ -120,7 +125,7 @@ def test_network_packet_is_ready_for_review_but_never_authorizes_execution(
     assert result["network_access"] == "DENY"
     assert result["pre_download_external_review"] == "PASS_REQUIRED"
     assert result["mandatory_stop"] == (
-        "EXTERNAL_REVIEW_B_SOURCE_NETWORK_REACQUISITION_V1_PRE_DOWNLOAD"
+        "EXTERNAL_REVIEW_B_SOURCE_EXECUTOR_CODE_PRE_DOWNLOAD"
     )
     assert result["artifact_count"] == 3
 
@@ -189,6 +194,10 @@ def test_post_review_admission_binds_exact_current_head_and_report(
     blocked["verdict"] = "CHANGES_REQUIRED"
     with pytest.raises(network.GateNotAuthorizedError, match="not DONE"):
         network.validate_external_exact_sha_review_receipt(project_root, blocked)
+    old_scope = dict(receipt)
+    old_scope["review_scope"] = "B_SOURCE_NETWORK_REACQUISITION_V1_CONTROL_PACKET_ONLY"
+    with pytest.raises(network.GateNotAuthorizedError):
+        network.validate_external_exact_sha_review_receipt(project_root, old_scope)
 
 
 def test_cli_network_admission_reads_only_external_exact_receipt(

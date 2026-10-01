@@ -3,11 +3,16 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from types import SimpleNamespace
 from pathlib import Path
+from collections.abc import Mapping
 
 import pytest
+from typer.testing import CliRunner
 
 from nightly_photo_intelligence_pipeline import n2b1p_b_source_fetcher as fetcher
+from nightly_photo_intelligence_pipeline.cli import app
+from nightly_photo_intelligence_pipeline.domain.errors import PromotionPathSafetyError
 
 
 @dataclass
@@ -420,3 +425,242 @@ def test_network_failure_is_terminal_and_not_retryable(
     assert result["mandatory_stop"] == (
         "EXTERNAL_REVIEW_B_SOURCE_ACQUISITION_FAILURE"
     )
+
+class _FakeBoundDirectory:
+    def __init__(
+        self,
+        *,
+        digest: str,
+        final_path: str,
+        volume: int = 1,
+        names: set[str] | None = None,
+    ) -> None:
+        self.identity = SimpleNamespace(
+            digest=digest,
+            final_path=final_path,
+            volume_serial_number=volume,
+        )
+        self._names = names or set()
+
+    def list_names(self) -> set[str]:
+        return set(self._names)
+
+    def __enter__(self) -> _FakeBoundDirectory:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+
+def _admit_for_test(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    specs: list[fetcher.ArtifactSpec],
+) -> None:
+    monkeypatch.setattr(
+        fetcher,
+        "check_external_exact_sha_review_receipt",
+        lambda *_args, **_kwargs: {
+            "status": fetcher.POST_REVIEW_ADMISSION_STATUS,
+            "reviewed_head": "a" * 40,
+            "reviewed_tree": "b" * 40,
+        },
+    )
+    monkeypatch.setattr(
+        fetcher,
+        "load_missing_payload_precondition",
+        lambda *_args, **_kwargs: {"status": "EXACT_PAYLOADS_ABSENT"},
+    )
+    monkeypatch.setattr(
+        fetcher,
+        "load_b_source_network_execution_binding",
+        lambda _root: {
+            "quarantine_root_ref": fetcher._QUARANTINE_REF,
+            "quarantine_root_identity_sha256": "f" * 64,
+            "artifacts": [
+                {
+                    "id": spec.artifact_id,
+                    "revision": spec.revision,
+                    "url": spec.url,
+                    "filename": spec.filename,
+                    "byte_count": spec.byte_count,
+                    "local_sha256": spec.sha256,
+                    "transfer_manifest_sha256": spec.historical_transfer_manifest_sha256,
+                }
+                for spec in specs
+            ],
+        },
+    )
+    monkeypatch.setattr(fetcher, "_validate_document", lambda *_args, **_kwargs: None)
+
+
+def test_quarantine_path_is_lexical_and_not_resolved(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher.Path,
+        "resolve",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("quarantine path must not resolve before handle binding")
+        ),
+    )
+    path = fetcher._resolve_bound_quarantine_path()
+    assert str(path).casefold().endswith(fetcher._QUARANTINE_LEAF.casefold())
+
+
+def test_handle_final_path_rejects_quarantine_moved_under_cache(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    approved_parent_final = r"\\?\volume{approved}\claude_allow\download".casefold()
+    quarantine_final = (
+        approved_parent_final
+        + chr(92)
+        + fetcher._ROUTE_B_CACHE_LEAF.casefold()
+        + chr(92)
+        + "moved-quarantine"
+    )
+    route_cache_final = (
+        approved_parent_final + chr(92) + fetcher._ROUTE_B_CACHE_LEAF.casefold()
+    )
+    root = _FakeBoundDirectory(
+        digest=fetcher._QUARANTINE_IDENTITY,
+        final_path=quarantine_final,
+    )
+    approved_parent = _FakeBoundDirectory(
+        digest="a" * 64,
+        final_path=approved_parent_final,
+    )
+    route_cache = _FakeBoundDirectory(
+        digest="b" * 64,
+        final_path=route_cache_final,
+    )
+
+    def bound(path: Path, *, writable: bool) -> _FakeBoundDirectory:
+        text = str(path).casefold()
+        if fetcher._QUARANTINE_LEAF.casefold() in text:
+            return root
+        if fetcher._ROUTE_B_CACHE_LEAF.casefold() in text:
+            return route_cache
+        return approved_parent
+
+    monkeypatch.setattr(fetcher, "bind_existing_directory", bound)
+    publisher = fetcher.WindowsBoundQuarantinePublisher(
+        Path("repo"),
+        Path("fixed-quarantine"),
+        fetcher._QUARANTINE_IDENTITY,
+    )
+    with pytest.raises(
+        fetcher.BSourceAcquisitionError,
+        match="QUARANTINE_LOCATION_MISMATCH",
+    ):
+        publisher.validate_initial_state()
+
+
+def test_parent_junction_safety_error_blocks_before_network(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    spec = _spec(b"abcd")
+    _admit_for_test(monkeypatch, specs=[spec])
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            PromotionPathSafetyError("NPI_PROMOTION_REPARSE_POINT_REJECTED")
+        ),
+    )
+    transport = FakeTransport({})
+    result = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=transport,
+    )
+    assert result["status"] == "B_SOURCE_NETWORK_ACQUISITION_BLOCKED"
+    assert result["network_request_count"] == 0
+    assert transport.calls == []
+
+
+def test_publisher_path_safety_error_is_terminal_with_request_count(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    spec = _spec(b"abcd")
+    _admit_for_test(monkeypatch, specs=[spec])
+    transport = FakeTransport(
+        {spec.url: [FakeResponse(b"abcd", content_length=4)]}
+    )
+
+    class UnsafePublisher(MemoryPublisher):
+        def publish(
+            self,
+            spec: fetcher.ArtifactSpec,
+            response: fetcher.DownloadResponse,
+            **_kwargs: object,
+        ) -> dict[str, object]:
+            raise PromotionPathSafetyError("NPI_PROMOTION_RACE_DETECTED")
+
+    result = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=transport,
+        publisher=UnsafePublisher(),
+    )
+    assert result["status"] == "B_SOURCE_NETWORK_ACQUISITION_FAILED"
+    assert result["network_request_count"] == 1
+    assert result["failure_code"] == "NPI_PROMOTION_RACE_DETECTED"
+
+
+def test_cli_persists_aggregate_terminal_result(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    terminal: dict[str, object] = {
+        "status": "B_SOURCE_BYTES_READY_AWAITING_EXTERNAL_REVIEW",
+        "network_request_count": 3,
+    }
+    persisted: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        fetcher,
+        "run_b_source_network_acquisition",
+        lambda *_args, **_kwargs: terminal,
+    )
+
+    def persist(
+        _root: Path,
+        result: Mapping[str, object],
+    ) -> dict[str, str]:
+        persisted.append(dict(result))
+        return {
+            "terminal_evidence_ref": (
+                "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/"
+                "b-source-network-acquisition-result-v1.json"
+            ),
+            "terminal_evidence_sha256": "c" * 64,
+        }
+
+    monkeypatch.setattr(fetcher, "persist_acquisition_result", persist)
+    result = CliRunner().invoke(
+        app,
+        [
+            "n2b1p",
+            "network-acquire",
+            "--project-root",
+            str(project_root),
+            "--review-receipt",
+            "review.json",
+            "--missing-payload-evidence",
+            "missing.json",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert persisted == [terminal]
+    assert payload["terminal_evidence_sha256"] == "c" * 64
+    assert payload["terminal_evidence_ref"].endswith(
+        "b-source-network-acquisition-result-v1.json"
+    )
+

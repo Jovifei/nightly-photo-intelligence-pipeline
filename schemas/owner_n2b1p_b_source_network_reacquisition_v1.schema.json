@@ -390,7 +390,9 @@
         "destination_scope",
         "missing_payload_precondition",
         "cache_promotion",
-        "model_cuda_photo_exif_sqlite_real20"
+        "model_cuda_photo_exif_sqlite_real20",
+        "terminal_result_evidence_ref",
+        "terminal_result_persistence"
       ],
       "properties": {
         "required_receipt_type": {
@@ -416,6 +418,12 @@
         },
         "model_cuda_photo_exif_sqlite_real20": {
           "const": "NOT_AUTHORIZED"
+        },
+        "terminal_result_evidence_ref": {
+          "const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-result-v1.json"
+        },
+        "terminal_result_persistence": {
+          "const": "REQUIRED_EXCLUSIVE_CREATE"
         }
       }
     }

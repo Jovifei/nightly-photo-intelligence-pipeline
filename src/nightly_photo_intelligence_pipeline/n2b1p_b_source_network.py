@@ -276,6 +276,8 @@ def _load_schema(project_root: Path, filename: str) -> Mapping[str, object]:
     except SchemaError as exc:
         raise GateNotAuthorizedError("control schema is invalid") from exc
     return schema
+
+
 def _validate_schema(schema: Mapping[str, object], value: object, label: str) -> None:
     errors = sorted(
         Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(value),
@@ -890,7 +892,6 @@ def check_external_exact_sha_review_receipt(
             "cache_promotion": "NOT_AUTHORIZED",
             "model_cuda_photo_exif_sqlite_real20": "NOT_AUTHORIZED",
         }
-
 
 
 def load_b_source_network_execution_binding(

@@ -19,16 +19,20 @@ from pathlib import Path
 from typing import Protocol, cast
 from urllib.parse import SplitResult, urljoin, urlsplit
 
-from jsonschema import Draft202012Validator, FormatChecker
+from jsonschema import Draft202012Validator, FormatChecker  # type: ignore[import-untyped]
 
-from .domain.errors import GateNotAuthorizedError
+from .domain.errors import GateNotAuthorizedError, NpiError
 from .json_strict import load_json_strict
 from .n2b1p_b_source_network import (
     POST_REVIEW_ADMISSION_STATUS,
     check_external_exact_sha_review_receipt,
     load_b_source_network_execution_binding,
 )
-from .windows_bound_promotion import BoundStagingTransaction, bind_existing_directory
+from .windows_bound_promotion import (
+    BoundDirectory,
+    BoundStagingTransaction,
+    bind_existing_directory,
+)
 
 _ALLOWED_DOMAIN = "download.pytorch.org"
 _QUARANTINE_REF = (
@@ -45,6 +49,11 @@ _MISSING_PRECONDITION_SCHEMA = (
 )
 _TRANSFER_SCHEMA = "n2b1p_b_source_transfer_manifest_v1.schema.json"
 _RESULT_SCHEMA = "n2b1p_b_source_acquisition_result_v1.schema.json"
+_RESULT_FILENAME = "b-source-network-acquisition-result-v1.json"
+_RESULT_REF = f"E_CLAUDE_ALLOW_DOWNLOAD/{_EVIDENCE_PARENT}/{_RESULT_FILENAME}"
+_QUARANTINE_LEAF = "npi-n2b1p-b-source-quarantine-20260930-e9110783"
+_ROUTE_B_CACHE_LEAF = "npi-n2b1p-cache-v2-20260929"
+_HISTORICAL_CACHE_LEAF = "npi-model-cache"
 _CHUNK_BYTES = 1024 * 1024
 _MAX_REDIRECTS = 3
 _REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
@@ -69,7 +78,7 @@ class ArtifactSpec:
     historical_transfer_manifest_sha256: str
 
     @classmethod
-    def from_record(cls, record: Mapping[str, object]) -> "ArtifactSpec":
+    def from_record(cls, record: Mapping[str, object]) -> ArtifactSpec:
         return cls(
             artifact_id=cast(str, record["id"]),
             revision=cast(str, record["revision"]),
@@ -85,7 +94,8 @@ class ArtifactSpec:
 
 
 class DownloadResponse(Protocol):
-    status: int
+    @property
+    def status(self) -> int: ...
 
     def getheader(self, name: str) -> str | None: ...
 
@@ -313,18 +323,16 @@ def _validate_document(
         )
 
 
+def _fixed_download_path(*parts: str) -> Path:
+    suffix = chr(92).join(("Claude_allow", "Download", *parts))
+    return Path("E:" + chr(92) + suffix)
+
+
 def _resolve_evidence_parent() -> Path:
     if os.name != "nt":
-        raise BSourceAcquisitionError(
-            "NPI_B_SOURCE_WINDOWS_PATH_REQUIRED"
-        )
+        raise BSourceAcquisitionError("NPI_B_SOURCE_WINDOWS_PATH_REQUIRED")
     try:
-        return (
-            Path("E:" + os.sep)
-            / "Claude_allow"
-            / "Download"
-            / _EVIDENCE_PARENT
-        ).resolve(strict=True)
+        return _fixed_download_path(_EVIDENCE_PARENT).resolve(strict=True)
     except OSError as exc:
         raise BSourceAcquisitionError(
             "NPI_B_SOURCE_EVIDENCE_PARENT_UNAVAILABLE"
@@ -332,22 +340,33 @@ def _resolve_evidence_parent() -> Path:
 
 
 def _resolve_bound_quarantine_path() -> Path:
+    """Return the fixed lexical path; handle binding must see every reparse point."""
     if os.name != "nt":
-        raise BSourceAcquisitionError(
-            "NPI_B_SOURCE_WINDOWS_PATH_REQUIRED"
-        )
-    try:
-        return (
-            Path("E:" + os.sep)
-            / "Claude_allow"
-            / "Download"
-            / "npi-n2b1p-b-source-quarantine-20260930-e9110783"
-        ).resolve(strict=True)
-    except OSError as exc:
-        raise BSourceAcquisitionError(
-            "NPI_B_SOURCE_QUARANTINE_UNAVAILABLE"
-        ) from exc
+        raise BSourceAcquisitionError("NPI_B_SOURCE_WINDOWS_PATH_REQUIRED")
+    return _fixed_download_path(_QUARANTINE_LEAF)
 
+
+def _approved_download_parent_path() -> Path:
+    return _fixed_download_path()
+
+
+def _route_b_cache_path() -> Path:
+    return _fixed_download_path(_ROUTE_B_CACHE_LEAF)
+
+
+def _historical_cache_path() -> Path:
+    return _fixed_download_path(_HISTORICAL_CACHE_LEAF)
+
+
+def _handle_paths_overlap(left: str, right: str) -> bool:
+    first = left.rstrip(chr(92)).casefold()
+    second = right.rstrip(chr(92)).casefold()
+    separator = chr(92)
+    return (
+        first == second
+        or first.startswith(second + separator)
+        or second.startswith(first + separator)
+    )
 
 def load_missing_payload_precondition(
     project_root: Path,
@@ -423,22 +442,55 @@ class WindowsBoundQuarantinePublisher:
         self.expected_identity = expected_identity
         self._completed: set[str] = set()
 
-    def _check_root(self, root: object) -> None:
-        identity = cast(object, root).identity
-        if identity.digest != self.expected_identity:
+    def _validate_bound_root(self, root: BoundDirectory) -> None:
+        if root.identity.digest != self.expected_identity:
             raise BSourceAcquisitionError(
                 "NPI_B_SOURCE_QUARANTINE_IDENTITY_MISMATCH"
             )
+        with bind_existing_directory(
+            _approved_download_parent_path(),
+            writable=False,
+        ) as approved_parent:
+            expected_final = (
+                approved_parent.identity.final_path.rstrip(chr(92))
+                + chr(92)
+                + _QUARANTINE_LEAF.casefold()
+            )
+            if (
+                root.identity.volume_serial_number
+                != approved_parent.identity.volume_serial_number
+                or root.identity.final_path.casefold() != expected_final
+            ):
+                raise BSourceAcquisitionError(
+                    "NPI_B_SOURCE_QUARANTINE_LOCATION_MISMATCH"
+                )
+        for cache_path, required in (
+            (_route_b_cache_path(), True),
+            (_historical_cache_path(), False),
+        ):
+            try:
+                cache_root = bind_existing_directory(cache_path, writable=False)
+            except FileNotFoundError:
+                if required:
+                    raise BSourceAcquisitionError(
+                        "NPI_B_SOURCE_CACHE_BOUNDARY_UNAVAILABLE"
+                    )
+                continue
+            with cache_root:
+                if _handle_paths_overlap(
+                    root.identity.final_path,
+                    cache_root.identity.final_path,
+                ):
+                    raise BSourceAcquisitionError(
+                        "NPI_B_SOURCE_QUARANTINE_CACHE_OVERLAP"
+                    )
 
     def validate_initial_state(self) -> None:
         with bind_existing_directory(
             self.quarantine_path,
             writable=True,
         ) as root:
-            if root.identity.digest != self.expected_identity:
-                raise BSourceAcquisitionError(
-                    "NPI_B_SOURCE_QUARANTINE_IDENTITY_MISMATCH"
-                )
+            self._validate_bound_root(root)
             if root.list_names():
                 raise BSourceAcquisitionError(
                     "NPI_B_SOURCE_QUARANTINE_NOT_EMPTY"
@@ -459,10 +511,7 @@ class WindowsBoundQuarantinePublisher:
             self.quarantine_path,
             writable=True,
         ) as root:
-            if root.identity.digest != self.expected_identity:
-                raise BSourceAcquisitionError(
-                    "NPI_B_SOURCE_QUARANTINE_IDENTITY_MISMATCH"
-                )
+            self._validate_bound_root(root)
             if root.list_names() != self._completed:
                 raise BSourceAcquisitionError(
                     "NPI_B_SOURCE_QUARANTINE_UNEXPECTED_STATE"
@@ -589,7 +638,7 @@ def _terminal_result(
     success = (
         status == "B_SOURCE_BYTES_READY_AWAITING_EXTERNAL_REVIEW"
     )
-    result = {
+    result: dict[str, object] = {
         "schema_version": "1.0",
         "evidence_type": (
             "B_SOURCE_NETWORK_ACQUISITION_RESULT_V1"
@@ -614,6 +663,63 @@ def _terminal_result(
     }
     _validate_document(project_root, _RESULT_SCHEMA, result)
     return result
+
+def _execution_specs(binding: Mapping[str, object]) -> tuple[ArtifactSpec, ...]:
+    records = binding.get("artifacts")
+    if not isinstance(records, list):
+        raise BSourceAcquisitionError("NPI_B_SOURCE_EXECUTION_BINDING_INVALID")
+    specs: list[ArtifactSpec] = []
+    for record in records:
+        if not isinstance(record, Mapping):
+            raise BSourceAcquisitionError("NPI_B_SOURCE_EXECUTION_BINDING_INVALID")
+        specs.append(ArtifactSpec.from_record(record))
+    if len(specs) != 3:
+        raise BSourceAcquisitionError("NPI_B_SOURCE_EXECUTION_BINDING_INVALID")
+    return tuple(specs)
+
+
+def _binding_identity(binding: Mapping[str, object]) -> str:
+    value = binding.get("quarantine_root_identity_sha256")
+    if not isinstance(value, str):
+        raise BSourceAcquisitionError("NPI_B_SOURCE_EXECUTION_BINDING_INVALID")
+    return value
+
+
+def _failure_code(exc: Exception, fallback: str) -> str:
+    if isinstance(exc, BSourceAcquisitionError):
+        return exc.code
+    if isinstance(exc, NpiError):
+        return exc.error_code
+    return fallback
+
+
+def persist_acquisition_result(
+    project_root: Path,
+    result: Mapping[str, object],
+) -> dict[str, str]:
+    """Persist one exclusive terminal record below the fixed Git-external evidence root."""
+    _validate_document(project_root, _RESULT_SCHEMA, result)
+    if os.name != "nt":
+        raise BSourceAcquisitionError("NPI_B_SOURCE_WINDOWS_PATH_REQUIRED")
+    evidence_parent_path = _fixed_download_path(_EVIDENCE_PARENT)
+    try:
+        project_root_text = str(project_root.resolve(strict=True)).casefold()
+    except OSError as exc:
+        raise BSourceAcquisitionError("NPI_B_SOURCE_PROJECT_ROOT_UNAVAILABLE") from exc
+    evidence_text = str(evidence_parent_path).casefold()
+    if evidence_text == project_root_text or evidence_text.startswith(
+        project_root_text.rstrip(chr(92)) + chr(92)
+    ):
+        raise BSourceAcquisitionError("NPI_B_SOURCE_EVIDENCE_INSIDE_GIT")
+    payload = _canonical_json_bytes(result)
+    with bind_existing_directory(evidence_parent_path, writable=True) as evidence_parent:
+        with evidence_parent.create_file(_RESULT_FILENAME) as target:
+            target.write(payload)
+            target.flush()
+    return {
+        "terminal_evidence_ref": _RESULT_REF,
+        "terminal_evidence_sha256": hashlib.sha256(payload).hexdigest(),
+    }
 
 
 def run_b_source_network_acquisition(
@@ -653,22 +759,9 @@ def run_b_source_network_acquisition(
             missing_payload_evidence_path,
             reviewed_head=reviewed_head,
         )
-        binding = load_b_source_network_execution_binding(
-            project_root
-        )
-        specs = tuple(
-            ArtifactSpec.from_record(
-                cast(Mapping[str, object], record)
-            )
-            for record in cast(
-                list[Mapping[str, object]],
-                binding["artifacts"],
-            )
-        )
-        quarantine_identity = cast(
-            str,
-            binding["quarantine_root_identity_sha256"],
-        )
+        binding = load_b_source_network_execution_binding(project_root)
+        specs = _execution_specs(binding)
+        quarantine_identity = _binding_identity(binding)
         if binding.get("quarantine_root_ref") != _QUARANTINE_REF:
             raise BSourceAcquisitionError(
                 "NPI_B_SOURCE_QUARANTINE_BINDING_MISMATCH"
@@ -684,14 +777,11 @@ def run_b_source_network_acquisition(
     except (
         BSourceAcquisitionError,
         GateNotAuthorizedError,
+        NpiError,
         OSError,
         ValueError,
     ) as exc:
-        code = (
-            exc.code
-            if isinstance(exc, BSourceAcquisitionError)
-            else "NPI_B_SOURCE_PRE_REQUEST_GATE_FAILED"
-        )
+        code = _failure_code(exc, "NPI_B_SOURCE_PRE_REQUEST_GATE_FAILED")
         return _terminal_result(
             project_root,
             status="B_SOURCE_NETWORK_ACQUISITION_BLOCKED",
@@ -733,11 +823,7 @@ def run_b_source_network_acquisition(
             OSError,
             ValueError,
         ) as exc:
-            code = (
-                exc.code
-                if isinstance(exc, BSourceAcquisitionError)
-                else "NPI_B_SOURCE_ACQUISITION_FAILED"
-            )
+            code = _failure_code(exc, "NPI_B_SOURCE_ACQUISITION_FAILED")
             return _terminal_result(
                 project_root,
                 status="B_SOURCE_NETWORK_ACQUISITION_FAILED",
@@ -772,5 +858,6 @@ __all__ = [
     "StdlibHttpsTransport",
     "WindowsBoundQuarantinePublisher",
     "load_missing_payload_precondition",
+    "persist_acquisition_result",
     "run_b_source_network_acquisition",
 ]

@@ -95,6 +95,8 @@ post_review_execution:
   missing_payload_precondition: "REQUIRED"
   cache_promotion: "NOT_AUTHORIZED"
   model_cuda_photo_exif_sqlite_real20: "NOT_AUTHORIZED"
+  terminal_result_evidence_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-result-v1.json"
+  terminal_result_persistence: "REQUIRED_EXCLUSIVE_CREATE"
 not_authorized:
   - "network_download_before_external_review"
   - "search_or_access_outside_E_CLAUDE_ALLOW_DOWNLOAD"

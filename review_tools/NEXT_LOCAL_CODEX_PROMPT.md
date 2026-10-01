@@ -1,244 +1,82 @@
-# Local Codex handoff - B-source exact-SHA admission review
+# Local Codex handoff - bounded B-source fetcher repair
 
 Repository: `Jovifei/nightly-photo-intelligence-pipeline`
-Review branch: `chatgpt/n2b1p-final-review-20260930`
-Original pushed candidate: `5f9fd53b752551fd678bc3ecde0814b656b80dd1`
-Original candidate tree: `3904fc13884f073645ebac7a5c639639b02c1e7e`
-Remote implementation commit: `ede711176479568343c20e0c266faf09c0fbde82`
-Remote implementation tree: `ff5af34ec70d815997540d1615e7803169c894d5`
+Review branch: `chatgpt/n2b1p-b-source-fetcher-20261001`
+Repair parent: `7622d7ae4a5d4a2d78882f07df275b550768508f`
 
-The final handoff commit is the commit containing this document. Resolve the review
-branch HEAD after fetch and cross-check it with the exact final HEAD/tree reported
-by remote ChatGPT. Do not substitute the implementation SHA for that final receipt
-binding.
+The final repair HEAD is the commit containing this document. Verify its exact
+HEAD/tree against the remote ChatGPT handoff after fetch. This remains an
+executor-code review candidate and does not authorize a live download.
 
-## Remote review verdict and findings
+## Repaired local and independent-review findings
 
-The B_SOURCE control packet itself correctly remains pre-download and fail-closed:
-exactly three historical TorchVision URLs under `download.pytorch.org`, exact
-historical byte/SHA targets, fresh external quarantine binding, network denied
-before external exact-SHA review, existing Route-B cache promotion still separate,
-and model/CUDA/photo/EXIF/SQLite/Real20 unchanged.
+This successor addresses the complete reported set:
 
-The exact candidate review found two governance defects and one missing next-stage
-gate:
+- legacy network-control tests now understand the
+  `CONTROL_PLANE_AND_EXECUTOR_CODE_ONLY` class and
+  `B_SOURCE_NETWORK_REACQUISITION_V1_EXECUTOR_CODE_ONLY` scope while still
+  requiring `execution_authority=NOT_AUTHORIZED` and `network_access=DENY`;
+- the exact-SHA receipt remains executor-scope only; an earlier
+  `CONTROL_PACKET_ONLY` receipt is explicitly rejected;
+- root MANIFEST coverage is refreshed for every file added/changed on the fetcher
+  lineage, including all new schemas, tests and executor files;
+- the reported Ruff/mypy defects are repaired: UP037, jsonschema untyped import,
+  read-only response status Protocol, unsafe identity typing, terminal-result typing
+  and redundant casts;
+- the fixed quarantine path is passed lexically to the Windows handle helper without
+  `Path.resolve()`, so original parent/final junctions remain visible to per-component
+  reparse rejection;
+- after handle binding, the approved object identity is checked again, the
+  handle-observed final path must be the exact direct child of the separately bound
+  fixed Download parent, and it must not overlap separately bound Route-B or
+  historical cache roots;
+- `NpiError` / `PromotionPathSafetyError` from handle-bound operations is converted
+  into structured fail-closed terminal results. A pre-request path failure records
+  zero requests; a post-request publication failure preserves the actual request count;
+- every aggregate acquisition terminal result must be persisted with exclusive
+  handle-bound creation at logical ref
+  `E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-result-v1.json`.
+  CLI stdout contains the logical ref and SHA-256, not an unrestricted output path;
+- tests cover lexical non-resolution, handle-observed moved-under-cache rejection,
+  injected parent-junction/path-safety failure, post-request path-safety failure,
+  old-receipt rejection and CLI terminal-result persistence.
 
-1. `tools/verify_review_candidate.py` used ordinary YAML loading, so duplicate
-   mapping keys were not independently rejected.
-2. `review_candidate.allowed_change_categories` was declared but the actual
-   candidate path range was not checked against it.
-3. The external exact-SHA review receipt had a schema but no executable read-only
-   admission that rebound the receipt to the exact current HEAD/tree/MANIFEST/task/
-   Owner/runtime/review-report state before any later download.
+## Remote execution status
 
-The generic immutable-baseline / linear no-merge design is retained. No per-commit
-`HEAD^` exception was reintroduced. Full handoff/cache readiness remains a
-separate truth surface and may still fail on the historical missing cache.
+Pytest, Ruff, mypy, Windows junction creation and the executor itself are **NOT_RUN**
+remotely because the GitHub connector has no repository execution terminal.
 
-## Remote changes
+No DONE receipt was created. No request to `download.pytorch.org` or any model URL
+was made. Cache promotion, model/CUDA, photo/EXIF, SQLite/Real20, Bundle/Pilot/App,
+main merge and release remain NOT_RUN / independently gated.
 
-The review branch adds/hardens:
+## Required clean local validation
 
-- duplicate-key rejection in the generic review-eligibility YAML path;
-- closed nine-category review scope plus actual path classification from the
-  active B_SOURCE task introduction commit through current HEAD;
-- rejection of delete/rename or unrelated paths in that review range;
-- a stronger `EXTERNAL_EXACT_SHA_REVIEW_RECEIPT_V1` schema binding the tracked
-  review report as well as exact candidate/evidence hashes;
-- `validate_external_exact_sha_review_receipt` and a fail-closed wrapper;
-- `npi n2b1p network-admission --review-receipt ...`, which performs only
-  read-only exact-SHA admission and returns zero network requests;
-- Windows receipt-parent enforcement for
-  `E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930`;
-- negative tests for duplicate YAML, unrelated review paths, stale/non-DONE
-  receipts, and network-disabled CLI admission;
-- root MANIFEST updates.
-
-No downloader, cache promoter, model runner, CUDA path, photo reader, SQLite/Real20
-action, Pilot action or App mutation was added or executed remotely.
-
-## Test and execution evidence
-
-Remote GitHub read/write capability: PASS. The exact candidate was read from GitHub,
-an independent review branch was created, and the commits above were written by the
-GitHub connector.
-
-Remote repository test execution: **NOT_RUN**. The GitHub connector available to
-remote ChatGPT does not provide a repository execution environment. Do not treat the
-remote static/code review as pytest/Ruff/mypy PASS.
-
-The last local evidence supplied by Jovi applies to original candidate
-`5f9fd53...`, not to the remote changes:
-
-- generic review eligibility PASS;
-- full pytest: 946 passed, 2 known missing-cache failures, 1 Windows skip,
-  95 subtests;
-- full handoff still blocked by the historical N2B1P canonical-cache absence.
-
-No network download, cache promotion, model load, CUDA execution, photo/EXIF access,
-SQLite/Real20 action or main merge/release was performed by remote ChatGPT.
-
-## Required local validation
-
-Fetch the review branch without resetting or merging `main`, verify the exact final
-HEAD/tree against the remote ChatGPT handoff, and run in the already-qualified Python
-3.12 quality environment:
+Run from the exact final branch HEAD in the qualified Python 3.12 environment:
 
 ```text
 git status --short
 git diff --check
-E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929/Scripts/python.exe tools/verify_review_candidate.py
-E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929/Scripts/python.exe -m pytest tests/test_review_candidate_governance.py tests/test_n2b1p_b_source_network_reacquisition_v1.py tests/test_git.py tests/test_schema.py -q
-E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929/Scripts/python.exe -m ruff check .
-E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929/Scripts/python.exe -m ruff format --check .
-E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929/Scripts/python.exe -m mypy src/nightly_photo_intelligence_pipeline
-E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929/Scripts/python.exe tools/sensitive_file_scan.py
-E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929/Scripts/python.exe -m pytest -q
-E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929/Scripts/python.exe tools/verify_handoff.py
-```
-
-Recompute and verify both `MANIFEST.sha256` and
-`review_tools/MANIFEST.sha256`. Record actual command exit codes and complete
-counts. The historical canonical-cache failure must remain FAIL/BLOCKED until cache
-recovery; do not weaken the handoff gate to make it green.
-
-## Materialize the exact-SHA review receipt only after local validation
-
-If the remote branch bytes pass the targeted/static local checks, create this
-Git-external file:
-
-`E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-exact-sha-review-v1.json`
-
-Populate it from independently recomputed local values:
-
-```text
-schema_version = 1.0
-receipt_type = EXTERNAL_EXACT_SHA_REVIEW_RECEIPT_V1
-task_id = N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1
-review_scope = B_SOURCE_NETWORK_REACQUISITION_V1_CONTROL_PACKET_ONLY
-verdict = DONE
-reviewed_head = exact final review-branch HEAD from this handoff
-reviewed_tree = git rev-parse HEAD^{tree}
-immutable_baseline_commit = candidate_commit from approvals/phase_completion_N2B1P.yaml
-current_manifest_sha256 = SHA-256 of current MANIFEST.sha256 bytes
-task_sha256 = SHA-256 of tasks/phase_n2b1p_b_source_network_reacquisition_v1.yaml
-owner_approval_sha256 = SHA-256 of approvals/owner_n2b1p_b_source_network_reacquisition_v1.yaml
-runtime_configuration_sha256 = SHA-256 of approvals/n2b1p_b_source_network_runtime_configuration_v1.json
-review_report_ref = review_tools/NEXT_LOCAL_CODEX_PROMPT.md
-review_report_sha256 = SHA-256 of this tracked handoff document
-reviewed_at_utc = actual UTC materialization timestamp
-```
-
-Then run:
-
-```text
-npi n2b1p network-admission --project-root <exact-clean-review-worktree> --review-receipt E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-exact-sha-review-v1.json
-```
-
-Required result is
-`B_SOURCE_NETWORK_POST_REVIEW_ADMISSION_PASS` with
-`network_request_count=0`. Any HEAD/tree/MANIFEST/task/Owner/runtime/report drift,
-non-DONE receipt, dirty tree or wrong receipt location must stop before network.
-
-## Next bounded local action
-
-After local validation and receipt admission, revalidate the existing task's
-`exact_payloads_missing_under_ref` precondition and fresh-quarantine identity/
-attestation immediately before any acquisition.
-
-If the repository does not already contain a reviewed executor that enforces the
-exact three URLs, final-domain allowlist, byte ceilings, SHA-256s, quarantine-only
-writes, staging/reread and zero model load, **do not use ad-hoc curl/PowerShell as a
-substitute**. Prepare that executor as a code-only candidate and return it for remote
-exact-SHA review first.
-
-If a reviewed executor is already present and every current gate passes, the only
-permitted acquisition scope is the three exact task-bound weights into the bound
-fresh quarantine. After acquisition stop at
-`B_SOURCE_BYTES_READY_AWAITING_EXTERNAL_REVIEW`.
-
-Gate B quarantine-to-cache promotion remains a separate Owner/review gate. Model/CUDA
-continuity is later and separate. Real photos, EXIF, SQLite, Real20, Bundle, Pilot,
-App integration, main merge and release remain locked behind their existing gates.
-
-## Product critical path
-
-The intended path toward `PILOT_APP_INTEGRATION_PASS` remains:
-
-```text
-B_SOURCE exact bytes
--> external B_SOURCE evidence review
--> separate Gate B cache promotion
--> separate synthetic visual/CUDA continuity
--> separately authorized Real20
--> human quality decision
--> minimal Bundle/App import + rollback validation
--> bounded 100-photo Pilot
--> PILOT_APP_INTEGRATION_PASS
-```
-
-Do not skip a gate because the control packet or review eligibility is green.
-
-## 2026-10-01 targeted local-receive repair
-
-This section supersedes the earlier remote-validation instructions where they conflict.
-
-Parent handoff commit: `d95756f4a876ed425a9b6e9be53acfe5e05d2029`.
-The final repair HEAD is the commit containing this document; verify the exact
-commit/tree from the remote ChatGPT handoff after fetch.
-
-Local Codex reported against the parent handoff:
-
-- focused four-file tests: 66 passed / 6 failed;
-- mypy: 102 files PASS;
-- five governance/verify-review failures from undefined `OWNER_PATH` and
-  `RUNTIME_PATH` in `_change_category`;
-- one Windows positive receipt fixture rejected by the fixed production receipt
-  parent;
-- Ruff findings: the two F821 names, `_change_category` PLR0911, and E501 in
-  `n2b1p_b_source_network.py` / `verify_review_candidate.py`;
-- Ruff format check reported the four remotely modified Python files unformatted.
-
-This repair is intentionally narrow:
-
-1. define and table-drive the review change-path classification, preserving the
-   closed nine-category scope while removing the undefined-name and PLR0911 path;
-2. keep the production Windows receipt parent fixed at
-   `E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930`;
-3. isolate that trusted parent resolution behind
-   `_resolve_approved_review_receipt_parent` so tests can substitute a temporary
-   trusted parent without weakening production behavior;
-4. retain an explicit wrong-parent CLI negative test;
-5. clean the reported line-length/formatting defects;
-6. update both manifests and this handoff document.
-
-Remote test execution for this repair: **NOT_RUN**. GitHub write tooling has no
-repository execution terminal. No DONE receipt was issued. No network download,
-cache promotion, model/CUDA execution, photo/EXIF access, SQLite/Real20 action,
-Pilot/App action, main merge or release was run.
-
-### Required local revalidation
-
-Use the already-qualified Python 3.12 quality environment and the exact clean
-review-branch worktree. At minimum run:
-
-```text
-python -m pytest tests/test_review_candidate_governance.py tests/test_n2b1p_b_source_network_reacquisition_v1.py tests/test_git.py tests/test_schema.py -q
+python -m pytest tests/test_n2b1p_b_source_fetcher.py tests/test_n2b1p_b_source_network_reacquisition_v1.py tests/test_review_candidate_governance.py -q
 python tools/verify_review_candidate.py
-python -m ruff check tools/verify_review_candidate.py src/nightly_photo_intelligence_pipeline/n2b1p_b_source_network.py tests/test_review_candidate_governance.py tests/test_n2b1p_b_source_network_reacquisition_v1.py
-python -m ruff format --check tools/verify_review_candidate.py src/nightly_photo_intelligence_pipeline/n2b1p_b_source_network.py tests/test_review_candidate_governance.py tests/test_n2b1p_b_source_network_reacquisition_v1.py
+python -m ruff check src/nightly_photo_intelligence_pipeline/n2b1p_b_source_fetcher.py src/nightly_photo_intelligence_pipeline/n2b1p_b_source_network.py src/nightly_photo_intelligence_pipeline/cli.py tests/test_n2b1p_b_source_fetcher.py tests/test_n2b1p_b_source_network_reacquisition_v1.py
+python -m ruff format --check src/nightly_photo_intelligence_pipeline/n2b1p_b_source_fetcher.py src/nightly_photo_intelligence_pipeline/n2b1p_b_source_network.py src/nightly_photo_intelligence_pipeline/cli.py tests/test_n2b1p_b_source_fetcher.py tests/test_n2b1p_b_source_network_reacquisition_v1.py
 python -m mypy src/nightly_photo_intelligence_pipeline
+python tools/sensitive_file_scan.py
+python -m pytest -q
 python tools/verify_handoff.py
 ```
 
-Also recompute/verify `MANIFEST.sha256` and
-`review_tools/MANIFEST.sha256`. The historical missing-cache handoff failure is
-expected to remain truthful until cache recovery.
+Recompute both manifests. The historical missing-cache quality/handoff failures must
+remain truthful until cache recovery; do not weaken those gates.
 
-If these targeted checks pass, return the exact local validation results and the
-same review-branch HEAD for final exact-SHA review. Do **not** create a DONE
-receipt or start the B_SOURCE download until that final review explicitly accepts
-the repaired SHA.
+If local validation passes, return this same exact HEAD/tree for another exact-SHA
+review. Only after that review explicitly accepts this final executor-code SHA may a
+new DONE receipt be materialized with
+`review_scope=B_SOURCE_NETWORK_REACQUISITION_V1_EXECUTOR_CODE_ONLY`.
 
-Downloads, Gate-B cache promotion, model/CUDA, photos/EXIF, SQLite/Real20,
-Bundle/Pilot/App, main merge and release remain independently gated.
+Any receipt bound to `2ed5ec0...`, `7622d7a...`, the earlier control-only scope,
+or another ancestor/sibling remains invalid. Even a future valid receipt still
+requires exact-payload absence evidence and the fixed quarantine handle/location
+checks immediately before transport creation. Successful acquisition stops at
+`B_SOURCE_BYTES_READY_AWAITING_EXTERNAL_REVIEW`; Gate B cache promotion is separate.

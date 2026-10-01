@@ -144,6 +144,8 @@ executor_candidate:
   missing_payload_precondition_schema_ref: "schemas/n2b1p_b_source_missing_payload_precondition_v1.schema.json"
   transfer_manifest_schema_ref: "schemas/n2b1p_b_source_transfer_manifest_v1.schema.json"
   acquisition_result_schema_ref: "schemas/n2b1p_b_source_acquisition_result_v1.schema.json"
+  terminal_result_evidence_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-result-v1.json"
+  terminal_result_persistence: "REQUIRED_EXCLUSIVE_CREATE"
 post_review_execution:
   required_receipt_type: "EXTERNAL_EXACT_SHA_REVIEW_RECEIPT_V1"
   required_receipt_verdict: "DONE"
