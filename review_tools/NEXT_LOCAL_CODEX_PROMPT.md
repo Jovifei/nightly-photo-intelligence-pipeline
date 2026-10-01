@@ -1,62 +1,60 @@
-# Local Codex handoff - bounded B-source fetcher final receive candidate
+# Local Codex handoff - B-source one-shot executor repair
 
 Repository: `Jovifei/nightly-photo-intelligence-pipeline`
-Review branch: `chatgpt/n2b1p-b-source-fetcher-20261001`
-Remote predecessor: `28dcaaa0ad7cbb47fd31091502694b5b54a88873`
+Review branch: `chatgpt/npi-fetcher-one-shot-20261001`
+Implementation commit: `5e784fb21bf159af891880314d032b3ad14b4f12`
+Reviewed predecessor: `8089b48df29fe0a4ba72559b56e699b40ee3e6c7`
 
-The final candidate is the commit containing this document. Confirm the exact
-HEAD/tree from the remote ChatGPT handoff after fetch.
+## Exact review verdict on predecessor
 
-## Last local evidence received
+`8089b48d...` is **CHANGES_REQUIRED** for one substantive one-shot execution
+gap. Its `retry_authorized=false` value was descriptive: the CLI persisted the
+fixed terminal result only after acquisition returned. A first-request failure
+could leave the quarantine empty and permit the same reviewed HEAD/receipt to
+construct transport and issue another request before persistence discovered the
+existing terminal file.
 
-For the byte-identical tree carried by `30b3743bc8c16b14b0241742421ce3f09f0d7bc7`
-and the later empty `28dcaaa0ad7cbb47fd31091502694b5b54a88873` commit,
-Jovi reported:
+## Repair in this branch
 
-- focused tests: 75 PASS;
-- Ruff check: PASS;
-- mypy: 103 source files PASS;
-- sensitive scan: 0 violations;
-- git diff --check: PASS;
-- strict review eligibility: FAIL only because root `MANIFEST.sha256`
-  contained a pseudo path named `VERSION\\n` while Git tracks `VERSION`;
-- Ruff format --check: four files still require reformatting.
+- The executor now claims a permanent handle-bound lease at
+  `E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-one-shot-v1`.
+- Claim occurs only after DONE-receipt validation, exact-payload absence evidence,
+  exact-three binding and quarantine handle/location validation, but before
+  transport construction.
+- A flushed `reservation.json` binds reviewed HEAD/tree and
+  `retry_authorized=false`.
+- Existing lease or legacy terminal evidence rejects the invocation before any
+  transport construction. The lease is never deleted, preventing ABA/retry.
+- The first attempt's schema-valid terminal result is exclusive-created as
+  `terminal.json` inside the lease before the executor returns.
+- CLI no longer performs a separate post-action persistence step.
+- Same-runtime regression coverage asserts: first injected network failure
+  consumes exactly one request and preserves its terminal; the second call
+  consumes zero new requests and cannot overwrite the first terminal.
+- Task, Owner approval and closed schemas bind the permanent lease, pre-request
+  claim, retry denial and lease-bound terminal persistence.
 
-This successor fixes the governance-byte mismatch by binding the real tracked
-`VERSION` path, restores the todo status line to a real EOF newline, refreshes
-both manifests, and removes obsolete connector-setup wording from this handoff.
+## Required local validation
 
-## Important remaining validation
-
-Remote GitHub write tooling has no repository execution terminal, and the
-available isolated runtime has no cached Ruff 0.15.21. Therefore this handoff
-does **not** claim that Ruff format now passes. Local Codex must run the exact
-project formatter on these four files and, if it changes bytes, commit those
-formatter-only bytes and recompute both manifests before returning the final
-exact SHA:
-
-```text
-src/nightly_photo_intelligence_pipeline/n2b1p_b_source_fetcher.py
-src/nightly_photo_intelligence_pipeline/n2b1p_b_source_network.py
-tests/test_n2b1p_b_source_fetcher.py
-tests/test_n2b1p_b_source_network_reacquisition_v1.py
-```
-
-Then run:
+Remote GitHub tooling has no repository execution terminal, therefore these are
+**NOT_RUN_REMOTE** for the successor:
 
 ```text
+git status --short
 git diff --check
 python -m pytest tests/test_n2b1p_b_source_fetcher.py tests/test_n2b1p_b_source_network_reacquisition_v1.py tests/test_review_candidate_governance.py -q
 python tools/verify_review_candidate.py
-python -m ruff check src/nightly_photo_intelligence_pipeline/n2b1p_b_source_fetcher.py src/nightly_photo_intelligence_pipeline/n2b1p_b_source_network.py tests/test_n2b1p_b_source_fetcher.py tests/test_n2b1p_b_source_network_reacquisition_v1.py
-python -m ruff format --check src/nightly_photo_intelligence_pipeline/n2b1p_b_source_fetcher.py src/nightly_photo_intelligence_pipeline/n2b1p_b_source_network.py tests/test_n2b1p_b_source_fetcher.py tests/test_n2b1p_b_source_network_reacquisition_v1.py
+python -m ruff check src/nightly_photo_intelligence_pipeline/n2b1p_b_source_fetcher.py src/nightly_photo_intelligence_pipeline/cli.py tests/test_n2b1p_b_source_fetcher.py
+python -m ruff format --check src/nightly_photo_intelligence_pipeline/n2b1p_b_source_fetcher.py src/nightly_photo_intelligence_pipeline/cli.py tests/test_n2b1p_b_source_fetcher.py
 python -m mypy src/nightly_photo_intelligence_pipeline
 python tools/sensitive_file_scan.py
+python -m pytest -q
 python tools/verify_handoff.py
 ```
 
-Historical missing-cache failures remain truthful and must not be weakened.
+Expected historical readiness failures remain the canonical-cache /
+synthetic-authorization blockers. Do not weaken them.
 
-No DONE receipt is issued by this handoff. No B-source download, cache promotion,
+No DONE receipt was created. No live B-source request, cache promotion,
 model/CUDA execution, photo/EXIF access, SQLite/Real20 activity, main merge or
-release is authorized or run.
+release was run or authorized by this repair.

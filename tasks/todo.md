@@ -2433,3 +2433,19 @@ pending connector setup. Network acquisition and all model/photo execution remai
 
 Current status:
 `B_SOURCE_NETWORK_EXECUTOR_CODE_AWAITING_LOCAL_RECEIVE_AND_EXACT_SHA_REVIEW`.
+
+### Remote one-shot B-source executor remediation — 2026-10-01
+
+- [x] Exact review of `8089b48df29fe0a4ba72559b56e699b40ee3e6c7`
+  found that `retry_authorized=false` was descriptive only: terminal persistence
+  happened after network activity and did not prevent a second invocation.
+- [x] Add a permanent handle-bound one-shot lease under the fixed Git-external
+  evidence parent, claimed after all pre-request gates/quarantine validation and
+  before transport construction.
+- [x] Persist `reservation.json` before transport and the first terminal result
+  as lease-bound `terminal.json`; retain the lease permanently so any later
+  invocation is rejected with zero network requests.
+- [x] Add same-runtime double-execution regression coverage and closed task/Owner
+  schema bindings for lease, retry denial and terminal persistence.
+- [ ] Local Codex must validate this exact successor before any DONE receipt or
+  live B-source request.
