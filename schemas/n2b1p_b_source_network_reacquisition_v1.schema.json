@@ -535,6 +535,7 @@
         "network_request_or_download_before_external_review",
         "download_without_exact_done_receipt",
         "download_without_exact_payload_absence_evidence",
+        "second_execution_after_one_shot_claim",
         "redirect_outside_download.pytorch.org",
         "write_outside_bound_quarantine",
         "cache_promotion",

@@ -354,6 +354,7 @@
         "network_download_before_external_review",
         "search_or_access_outside_E_CLAUDE_ALLOW_DOWNLOAD",
         "use_of_any_url_or_domain_outside_the_exact_allowlist",
+        "second_execution_after_one_shot_claim",
         "write_to_existing_b_cache",
         "photo_or_exif_read",
         "model_load_or_inference",
