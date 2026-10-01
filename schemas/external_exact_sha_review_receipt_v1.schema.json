@@ -32,7 +32,7 @@
       "const": "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
     },
     "review_scope": {
-      "const": "B_SOURCE_NETWORK_REACQUISITION_V1_CONTROL_PACKET_ONLY"
+      "const": "B_SOURCE_NETWORK_REACQUISITION_V1_EXECUTOR_CODE_ONLY"
     },
     "verdict": {
       "enum": [
