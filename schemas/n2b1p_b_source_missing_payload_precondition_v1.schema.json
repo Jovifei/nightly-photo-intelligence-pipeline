@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b1p_b_source_missing_payload_precondition_v1.schema.json",
+  "title": "B-source exact-payload absence precondition v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evidence_type",
+    "status",
+    "root_ref",
+    "reviewed_head",
+    "lookup_mode",
+    "recursive_search",
+    "artifact_sha256s",
+    "checked_at_utc"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "evidence_type": {
+      "const": "B_SOURCE_MISSING_PAYLOAD_PRECONDITION_V1"
+    },
+    "status": {
+      "const": "EXACT_PAYLOADS_ABSENT"
+    },
+    "root_ref": {
+      "const": "E_CLAUDE_ALLOW_DOWNLOAD"
+    },
+    "reviewed_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "lookup_mode": {
+      "const": "OWNER_BOUNDED_EXACT_LOOKUP"
+    },
+    "recursive_search": {
+      "const": false
+    },
+    "artifact_sha256s": {
+      "const": [
+        "fc266e953d2b302cdcbb9ae66f71f6b0d4649928bf02dc573961e361e4918926",
+        "d234d4eae9d55d5f76de18b77cf0dc62c66fe5c5482758209d00f950c92bb280",
+        "fc3c493d68e89cc31ef488c803d5d7dd2f3190fb570598faa49fef69be8e5e70"
+      ]
+    },
+    "checked_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
