@@ -385,6 +385,7 @@ def test_network_failure_is_terminal_and_not_retryable(
         "EXTERNAL_REVIEW_B_SOURCE_ACQUISITION_FAILURE"
     )
 
+
 class _FakeBoundDirectory:
     def __init__(
         self,
@@ -460,7 +461,11 @@ def _admit_for_test(
             ],
         },
     )
-    monkeypatch.setattr(\n        fetcher,\n        "_validate_document",\n        lambda *_args, **_kwargs: None,\n    )
+    monkeypatch.setattr(
+        fetcher,
+        "_validate_document",
+        lambda *_args, **_kwargs: None,
+    )
 
 
 def test_quarantine_path_is_lexical_and_not_resolved(
