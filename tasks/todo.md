@@ -2449,3 +2449,16 @@ Current status:
   schema bindings for lease, retry denial and terminal persistence.
 - [ ] Local Codex must validate this exact successor before any DONE receipt or
   live B-source request.
+
+### One-shot lease crash audit remediation — 2026-10-02
+
+Remote exact-SHA review found crash windows that could leave an empty permanent lease or a partial terminal file. The remote writer could not commit the repair; local implementation follows the same requested one-shot scope. This remains code-only and does not authorize a network request.
+
+- [x] Add regression tests for incomplete claim states, staging crash markers, atomic publish order, terminal write interruption, identity replacement and zero-network second invocation.
+- [x] Atomically stage and publish the reservation before transport construction; bind the live lease and reservation handles, object identities, reviewed HEAD/tree and nonce across execution.
+- [x] Atomically stage and publish result plus terminal binding; validate recovered reservation/result/binding content and hashes before classifying a lease as completed.
+- [x] Update closed task/Owner contracts, schemas and catalog for crash recovery states and exact terminal paths.
+- [ ] Regenerate the index-derived root MANIFEST, run focused/full quality and review eligibility, commit and push only this review branch.
+- [ ] Submit the exact pushed SHA to the existing ChatGPT Project chat for independent review; keep network/download, cache promotion, GPU, photo, SQLite and downstream gates closed.
+
+Current status: `ONE_SHOT_CRASH_RECOVERY_LOCAL_IMPLEMENTATION_IN_PROGRESS`; no network request or download performed.

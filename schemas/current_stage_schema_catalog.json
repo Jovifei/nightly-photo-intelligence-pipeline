@@ -43,6 +43,8 @@
     {"file": "npi_owner_execution_lease_anchor_v1.schema.json", "purpose": "fixed external Owner trust anchor for the controlled synthetic execution lease"},
     {"file": "n2b2_runtime_revalidation_evidence_v1.schema.json", "purpose": "versioned runtime identity and command evidence"},
     {"file": "n2b2_vision_fact_contract_v1_2.schema.json", "purpose": "versioned bbox-union empty-area proxy facts; historical v1.1 remains unchanged"},
-    {"file": "n2b2_real20_runtime_identity_v2.schema.json", "purpose": "versioned Real20 runtime observation and Owner-bound ledger inheritance proof"}
+    {"file": "n2b2_real20_runtime_identity_v2.schema.json", "purpose": "versioned Real20 runtime observation and Owner-bound ledger inheritance proof"},
+    {"file": "n2b1p_b_source_one_shot_reservation_v1.schema.json", "purpose": "closed crash-auditable pre-request one-shot lease reservation"},
+    {"file": "n2b1p_b_source_one_shot_terminal_v1.schema.json", "purpose": "closed lease-bound atomic terminal result binding"}
   ]
 }

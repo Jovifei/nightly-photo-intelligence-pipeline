@@ -13,6 +13,7 @@ from typer.testing import CliRunner
 from nightly_photo_intelligence_pipeline import n2b1p_b_source_fetcher as fetcher
 from nightly_photo_intelligence_pipeline.cli import app
 from nightly_photo_intelligence_pipeline.domain.errors import PromotionPathSafetyError
+from nightly_photo_intelligence_pipeline.json_strict import loads_json_strict
 
 
 @dataclass
@@ -121,10 +122,13 @@ class MemoryOneShotClaim:
             ),
             "terminal_evidence_ref": (
                 "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/"
-                "b-source-network-acquisition-one-shot-v1/terminal.json"
+                "b-source-network-acquisition-one-shot-v1/terminal/terminal.json"
             ),
             "terminal_evidence_sha256": hashlib.sha256(payload).hexdigest(),
         }
+
+    def close(self) -> None:
+        return None
 
 
 def _spec(
@@ -399,6 +403,7 @@ class _FakeBoundDirectory:
         final_path: str,
         volume: int = 1,
         names: set[str] | None = None,
+        directories: dict[str, _FakeBoundDirectory] | None = None,
     ) -> None:
         self.identity = SimpleNamespace(
             digest=digest,
@@ -406,15 +411,244 @@ class _FakeBoundDirectory:
             volume_serial_number=volume,
         )
         self._names = names or set()
+        self._directories = directories or {}
 
     def list_names(self) -> set[str]:
         return set(self._names)
+
+    def close(self) -> None:
+        return None
+
+    def open_directory(
+        self,
+        name: str,
+        *,
+        writable: bool | None = None,
+    ) -> _FakeBoundDirectory:
+        del writable
+        try:
+            return self._directories[name]
+        except KeyError as exc:
+            raise FileNotFoundError(name) from exc
 
     def __enter__(self) -> _FakeBoundDirectory:
         return self
 
     def __exit__(self, *_args: object) -> None:
         return None
+
+
+class _MemoryBoundFile:
+    def __init__(
+        self,
+        *,
+        name: str,
+        parent: _MemoryBoundDirectory,
+        events: list[tuple[str, str]],
+    ) -> None:
+        self.name = name
+        self.parent = parent
+        self.events = events
+        self.data = bytearray()
+        file_id = hashlib.sha256(
+            (parent.identity.final_path + chr(92) + name + ":" + str(len(events))).encode()
+        ).hexdigest()[:32]
+        self.identity = SimpleNamespace(
+            volume_serial_number=1,
+            file_id_hex=file_id,
+            final_path=parent.identity.final_path + chr(92) + name,
+            digest=hashlib.sha256(f"{1:016x}:{file_id}".encode("ascii")).hexdigest(),
+        )
+
+    def __enter__(self) -> _MemoryBoundFile:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+    def write(self, payload: bytes) -> None:
+        self.data.extend(payload)
+        self.events.append(("write", self.name))
+
+    def flush(self) -> None:
+        self.events.append(("flush", self.name))
+
+    def read_all(self, *, max_bytes: int) -> bytes:
+        assert len(self.data) <= max_bytes
+        return bytes(self.data)
+
+    def sha256_and_size(self) -> tuple[str, int]:
+        return hashlib.sha256(self.data).hexdigest(), len(self.data)
+
+    def close(self) -> None:
+        return None
+
+    def _verify(self) -> None:
+        return None
+
+
+class _MemoryBoundDirectory:
+    def __init__(
+        self,
+        *,
+        path: str,
+        events: list[tuple[str, str]],
+        parent: _MemoryBoundDirectory | None = None,
+        name: str = "root",
+        fail_create_files: set[str] | None = None,
+    ) -> None:
+        self.path = path
+        self.events = events
+        self.parent = parent
+        self.name = name
+        self._directories: dict[str, _MemoryBoundDirectory] = {}
+        self._files: dict[str, _MemoryBoundFile] = {}
+        self.fail_create_files = fail_create_files or set()
+        file_id = hashlib.sha256(path.encode()).hexdigest()[:32]
+        self.identity = SimpleNamespace(
+            digest=hashlib.sha256(f"{1:016x}:{file_id}".encode("ascii")).hexdigest(),
+            volume_serial_number=1,
+            file_id_hex=file_id,
+            final_path=path,
+        )
+
+    def __enter__(self) -> _MemoryBoundDirectory:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+    def close(self) -> None:
+        return None
+
+    def _verify(self) -> None:
+        return None
+
+    def list_names(self) -> set[str]:
+        return set(self._directories) | set(self._files)
+
+    def create_directory(self, name: str) -> _MemoryBoundDirectory:
+        if name in self.list_names():
+            raise FileExistsError(name)
+        child_path = self.path + chr(92) + name
+        child = _MemoryBoundDirectory(
+            path=child_path,
+            events=self.events,
+            parent=self,
+            name=name,
+            fail_create_files=self.fail_create_files.copy(),
+        )
+        self._directories[name] = child
+        self.events.append(("mkdir", name))
+        return child
+
+    def open_directory(
+        self,
+        name: str,
+        *,
+        writable: bool | None = None,
+    ) -> _MemoryBoundDirectory:
+        del writable
+        return self._directories[name]
+
+    def create_file(self, name: str) -> _MemoryBoundFile:
+        if name in self.fail_create_files:
+            raise PromotionPathSafetyError("NPI_PROMOTION_RACE_DETECTED")
+        if name in self.list_names():
+            raise FileExistsError(name)
+        file = _MemoryBoundFile(name=name, parent=self, events=self.events)
+        self._files[name] = file
+        self.events.append(("create_file", name))
+        return file
+
+    def open_file(self, name: str) -> _MemoryBoundFile:
+        return self._files[name]
+
+    def rename_to(
+        self,
+        destination_root: _MemoryBoundDirectory,
+        destination_name: str,
+    ) -> None:
+        if destination_name in destination_root.list_names():
+            raise FileExistsError(destination_name)
+        assert self.parent is not None
+        del self.parent._directories[self.name]
+        self.name = destination_name
+        self.parent = destination_root
+        self.path = destination_root.path + chr(92) + destination_name
+        self.identity.final_path = self.path
+        destination_root._directories[destination_name] = self
+        self.events.append(("rename", destination_name))
+
+
+def _completed_one_shot_state(
+    *,
+    corrupt_result_binding: bool = False,
+) -> _MemoryBoundDirectory:
+    events: list[tuple[str, str]] = []
+    evidence_parent = _MemoryBoundDirectory(
+        path="approved-evidence-parent",
+        events=events,
+    )
+    lease = evidence_parent.create_directory(fetcher._LEASE_DIRNAME)
+    head = "a" * 40
+    tree = "b" * 40
+    nonce = "c" * 64
+    with lease.create_file(fetcher._RESERVATION_FILENAME) as target:
+        reservation_file_identity_sha256 = target.identity.digest
+        reservation = {
+            "schema_version": "1.0",
+            "evidence_type": "B_SOURCE_NETWORK_ONE_SHOT_RESERVATION_V1",
+            "state": "CLAIMED",
+            "reviewed_head": head,
+            "reviewed_tree": tree,
+            "lease_identity_sha256": lease.identity.digest,
+            "reservation_file_identity_sha256": reservation_file_identity_sha256,
+            "nonce": nonce,
+            "claimed_at_utc": "2026-10-01T00:00:00Z",
+            "retry_authorized": False,
+        }
+        target.write(fetcher._canonical_json_bytes(reservation))
+    result: dict[str, object] = {
+        "schema_version": "1.0",
+        "evidence_type": "B_SOURCE_NETWORK_ACQUISITION_RESULT_V1",
+        "status": "B_SOURCE_NETWORK_ACQUISITION_BLOCKED",
+        "failure_code": "NPI_B_SOURCE_NOT_ADMITTED",
+        "reviewed_head": head,
+        "reviewed_tree": tree,
+        "quarantine_root_ref": (
+            "E_CLAUDE_ALLOW_DOWNLOAD/npi-n2b1p-b-source-quarantine-20260930-e9110783"
+        ),
+        "quarantine_root_identity_sha256": "UNBOUND",
+        "network_request_count": 0,
+        "artifact_results": [],
+        "terminal": True,
+        "retry_authorized": False,
+        "cache_promotion": "NOT_AUTHORIZED",
+        "model_cuda_photo_exif_sqlite_real20": "NOT_AUTHORIZED",
+        "mandatory_stop": "EXTERNAL_REVIEW_B_SOURCE_ACQUISITION_FAILURE",
+    }
+    result_bytes = fetcher._canonical_json_bytes(result)
+    terminal = lease.create_directory(fetcher._TERMINAL_DIRNAME)
+    with terminal.create_file(fetcher._TERMINAL_FILENAME) as target:
+        target.write(result_bytes)
+    binding = {
+        "schema_version": "1.0",
+        "evidence_type": "B_SOURCE_NETWORK_ONE_SHOT_TERMINAL_V1",
+        "state": "COMPLETED",
+        "reviewed_head": head,
+        "reviewed_tree": tree,
+        "lease_identity_sha256": lease.identity.digest,
+        "reservation_file_identity_sha256": reservation_file_identity_sha256,
+        "nonce_sha256": hashlib.sha256(nonce.encode("ascii")).hexdigest(),
+        "terminal_result_sha256": "0" * 64
+        if corrupt_result_binding
+        else hashlib.sha256(result_bytes).hexdigest(),
+        "retry_authorized": False,
+    }
+    with terminal.create_file(fetcher._TERMINAL_BINDING_FILENAME) as target:
+        target.write(fetcher._canonical_json_bytes(binding))
+    return evidence_parent
 
 
 def _exact_three_test_specs(
@@ -611,7 +845,7 @@ def test_cli_reports_terminal_evidence_persisted_by_executor(
         ),
         "terminal_evidence_ref": (
             "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/"
-            "b-source-network-acquisition-one-shot-v1/terminal.json"
+            "b-source-network-acquisition-one-shot-v1/terminal/terminal.json"
         ),
         "terminal_evidence_sha256": "c" * 64,
     }
@@ -689,29 +923,548 @@ def test_same_runtime_second_execution_is_zero_network_and_preserves_first_termi
     assert state["terminal"] == first_terminal
 
 
+def test_existing_empty_one_shot_lease_is_incomplete_claim(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lease = _FakeBoundDirectory(
+        digest="f" * 64,
+        final_path="approved-evidence-parent/lease",
+    )
+    parent = _FakeBoundDirectory(
+        digest="e" * 64,
+        final_path="approved-evidence-parent",
+        names={fetcher._LEASE_DIRNAME},
+        directories={fetcher._LEASE_DIRNAME: lease},
+    )
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: parent,
+    )
+
+    with pytest.raises(
+        fetcher.BSourceAcquisitionError,
+        match="ONE_SHOT_INCOMPLETE_CLAIM",
+    ):
+        fetcher.claim_one_shot_execution(project_root, "a" * 40, "b" * 40)
+
+
+def test_existing_one_shot_lease_with_reservation_is_not_retried(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lease = _FakeBoundDirectory(
+        digest="f" * 64,
+        final_path="approved-evidence-parent/lease",
+        names={fetcher._RESERVATION_FILENAME},
+    )
+    parent = _FakeBoundDirectory(
+        digest="e" * 64,
+        final_path="approved-evidence-parent",
+        names={fetcher._LEASE_DIRNAME},
+        directories={fetcher._LEASE_DIRNAME: lease},
+    )
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: parent,
+    )
+
+    with pytest.raises(
+        fetcher.BSourceAcquisitionError,
+        match="ONE_SHOT_INCOMPLETE_CLAIM",
+    ):
+        fetcher.claim_one_shot_execution(project_root, "a" * 40, "b" * 40)
+
+
+def test_completed_one_shot_lease_is_classified_completed(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parent = _completed_one_shot_state()
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: parent,
+    )
+
+    with pytest.raises(
+        fetcher.BSourceAcquisitionError,
+        match="ONE_SHOT_ALREADY_COMPLETED",
+    ):
+        fetcher.claim_one_shot_execution(project_root, "a" * 40, "b" * 40)
+
+
+def test_corrupt_terminal_binding_is_incomplete_and_not_retried(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parent = _completed_one_shot_state(corrupt_result_binding=True)
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: parent,
+    )
+
+    with pytest.raises(
+        fetcher.BSourceAcquisitionError,
+        match="ONE_SHOT_INCOMPLETE_CLAIM",
+    ):
+        fetcher.claim_one_shot_execution(project_root, "a" * 40, "b" * 40)
+
+
+def test_claim_staging_after_crash_is_incomplete_and_not_retried(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parent = _FakeBoundDirectory(
+        digest="e" * 64,
+        final_path="approved-evidence-parent",
+        names={"b-source-network-acquisition-one-shot-staging-v1"},
+    )
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: parent,
+    )
+
+    with pytest.raises(
+        fetcher.BSourceAcquisitionError,
+        match="ONE_SHOT_INCOMPLETE_CLAIM",
+    ):
+        fetcher.claim_one_shot_execution(project_root, "a" * 40, "b" * 40)
+
+
+def test_claim_crash_after_staging_create_is_incomplete_and_not_retried(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[tuple[str, str]] = []
+    evidence_parent = _MemoryBoundDirectory(
+        path="approved-evidence-parent",
+        events=events,
+        fail_create_files={fetcher._RESERVATION_FILENAME},
+    )
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: evidence_parent,
+    )
+    monkeypatch.setattr(fetcher, "_validate_document", lambda *_args, **_kwargs: None)
+
+    with pytest.raises(PromotionPathSafetyError):
+        fetcher.claim_one_shot_execution(project_root, "a" * 40, "b" * 40)
+    assert fetcher._LEASE_STAGING_DIRNAME in evidence_parent.list_names()
+
+    with pytest.raises(
+        fetcher.BSourceAcquisitionError,
+        match="ONE_SHOT_INCOMPLETE_CLAIM",
+    ):
+        fetcher.claim_one_shot_execution(project_root, "a" * 40, "b" * 40)
+
+
+def test_terminal_write_crash_leaves_incomplete_lease_and_blocks_retry(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[tuple[str, str]] = []
+    evidence_parent = _MemoryBoundDirectory(
+        path="approved-evidence-parent",
+        events=events,
+    )
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: evidence_parent,
+    )
+    monkeypatch.setattr(fetcher, "_validate_document", lambda *_args, **_kwargs: None)
+    claim = fetcher.claim_one_shot_execution(project_root, "a" * 40, "b" * 40)
+    claim.lease.fail_create_files.add(fetcher._TERMINAL_BINDING_FILENAME)
+    with pytest.raises(
+        fetcher.BSourceAcquisitionError,
+        match="TERMINAL_PERSIST_FAILED",
+    ):
+        claim.persist_terminal(
+            {
+                "reviewed_head": "a" * 40,
+                "reviewed_tree": "b" * 40,
+                "status": "B_SOURCE_NETWORK_ACQUISITION_FAILED",
+                "network_request_count": 1,
+            }
+        )
+    claim.lease.fail_create_files.clear()
+    claim.close()
+
+    with pytest.raises(
+        fetcher.BSourceAcquisitionError,
+        match="ONE_SHOT_INCOMPLETE_CLAIM",
+    ):
+        fetcher.claim_one_shot_execution(project_root, "a" * 40, "b" * 40)
+
+
+def test_claim_flushes_reservation_before_atomic_lease_publish(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[tuple[str, str]] = []
+    evidence_parent = _MemoryBoundDirectory(
+        path="approved-evidence-parent",
+        events=events,
+    )
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: evidence_parent,
+    )
+    monkeypatch.setattr(fetcher, "_validate_document", lambda *_args, **_kwargs: None)
+
+    claim = fetcher.claim_one_shot_execution(
+        project_root,
+        "a" * 40,
+        "b" * 40,
+    )
+    try:
+        flush_index = events.index(("flush", fetcher._RESERVATION_FILENAME))
+        publish_index = events.index(("rename", fetcher._LEASE_DIRNAME))
+        assert flush_index < publish_index
+        assert fetcher._LEASE_DIRNAME in evidence_parent.list_names()
+    finally:
+        close = getattr(claim, "close", None)
+        if close is not None:
+            close()
+
+
+def test_terminal_record_is_staged_and_atomically_published(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[tuple[str, str]] = []
+    evidence_parent = _MemoryBoundDirectory(
+        path="approved-evidence-parent",
+        events=events,
+    )
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: evidence_parent,
+    )
+    monkeypatch.setattr(fetcher, "_validate_document", lambda *_args, **_kwargs: None)
+    claim = fetcher.claim_one_shot_execution(
+        project_root,
+        "a" * 40,
+        "b" * 40,
+    )
+    try:
+        result: dict[str, object] = {
+            "reviewed_head": "a" * 40,
+            "reviewed_tree": "b" * 40,
+            "status": "B_SOURCE_NETWORK_ACQUISITION_FAILED",
+            "network_request_count": 1,
+        }
+        claim.persist_terminal(result)
+        terminal_publish_index = events.index(("rename", fetcher._TERMINAL_DIRNAME))
+        terminal_flush_index = events.index(("flush", fetcher._TERMINAL_FILENAME))
+        assert terminal_flush_index < terminal_publish_index
+        lease = evidence_parent._directories[fetcher._LEASE_DIRNAME]
+        assert fetcher._TERMINAL_DIRNAME in lease.list_names()
+        terminal = lease._directories[fetcher._TERMINAL_DIRNAME]
+        assert fetcher._TERMINAL_FILENAME in terminal.list_names()
+        assert fetcher._TERMINAL_BINDING_FILENAME in terminal.list_names()
+        binding = loads_json_strict(
+            terminal._files[fetcher._TERMINAL_BINDING_FILENAME].read_all(max_bytes=64 * 1024)
+        )
+        assert binding["lease_identity_sha256"] == claim.lease_identity.digest
+        assert binding["reservation_file_identity_sha256"] == claim.reservation_identity.digest
+        assert binding["nonce_sha256"] == hashlib.sha256(claim.nonce.encode("ascii")).hexdigest()
+    finally:
+        close = getattr(claim, "close", None)
+        if close is not None:
+            close()
+
+
+def test_terminal_result_must_match_claimed_head_and_tree(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[tuple[str, str]] = []
+    evidence_parent = _MemoryBoundDirectory(
+        path="approved-evidence-parent",
+        events=events,
+    )
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: evidence_parent,
+    )
+    monkeypatch.setattr(fetcher, "_validate_document", lambda *_args, **_kwargs: None)
+    claim = fetcher.claim_one_shot_execution(project_root, "a" * 40, "b" * 40)
+    try:
+        result = {
+            "reviewed_head": "c" * 40,
+            "reviewed_tree": "d" * 40,
+        }
+        with pytest.raises(
+            fetcher.BSourceAcquisitionError,
+            match="TERMINAL_RESULT_BINDING_MISMATCH",
+        ):
+            claim.persist_terminal(result)
+        assert fetcher._TERMINAL_STAGING_DIRNAME not in claim.lease.list_names()
+    finally:
+        claim.close()
+
+
+def test_claim_reservation_binds_review_and_lease_identity_with_nonce(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[tuple[str, str]] = []
+    evidence_parent = _MemoryBoundDirectory(
+        path="approved-evidence-parent",
+        events=events,
+    )
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: evidence_parent,
+    )
+    monkeypatch.setattr(fetcher, "_validate_document", lambda *_args, **_kwargs: None)
+    claim = fetcher.claim_one_shot_execution(
+        project_root,
+        "a" * 40,
+        "b" * 40,
+    )
+    try:
+        reservation = loads_json_strict(claim.reservation_file.read_all(max_bytes=64 * 1024))
+        assert reservation["state"] == "CLAIMED"
+        assert reservation["reviewed_head"] == "a" * 40
+        assert reservation["reviewed_tree"] == "b" * 40
+        assert reservation["lease_identity_sha256"] == claim.lease_identity.digest
+        assert reservation["reservation_file_identity_sha256"] == claim.reservation_identity.digest
+        assert reservation["nonce"] == claim.nonce
+        assert reservation["retry_authorized"] is False
+    finally:
+        claim.close()
+
+
+def test_replaced_reservation_identity_is_rejected_before_terminal_publish(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[tuple[str, str]] = []
+    evidence_parent = _MemoryBoundDirectory(
+        path="approved-evidence-parent",
+        events=events,
+    )
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: evidence_parent,
+    )
+    monkeypatch.setattr(fetcher, "_validate_document", lambda *_args, **_kwargs: None)
+    claim = fetcher.claim_one_shot_execution(
+        project_root,
+        "a" * 40,
+        "b" * 40,
+    )
+    claim.reservation_file.identity = SimpleNamespace(
+        volume_serial_number=1,
+        file_id_hex="0" * 32,
+        final_path="approved-evidence-parent/lease/reservation.json",
+    )
+    try:
+        with pytest.raises(
+            fetcher.BSourceAcquisitionError,
+            match="RESERVATION_IDENTITY_MISMATCH",
+        ):
+            claim.persist_terminal(
+                {
+                    "reviewed_head": "a" * 40,
+                    "reviewed_tree": "b" * 40,
+                    "status": "B_SOURCE_NETWORK_ACQUISITION_FAILED",
+                    "network_request_count": 1,
+                }
+            )
+        assert ("mkdir", fetcher._TERMINAL_STAGING_DIRNAME) not in events
+    finally:
+        claim.close()
+
+
+def test_terminal_staging_crash_blocks_second_claim(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lease = _FakeBoundDirectory(
+        digest="f" * 64,
+        final_path="approved-evidence-parent/lease",
+        names={
+            fetcher._RESERVATION_FILENAME,
+            fetcher._TERMINAL_STAGING_DIRNAME,
+        },
+    )
+    parent = _FakeBoundDirectory(
+        digest="e" * 64,
+        final_path="approved-evidence-parent",
+        names={fetcher._LEASE_DIRNAME},
+        directories={fetcher._LEASE_DIRNAME: lease},
+    )
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: parent,
+    )
+
+    with pytest.raises(
+        fetcher.BSourceAcquisitionError,
+        match="ONE_SHOT_INCOMPLETE_CLAIM",
+    ):
+        fetcher.claim_one_shot_execution(
+            project_root,
+            "a" * 40,
+            "b" * 40,
+        )
+
+
+def test_real_one_shot_second_invocation_makes_zero_http_requests(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first_spec = _spec(b"abcd", artifact_id="artifact-one")
+    specs = _exact_three_test_specs(first_spec)
+    _admit_for_test(monkeypatch, specs=specs)
+    events: list[tuple[str, str]] = []
+    evidence_parent = _MemoryBoundDirectory(
+        path="approved-evidence-parent",
+        events=events,
+    )
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: evidence_parent,
+    )
+    monkeypatch.setattr(
+        fetcher,
+        "claim_one_shot_execution",
+        lambda _root, head, tree: fetcher.OneShotExecutionClaim.claim(
+            project_root,
+            head,
+            tree,
+        ),
+    )
+    first_transport = FakeTransport(
+        {
+            first_spec.url: [
+                FakeResponse(b"abcd", content_length=4),
+            ]
+        }
+    )
+    first = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=first_transport,
+        publisher=MemoryPublisher(),
+    )
+    second_transport = FakeTransport({})
+    second = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=second_transport,
+        publisher=MemoryPublisher(),
+    )
+
+    assert first["status"] == "B_SOURCE_NETWORK_ACQUISITION_FAILED"
+    assert first["network_request_count"] == 2
+    assert first["terminal_evidence_ref"].endswith("terminal/terminal.json")
+    assert second["status"] == "B_SOURCE_NETWORK_ACQUISITION_BLOCKED"
+    assert second["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_ALREADY_COMPLETED"
+    assert second["network_request_count"] == 0
+    assert second_transport.calls == []
+
+
+def test_replaced_reservation_after_restart_blocks_network_request(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    spec = _spec(b"four", artifact_id="artifact-one")
+    _admit_for_test(monkeypatch, specs=_exact_three_test_specs(spec))
+    evidence_parent = _completed_one_shot_state()
+    lease = evidence_parent._directories[fetcher._LEASE_DIRNAME]
+    original = lease._files[fetcher._RESERVATION_FILENAME]
+    original_bytes = original.read_all(max_bytes=16 * 1024)
+    replacement = _MemoryBoundFile(
+        name=fetcher._RESERVATION_FILENAME,
+        parent=lease,
+        events=original.events,
+    )
+    replacement.write(original_bytes)
+    assert replacement.identity.digest != original.identity.digest
+    lease._files[fetcher._RESERVATION_FILENAME] = replacement
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: evidence_parent,
+    )
+    monkeypatch.setattr(
+        fetcher,
+        "claim_one_shot_execution",
+        lambda _root, head, tree: fetcher.OneShotExecutionClaim.claim(
+            project_root,
+            head,
+            tree,
+        ),
+    )
+    transport = FakeTransport({})
+
+    result = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=transport,
+        publisher=MemoryPublisher(),
+    )
+
+    assert result["status"] == "B_SOURCE_NETWORK_ACQUISITION_BLOCKED"
+    assert result["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM"
+    assert result["network_request_count"] == 0
+    assert transport.calls == []
+
+
 def test_existing_one_shot_marker_rejects_claim(
     project_root: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    class ExistingLeaseParent:
-        def __enter__(self) -> ExistingLeaseParent:
-            return self
-
-        def __exit__(self, *_args: object) -> None:
-            return None
-
-        def list_names(self) -> set[str]:
-            return {fetcher._LEASE_DIRNAME}
+    evidence_parent = _MemoryBoundDirectory(
+        path="approved-evidence-parent",
+        events=[],
+    )
+    evidence_parent.create_directory(fetcher._LEASE_DIRNAME)
 
     monkeypatch.setattr(fetcher.os, "name", "nt")
     monkeypatch.setattr(
         fetcher,
         "bind_existing_directory",
-        lambda *_args, **_kwargs: ExistingLeaseParent(),
+        lambda *_args, **_kwargs: evidence_parent,
     )
     with pytest.raises(
         fetcher.BSourceAcquisitionError,
-        match="ONE_SHOT_ALREADY_CLAIMED",
+        match="ONE_SHOT_INCOMPLETE_CLAIM",
     ):
         fetcher.claim_one_shot_execution(
             project_root,

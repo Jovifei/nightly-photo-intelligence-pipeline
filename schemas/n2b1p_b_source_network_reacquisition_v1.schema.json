@@ -578,7 +578,8 @@
         "terminal_result_evidence_ref",
         "terminal_result_persistence",
         "one_shot_lease_ref",
-        "one_shot_policy"
+        "one_shot_policy",
+        "one_shot_crash_recovery"
       ],
       "properties": {
         "module_ref": {
@@ -606,16 +607,30 @@
           "const": "schemas/n2b1p_b_source_acquisition_result_v1.schema.json"
         },
         "terminal_result_evidence_ref": {
-          "const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-one-shot-v1/terminal.json"
+          "const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-one-shot-v1/terminal/terminal.json"
         },
         "terminal_result_persistence": {
-          "const": "LEASE_BOUND_EXCLUSIVE_CREATE"
+          "const": "LEASE_BOUND_HANDLE_STAGED_ATOMIC_DIRECTORY_RENAME"
         },
         "one_shot_lease_ref": {
           "const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-one-shot-v1"
         },
         "one_shot_policy": {
-          "const": "PRE_REQUEST_EXCLUSIVE_PERSISTENT_LEASE"
+          "const": "PRE_REQUEST_EXCLUSIVE_ATOMIC_PERSISTENT_LEASE"
+        },
+        "one_shot_crash_recovery": {
+          "const": {
+            "reservation_schema_ref": "schemas/n2b1p_b_source_one_shot_reservation_v1.schema.json",
+            "terminal_schema_ref": "schemas/n2b1p_b_source_one_shot_terminal_v1.schema.json",
+            "claim_staging_dirname": "b-source-network-acquisition-one-shot-staging-v1",
+            "terminal_staging_dirname": "terminal-staging",
+            "terminal_dirname": "terminal",
+            "atomic_publish": "HANDLE_BOUND_DIRECTORY_RENAME",
+            "identity_binding": ["lease_identity_sha256", "reservation_file_identity_sha256", "nonce"],
+            "recovery_states": ["CLAIMED", "INCOMPLETE_CLAIM", "COMPLETED"],
+            "incomplete_claim_retry": "DENY",
+            "legacy_executor_receipt_scope": "B_SOURCE_NETWORK_REACQUISITION_V1_EXECUTOR_CODE_ONLY"
+          }
         }
       }
     },

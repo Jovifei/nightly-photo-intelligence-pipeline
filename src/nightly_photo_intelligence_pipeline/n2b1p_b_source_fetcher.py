@@ -11,6 +11,7 @@ import hashlib
 import http.client
 import json
 import os
+import secrets
 import ssl
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -25,7 +26,7 @@ from jsonschema import (  # type: ignore[import-untyped]
 )
 
 from .domain.errors import GateNotAuthorizedError, NpiError
-from .json_strict import load_json_strict
+from .json_strict import load_json_strict, loads_json_strict
 from .n2b1p_b_source_network import (
     POST_REVIEW_ADMISSION_STATUS,
     check_external_exact_sha_review_receipt,
@@ -33,6 +34,8 @@ from .n2b1p_b_source_network import (
 )
 from .windows_bound_promotion import (
     BoundDirectory,
+    BoundFile,
+    BoundObjectIdentity,
     BoundStagingTransaction,
     bind_existing_directory,
 )
@@ -45,12 +48,18 @@ _MISSING_PRECONDITION_FILENAME = "b-source-missing-payload-precondition-v1.json"
 _MISSING_PRECONDITION_SCHEMA = "n2b1p_b_source_missing_payload_precondition_v1.schema.json"
 _TRANSFER_SCHEMA = "n2b1p_b_source_transfer_manifest_v1.schema.json"
 _RESULT_SCHEMA = "n2b1p_b_source_acquisition_result_v1.schema.json"
+_RESERVATION_SCHEMA = "n2b1p_b_source_one_shot_reservation_v1.schema.json"
+_ONE_SHOT_TERMINAL_SCHEMA = "n2b1p_b_source_one_shot_terminal_v1.schema.json"
 _LEGACY_RESULT_FILENAME = "b-source-network-acquisition-result-v1.json"
 _LEASE_DIRNAME = "b-source-network-acquisition-one-shot-v1"
+_LEASE_STAGING_DIRNAME = "b-source-network-acquisition-one-shot-staging-v1"
 _RESERVATION_FILENAME = "reservation.json"
+_TERMINAL_DIRNAME = "terminal"
+_TERMINAL_STAGING_DIRNAME = "terminal-staging"
 _TERMINAL_FILENAME = "terminal.json"
+_TERMINAL_BINDING_FILENAME = "binding.json"
 _LEASE_REF = f"E_CLAUDE_ALLOW_DOWNLOAD/{_EVIDENCE_PARENT}/{_LEASE_DIRNAME}"
-_RESULT_REF = f"{_LEASE_REF}/{_TERMINAL_FILENAME}"
+_RESULT_REF = f"{_LEASE_REF}/{_TERMINAL_DIRNAME}/{_TERMINAL_FILENAME}"
 _QUARANTINE_LEAF = "npi-n2b1p-b-source-quarantine-20260930-e9110783"
 _ROUTE_B_CACHE_LEAF = "npi-n2b1p-cache-v2-20260929"
 _HISTORICAL_CACHE_LEAF = "npi-model-cache"
@@ -621,14 +630,113 @@ def _failure_code(exc: Exception, fallback: str) -> str:
     return fallback
 
 
-@dataclass(frozen=True)
+def _read_bound_json(
+    directory: BoundDirectory,
+    filename: str,
+    *,
+    max_bytes: int,
+) -> tuple[Mapping[str, object], bytes, BoundObjectIdentity]:
+    with directory.open_file(filename) as source:
+        identity = source.identity
+        payload = source.read_all(max_bytes=max_bytes)
+    value = loads_json_strict(payload)
+    if not isinstance(value, Mapping):
+        raise BSourceAcquisitionError("NPI_B_SOURCE_EVIDENCE_SCHEMA_INVALID")
+    return cast(Mapping[str, object], value), payload, identity
+
+
+def _reject_existing_one_shot_state(
+    project_root: Path,
+    evidence_parent: BoundDirectory,
+) -> None:
+    """Fail closed on a prior, incomplete, or completed one-shot attempt."""
+    names = evidence_parent.list_names()
+    if _LEGACY_RESULT_FILENAME in names:
+        raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_ALREADY_COMPLETED")
+    if _LEASE_STAGING_DIRNAME in names:
+        raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM")
+    if _LEASE_DIRNAME not in names:
+        return
+    try:
+        with evidence_parent.open_directory(_LEASE_DIRNAME, writable=False) as lease:
+            lease_names = lease.list_names()
+            if lease_names != {_RESERVATION_FILENAME, _TERMINAL_DIRNAME}:
+                raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM")
+            if _TERMINAL_STAGING_DIRNAME in lease_names:
+                raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM")
+            reservation, _, reservation_identity = _read_bound_json(
+                lease,
+                _RESERVATION_FILENAME,
+                max_bytes=16 * 1024,
+            )
+            _validate_document(project_root, _RESERVATION_SCHEMA, reservation)
+            if (
+                reservation.get("lease_identity_sha256") != lease.identity.digest
+                or reservation.get("reservation_file_identity_sha256")
+                != reservation_identity.digest
+            ):
+                raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM")
+            with lease.open_directory(_TERMINAL_DIRNAME, writable=False) as terminal:
+                terminal_names = terminal.list_names()
+                if terminal_names != {
+                    _TERMINAL_FILENAME,
+                    _TERMINAL_BINDING_FILENAME,
+                }:
+                    raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM")
+                result, result_bytes, _ = _read_bound_json(
+                    terminal,
+                    _TERMINAL_FILENAME,
+                    max_bytes=1024 * 1024,
+                )
+                binding, _, _ = _read_bound_json(
+                    terminal,
+                    _TERMINAL_BINDING_FILENAME,
+                    max_bytes=16 * 1024,
+                )
+            _validate_document(project_root, _RESULT_SCHEMA, result)
+            _validate_document(project_root, _ONE_SHOT_TERMINAL_SCHEMA, binding)
+            nonce = reservation.get("nonce")
+            if (
+                binding.get("reviewed_head") != reservation.get("reviewed_head")
+                or binding.get("reviewed_tree") != reservation.get("reviewed_tree")
+                or binding.get("lease_identity_sha256") != lease.identity.digest
+                or binding.get("reservation_file_identity_sha256") != reservation_identity.digest
+                or not isinstance(nonce, str)
+                or binding.get("nonce_sha256") != hashlib.sha256(nonce.encode("ascii")).hexdigest()
+                or binding.get("terminal_result_sha256") != hashlib.sha256(result_bytes).hexdigest()
+                or result.get("reviewed_head") != reservation.get("reviewed_head")
+                or result.get("reviewed_tree") != reservation.get("reviewed_tree")
+            ):
+                raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM")
+    except (
+        FileNotFoundError,
+        OSError,
+        ValueError,
+        TypeError,
+        KeyError,
+        NpiError,
+        BSourceAcquisitionError,
+    ) as exc:
+        raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM") from exc
+    raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_ALREADY_COMPLETED")
+
+
+@dataclass
 class OneShotExecutionClaim:
     """Permanent handle-bound lease for one reviewed acquisition attempt."""
 
     project_root: Path
     reviewed_head: str
     reviewed_tree: str
-    evidence_parent_path: Path
+    evidence_parent: BoundDirectory
+    lease: BoundDirectory
+    reservation_file: BoundFile
+    lease_identity: BoundObjectIdentity
+    reservation_identity: BoundObjectIdentity
+    nonce: str
+    reservation_sha256: str
+    reservation_size: int
+    _closed: bool = False
 
     @classmethod
     def claim(
@@ -639,81 +747,201 @@ class OneShotExecutionClaim:
     ) -> OneShotExecutionClaim:
         if os.name != "nt":
             raise BSourceAcquisitionError("NPI_B_SOURCE_WINDOWS_PATH_REQUIRED")
-        evidence_parent_path = _fixed_download_path(_EVIDENCE_PARENT)
-        reservation = _canonical_json_bytes(
-            {
-                "schema_version": "1.0",
-                "evidence_type": "B_SOURCE_NETWORK_ONE_SHOT_RESERVATION_V1",
-                "status": "CLAIMED",
-                "reviewed_head": reviewed_head,
-                "reviewed_tree": reviewed_tree,
-                "retry_authorized": False,
-            }
+        evidence_parent = bind_existing_directory(
+            _fixed_download_path(_EVIDENCE_PARENT),
+            writable=True,
         )
-        with bind_existing_directory(evidence_parent_path, writable=True) as evidence_parent:
-            names = evidence_parent.list_names()
-            if _LEASE_DIRNAME in names or _LEGACY_RESULT_FILENAME in names:
-                raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_ALREADY_CLAIMED")
+        staging: BoundDirectory | None = None
+        lease: BoundDirectory | None = None
+        reservation_file: BoundFile | None = None
+        transferred = False
+        try:
+            _reject_existing_one_shot_state(project_root, evidence_parent)
             try:
-                lease = evidence_parent.create_directory(_LEASE_DIRNAME)
+                staging = evidence_parent.create_directory(_LEASE_STAGING_DIRNAME)
             except NpiError as exc:
+                _reject_existing_one_shot_state(project_root, evidence_parent)
                 raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_CLAIM_DENIED") from exc
-            try:
-                with lease.create_file(_RESERVATION_FILENAME) as target:
-                    target.write(reservation)
-                    target.flush()
-            finally:
-                lease.close()
-        return cls(
-            project_root=project_root,
-            reviewed_head=reviewed_head,
-            reviewed_tree=reviewed_tree,
-            evidence_parent_path=evidence_parent_path,
-        )
+            staging_identity = staging.identity
+            nonce = secrets.token_hex(32)
+            with staging.create_file(_RESERVATION_FILENAME) as target:
+                staged_identity = target.identity
+                reservation = {
+                    "schema_version": "1.0",
+                    "evidence_type": "B_SOURCE_NETWORK_ONE_SHOT_RESERVATION_V1",
+                    "state": "CLAIMED",
+                    "reviewed_head": reviewed_head,
+                    "reviewed_tree": reviewed_tree,
+                    "lease_identity_sha256": staging_identity.digest,
+                    "reservation_file_identity_sha256": staged_identity.digest,
+                    "nonce": nonce,
+                    "claimed_at_utc": _utc_now(),
+                    "retry_authorized": False,
+                }
+                _validate_document(project_root, _RESERVATION_SCHEMA, reservation)
+                reservation_bytes = _canonical_json_bytes(reservation)
+                target.write(reservation_bytes)
+                target.flush()
+            with staging.open_file(_RESERVATION_FILENAME) as staged_file:
+                staged_sha256, staged_size = staged_file.sha256_and_size()
+                staged_file_identity = staged_file.identity
+            if (
+                staged_sha256 != hashlib.sha256(reservation_bytes).hexdigest()
+                or staged_size != len(reservation_bytes)
+                or staged_file_identity.digest != staged_identity.digest
+            ):
+                raise BSourceAcquisitionError("NPI_B_SOURCE_RESERVATION_STAGING_MISMATCH")
+
+            # Rename makes a complete reservation visible as the permanent lease
+            # in one handle-relative operation. A crash before this point leaves
+            # the recognizable staging name, which blocks a retry without HTTP.
+            staging.rename_to(evidence_parent, _LEASE_DIRNAME)
+            lease = staging
+            expected_lease_path = (
+                evidence_parent.identity.final_path.rstrip(chr(92))
+                + chr(92)
+                + _LEASE_DIRNAME.casefold()
+            )
+            lease_identity = lease.identity
+            if (
+                lease_identity.volume_serial_number != evidence_parent.identity.volume_serial_number
+                or lease_identity.file_id_hex != staging_identity.file_id_hex
+                or lease_identity.final_path.casefold() != expected_lease_path.casefold()
+            ):
+                raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_LEASE_IDENTITY_MISMATCH")
+            reservation_file = lease.open_file(_RESERVATION_FILENAME)
+            reservation_identity = reservation_file.identity
+            if (
+                reservation_identity.volume_serial_number != staged_identity.volume_serial_number
+                or reservation_identity.file_id_hex != staged_identity.file_id_hex
+                or reservation_identity.digest != staged_identity.digest
+            ):
+                raise BSourceAcquisitionError("NPI_B_SOURCE_RESERVATION_IDENTITY_MISMATCH")
+            reservation_sha256, reservation_size = reservation_file.sha256_and_size()
+            if reservation_sha256 != hashlib.sha256(
+                reservation_bytes
+            ).hexdigest() or reservation_size != len(reservation_bytes):
+                raise BSourceAcquisitionError("NPI_B_SOURCE_RESERVATION_PUBLISH_MISMATCH")
+            claim = cls(
+                project_root=project_root,
+                reviewed_head=reviewed_head,
+                reviewed_tree=reviewed_tree,
+                evidence_parent=evidence_parent,
+                lease=lease,
+                reservation_file=reservation_file,
+                lease_identity=lease_identity,
+                reservation_identity=reservation_identity,
+                nonce=nonce,
+                reservation_sha256=reservation_sha256,
+                reservation_size=reservation_size,
+            )
+            transferred = True
+            return claim
+        finally:
+            if not transferred:
+                if reservation_file is not None:
+                    reservation_file.close()
+                if lease is not None:
+                    lease.close()
+                elif staging is not None:
+                    staging.close()
+                evidence_parent.close()
+
+    def _verify_live_lease(self) -> None:
+        self.evidence_parent._verify()
+        self.lease._verify()
+        if (
+            self.lease.identity.volume_serial_number != self.lease_identity.volume_serial_number
+            or self.lease.identity.file_id_hex != self.lease_identity.file_id_hex
+            or self.lease.identity.final_path.casefold()
+            != self.lease_identity.final_path.casefold()
+        ):
+            raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_LEASE_IDENTITY_MISMATCH")
+        if (
+            self.reservation_file.identity.volume_serial_number
+            != self.reservation_identity.volume_serial_number
+            or self.reservation_file.identity.file_id_hex != self.reservation_identity.file_id_hex
+        ):
+            raise BSourceAcquisitionError("NPI_B_SOURCE_RESERVATION_IDENTITY_MISMATCH")
+        reservation_sha256, reservation_size = self.reservation_file.sha256_and_size()
+        if (
+            reservation_sha256 != self.reservation_sha256
+            or reservation_size != self.reservation_size
+        ):
+            raise BSourceAcquisitionError("NPI_B_SOURCE_RESERVATION_CONTENT_MISMATCH")
 
     def persist_terminal(self, result: Mapping[str, object]) -> dict[str, str]:
+        if (
+            result.get("reviewed_head") != self.reviewed_head
+            or result.get("reviewed_tree") != self.reviewed_tree
+        ):
+            raise BSourceAcquisitionError("NPI_B_SOURCE_TERMINAL_RESULT_BINDING_MISMATCH")
         _validate_document(self.project_root, _RESULT_SCHEMA, result)
-        payload = _canonical_json_bytes(result)
+        self._verify_live_lease()
+        result_bytes = _canonical_json_bytes(result)
+        terminal = {
+            "schema_version": "1.0",
+            "evidence_type": "B_SOURCE_NETWORK_ONE_SHOT_TERMINAL_V1",
+            "state": "COMPLETED",
+            "reviewed_head": self.reviewed_head,
+            "reviewed_tree": self.reviewed_tree,
+            "lease_identity_sha256": self.lease_identity.digest,
+            "reservation_file_identity_sha256": self.reservation_identity.digest,
+            "nonce_sha256": hashlib.sha256(self.nonce.encode("ascii")).hexdigest(),
+            "terminal_result_sha256": hashlib.sha256(result_bytes).hexdigest(),
+            "retry_authorized": False,
+        }
+        _validate_document(
+            self.project_root,
+            _ONE_SHOT_TERMINAL_SCHEMA,
+            terminal,
+        )
+        terminal_bytes = _canonical_json_bytes(terminal)
+        staging: BoundDirectory | None = None
         try:
-            with bind_existing_directory(
-                self.evidence_parent_path,
-                writable=True,
-            ) as evidence_parent:
-                if _LEASE_DIRNAME not in evidence_parent.list_names():
-                    raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_LEASE_MISSING")
-                with evidence_parent.open_directory(
-                    _LEASE_DIRNAME,
-                    writable=True,
-                ) as lease:
-                    with lease.open_file(_RESERVATION_FILENAME) as reservation_file:
-                        reservation_bytes = reservation_file.read_all(max_bytes=64 * 1024)
-                    try:
-                        reservation = json.loads(reservation_bytes.decode("utf-8"))
-                    except (UnicodeError, json.JSONDecodeError) as exc:
-                        raise BSourceAcquisitionError(
-                            "NPI_B_SOURCE_ONE_SHOT_RESERVATION_INVALID"
-                        ) from exc
-                    if (
-                        not isinstance(reservation, dict)
-                        or reservation.get("reviewed_head") != self.reviewed_head
-                        or reservation.get("reviewed_tree") != self.reviewed_tree
-                        or reservation.get("retry_authorized") is not False
-                    ):
-                        raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_RESERVATION_INVALID")
-                    if _TERMINAL_FILENAME in lease.list_names():
-                        raise BSourceAcquisitionError("NPI_B_SOURCE_TERMINAL_ALREADY_EXISTS")
-                    with lease.create_file(_TERMINAL_FILENAME) as target:
-                        target.write(payload)
-                        target.flush()
-        except BSourceAcquisitionError:
-            raise
+            names = self.lease.list_names()
+            if _TERMINAL_DIRNAME in names or _TERMINAL_STAGING_DIRNAME in names:
+                raise BSourceAcquisitionError("NPI_B_SOURCE_TERMINAL_ALREADY_EXISTS")
+            staging = self.lease.create_directory(_TERMINAL_STAGING_DIRNAME)
+            with staging.create_file(_TERMINAL_FILENAME) as target:
+                target.write(result_bytes)
+                target.flush()
+            with staging.create_file(_TERMINAL_BINDING_FILENAME) as target:
+                target.write(terminal_bytes)
+                target.flush()
+            for filename, expected in (
+                (_TERMINAL_FILENAME, result_bytes),
+                (_TERMINAL_BINDING_FILENAME, terminal_bytes),
+            ):
+                with staging.open_file(filename) as staged:
+                    observed_sha256, observed_size = staged.sha256_and_size()
+                if observed_sha256 != hashlib.sha256(expected).hexdigest() or observed_size != len(
+                    expected
+                ):
+                    raise BSourceAcquisitionError("NPI_B_SOURCE_TERMINAL_STAGING_MISMATCH")
+            self._verify_live_lease()
+            staging.rename_to(self.lease, _TERMINAL_DIRNAME)
+            if _TERMINAL_DIRNAME not in self.lease.list_names():
+                raise BSourceAcquisitionError("NPI_B_SOURCE_TERMINAL_PUBLISH_MISMATCH")
         except NpiError as exc:
             raise BSourceAcquisitionError("NPI_B_SOURCE_TERMINAL_PERSIST_FAILED") from exc
+        finally:
+            if staging is not None:
+                staging.close()
         return {
             "one_shot_lease_ref": _LEASE_REF,
             "terminal_evidence_ref": _RESULT_REF,
-            "terminal_evidence_sha256": hashlib.sha256(payload).hexdigest(),
+            "terminal_evidence_sha256": hashlib.sha256(result_bytes).hexdigest(),
+            "terminal_binding_sha256": hashlib.sha256(terminal_bytes).hexdigest(),
         }
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        self.reservation_file.close()
+        self.lease.close()
+        self.evidence_parent.close()
 
 
 def claim_one_shot_execution(
@@ -729,7 +957,10 @@ def _finish_claimed_result(
     claim: OneShotExecutionClaim,
     result: dict[str, object],
 ) -> dict[str, object]:
-    return {**result, **claim.persist_terminal(result)}
+    try:
+        return {**result, **claim.persist_terminal(result)}
+    finally:
+        claim.close()
 
 
 def run_b_source_network_acquisition(
