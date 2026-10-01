@@ -1,0 +1,773 @@
+"""Bounded B-source network acquisition executor.
+
+The executor never authorizes itself. It requires the exact-SHA post-review
+admission and an external exact-payload absence record before it constructs a
+network transport or opens the bound quarantine for mutation.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import http.client
+import json
+import os
+import ssl
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Protocol, cast
+from urllib.parse import urljoin, urlsplit
+
+from jsonschema import Draft202012Validator, FormatChecker
+
+from .domain.errors import GateNotAuthorizedError
+from .json_strict import load_json_strict
+from .n2b1p_b_source_network import (
+    POST_REVIEW_ADMISSION_STATUS,
+    check_external_exact_sha_review_receipt,
+    load_b_source_network_execution_binding,
+)
+from .windows_bound_promotion import BoundStagingTransaction, bind_existing_directory
+
+_ALLOWED_DOMAIN = "download.pytorch.org"
+_QUARANTINE_REF = (
+    "E_CLAUDE_ALLOW_DOWNLOAD/"
+    "npi-n2b1p-b-source-quarantine-20260930-e9110783"
+)
+_QUARANTINE_IDENTITY = (
+    "ff0fc35900d4f60d906e8dbcc8d806e8d1360aee4290326049925353667f9000"
+)
+_EVIDENCE_PARENT = "npi-c2c-evidence-20260930"
+_MISSING_PRECONDITION_FILENAME = "b-source-missing-payload-precondition-v1.json"
+_MISSING_PRECONDITION_SCHEMA = (
+    "n2b1p_b_source_missing_payload_precondition_v1.schema.json"
+)
+_TRANSFER_SCHEMA = "n2b1p_b_source_transfer_manifest_v1.schema.json"
+_RESULT_SCHEMA = "n2b1p_b_source_acquisition_result_v1.schema.json"
+_CHUNK_BYTES = 1024 * 1024
+_MAX_REDIRECTS = 3
+_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+
+
+class BSourceAcquisitionError(RuntimeError):
+    """Fail-closed acquisition error with a stable public code."""
+
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
+
+
+@dataclass(frozen=True)
+class ArtifactSpec:
+    artifact_id: str
+    revision: str
+    url: str
+    filename: str
+    byte_count: int
+    sha256: str
+    historical_transfer_manifest_sha256: str
+
+    @classmethod
+    def from_record(cls, record: Mapping[str, object]) -> "ArtifactSpec":
+        return cls(
+            artifact_id=cast(str, record["id"]),
+            revision=cast(str, record["revision"]),
+            url=cast(str, record["url"]),
+            filename=cast(str, record["filename"]),
+            byte_count=cast(int, record["byte_count"]),
+            sha256=cast(str, record["local_sha256"]),
+            historical_transfer_manifest_sha256=cast(
+                str,
+                record["transfer_manifest_sha256"],
+            ),
+        )
+
+
+class DownloadResponse(Protocol):
+    status: int
+
+    def getheader(self, name: str) -> str | None: ...
+
+    def read(self, amount: int) -> bytes: ...
+
+    def close(self) -> None: ...
+
+
+class DownloadTransport(Protocol):
+    def open(self, url: str) -> DownloadResponse: ...
+
+
+class QuarantinePublisher(Protocol):
+    def validate_initial_state(self) -> None: ...
+
+    def publish(
+        self,
+        spec: ArtifactSpec,
+        response: DownloadResponse,
+        *,
+        final_url: str,
+        redirect_count: int,
+        reviewed_head: str,
+        reviewed_tree: str,
+        completed_at_utc: str,
+    ) -> dict[str, object]: ...
+
+
+@dataclass
+class _HttpResponseHandle:
+    response: http.client.HTTPResponse
+    connection: http.client.HTTPSConnection
+
+    @property
+    def status(self) -> int:
+        return int(self.response.status)
+
+    def getheader(self, name: str) -> str | None:
+        return self.response.getheader(name)
+
+    def read(self, amount: int) -> bytes:
+        return self.response.read(amount)
+
+    def close(self) -> None:
+        try:
+            self.response.close()
+        finally:
+            self.connection.close()
+
+
+class StdlibHttpsTransport:
+    """HTTPS-only transport with no automatic redirects or proxy fallback."""
+
+    def open(self, url: str) -> DownloadResponse:
+        parsed = _validate_bound_url(url)
+        host = cast(str, parsed.hostname)
+        connection = http.client.HTTPSConnection(
+            host,
+            443,
+            timeout=60,
+            context=ssl.create_default_context(),
+        )
+        try:
+            connection.request(
+                "GET",
+                parsed.path,
+                headers={
+                    "Accept": "application/octet-stream",
+                    "User-Agent": "npi-b-source-reacquisition/1",
+                },
+            )
+            return _HttpResponseHandle(connection.getresponse(), connection)
+        except BaseException:
+            connection.close()
+            raise
+
+
+def _validate_bound_url(url: str, filename: str | None = None):
+    try:
+        parsed = urlsplit(url)
+    except ValueError as exc:
+        raise BSourceAcquisitionError("NPI_B_SOURCE_URL_REJECTED") from exc
+    expected_path = None if filename is None else f"/models/{filename}"
+    valid = (
+        parsed.scheme == "https"
+        and parsed.hostname == _ALLOWED_DOMAIN
+        and parsed.port is None
+        and parsed.username is None
+        and parsed.password is None
+        and parsed.query == ""
+        and parsed.fragment == ""
+        and parsed.path.startswith("/models/")
+        and (expected_path is None or parsed.path == expected_path)
+    )
+    if not valid:
+        raise BSourceAcquisitionError("NPI_B_SOURCE_URL_REJECTED")
+    return parsed
+
+
+def _open_final_response(
+    transport: DownloadTransport,
+    spec: ArtifactSpec,
+    request_counter: list[int],
+) -> tuple[DownloadResponse, str, int]:
+    current = spec.url
+    visited = {current}
+    for redirect_count in range(_MAX_REDIRECTS + 1):
+        _validate_bound_url(current, spec.filename)
+        request_counter[0] += 1
+        try:
+            response = transport.open(current)
+        except (OSError, TimeoutError, http.client.HTTPException) as exc:
+            raise BSourceAcquisitionError(
+                "NPI_B_SOURCE_NETWORK_IO_ERROR"
+            ) from exc
+        if response.status in _REDIRECT_STATUSES:
+            location = response.getheader("Location")
+            response.close()
+            if not location:
+                raise BSourceAcquisitionError(
+                    "NPI_B_SOURCE_REDIRECT_REJECTED"
+                )
+            target = urljoin(current, location)
+            _validate_bound_url(target, spec.filename)
+            if target in visited or redirect_count >= _MAX_REDIRECTS:
+                raise BSourceAcquisitionError(
+                    "NPI_B_SOURCE_REDIRECT_REJECTED"
+                )
+            visited.add(target)
+            current = target
+            continue
+        if response.status != 200:
+            response.close()
+            raise BSourceAcquisitionError(
+                "NPI_B_SOURCE_HTTP_STATUS_REJECTED"
+            )
+        content_length = response.getheader("Content-Length")
+        if content_length is not None:
+            try:
+                declared = int(content_length)
+            except ValueError as exc:
+                response.close()
+                raise BSourceAcquisitionError(
+                    "NPI_B_SOURCE_CONTENT_LENGTH_REJECTED"
+                ) from exc
+            if declared != spec.byte_count:
+                response.close()
+                raise BSourceAcquisitionError(
+                    "NPI_B_SOURCE_CONTENT_LENGTH_REJECTED"
+                )
+        return response, current, redirect_count
+    raise BSourceAcquisitionError("NPI_B_SOURCE_REDIRECT_REJECTED")
+
+
+def _stream_response(
+    response: DownloadResponse,
+    spec: ArtifactSpec,
+    write_chunk: Callable[[bytes], None],
+) -> tuple[str, int]:
+    digest = hashlib.sha256()
+    observed = 0
+    while True:
+        chunk = response.read(_CHUNK_BYTES)
+        if not chunk:
+            break
+        next_size = observed + len(chunk)
+        if next_size > spec.byte_count:
+            raise BSourceAcquisitionError(
+                "NPI_B_SOURCE_STREAM_TOO_LONG"
+            )
+        write_chunk(chunk)
+        digest.update(chunk)
+        observed = next_size
+    if observed != spec.byte_count:
+        raise BSourceAcquisitionError("NPI_B_SOURCE_STREAM_TOO_SHORT")
+    observed_sha256 = digest.hexdigest()
+    if observed_sha256 != spec.sha256:
+        raise BSourceAcquisitionError("NPI_B_SOURCE_SHA256_MISMATCH")
+    return observed_sha256, observed
+
+
+def _canonical_json_bytes(value: Mapping[str, object]) -> bytes:
+    return (
+        json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+        + "\n"
+    ).encode("utf-8")
+
+
+def _load_schema(
+    project_root: Path,
+    filename: str,
+) -> Mapping[str, object]:
+    value = load_json_strict(project_root / "schemas" / filename)
+    if not isinstance(value, Mapping):
+        raise BSourceAcquisitionError(
+            "NPI_B_SOURCE_SCHEMA_INVALID"
+        )
+    Draft202012Validator.check_schema(value)
+    return cast(Mapping[str, object], value)
+
+
+def _validate_document(
+    project_root: Path,
+    filename: str,
+    value: Mapping[str, object],
+) -> None:
+    errors = list(
+        Draft202012Validator(
+            _load_schema(project_root, filename),
+            format_checker=FormatChecker(),
+        ).iter_errors(value)
+    )
+    if errors:
+        raise BSourceAcquisitionError(
+            "NPI_B_SOURCE_EVIDENCE_SCHEMA_INVALID"
+        )
+
+
+def _resolve_evidence_parent() -> Path:
+    if os.name != "nt":
+        raise BSourceAcquisitionError(
+            "NPI_B_SOURCE_WINDOWS_PATH_REQUIRED"
+        )
+    try:
+        return (
+            Path("E:" + os.sep)
+            / "Claude_allow"
+            / "Download"
+            / _EVIDENCE_PARENT
+        ).resolve(strict=True)
+    except OSError as exc:
+        raise BSourceAcquisitionError(
+            "NPI_B_SOURCE_EVIDENCE_PARENT_UNAVAILABLE"
+        ) from exc
+
+
+def _resolve_bound_quarantine_path() -> Path:
+    if os.name != "nt":
+        raise BSourceAcquisitionError(
+            "NPI_B_SOURCE_WINDOWS_PATH_REQUIRED"
+        )
+    try:
+        return (
+            Path("E:" + os.sep)
+            / "Claude_allow"
+            / "Download"
+            / "npi-n2b1p-b-source-quarantine-20260930-e9110783"
+        ).resolve(strict=True)
+    except OSError as exc:
+        raise BSourceAcquisitionError(
+            "NPI_B_SOURCE_QUARANTINE_UNAVAILABLE"
+        ) from exc
+
+
+def load_missing_payload_precondition(
+    project_root: Path,
+    evidence_path: Path,
+    *,
+    reviewed_head: str,
+) -> dict[str, object]:
+    try:
+        resolved = evidence_path.resolve(strict=True)
+        root = project_root.resolve(strict=True)
+    except OSError as exc:
+        raise BSourceAcquisitionError(
+            "NPI_B_SOURCE_MISSING_PRECONDITION_UNAVAILABLE"
+        ) from exc
+    if evidence_path.is_symlink() or not evidence_path.is_file():
+        raise BSourceAcquisitionError(
+            "NPI_B_SOURCE_MISSING_PRECONDITION_UNAVAILABLE"
+        )
+    try:
+        resolved.relative_to(root)
+    except ValueError:
+        pass
+    else:
+        raise BSourceAcquisitionError(
+            "NPI_B_SOURCE_MISSING_PRECONDITION_INSIDE_GIT"
+        )
+    if resolved.name != _MISSING_PRECONDITION_FILENAME:
+        raise BSourceAcquisitionError(
+            "NPI_B_SOURCE_MISSING_PRECONDITION_PATH_REJECTED"
+        )
+    if os.name == "nt":
+        if resolved.parent != _resolve_evidence_parent():
+            raise BSourceAcquisitionError(
+                "NPI_B_SOURCE_MISSING_PRECONDITION_PATH_REJECTED"
+            )
+    elif resolved.parent.name != _EVIDENCE_PARENT:
+        raise BSourceAcquisitionError(
+            "NPI_B_SOURCE_MISSING_PRECONDITION_PATH_REJECTED"
+        )
+    value = load_json_strict(resolved)
+    if not isinstance(value, Mapping):
+        raise BSourceAcquisitionError(
+            "NPI_B_SOURCE_MISSING_PRECONDITION_INVALID"
+        )
+    record = cast(dict[str, object], value)
+    _validate_document(
+        project_root,
+        _MISSING_PRECONDITION_SCHEMA,
+        record,
+    )
+    if record.get("reviewed_head") != reviewed_head:
+        raise BSourceAcquisitionError(
+            "NPI_B_SOURCE_MISSING_PRECONDITION_STALE"
+        )
+    return record
+
+
+def _utc_now() -> str:
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
+class WindowsBoundQuarantinePublisher:
+    """Handle-bound exclusive staging and atomic publication."""
+
+    def __init__(
+        self,
+        project_root: Path,
+        quarantine_path: Path,
+        expected_identity: str,
+    ) -> None:
+        self.project_root = project_root
+        self.quarantine_path = quarantine_path
+        self.expected_identity = expected_identity
+        self._completed: set[str] = set()
+
+    def _check_root(self, root: object) -> None:
+        identity = cast(object, root).identity
+        if identity.digest != self.expected_identity:
+            raise BSourceAcquisitionError(
+                "NPI_B_SOURCE_QUARANTINE_IDENTITY_MISMATCH"
+            )
+
+    def validate_initial_state(self) -> None:
+        with bind_existing_directory(
+            self.quarantine_path,
+            writable=True,
+        ) as root:
+            if root.identity.digest != self.expected_identity:
+                raise BSourceAcquisitionError(
+                    "NPI_B_SOURCE_QUARANTINE_IDENTITY_MISMATCH"
+                )
+            if root.list_names():
+                raise BSourceAcquisitionError(
+                    "NPI_B_SOURCE_QUARANTINE_NOT_EMPTY"
+                )
+
+    def publish(
+        self,
+        spec: ArtifactSpec,
+        response: DownloadResponse,
+        *,
+        final_url: str,
+        redirect_count: int,
+        reviewed_head: str,
+        reviewed_tree: str,
+        completed_at_utc: str,
+    ) -> dict[str, object]:
+        with bind_existing_directory(
+            self.quarantine_path,
+            writable=True,
+        ) as root:
+            if root.identity.digest != self.expected_identity:
+                raise BSourceAcquisitionError(
+                    "NPI_B_SOURCE_QUARANTINE_IDENTITY_MISMATCH"
+                )
+            if root.list_names() != self._completed:
+                raise BSourceAcquisitionError(
+                    "NPI_B_SOURCE_QUARANTINE_UNEXPECTED_STATE"
+                )
+            with BoundStagingTransaction.create(root) as transaction:
+                with transaction.create_file(spec.filename) as payload:
+                    observed_sha256, observed_bytes = _stream_response(
+                        response,
+                        spec,
+                        payload.write,
+                    )
+                    payload.flush()
+                with transaction.staging.open_file(spec.filename) as staged:
+                    staged_sha256, staged_bytes = (
+                        staged.sha256_and_size()
+                    )
+                if (
+                    staged_sha256 != spec.sha256
+                    or staged_bytes != spec.byte_count
+                    or staged_sha256 != observed_sha256
+                    or staged_bytes != observed_bytes
+                ):
+                    raise BSourceAcquisitionError(
+                        "NPI_B_SOURCE_STAGED_REREAD_MISMATCH"
+                    )
+                manifest = {
+                    "schema_version": "1.0",
+                    "evidence_type": (
+                        "B_SOURCE_NETWORK_TRANSFER_MANIFEST_V1"
+                    ),
+                    "status": "PUBLISHED_VERIFIED",
+                    "artifact_id": spec.artifact_id,
+                    "revision": spec.revision,
+                    "filename": spec.filename,
+                    "requested_url": spec.url,
+                    "final_url": final_url,
+                    "final_domain": _ALLOWED_DOMAIN,
+                    "redirect_count": redirect_count,
+                    "response_status": 200,
+                    "expected_byte_count": spec.byte_count,
+                    "observed_byte_count": observed_bytes,
+                    "expected_sha256": spec.sha256,
+                    "observed_sha256": observed_sha256,
+                    "historical_transfer_manifest_sha256": (
+                        spec.historical_transfer_manifest_sha256
+                    ),
+                    "quarantine_root_ref": _QUARANTINE_REF,
+                    "quarantine_root_identity_sha256": (
+                        self.expected_identity
+                    ),
+                    "reviewed_head": reviewed_head,
+                    "reviewed_tree": reviewed_tree,
+                    "completed_at_utc": completed_at_utc,
+                }
+                _validate_document(
+                    self.project_root,
+                    _TRANSFER_SCHEMA,
+                    manifest,
+                )
+                manifest_bytes = _canonical_json_bytes(manifest)
+                manifest_sha256 = hashlib.sha256(
+                    manifest_bytes
+                ).hexdigest()
+                with transaction.create_file(
+                    "transfer_manifest.json"
+                ) as target:
+                    target.write(manifest_bytes)
+                    target.flush()
+                try:
+                    transaction.publish(spec.sha256)
+                except FileExistsError as exc:
+                    raise BSourceAcquisitionError(
+                        "NPI_B_SOURCE_ATOMIC_PUBLISH_CONFLICT"
+                    ) from exc
+                with root.open_directory(
+                    spec.sha256,
+                    writable=False,
+                ) as published:
+                    with published.open_file(spec.filename) as payload:
+                        final_sha256, final_bytes = (
+                            payload.sha256_and_size()
+                        )
+                    with published.open_file(
+                        "transfer_manifest.json"
+                    ) as manifest_file:
+                        final_manifest = manifest_file.read_all(
+                            max_bytes=128 * 1024
+                        )
+                if (
+                    final_sha256 != spec.sha256
+                    or final_bytes != spec.byte_count
+                    or hashlib.sha256(final_manifest).hexdigest()
+                    != manifest_sha256
+                ):
+                    raise BSourceAcquisitionError(
+                        "NPI_B_SOURCE_PUBLISHED_REREAD_MISMATCH"
+                    )
+            self._completed.add(spec.sha256)
+            return {
+                "artifact_id": spec.artifact_id,
+                "status": "PUBLISHED_VERIFIED",
+                "filename": spec.filename,
+                "requested_url": spec.url,
+                "final_url": final_url,
+                "redirect_count": redirect_count,
+                "response_status": 200,
+                "observed_byte_count": spec.byte_count,
+                "observed_sha256": spec.sha256,
+                "transfer_manifest_sha256": manifest_sha256,
+            }
+
+
+def _terminal_result(
+    project_root: Path,
+    *,
+    status: str,
+    failure_code: str | None,
+    reviewed_head: str,
+    reviewed_tree: str,
+    quarantine_identity: str,
+    network_request_count: int,
+    artifact_results: list[dict[str, object]],
+) -> dict[str, object]:
+    success = (
+        status == "B_SOURCE_BYTES_READY_AWAITING_EXTERNAL_REVIEW"
+    )
+    result = {
+        "schema_version": "1.0",
+        "evidence_type": (
+            "B_SOURCE_NETWORK_ACQUISITION_RESULT_V1"
+        ),
+        "status": status,
+        "failure_code": failure_code,
+        "reviewed_head": reviewed_head,
+        "reviewed_tree": reviewed_tree,
+        "quarantine_root_ref": _QUARANTINE_REF,
+        "quarantine_root_identity_sha256": quarantine_identity,
+        "network_request_count": network_request_count,
+        "artifact_results": artifact_results,
+        "terminal": True,
+        "retry_authorized": False,
+        "cache_promotion": "NOT_AUTHORIZED",
+        "model_cuda_photo_exif_sqlite_real20": "NOT_AUTHORIZED",
+        "mandatory_stop": (
+            "EXTERNAL_REVIEW_B_SOURCE_BYTES_READY"
+            if success
+            else "EXTERNAL_REVIEW_B_SOURCE_ACQUISITION_FAILURE"
+        ),
+    }
+    _validate_document(project_root, _RESULT_SCHEMA, result)
+    return result
+
+
+def run_b_source_network_acquisition(
+    project_root: Path,
+    review_receipt_path: Path,
+    missing_payload_evidence_path: Path,
+    *,
+    transport: DownloadTransport | None = None,
+    publisher: QuarantinePublisher | None = None,
+    clock: Callable[[], str] = _utc_now,
+) -> dict[str, object]:
+    """Execute only after exact review and absence evidence."""
+
+    admission = check_external_exact_sha_review_receipt(
+        project_root,
+        review_receipt_path,
+    )
+    if admission.get("status") != POST_REVIEW_ADMISSION_STATUS:
+        return _terminal_result(
+            project_root,
+            status="B_SOURCE_NETWORK_ACQUISITION_BLOCKED",
+            failure_code=(
+                "NPI_B_SOURCE_EXACT_SHA_ADMISSION_REQUIRED"
+            ),
+            reviewed_head="UNBOUND",
+            reviewed_tree="UNBOUND",
+            quarantine_identity="UNBOUND",
+            network_request_count=0,
+            artifact_results=[],
+        )
+    reviewed_head = cast(str, admission["reviewed_head"])
+    reviewed_tree = cast(str, admission["reviewed_tree"])
+    quarantine_identity = "UNBOUND"
+    try:
+        load_missing_payload_precondition(
+            project_root,
+            missing_payload_evidence_path,
+            reviewed_head=reviewed_head,
+        )
+        binding = load_b_source_network_execution_binding(
+            project_root
+        )
+        specs = tuple(
+            ArtifactSpec.from_record(
+                cast(Mapping[str, object], record)
+            )
+            for record in cast(
+                list[Mapping[str, object]],
+                binding["artifacts"],
+            )
+        )
+        quarantine_identity = cast(
+            str,
+            binding["quarantine_root_identity_sha256"],
+        )
+        if binding.get("quarantine_root_ref") != _QUARANTINE_REF:
+            raise BSourceAcquisitionError(
+                "NPI_B_SOURCE_QUARANTINE_BINDING_MISMATCH"
+            )
+        active_publisher = publisher
+        if active_publisher is None:
+            active_publisher = WindowsBoundQuarantinePublisher(
+                project_root,
+                _resolve_bound_quarantine_path(),
+                quarantine_identity,
+            )
+        active_publisher.validate_initial_state()
+    except (
+        BSourceAcquisitionError,
+        GateNotAuthorizedError,
+        OSError,
+        ValueError,
+    ) as exc:
+        code = (
+            exc.code
+            if isinstance(exc, BSourceAcquisitionError)
+            else "NPI_B_SOURCE_PRE_REQUEST_GATE_FAILED"
+        )
+        return _terminal_result(
+            project_root,
+            status="B_SOURCE_NETWORK_ACQUISITION_BLOCKED",
+            failure_code=code,
+            reviewed_head=reviewed_head,
+            reviewed_tree=reviewed_tree,
+            quarantine_identity=quarantine_identity,
+            network_request_count=0,
+            artifact_results=[],
+        )
+
+    active_transport = transport or StdlibHttpsTransport()
+    request_counter = [0]
+    artifact_results: list[dict[str, object]] = []
+    for spec in specs:
+        response: DownloadResponse | None = None
+        try:
+            response, final_url, redirect_count = (
+                _open_final_response(
+                    active_transport,
+                    spec,
+                    request_counter,
+                )
+            )
+            artifact_results.append(
+                active_publisher.publish(
+                    spec,
+                    response,
+                    final_url=final_url,
+                    redirect_count=redirect_count,
+                    reviewed_head=reviewed_head,
+                    reviewed_tree=reviewed_tree,
+                    completed_at_utc=clock(),
+                )
+            )
+        except (
+            BSourceAcquisitionError,
+            GateNotAuthorizedError,
+            OSError,
+            ValueError,
+        ) as exc:
+            code = (
+                exc.code
+                if isinstance(exc, BSourceAcquisitionError)
+                else "NPI_B_SOURCE_ACQUISITION_FAILED"
+            )
+            return _terminal_result(
+                project_root,
+                status="B_SOURCE_NETWORK_ACQUISITION_FAILED",
+                failure_code=code,
+                reviewed_head=reviewed_head,
+                reviewed_tree=reviewed_tree,
+                quarantine_identity=quarantine_identity,
+                network_request_count=request_counter[0],
+                artifact_results=artifact_results,
+            )
+        finally:
+            if response is not None:
+                response.close()
+    return _terminal_result(
+        project_root,
+        status="B_SOURCE_BYTES_READY_AWAITING_EXTERNAL_REVIEW",
+        failure_code=None,
+        reviewed_head=reviewed_head,
+        reviewed_tree=reviewed_tree,
+        quarantine_identity=quarantine_identity,
+        network_request_count=request_counter[0],
+        artifact_results=artifact_results,
+    )
+
+
+__all__ = [
+    "ArtifactSpec",
+    "BSourceAcquisitionError",
+    "DownloadResponse",
+    "DownloadTransport",
+    "QuarantinePublisher",
+    "StdlibHttpsTransport",
+    "WindowsBoundQuarantinePublisher",
+    "load_missing_payload_precondition",
+    "run_b_source_network_acquisition",
+]
