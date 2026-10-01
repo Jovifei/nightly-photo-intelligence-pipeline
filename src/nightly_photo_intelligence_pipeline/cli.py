@@ -1604,6 +1604,28 @@ def n2b1p_network_admission(
         raise typer.Exit(code=1)
 
 
+@n2b1p_app.command("network-acquire")
+def n2b1p_network_acquire(
+    project_root: Path = typer.Option(..., "--project-root"),
+    review_receipt: Path = typer.Option(..., "--review-receipt"),
+    missing_payload_evidence: Path = typer.Option(
+        ...,
+        "--missing-payload-evidence",
+    ),
+) -> None:
+    """Run exact-three B-source acquisition only after every gate passes."""
+    from .n2b1p_b_source_fetcher import run_b_source_network_acquisition
+
+    result = run_b_source_network_acquisition(
+        project_root,
+        review_receipt,
+        missing_payload_evidence,
+    )
+    typer.echo(json_strict_dump(result))
+    if result["status"] != "B_SOURCE_BYTES_READY_AWAITING_EXTERNAL_REVIEW":
+        raise typer.Exit(code=1)
+
+
 @real20_app.command("prepare")
 def real20_prepare(
     project_root: Path = typer.Option(..., "--project-root"),
