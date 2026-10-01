@@ -89,10 +89,10 @@ def test_network_packet_is_ready_for_review_but_never_authorizes_execution(
     task = yaml.safe_load((project_root / TASK_PATH).read_text(encoding="utf-8"))
     owner = yaml.safe_load((project_root / OWNER_PATH).read_text(encoding="utf-8"))
 
-    assert result["status"] == "B_SOURCE_NETWORK_REACQUISITION_READY_FOR_EXTERNAL_REVIEW"
+    assert result["status"] == (\n        "B_SOURCE_NETWORK_REACQUISITION_READY_FOR_EXTERNAL_REVIEW"\n    )
     assert task["phase"]["id"] == "N2B1P"
     assert task["capability"] == "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
-    assert task["review_candidate"]["task_id"] == "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
+    assert task["review_candidate"]["task_id"] == (\n        "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"\n    )
     assert task["review_candidate"]["class"] == "CONTROL_PLANE_AND_EXECUTOR_CODE_ONLY"
     assert task["review_candidate"]["review_scope"] == (
         "B_SOURCE_NETWORK_REACQUISITION_V1_EXECUTOR_CODE_ONLY"
@@ -417,4 +417,4 @@ def test_quarantine_scope_rejects_missing_or_false_outside_flags(
     else:
         flags[flag] = False
     with pytest.raises(network.GateNotAuthorizedError):
-        network._validate_quarantine_scope_flags(flags)
+        network._validate_quarantine_scope_flags(flags)\n

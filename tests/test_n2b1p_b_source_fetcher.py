@@ -364,54 +364,12 @@ def test_network_failure_is_terminal_and_not_retryable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     spec = _spec(b"abcd")
-    monkeypatch.setattr(
-        fetcher,
-        "check_external_exact_sha_review_receipt",
-        lambda *_args, **_kwargs: {
-            "status": fetcher.POST_REVIEW_ADMISSION_STATUS,
-            "reviewed_head": "a" * 40,
-            "reviewed_tree": "b" * 40,
-        },
-    )
-    monkeypatch.setattr(
-        fetcher,
-        "load_missing_payload_precondition",
-        lambda *_args, **_kwargs: {
-            "status": "EXACT_PAYLOADS_ABSENT"
-        },
-    )
-    monkeypatch.setattr(
-        fetcher,
-        "load_b_source_network_execution_binding",
-        lambda _root: {
-            "quarantine_root_ref": (
-                "E_CLAUDE_ALLOW_DOWNLOAD/"
-                "npi-n2b1p-b-source-quarantine-"
-                "20260930-e9110783"
-            ),
-            "quarantine_root_identity_sha256": "f" * 64,
-            "artifacts": [
-                {
-                    "id": spec.artifact_id,
-                    "revision": spec.revision,
-                    "url": spec.url,
-                    "filename": spec.filename,
-                    "byte_count": spec.byte_count,
-                    "local_sha256": spec.sha256,
-                    "transfer_manifest_sha256": (
-                        spec.historical_transfer_manifest_sha256
-                    ),
-                }
-            ],
-        },
+    _admit_for_test(
+        monkeypatch,
+        specs=_exact_three_test_specs(spec),
     )
     transport = FakeTransport({})
     publisher = MemoryPublisher()
-    monkeypatch.setattr(
-        fetcher,
-        "_validate_document",
-        lambda *_args, **_kwargs: None,
-    )
     result = fetcher.run_b_source_network_acquisition(
         project_root,
         Path("unused-review.json"),
@@ -422,10 +380,10 @@ def test_network_failure_is_terminal_and_not_retryable(
     assert result["status"] == "B_SOURCE_NETWORK_ACQUISITION_FAILED"
     assert result["retry_authorized"] is False
     assert result["network_request_count"] == 1
+    assert transport.calls == [spec.url]
     assert result["mandatory_stop"] == (
         "EXTERNAL_REVIEW_B_SOURCE_ACQUISITION_FAILURE"
     )
-
 
 class _FakeBoundDirectory:
     def __init__(
@@ -502,7 +460,7 @@ def _admit_for_test(
             ],
         },
     )
-    monkeypatch.setattr(fetcher, "_validate_document", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(\n        fetcher,\n        "_validate_document",\n        lambda *_args, **_kwargs: None,\n    )
 
 
 def test_quarantine_path_is_lexical_and_not_resolved(
@@ -523,16 +481,28 @@ def test_quarantine_path_is_lexical_and_not_resolved(
 def test_handle_final_path_rejects_quarantine_moved_under_cache(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    approved_parent_final = r"\\?\volume{approved}\claude_allow\download".casefold()
+    separator = chr(92)
+    approved_parent_final = (
+        separator * 2
+        + "?"
+        + separator
+        + "volume{approved}"
+        + separator
+        + "claude_allow"
+        + separator
+        + "download"
+    ).casefold()
     quarantine_final = (
         approved_parent_final
-        + chr(92)
+        + separator
         + fetcher._ROUTE_B_CACHE_LEAF.casefold()
-        + chr(92)
+        + separator
         + "moved-quarantine"
     )
     route_cache_final = (
-        approved_parent_final + chr(92) + fetcher._ROUTE_B_CACHE_LEAF.casefold()
+        approved_parent_final
+        + separator
+        + fetcher._ROUTE_B_CACHE_LEAF.casefold()
     )
     root = _FakeBoundDirectory(
         digest=fetcher._QUARANTINE_IDENTITY,
@@ -548,6 +518,7 @@ def test_handle_final_path_rejects_quarantine_moved_under_cache(
     )
 
     def bound(path: Path, *, writable: bool) -> _FakeBoundDirectory:
+        del writable
         text = str(path).casefold()
         if fetcher._QUARANTINE_LEAF.casefold() in text:
             return root
@@ -566,7 +537,6 @@ def test_handle_final_path_rejects_quarantine_moved_under_cache(
         match="QUARANTINE_LOCATION_MISMATCH",
     ):
         publisher.validate_initial_state()
-
 
 def test_parent_junction_safety_error_blocks_before_network(
     project_root: Path,
@@ -673,4 +643,4 @@ def test_cli_persists_aggregate_terminal_result(
     assert payload["terminal_evidence_sha256"] == "c" * 64
     assert payload["terminal_evidence_ref"].endswith(
         "b-source-network-acquisition-result-v1.json"
-    )
+    )\n

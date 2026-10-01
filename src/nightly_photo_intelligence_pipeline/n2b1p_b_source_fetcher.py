@@ -771,7 +771,7 @@ def run_b_source_network_acquisition(
         binding = load_b_source_network_execution_binding(project_root)
         specs = _execution_specs(binding)
         quarantine_identity = _binding_identity(binding)
-        if binding.get("quarantine_root_ref") != _QUARANTINE_REF:
+            if binding.get("quarantine_root_ref") != _QUARANTINE_REF:
             raise BSourceAcquisitionError(
                 "NPI_B_SOURCE_QUARANTINE_BINDING_MISMATCH"
             )
@@ -870,4 +870,4 @@ __all__ = [
     "load_missing_payload_precondition",
     "persist_acquisition_result",
     "run_b_source_network_acquisition",
-]
+]\n
