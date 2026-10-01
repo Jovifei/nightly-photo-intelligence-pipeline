@@ -46,8 +46,8 @@ PROJECT_STATE_SCHEMA_PATH = "schemas/project_state_v1_7.schema.json"
 BASELINE_APPROVAL_SHA256 = "d57215a5ba8357eaddc58d398d0d3f8d840e4b4b172a19c8aa3f8847bea2aa65"
 TASK_ID = "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
 CAPABILITY = "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
-REVIEW_SCOPE = "B_SOURCE_NETWORK_REACQUISITION_V1_CONTROL_PACKET_ONLY"
-CONTROL_PACKET_CLASS = "CONTROL_PLANE_ONLY"
+REVIEW_SCOPE = "B_SOURCE_NETWORK_REACQUISITION_V1_EXECUTOR_CODE_ONLY"
+CONTROL_PACKET_CLASS = "CONTROL_PLANE_AND_EXECUTOR_CODE_ONLY"
 KNOWN_CHANGE_CATEGORIES = frozenset(
     {
         "task_contract",
@@ -56,6 +56,7 @@ KNOWN_CHANGE_CATEGORIES = frozenset(
         "tests",
         "governance_tool",
         "control_plane_code",
+        "executor_code",
         "manifest",
         "todo_status",
         "task_tracking",
@@ -276,6 +277,7 @@ _EXACT_CHANGE_CATEGORIES = {
     "src/nightly_photo_intelligence_pipeline/git_governance.py": "governance_tool",
     "src/nightly_photo_intelligence_pipeline/preflight.py": "governance_tool",
     "src/nightly_photo_intelligence_pipeline/n2b1p_b_source_network.py": "control_plane_code",
+    "src/nightly_photo_intelligence_pipeline/n2b1p_b_source_fetcher.py": "executor_code",
     "src/nightly_photo_intelligence_pipeline/cli.py": "control_plane_code",
 }
 _PREFIX_CHANGE_CATEGORIES = (
