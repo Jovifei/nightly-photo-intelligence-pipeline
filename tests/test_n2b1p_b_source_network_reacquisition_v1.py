@@ -340,8 +340,6 @@ def test_cli_network_admission_rejects_wrong_external_receipt_parent(
         "false-outside-quality-python-venv",
     ],
 )
-
-
 def test_network_packet_fails_closed_on_binding_drift(
     project_root: Path,
     monkeypatch: pytest.MonkeyPatch,

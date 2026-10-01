@@ -290,11 +290,7 @@ def _change_category(relative: str) -> str | None:
     if exact is not None:
         return exact
     return next(
-        (
-            category
-            for prefix, category in _PREFIX_CHANGE_CATEGORIES
-            if relative.startswith(prefix)
-        ),
+        (category for prefix, category in _PREFIX_CHANGE_CATEGORIES if relative.startswith(prefix)),
         None,
     )
 
@@ -305,9 +301,7 @@ def _verify_review_change_scope(
     declared = metadata.get("allowed_change_categories")
     if not isinstance(declared, list) or set(declared) != KNOWN_CHANGE_CATEGORIES:
         raise ReviewEligibilityError("review change categories are not the closed approved set")
-    introduced = _git(
-        root, "log", "--diff-filter=A", "--format=%H", "--", TASK_PATH
-    ).splitlines()
+    introduced = _git(root, "log", "--diff-filter=A", "--format=%H", "--", TASK_PATH).splitlines()
     introductions = [item for item in introduced if item]
     if len(introductions) != 1:
         raise ReviewEligibilityError("active review task must have exactly one introduction commit")

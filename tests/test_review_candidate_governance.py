@@ -64,22 +64,17 @@ def _write_yaml(path: Path, value: object) -> None:
     path.write_text(yaml.safe_dump(value, sort_keys=False), encoding="utf-8")
 
 
-def _bind_test_baseline_approval_pin(
-    monkeypatch: pytest.MonkeyPatch, root: Path
-) -> None:
+def _bind_test_baseline_approval_pin(monkeypatch: pytest.MonkeyPatch, root: Path) -> None:
     approval_path = root / BASELINE_APPROVAL_PATH
     digest = hashlib.sha256(approval_path.read_bytes()).hexdigest()
-    monkeypatch.setattr(
-        review_candidate, "BASELINE_APPROVAL_SHA256", digest, raising=False
-    )
+    monkeypatch.setattr(review_candidate, "BASELINE_APPROVAL_SHA256", digest, raising=False)
 
 
 def _write_root_manifest(root: Path, *, corrupt: bool = False) -> None:
     tracked = _git(root, "ls-files", "-z").split("\0")
     root_paths = sorted(path for path in tracked if path and path != "MANIFEST.sha256")
     root_lines = [
-        f"{hashlib.sha256((root / path).read_bytes()).hexdigest()}  {path}"
-        for path in root_paths
+        f"{hashlib.sha256((root / path).read_bytes()).hexdigest()}  {path}" for path in root_paths
     ]
     if corrupt:
         root_lines[0] = f"{'0' * 64}  {root_paths[0]}"
@@ -197,9 +192,7 @@ def _make_candidate_repo(
         ROOT / "schemas/project_state_v1_7.schema.json",
         root / "schemas/project_state_v1_7.schema.json",
     )
-    project_state_sha256 = hashlib.sha256(
-        (root / "PROJECT_STATE.json").read_bytes()
-    ).hexdigest()
+    project_state_sha256 = hashlib.sha256((root / "PROJECT_STATE.json").read_bytes()).hexdigest()
 
     approved_baseline = baseline if baseline_ancestor else "a" * 40
     baseline_approval = {
@@ -520,9 +513,7 @@ def test_review_eligibility_rejects_unrelated_candidate_path(
     candidate_root, _ = _make_candidate_repo(tmp_path / "candidate")
     _bind_test_baseline_approval_pin(monkeypatch, candidate_root)
     readme = candidate_root / "README.md"
-    readme.write_text(
-        readme.read_text(encoding="utf-8") + "unrelated change\n", encoding="utf-8"
-    )
+    readme.write_text(readme.read_text(encoding="utf-8") + "unrelated change\n", encoding="utf-8")
     _refresh_manifests(candidate_root)
     _git(candidate_root, "commit", "-m", "unrelated path")
     with pytest.raises(ReviewEligibilityError, match="outside the declared control-packet scope"):

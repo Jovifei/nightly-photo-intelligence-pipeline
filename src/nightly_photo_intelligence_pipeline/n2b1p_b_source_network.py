@@ -162,9 +162,7 @@ def _is_reparse(st: os.stat_result) -> bool:
 def _repo_file(project_root: Path, relative: str) -> Path:
     """Return a regular tracked-root file without following reparse points."""
     relative_path = PurePosixPath(relative)
-    if relative_path.is_absolute() or any(
-        part in {"", ".", ".."} for part in relative_path.parts
-    ):
+    if relative_path.is_absolute() or any(part in {"", ".", ".."} for part in relative_path.parts):
         _deny("control-document reference is not project-relative")
     supplied_root = Path(project_root)
     try:
@@ -829,13 +827,9 @@ def _resolve_approved_review_receipt_parent() -> Path:
     Tests may replace this resolver without weakening the production path.
     """
     try:
-        return Path(
-            rf"E:\Claude_allow\Download\{REVIEW_RECEIPT_PARENT}"
-        ).resolve(strict=True)
+        return Path(rf"E:\Claude_allow\Download\{REVIEW_RECEIPT_PARENT}").resolve(strict=True)
     except OSError as exc:
-        raise GateNotAuthorizedError(
-            "approved review evidence parent is unavailable"
-        ) from exc
+        raise GateNotAuthorizedError("approved review evidence parent is unavailable") from exc
 
 
 def load_external_exact_sha_review_receipt(
@@ -860,9 +854,7 @@ def load_external_exact_sha_review_receipt(
     if os.name == "nt":
         approved_parent = _resolve_approved_review_receipt_parent()
         if resolved.parent != approved_parent:
-            _deny(
-                "external exact-SHA review receipt is outside the approved evidence parent"
-            )
+            _deny("external exact-SHA review receipt is outside the approved evidence parent")
     elif resolved.parent.name != REVIEW_RECEIPT_PARENT:
         _deny("external exact-SHA review receipt ref is not the approved evidence ref")
     value = load_json_strict(resolved)
