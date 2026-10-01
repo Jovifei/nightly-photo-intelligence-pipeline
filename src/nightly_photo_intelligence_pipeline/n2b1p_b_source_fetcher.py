@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol, cast
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import SplitResult, urljoin, urlsplit
 
 from jsonschema import Draft202012Validator, FormatChecker
 
@@ -158,12 +158,15 @@ class StdlibHttpsTransport:
                 },
             )
             return _HttpResponseHandle(connection.getresponse(), connection)
-        except BaseException:
+        except (OSError, TimeoutError, http.client.HTTPException, ssl.SSLError):
             connection.close()
             raise
 
 
-def _validate_bound_url(url: str, filename: str | None = None):
+def _validate_bound_url(
+    url: str,
+    filename: str | None = None,
+) -> SplitResult:
     try:
         parsed = urlsplit(url)
     except ValueError as exc:
