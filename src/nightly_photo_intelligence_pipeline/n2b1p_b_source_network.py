@@ -33,7 +33,7 @@ TASK_PATH = "tasks/phase_n2b1p_b_source_network_reacquisition_v1.yaml"
 OWNER_PATH = "approvals/owner_n2b1p_b_source_network_reacquisition_v1.yaml"
 RUNTIME_PATH = "approvals/n2b1p_b_source_network_runtime_configuration_v1.json"
 RUNTIME_DIGEST = "a60178368e6d37dcf713dc004d9799048a0f9dfd957cc49e5c619753787c39d8"
-STOP_POINT = "EXTERNAL_REVIEW_B_SOURCE_NETWORK_REACQUISITION_V1_PRE_DOWNLOAD"
+STOP_POINT = "EXTERNAL_REVIEW_B_SOURCE_EXECUTOR_CODE_PRE_DOWNLOAD"
 POST_REVIEW_ADMISSION_STATUS = "B_SOURCE_NETWORK_POST_REVIEW_ADMISSION_PASS"
 REVIEW_RECEIPT_SCHEMA = "external_exact_sha_review_receipt_v1.schema.json"
 REVIEW_REPORT_PATH = "review_tools/NEXT_LOCAL_CODEX_PROMPT.md"
@@ -80,6 +80,7 @@ _ALLOWED_CHANGE_CATEGORIES = [
     "tests",
     "governance_tool",
     "control_plane_code",
+    "executor_code",
     "manifest",
     "todo_status",
     "task_tracking",
@@ -130,24 +131,6 @@ _SCHEMA_FILES = (
     "n2b1p_b_source_network_evidence_v1.schema.json",
     "n2b1p_b_source_network_checkpoint_v1.schema.json",
 )
-_SCHEMA_SHA256 = dict(
-    zip(
-        (*_SCHEMA_FILES, "task_index_v1_2.schema.json"),
-        (
-            "7c9f71228c5c6ea1d8911b7cf9dc22ef33ec5e0148fce4752277501518ce7550",
-            "f2ef4b215cf3dfb8f40b3966a222c416f888c7afc9874bd6a47c3235ddbf2214",
-            "4b2aede6f3f9968517efb87230aeccfe718a4d1d67972bfb98d0ef4a0a205d12",
-            "82dc82e61a5f9bcbc9784f378ddd5bfb9fb18f6d4896f60ba6f5d5422bb3a938",
-            "7b5aa24b44a30b70906137b3a8ec0c77813e87381b213deee432a3fe306caaf3",
-            "a253d59fa27c108ff801aab0d21c046efa6ed2cfed14ec3e896121375af4e49d",
-        ),
-        strict=True,
-    )
-)
-_SCHEMA_SHA256[REVIEW_RECEIPT_SCHEMA] = (
-    "779c3070ca7f3e865c51980b23a3fbbe2eec6c082e7b9761b83e3a49bbce8d22"
-)
-
 
 def _deny(message: str) -> NoReturn:
     raise GateNotAuthorizedError(message)
@@ -261,21 +244,38 @@ def _load_json(project_root: Path, relative: str) -> Mapping[str, object]:
     return _mapping(value, "control JSON")
 
 
+def _manifest_expected_sha256(project_root: Path, relative: str) -> str:
+    manifest = _repo_file(project_root, "MANIFEST.sha256")
+    try:
+        rows = manifest.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise GateNotAuthorizedError("root MANIFEST is unavailable") from exc
+    matches: list[str] = []
+    for row in rows:
+        if "  " not in row:
+            _deny("root MANIFEST contains an invalid row")
+        digest, path = row.split("  ", 1)
+        if path == relative:
+            matches.append(digest)
+    if len(matches) != 1:
+        _deny("control schema is not uniquely bound by root MANIFEST")
+    digest = matches[0]
+    if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
+        _deny("control schema MANIFEST digest is invalid")
+    return digest
+
+
 def _load_schema(project_root: Path, filename: str) -> Mapping[str, object]:
-    expected_digest = _SCHEMA_SHA256.get(filename)
-    if (
-        expected_digest is None
-        or _sha256_file(project_root, f"schemas/{filename}") != expected_digest
-    ):
+    relative = f"schemas/{filename}"
+    expected_digest = _manifest_expected_sha256(project_root, relative)
+    if _sha256_file(project_root, relative) != expected_digest:
         _deny("control schema bytes changed")
-    schema = _load_json(project_root, f"schemas/{filename}")
+    schema = _load_json(project_root, relative)
     try:
         Draft202012Validator.check_schema(schema)
     except SchemaError as exc:
         raise GateNotAuthorizedError("control schema is invalid") from exc
     return schema
-
-
 def _validate_schema(schema: Mapping[str, object], value: object, label: str) -> None:
     errors = sorted(
         Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(value),
@@ -506,10 +506,10 @@ def _validate_packet(
     baseline_record = _mapping(baseline.get("baseline"), "immutable N2B1P baseline")
     if (
         review_candidate.get("status") != "REVIEW_CANDIDATE"
-        or review_candidate.get("class") != "CONTROL_PLANE_ONLY"
+        or review_candidate.get("class") != "CONTROL_PLANE_AND_EXECUTOR_CODE_ONLY"
         or review_candidate.get("task_id") != "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
         or review_candidate.get("review_scope")
-        != "B_SOURCE_NETWORK_REACQUISITION_V1_CONTROL_PACKET_ONLY"
+        != "B_SOURCE_NETWORK_REACQUISITION_V1_EXECUTOR_CODE_ONLY"
         or review_candidate.get("task_schema_ref")
         != "schemas/n2b1p_b_source_network_reacquisition_v1.schema.json"
         or review_candidate.get("owner_approval_ref") != OWNER_PATH
@@ -794,7 +794,7 @@ def validate_external_exact_sha_review_receipt(
     expected = {
         "receipt_type": "EXTERNAL_EXACT_SHA_REVIEW_RECEIPT_V1",
         "task_id": "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1",
-        "review_scope": "B_SOURCE_NETWORK_REACQUISITION_V1_CONTROL_PACKET_ONLY",
+        "review_scope": "B_SOURCE_NETWORK_REACQUISITION_V1_EXECUTOR_CODE_ONLY",
         "reviewed_head": head,
         "reviewed_tree": tree,
         "immutable_baseline_commit": baseline_commit,
@@ -892,6 +892,21 @@ def check_external_exact_sha_review_receipt(
         }
 
 
+
+def load_b_source_network_execution_binding(
+    project_root: Path,
+) -> dict[str, object]:
+    """Return exact reviewed artifacts and quarantine binding after full validation."""
+    load_b_source_network_control_packet(project_root)
+    task = _load_yaml(project_root, TASK_PATH)
+    quarantine = _mapping(task.get("quarantine"), "task quarantine binding")
+    records = _artifact_records(task.get("artifacts"), "B-source task")
+    return {
+        "quarantine_root_ref": quarantine["root_ref"],
+        "quarantine_root_identity_sha256": quarantine["object_identity_sha256"],
+        "artifacts": [dict(records[str(item["id"])]) for item in _ARTIFACTS],
+    }
+
 def load_b_source_network_control_packet(project_root: Path) -> dict[str, object]:
     """Strictly validate tracked controls and return redacted review facts."""
     schemas = {name: _load_schema(project_root, name) for name in _SCHEMA_FILES}
@@ -944,6 +959,7 @@ __all__ = [
     "check_b_source_network_control_packet",
     "check_external_exact_sha_review_receipt",
     "load_b_source_network_control_packet",
+    "load_b_source_network_execution_binding",
     "load_external_exact_sha_review_receipt",
     "validate_external_exact_sha_review_receipt",
 ]
