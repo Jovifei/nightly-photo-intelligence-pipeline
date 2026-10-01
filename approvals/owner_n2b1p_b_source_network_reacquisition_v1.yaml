@@ -86,6 +86,15 @@ quality_environment:
   python_ref: "E_CLAUDE_ALLOW_DOWNLOAD/npi-py312-quality-venv-20260929"
   role: "PYTHON_QUALITY_ONLY"
   torch_or_cuda_usage: "DENY"
+post_review_execution:
+  required_receipt_type: "EXTERNAL_EXACT_SHA_REVIEW_RECEIPT_V1"
+  required_receipt_verdict: "DONE"
+  required_review_scope: "B_SOURCE_NETWORK_REACQUISITION_V1_EXECUTOR_CODE_ONLY"
+  network_access: "ALLOW_EXACT_THREE_HTTPS"
+  destination_scope: "BOUND_QUARANTINE_ONLY"
+  missing_payload_precondition: "REQUIRED"
+  cache_promotion: "NOT_AUTHORIZED"
+  model_cuda_photo_exif_sqlite_real20: "NOT_AUTHORIZED"
 not_authorized:
   - "network_download_before_external_review"
   - "search_or_access_outside_E_CLAUDE_ALLOW_DOWNLOAD"
@@ -99,4 +108,4 @@ not_authorized:
   - "push_merge_pull_request_or_release"
 mandatory_stop:
   value: true
-  next_action: "EXTERNAL_REVIEW_B_SOURCE_NETWORK_REACQUISITION_V1_PRE_DOWNLOAD"
+  next_action: "EXTERNAL_REVIEW_B_SOURCE_EXECUTOR_CODE_PRE_DOWNLOAD"
