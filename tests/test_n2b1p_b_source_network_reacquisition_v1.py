@@ -40,7 +40,7 @@ def _valid_review_receipt(project_root: Path) -> dict[str, object]:
         "schema_version": "1.0",
         "receipt_type": "EXTERNAL_EXACT_SHA_REVIEW_RECEIPT_V1",
         "task_id": "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1",
-        "review_scope": "B_SOURCE_NETWORK_REACQUISITION_V1_CONTROL_PACKET_ONLY",
+        "review_scope": "B_SOURCE_NETWORK_REACQUISITION_V1_EXECUTOR_CODE_ONLY",
         "verdict": "DONE",
         "reviewed_head": _git_text(project_root, "rev-parse", "HEAD"),
         "reviewed_tree": _git_text(project_root, "rev-parse", "HEAD^{tree}"),
