@@ -447,10 +447,6 @@ class WindowsBoundQuarantinePublisher:
         self._completed: set[str] = set()
 
     def _validate_bound_root(self, root: BoundDirectory) -> None:
-        if root.identity.digest != self.expected_identity:
-            raise BSourceAcquisitionError(
-                "NPI_B_SOURCE_QUARANTINE_IDENTITY_MISMATCH"
-            )
         with bind_existing_directory(
             _approved_download_parent_path(),
             writable=False,
@@ -468,17 +464,21 @@ class WindowsBoundQuarantinePublisher:
                 raise BSourceAcquisitionError(
                     "NPI_B_SOURCE_QUARANTINE_LOCATION_MISMATCH"
                 )
+        if root.identity.digest != self.expected_identity:
+            raise BSourceAcquisitionError(
+                "NPI_B_SOURCE_QUARANTINE_IDENTITY_MISMATCH"
+            )
         for cache_path, required in (
             (_route_b_cache_path(), True),
             (_historical_cache_path(), False),
         ):
             try:
                 cache_root = bind_existing_directory(cache_path, writable=False)
-            except FileNotFoundError:
+            except FileNotFoundError as exc:
                 if required:
                     raise BSourceAcquisitionError(
                         "NPI_B_SOURCE_CACHE_BOUNDARY_UNAVAILABLE"
-                    )
+                    ) from exc
                 continue
             with cache_root:
                 if _handle_paths_overlap(
@@ -716,13 +716,15 @@ def persist_acquisition_result(
     ):
         raise BSourceAcquisitionError("NPI_B_SOURCE_EVIDENCE_INSIDE_GIT")
     payload = _canonical_json_bytes(result)
-    with bind_existing_directory(
-        evidence_parent_path,
-        writable=True,
-    ) as evidence_parent:
-        with evidence_parent.create_file(_RESULT_FILENAME) as target:
-            target.write(payload)
-            target.flush()
+    with (
+        bind_existing_directory(
+            evidence_parent_path,
+            writable=True,
+        ) as evidence_parent,
+        evidence_parent.create_file(_RESULT_FILENAME) as target,
+    ):
+        target.write(payload)
+        target.flush()
     return {
         "terminal_evidence_ref": _RESULT_REF,
         "terminal_evidence_sha256": hashlib.sha256(payload).hexdigest(),
@@ -827,6 +829,7 @@ def run_b_source_network_acquisition(
         except (
             BSourceAcquisitionError,
             GateNotAuthorizedError,
+            NpiError,
             OSError,
             ValueError,
         ) as exc:

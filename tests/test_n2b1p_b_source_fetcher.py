@@ -426,6 +426,7 @@ def test_network_failure_is_terminal_and_not_retryable(
         "EXTERNAL_REVIEW_B_SOURCE_ACQUISITION_FAILURE"
     )
 
+
 class _FakeBoundDirectory:
     def __init__(
         self,
@@ -450,6 +451,14 @@ class _FakeBoundDirectory:
 
     def __exit__(self, *_args: object) -> None:
         return None
+
+
+def _exact_three_test_specs(primary: fetcher.ArtifactSpec) -> list[fetcher.ArtifactSpec]:
+    return [
+        primary,
+        _spec(b"test-two", artifact_id="artifact-two"),
+        _spec(b"test-three", artifact_id="artifact-three"),
+    ]
 
 
 def _admit_for_test(
@@ -564,7 +573,7 @@ def test_parent_junction_safety_error_blocks_before_network(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     spec = _spec(b"abcd")
-    _admit_for_test(monkeypatch, specs=[spec])
+    _admit_for_test(monkeypatch, specs=_exact_three_test_specs(spec))
     monkeypatch.setattr(fetcher.os, "name", "nt")
     monkeypatch.setattr(
         fetcher,
@@ -590,7 +599,7 @@ def test_publisher_path_safety_error_is_terminal_with_request_count(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     spec = _spec(b"abcd")
-    _admit_for_test(monkeypatch, specs=[spec])
+    _admit_for_test(monkeypatch, specs=_exact_three_test_specs(spec))
     transport = FakeTransport(
         {spec.url: [FakeResponse(b"abcd", content_length=4)]}
     )
@@ -665,4 +674,3 @@ def test_cli_persists_aggregate_terminal_result(
     assert payload["terminal_evidence_ref"].endswith(
         "b-source-network-acquisition-result-v1.json"
     )
-

@@ -2433,4 +2433,3 @@ pending connector setup. Network acquisition and all model/photo execution remai
 
 Current status:
 `B_SOURCE_NETWORK_EXECUTOR_CODE_AWAITING_LOCAL_RECEIVE_AND_EXACT_SHA_REVIEW`.
-
