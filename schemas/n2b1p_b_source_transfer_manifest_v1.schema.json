@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b1p_b_source_transfer_manifest_v1.schema.json",
+  "title": "B-source transfer manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evidence_type",
+    "status",
+    "artifact_id",
+    "revision",
+    "filename",
+    "requested_url",
+    "final_url",
+    "final_domain",
+    "redirect_count",
+    "response_status",
+    "expected_byte_count",
+    "observed_byte_count",
+    "expected_sha256",
+    "observed_sha256",
+    "historical_transfer_manifest_sha256",
+    "quarantine_root_ref",
+    "quarantine_root_identity_sha256",
+    "reviewed_head",
+    "reviewed_tree",
+    "completed_at_utc"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "evidence_type": {
+      "const": "B_SOURCE_NETWORK_TRANSFER_MANIFEST_V1"
+    },
+    "status": {
+      "const": "PUBLISHED_VERIFIED"
+    },
+    "artifact_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "revision": {
+      "const": "torchvision-v0.22.1"
+    },
+    "filename": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,191}$"
+    },
+    "requested_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "final_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "final_domain": {
+      "const": "download.pytorch.org"
+    },
+    "redirect_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    },
+    "response_status": {
+      "const": 200
+    },
+    "expected_byte_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "observed_byte_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "expected_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "observed_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "historical_transfer_manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "quarantine_root_ref": {
+      "const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-n2b1p-b-source-quarantine-20260930-e9110783"
+    },
+    "quarantine_root_identity_sha256": {
+      "const": "ff0fc35900d4f60d906e8dbcc8d806e8d1360aee4290326049925353667f9000"
+    },
+    "reviewed_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "reviewed_tree": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "completed_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
