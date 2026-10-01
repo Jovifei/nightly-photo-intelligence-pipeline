@@ -23,7 +23,7 @@ from nightly_photo_intelligence_pipeline.n2b1p_integrity import (
 
 ROOT = Path(__file__).resolve().parents[1]
 TASK_ID = "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
-REVIEW_SCOPE = "B_SOURCE_NETWORK_REACQUISITION_V1_CONTROL_PACKET_ONLY"
+REVIEW_SCOPE = "B_SOURCE_NETWORK_REACQUISITION_V1_EXECUTOR_CODE_ONLY"
 TASK_PATH = "tasks/phase_n2b1p_b_source_network_reacquisition_v1.yaml"
 OWNER_PATH = "approvals/owner_n2b1p_b_source_network_reacquisition_v1.yaml"
 RUNTIME_PATH = "approvals/n2b1p_b_source_network_runtime_configuration_v1.json"
@@ -38,6 +38,7 @@ ALLOWED_CHANGE_CATEGORIES = [
     "tests",
     "governance_tool",
     "control_plane_code",
+    "executor_code",
     "manifest",
     "todo_status",
     "task_tracking",
@@ -271,7 +272,7 @@ def _make_candidate_repo(
         "runtime_configuration": {"path": RUNTIME_PATH, "configuration_digest": runtime_digest},
         "review_candidate": {
             "status": "REVIEW_CANDIDATE",
-            "class": "CONTROL_PLANE_ONLY",
+            "class": "CONTROL_PLANE_AND_EXECUTOR_CODE_ONLY",
             "task_id": TASK_ID,
             "review_scope": REVIEW_SCOPE,
             "task_schema_ref": TASK_SCHEMA_PATH,
