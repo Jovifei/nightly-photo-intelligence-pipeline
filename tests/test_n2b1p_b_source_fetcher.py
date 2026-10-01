@@ -656,9 +656,7 @@ def test_same_runtime_second_execution_is_zero_network_and_preserves_first_termi
 
     def claim_once(*_args: object, **_kwargs: object) -> StatefulClaim:
         if state["claimed"]:
-            raise fetcher.BSourceAcquisitionError(
-                "NPI_B_SOURCE_ONE_SHOT_ALREADY_CLAIMED"
-            )
+            raise fetcher.BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_ALREADY_CLAIMED")
         state["claimed"] = True
         return StatefulClaim()
 

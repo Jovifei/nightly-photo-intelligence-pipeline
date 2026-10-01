@@ -653,15 +653,11 @@ class OneShotExecutionClaim:
         with bind_existing_directory(evidence_parent_path, writable=True) as evidence_parent:
             names = evidence_parent.list_names()
             if _LEASE_DIRNAME in names or _LEGACY_RESULT_FILENAME in names:
-                raise BSourceAcquisitionError(
-                    "NPI_B_SOURCE_ONE_SHOT_ALREADY_CLAIMED"
-                )
+                raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_ALREADY_CLAIMED")
             try:
                 lease = evidence_parent.create_directory(_LEASE_DIRNAME)
             except NpiError as exc:
-                raise BSourceAcquisitionError(
-                    "NPI_B_SOURCE_ONE_SHOT_CLAIM_DENIED"
-                ) from exc
+                raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_CLAIM_DENIED") from exc
             try:
                 with lease.create_file(_RESERVATION_FILENAME) as target:
                     target.write(reservation)
@@ -684,9 +680,7 @@ class OneShotExecutionClaim:
                 writable=True,
             ) as evidence_parent:
                 if _LEASE_DIRNAME not in evidence_parent.list_names():
-                    raise BSourceAcquisitionError(
-                        "NPI_B_SOURCE_ONE_SHOT_LEASE_MISSING"
-                    )
+                    raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_LEASE_MISSING")
                 with evidence_parent.open_directory(
                     _LEASE_DIRNAME,
                     writable=True,
@@ -705,22 +699,16 @@ class OneShotExecutionClaim:
                         or reservation.get("reviewed_tree") != self.reviewed_tree
                         or reservation.get("retry_authorized") is not False
                     ):
-                        raise BSourceAcquisitionError(
-                            "NPI_B_SOURCE_ONE_SHOT_RESERVATION_INVALID"
-                        )
+                        raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_RESERVATION_INVALID")
                     if _TERMINAL_FILENAME in lease.list_names():
-                        raise BSourceAcquisitionError(
-                            "NPI_B_SOURCE_TERMINAL_ALREADY_EXISTS"
-                        )
+                        raise BSourceAcquisitionError("NPI_B_SOURCE_TERMINAL_ALREADY_EXISTS")
                     with lease.create_file(_TERMINAL_FILENAME) as target:
                         target.write(payload)
                         target.flush()
         except BSourceAcquisitionError:
             raise
         except NpiError as exc:
-            raise BSourceAcquisitionError(
-                "NPI_B_SOURCE_TERMINAL_PERSIST_FAILED"
-            ) from exc
+            raise BSourceAcquisitionError("NPI_B_SOURCE_TERMINAL_PERSIST_FAILED") from exc
         return {
             "one_shot_lease_ref": _LEASE_REF,
             "terminal_evidence_ref": _RESULT_REF,
@@ -742,6 +730,7 @@ def _finish_claimed_result(
     result: dict[str, object],
 ) -> dict[str, object]:
     return {**result, **claim.persist_terminal(result)}
+
 
 def run_b_source_network_acquisition(
     project_root: Path,
