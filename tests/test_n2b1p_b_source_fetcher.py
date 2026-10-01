@@ -152,9 +152,7 @@ def test_stream_rejects_short_long_and_hash_mismatch() -> None:
         filename=good.filename,
         byte_count=good.byte_count,
         sha256="0" * 64,
-        historical_transfer_manifest_sha256=(
-            good.historical_transfer_manifest_sha256
-        ),
+        historical_transfer_manifest_sha256=(good.historical_transfer_manifest_sha256),
     )
     with pytest.raises(
         fetcher.BSourceAcquisitionError,
@@ -175,10 +173,7 @@ def test_redirect_rejects_other_domain() -> None:
                 FakeResponse(
                     b"",
                     status=302,
-                    location=(
-                        "https://evil.test/models/"
-                        "artifact-a.pth"
-                    ),
+                    location=("https://evil.test/models/artifact-a.pth"),
                 )
             ]
         }
@@ -204,9 +199,7 @@ def test_exact_sha_admission_failure_makes_zero_network_calls(
     monkeypatch.setattr(
         fetcher,
         "check_external_exact_sha_review_receipt",
-        lambda *_args, **_kwargs: {
-            "status": "B_SOURCE_NETWORK_POST_REVIEW_ADMISSION_INVALID"
-        },
+        lambda *_args, **_kwargs: {"status": "B_SOURCE_NETWORK_POST_REVIEW_ADMISSION_INVALID"},
     )
     result = fetcher.run_b_source_network_acquisition(
         project_root,
@@ -241,9 +234,7 @@ def test_missing_payload_gate_failure_makes_zero_network_calls(
         *_args: object,
         **_kwargs: object,
     ) -> dict[str, object]:
-        raise fetcher.BSourceAcquisitionError(
-            "NPI_B_SOURCE_MISSING_PRECONDITION_STALE"
-        )
+        raise fetcher.BSourceAcquisitionError("NPI_B_SOURCE_MISSING_PRECONDITION_STALE")
 
     monkeypatch.setattr(
         fetcher,
@@ -289,18 +280,14 @@ def test_injected_exact_three_success_stops_before_cache(
     monkeypatch.setattr(
         fetcher,
         "load_missing_payload_precondition",
-        lambda *_args, **_kwargs: {
-            "status": "EXACT_PAYLOADS_ABSENT"
-        },
+        lambda *_args, **_kwargs: {"status": "EXACT_PAYLOADS_ABSENT"},
     )
     monkeypatch.setattr(
         fetcher,
         "load_b_source_network_execution_binding",
         lambda _root: {
             "quarantine_root_ref": (
-                "E_CLAUDE_ALLOW_DOWNLOAD/"
-                "npi-n2b1p-b-source-quarantine-"
-                "20260930-e9110783"
+                "E_CLAUDE_ALLOW_DOWNLOAD/npi-n2b1p-b-source-quarantine-20260930-e9110783"
             ),
             "quarantine_root_identity_sha256": "f" * 64,
             "artifacts": [
@@ -311,9 +298,7 @@ def test_injected_exact_three_success_stops_before_cache(
                     "filename": spec.filename,
                     "byte_count": spec.byte_count,
                     "local_sha256": spec.sha256,
-                    "transfer_manifest_sha256": (
-                        spec.historical_transfer_manifest_sha256
-                    ),
+                    "transfer_manifest_sha256": (spec.historical_transfer_manifest_sha256),
                 }
                 for spec in specs
             ],
@@ -347,16 +332,11 @@ def test_injected_exact_three_success_stops_before_cache(
         publisher=publisher,
         clock=lambda: "2026-10-01T00:00:00Z",
     )
-    assert result["status"] == (
-        "B_SOURCE_BYTES_READY_AWAITING_EXTERNAL_REVIEW"
-    )
+    assert result["status"] == ("B_SOURCE_BYTES_READY_AWAITING_EXTERNAL_REVIEW")
     assert result["network_request_count"] == 3
     assert len(result["artifact_results"]) == 3
     assert result["cache_promotion"] == "NOT_AUTHORIZED"
-    assert (
-        result["model_cuda_photo_exif_sqlite_real20"]
-        == "NOT_AUTHORIZED"
-    )
+    assert result["model_cuda_photo_exif_sqlite_real20"] == "NOT_AUTHORIZED"
 
 
 def test_network_failure_is_terminal_and_not_retryable(
@@ -381,9 +361,7 @@ def test_network_failure_is_terminal_and_not_retryable(
     assert result["retry_authorized"] is False
     assert result["network_request_count"] == 1
     assert transport.calls == [spec.url]
-    assert result["mandatory_stop"] == (
-        "EXTERNAL_REVIEW_B_SOURCE_ACQUISITION_FAILURE"
-    )
+    assert result["mandatory_stop"] == ("EXTERNAL_REVIEW_B_SOURCE_ACQUISITION_FAILURE")
 
 
 class _FakeBoundDirectory:
@@ -455,9 +433,7 @@ def _admit_for_test(
                     "filename": spec.filename,
                     "byte_count": spec.byte_count,
                     "local_sha256": spec.sha256,
-                    "transfer_manifest_sha256": (
-                        spec.historical_transfer_manifest_sha256
-                    ),
+                    "transfer_manifest_sha256": (spec.historical_transfer_manifest_sha256),
                 }
                 for spec in specs
             ],
@@ -499,11 +475,7 @@ def test_handle_final_path_rejects_quarantine_moved_under_cache(
         + separator
         + "moved-quarantine"
     )
-    route_cache_final = (
-        approved_parent_final
-        + separator
-        + fetcher._ROUTE_B_CACHE_LEAF.casefold()
-    )
+    route_cache_final = approved_parent_final + separator + fetcher._ROUTE_B_CACHE_LEAF.casefold()
     root = _FakeBoundDirectory(
         digest=fetcher._QUARANTINE_IDENTITY,
         final_path=quarantine_final,
@@ -537,6 +509,7 @@ def test_handle_final_path_rejects_quarantine_moved_under_cache(
         match="QUARANTINE_LOCATION_MISMATCH",
     ):
         publisher.validate_initial_state()
+
 
 def test_parent_junction_safety_error_blocks_before_network(
     project_root: Path,
@@ -639,6 +612,4 @@ def test_cli_persists_aggregate_terminal_result(
     payload = json.loads(result.output)
     assert persisted == [terminal]
     assert payload["terminal_evidence_sha256"] == "c" * 64
-    assert payload["terminal_evidence_ref"].endswith(
-        "b-source-network-acquisition-result-v1.json"
-    )
+    assert payload["terminal_evidence_ref"].endswith("b-source-network-acquisition-result-v1.json")

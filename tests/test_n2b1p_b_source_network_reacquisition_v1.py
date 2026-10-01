@@ -34,9 +34,7 @@ def _git_text(root: Path, *args: str) -> str:
 
 def _valid_review_receipt(project_root: Path) -> dict[str, object]:
     baseline = yaml.safe_load(
-        (project_root / "approvals/phase_completion_N2B1P.yaml").read_text(
-            encoding="utf-8"
-        )
+        (project_root / "approvals/phase_completion_N2B1P.yaml").read_text(encoding="utf-8")
     )
     return {
         "schema_version": "1.0",
@@ -50,9 +48,7 @@ def _valid_review_receipt(project_root: Path) -> dict[str, object]:
         "current_manifest_sha256": hashlib.sha256(
             (project_root / "MANIFEST.sha256").read_bytes()
         ).hexdigest(),
-        "task_sha256": hashlib.sha256(
-            (project_root / TASK_PATH).read_bytes()
-        ).hexdigest(),
+        "task_sha256": hashlib.sha256((project_root / TASK_PATH).read_bytes()).hexdigest(),
         "owner_approval_sha256": hashlib.sha256(
             (project_root / OWNER_PATH).read_bytes()
         ).hexdigest(),
@@ -93,14 +89,10 @@ def test_network_packet_is_ready_for_review_but_never_authorizes_execution(
     task = yaml.safe_load((project_root / TASK_PATH).read_text(encoding="utf-8"))
     owner = yaml.safe_load((project_root / OWNER_PATH).read_text(encoding="utf-8"))
 
-    assert result["status"] == (
-        "B_SOURCE_NETWORK_REACQUISITION_READY_FOR_EXTERNAL_REVIEW"
-    )
+    assert result["status"] == ("B_SOURCE_NETWORK_REACQUISITION_READY_FOR_EXTERNAL_REVIEW")
     assert task["phase"]["id"] == "N2B1P"
     assert task["capability"] == "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
-    assert task["review_candidate"]["task_id"] == (
-        "N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1"
-    )
+    assert task["review_candidate"]["task_id"] == ("N2B1P_B_SOURCE_NETWORK_REACQUISITION_V1")
     assert task["review_candidate"]["class"] == "CONTROL_PLANE_AND_EXECUTOR_CODE_ONLY"
     assert task["review_candidate"]["review_scope"] == (
         "B_SOURCE_NETWORK_REACQUISITION_V1_EXECUTOR_CODE_ONLY"
@@ -133,9 +125,7 @@ def test_network_packet_is_ready_for_review_but_never_authorizes_execution(
     assert result["execution_authority"] == "NOT_AUTHORIZED"
     assert result["network_access"] == "DENY"
     assert result["pre_download_external_review"] == "PASS_REQUIRED"
-    assert result["mandatory_stop"] == (
-        "EXTERNAL_REVIEW_B_SOURCE_EXECUTOR_CODE_PRE_DOWNLOAD"
-    )
+    assert result["mandatory_stop"] == ("EXTERNAL_REVIEW_B_SOURCE_EXECUTOR_CODE_PRE_DOWNLOAD")
     assert result["artifact_count"] == 3
 
 
@@ -405,9 +395,7 @@ def test_network_packet_fails_closed_when_schema_bytes_drift(
     original = network._sha256_file
 
     def altered_digest(root: Path, relative: str) -> str:
-        if relative == (
-            "schemas/n2b1p_b_source_network_runtime_configuration_v1.schema.json"
-        ):
+        if relative == ("schemas/n2b1p_b_source_network_runtime_configuration_v1.schema.json"):
             return "0" * 64
         return original(root, relative)
 

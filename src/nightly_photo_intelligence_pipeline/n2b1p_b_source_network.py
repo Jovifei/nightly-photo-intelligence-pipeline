@@ -132,6 +132,7 @@ _SCHEMA_FILES = (
     "n2b1p_b_source_network_checkpoint_v1.schema.json",
 )
 
+
 def _deny(message: str) -> NoReturn:
     raise GateNotAuthorizedError(message)
 
@@ -907,6 +908,7 @@ def load_b_source_network_execution_binding(
         "quarantine_root_identity_sha256": quarantine["object_identity_sha256"],
         "artifacts": [dict(records[str(item["id"])]) for item in _ARTIFACTS],
     }
+
 
 def load_b_source_network_control_packet(project_root: Path) -> dict[str, object]:
     """Strictly validate tracked controls and return redacted review facts."""
