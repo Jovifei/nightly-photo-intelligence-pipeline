@@ -530,7 +530,7 @@ def test_active_b_source_review_metadata_and_schemas_are_coherent() -> None:
     assert metadata["review_scope"] == REVIEW_SCOPE
     assert metadata["status"] == "REVIEW_CANDIDATE"
     assert metadata["baseline_approval_ref"] == BASELINE_APPROVAL_PATH
-    assert metadata["class"] == "CONTROL_PLANE_ONLY"
+    assert metadata["class"] == "CONTROL_PLANE_AND_EXECUTOR_CODE_ONLY"
     assert metadata["external_exact_sha_review_required"] is True
     assert metadata["execution_before_review"] is False
 
