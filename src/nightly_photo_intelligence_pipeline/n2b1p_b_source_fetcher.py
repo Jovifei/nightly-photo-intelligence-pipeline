@@ -45,8 +45,12 @@ _MISSING_PRECONDITION_FILENAME = "b-source-missing-payload-precondition-v1.json"
 _MISSING_PRECONDITION_SCHEMA = "n2b1p_b_source_missing_payload_precondition_v1.schema.json"
 _TRANSFER_SCHEMA = "n2b1p_b_source_transfer_manifest_v1.schema.json"
 _RESULT_SCHEMA = "n2b1p_b_source_acquisition_result_v1.schema.json"
-_RESULT_FILENAME = "b-source-network-acquisition-result-v1.json"
-_RESULT_REF = f"E_CLAUDE_ALLOW_DOWNLOAD/{_EVIDENCE_PARENT}/{_RESULT_FILENAME}"
+_LEGACY_RESULT_FILENAME = "b-source-network-acquisition-result-v1.json"
+_LEASE_DIRNAME = "b-source-network-acquisition-one-shot-v1"
+_RESERVATION_FILENAME = "reservation.json"
+_TERMINAL_FILENAME = "terminal.json"
+_LEASE_REF = f"E_CLAUDE_ALLOW_DOWNLOAD/{_EVIDENCE_PARENT}/{_LEASE_DIRNAME}"
+_RESULT_REF = f"{_LEASE_REF}/{_TERMINAL_FILENAME}"
 _QUARANTINE_LEAF = "npi-n2b1p-b-source-quarantine-20260930-e9110783"
 _ROUTE_B_CACHE_LEAF = "npi-n2b1p-cache-v2-20260929"
 _HISTORICAL_CACHE_LEAF = "npi-model-cache"
@@ -617,39 +621,127 @@ def _failure_code(exc: Exception, fallback: str) -> str:
     return fallback
 
 
-def persist_acquisition_result(
-    project_root: Path,
-    result: Mapping[str, object],
-) -> dict[str, str]:
-    """Persist one exclusive terminal record below the fixed Git-external root."""
-    _validate_document(project_root, _RESULT_SCHEMA, result)
-    if os.name != "nt":
-        raise BSourceAcquisitionError("NPI_B_SOURCE_WINDOWS_PATH_REQUIRED")
-    evidence_parent_path = _fixed_download_path(_EVIDENCE_PARENT)
-    try:
-        project_root_text = str(project_root.resolve(strict=True)).casefold()
-    except OSError as exc:
-        raise BSourceAcquisitionError("NPI_B_SOURCE_PROJECT_ROOT_UNAVAILABLE") from exc
-    evidence_text = str(evidence_parent_path).casefold()
-    if evidence_text == project_root_text or evidence_text.startswith(
-        project_root_text.rstrip(chr(92)) + chr(92)
-    ):
-        raise BSourceAcquisitionError("NPI_B_SOURCE_EVIDENCE_INSIDE_GIT")
-    payload = _canonical_json_bytes(result)
-    with (
-        bind_existing_directory(
-            evidence_parent_path,
-            writable=True,
-        ) as evidence_parent,
-        evidence_parent.create_file(_RESULT_FILENAME) as target,
-    ):
-        target.write(payload)
-        target.flush()
-    return {
-        "terminal_evidence_ref": _RESULT_REF,
-        "terminal_evidence_sha256": hashlib.sha256(payload).hexdigest(),
-    }
+@dataclass(frozen=True)
+class OneShotExecutionClaim:
+    """Permanent handle-bound lease for one reviewed acquisition attempt."""
 
+    project_root: Path
+    reviewed_head: str
+    reviewed_tree: str
+    evidence_parent_path: Path
+
+    @classmethod
+    def claim(
+        cls,
+        project_root: Path,
+        reviewed_head: str,
+        reviewed_tree: str,
+    ) -> OneShotExecutionClaim:
+        if os.name != "nt":
+            raise BSourceAcquisitionError("NPI_B_SOURCE_WINDOWS_PATH_REQUIRED")
+        evidence_parent_path = _fixed_download_path(_EVIDENCE_PARENT)
+        reservation = _canonical_json_bytes(
+            {
+                "schema_version": "1.0",
+                "evidence_type": "B_SOURCE_NETWORK_ONE_SHOT_RESERVATION_V1",
+                "status": "CLAIMED",
+                "reviewed_head": reviewed_head,
+                "reviewed_tree": reviewed_tree,
+                "retry_authorized": False,
+            }
+        )
+        with bind_existing_directory(evidence_parent_path, writable=True) as evidence_parent:
+            names = evidence_parent.list_names()
+            if _LEASE_DIRNAME in names or _LEGACY_RESULT_FILENAME in names:
+                raise BSourceAcquisitionError(
+                    "NPI_B_SOURCE_ONE_SHOT_ALREADY_CLAIMED"
+                )
+            try:
+                lease = evidence_parent.create_directory(_LEASE_DIRNAME)
+            except NpiError as exc:
+                raise BSourceAcquisitionError(
+                    "NPI_B_SOURCE_ONE_SHOT_CLAIM_DENIED"
+                ) from exc
+            try:
+                with lease.create_file(_RESERVATION_FILENAME) as target:
+                    target.write(reservation)
+                    target.flush()
+            finally:
+                lease.close()
+        return cls(
+            project_root=project_root,
+            reviewed_head=reviewed_head,
+            reviewed_tree=reviewed_tree,
+            evidence_parent_path=evidence_parent_path,
+        )
+
+    def persist_terminal(self, result: Mapping[str, object]) -> dict[str, str]:
+        _validate_document(self.project_root, _RESULT_SCHEMA, result)
+        payload = _canonical_json_bytes(result)
+        try:
+            with bind_existing_directory(
+                self.evidence_parent_path,
+                writable=True,
+            ) as evidence_parent:
+                if _LEASE_DIRNAME not in evidence_parent.list_names():
+                    raise BSourceAcquisitionError(
+                        "NPI_B_SOURCE_ONE_SHOT_LEASE_MISSING"
+                    )
+                with evidence_parent.open_directory(
+                    _LEASE_DIRNAME,
+                    writable=True,
+                ) as lease:
+                    with lease.open_file(_RESERVATION_FILENAME) as reservation_file:
+                        reservation_bytes = reservation_file.read_all(max_bytes=64 * 1024)
+                    try:
+                        reservation = json.loads(reservation_bytes.decode("utf-8"))
+                    except (UnicodeError, json.JSONDecodeError) as exc:
+                        raise BSourceAcquisitionError(
+                            "NPI_B_SOURCE_ONE_SHOT_RESERVATION_INVALID"
+                        ) from exc
+                    if (
+                        not isinstance(reservation, dict)
+                        or reservation.get("reviewed_head") != self.reviewed_head
+                        or reservation.get("reviewed_tree") != self.reviewed_tree
+                        or reservation.get("retry_authorized") is not False
+                    ):
+                        raise BSourceAcquisitionError(
+                            "NPI_B_SOURCE_ONE_SHOT_RESERVATION_INVALID"
+                        )
+                    if _TERMINAL_FILENAME in lease.list_names():
+                        raise BSourceAcquisitionError(
+                            "NPI_B_SOURCE_TERMINAL_ALREADY_EXISTS"
+                        )
+                    with lease.create_file(_TERMINAL_FILENAME) as target:
+                        target.write(payload)
+                        target.flush()
+        except BSourceAcquisitionError:
+            raise
+        except NpiError as exc:
+            raise BSourceAcquisitionError(
+                "NPI_B_SOURCE_TERMINAL_PERSIST_FAILED"
+            ) from exc
+        return {
+            "one_shot_lease_ref": _LEASE_REF,
+            "terminal_evidence_ref": _RESULT_REF,
+            "terminal_evidence_sha256": hashlib.sha256(payload).hexdigest(),
+        }
+
+
+def claim_one_shot_execution(
+    project_root: Path,
+    reviewed_head: str,
+    reviewed_tree: str,
+) -> OneShotExecutionClaim:
+    """Claim the permanent one-shot marker before transport construction."""
+    return OneShotExecutionClaim.claim(project_root, reviewed_head, reviewed_tree)
+
+
+def _finish_claimed_result(
+    claim: OneShotExecutionClaim,
+    result: dict[str, object],
+) -> dict[str, object]:
+    return {**result, **claim.persist_terminal(result)}
 
 def run_b_source_network_acquisition(
     project_root: Path,
@@ -718,6 +810,30 @@ def run_b_source_network_acquisition(
             artifact_results=[],
         )
 
+    try:
+        execution_claim = claim_one_shot_execution(
+            project_root,
+            reviewed_head,
+            reviewed_tree,
+        )
+    except (
+        BSourceAcquisitionError,
+        GateNotAuthorizedError,
+        NpiError,
+        OSError,
+        ValueError,
+    ) as exc:
+        return _terminal_result(
+            project_root,
+            status="B_SOURCE_NETWORK_ACQUISITION_BLOCKED",
+            failure_code=_failure_code(exc, "NPI_B_SOURCE_ONE_SHOT_CLAIM_FAILED"),
+            reviewed_head=reviewed_head,
+            reviewed_tree=reviewed_tree,
+            quarantine_identity=quarantine_identity,
+            network_request_count=0,
+            artifact_results=[],
+        )
+
     active_transport = transport or StdlibHttpsTransport()
     request_counter = [0]
     artifact_results: list[dict[str, object]] = []
@@ -748,28 +864,34 @@ def run_b_source_network_acquisition(
             ValueError,
         ) as exc:
             code = _failure_code(exc, "NPI_B_SOURCE_ACQUISITION_FAILED")
-            return _terminal_result(
-                project_root,
-                status="B_SOURCE_NETWORK_ACQUISITION_FAILED",
-                failure_code=code,
-                reviewed_head=reviewed_head,
-                reviewed_tree=reviewed_tree,
-                quarantine_identity=quarantine_identity,
-                network_request_count=request_counter[0],
-                artifact_results=artifact_results,
+            return _finish_claimed_result(
+                execution_claim,
+                _terminal_result(
+                    project_root,
+                    status="B_SOURCE_NETWORK_ACQUISITION_FAILED",
+                    failure_code=code,
+                    reviewed_head=reviewed_head,
+                    reviewed_tree=reviewed_tree,
+                    quarantine_identity=quarantine_identity,
+                    network_request_count=request_counter[0],
+                    artifact_results=artifact_results,
+                ),
             )
         finally:
             if response is not None:
                 response.close()
-    return _terminal_result(
-        project_root,
-        status="B_SOURCE_BYTES_READY_AWAITING_EXTERNAL_REVIEW",
-        failure_code=None,
-        reviewed_head=reviewed_head,
-        reviewed_tree=reviewed_tree,
-        quarantine_identity=quarantine_identity,
-        network_request_count=request_counter[0],
-        artifact_results=artifact_results,
+    return _finish_claimed_result(
+        execution_claim,
+        _terminal_result(
+            project_root,
+            status="B_SOURCE_BYTES_READY_AWAITING_EXTERNAL_REVIEW",
+            failure_code=None,
+            reviewed_head=reviewed_head,
+            reviewed_tree=reviewed_tree,
+            quarantine_identity=quarantine_identity,
+            network_request_count=request_counter[0],
+            artifact_results=artifact_results,
+        ),
     )
 
 
@@ -781,7 +903,8 @@ __all__ = [
     "QuarantinePublisher",
     "StdlibHttpsTransport",
     "WindowsBoundQuarantinePublisher",
+    "OneShotExecutionClaim",
+    "claim_one_shot_execution",
     "load_missing_payload_precondition",
-    "persist_acquisition_result",
     "run_b_source_network_acquisition",
 ]

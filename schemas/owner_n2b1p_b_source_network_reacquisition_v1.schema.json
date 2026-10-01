@@ -392,7 +392,11 @@
         "cache_promotion",
         "model_cuda_photo_exif_sqlite_real20",
         "terminal_result_evidence_ref",
-        "terminal_result_persistence"
+        "terminal_result_persistence",
+        "one_shot_lease_ref",
+        "one_shot_policy",
+        "one_shot_pre_request_claim",
+        "retry_after_claim"
       ],
       "properties": {
         "required_receipt_type": {
@@ -420,10 +424,22 @@
           "const": "NOT_AUTHORIZED"
         },
         "terminal_result_evidence_ref": {
-          "const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-result-v1.json"
+          "const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-one-shot-v1/terminal.json"
         },
         "terminal_result_persistence": {
-          "const": "REQUIRED_EXCLUSIVE_CREATE"
+          "const": "LEASE_BOUND_EXCLUSIVE_CREATE"
+        },
+        "one_shot_lease_ref": {
+          "const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-one-shot-v1"
+        },
+        "one_shot_policy": {
+          "const": "PRE_REQUEST_EXCLUSIVE_PERSISTENT_LEASE"
+        },
+        "one_shot_pre_request_claim": {
+          "const": "REQUIRED"
+        },
+        "retry_after_claim": {
+          "const": "DENY"
         }
       }
     }

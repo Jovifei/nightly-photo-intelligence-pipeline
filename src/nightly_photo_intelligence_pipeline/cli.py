@@ -1614,18 +1614,14 @@ def n2b1p_network_acquire(
     ),
 ) -> None:
     """Run exact-three B-source acquisition only after every gate passes."""
-    from .n2b1p_b_source_fetcher import (
-        persist_acquisition_result,
-        run_b_source_network_acquisition,
-    )
+    from .n2b1p_b_source_fetcher import run_b_source_network_acquisition
 
     result = run_b_source_network_acquisition(
         project_root,
         review_receipt,
         missing_payload_evidence,
     )
-    evidence = persist_acquisition_result(project_root, result)
-    typer.echo(json_strict_dump({**result, **evidence}))
+    typer.echo(json_strict_dump(result))
     if result["status"] != "B_SOURCE_BYTES_READY_AWAITING_EXTERNAL_REVIEW":
         raise typer.Exit(code=1)
 

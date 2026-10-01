@@ -105,6 +105,28 @@ class MemoryPublisher:
         }
 
 
+class MemoryOneShotClaim:
+    def __init__(self) -> None:
+        self.terminal: dict[str, object] | None = None
+
+    def persist_terminal(self, result: Mapping[str, object]) -> dict[str, str]:
+        if self.terminal is not None:
+            raise AssertionError("terminal overwritten")
+        self.terminal = dict(result)
+        payload = fetcher._canonical_json_bytes(result)
+        return {
+            "one_shot_lease_ref": (
+                "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/"
+                "b-source-network-acquisition-one-shot-v1"
+            ),
+            "terminal_evidence_ref": (
+                "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/"
+                "b-source-network-acquisition-one-shot-v1/terminal.json"
+            ),
+            "terminal_evidence_sha256": hashlib.sha256(payload).hexdigest(),
+        }
+
+
 def _spec(
     body: bytes,
     *,
@@ -324,6 +346,11 @@ def test_injected_exact_three_success_stops_before_cache(
         "_validate_document",
         lambda *_args, **_kwargs: None,
     )
+    monkeypatch.setattr(
+        fetcher,
+        "claim_one_shot_execution",
+        lambda *_args, **_kwargs: MemoryOneShotClaim(),
+    )
     result = fetcher.run_b_source_network_acquisition(
         project_root,
         Path("unused-review.json"),
@@ -443,6 +470,11 @@ def _admit_for_test(
         fetcher,
         "_validate_document",
         lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        fetcher,
+        "claim_one_shot_execution",
+        lambda *_args, **_kwargs: MemoryOneShotClaim(),
     )
 
 
@@ -566,35 +598,28 @@ def test_publisher_path_safety_error_is_terminal_with_request_count(
     assert result["failure_code"] == "NPI_PROMOTION_RACE_DETECTED"
 
 
-def test_cli_persists_aggregate_terminal_result(
+def test_cli_reports_terminal_evidence_persisted_by_executor(
     project_root: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     terminal: dict[str, object] = {
         "status": "B_SOURCE_BYTES_READY_AWAITING_EXTERNAL_REVIEW",
         "network_request_count": 3,
+        "one_shot_lease_ref": (
+            "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/"
+            "b-source-network-acquisition-one-shot-v1"
+        ),
+        "terminal_evidence_ref": (
+            "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/"
+            "b-source-network-acquisition-one-shot-v1/terminal.json"
+        ),
+        "terminal_evidence_sha256": "c" * 64,
     }
-    persisted: list[dict[str, object]] = []
     monkeypatch.setattr(
         fetcher,
         "run_b_source_network_acquisition",
         lambda *_args, **_kwargs: terminal,
     )
-
-    def persist(
-        _root: Path,
-        result: Mapping[str, object],
-    ) -> dict[str, str]:
-        persisted.append(dict(result))
-        return {
-            "terminal_evidence_ref": (
-                "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/"
-                "b-source-network-acquisition-result-v1.json"
-            ),
-            "terminal_evidence_sha256": "c" * 64,
-        }
-
-    monkeypatch.setattr(fetcher, "persist_acquisition_result", persist)
     result = CliRunner().invoke(
         app,
         [
@@ -609,7 +634,89 @@ def test_cli_persists_aggregate_terminal_result(
         ],
     )
     assert result.exit_code == 0, result.output
-    payload = json.loads(result.output)
-    assert persisted == [terminal]
-    assert payload["terminal_evidence_sha256"] == "c" * 64
-    assert payload["terminal_evidence_ref"].endswith("b-source-network-acquisition-result-v1.json")
+    assert json.loads(result.output) == terminal
+
+
+def test_same_runtime_second_execution_is_zero_network_and_preserves_first_terminal(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    spec = _spec(b"abcd")
+    _admit_for_test(
+        monkeypatch,
+        specs=_exact_three_test_specs(spec),
+    )
+    state: dict[str, object] = {"claimed": False, "terminal": None}
+
+    class StatefulClaim(MemoryOneShotClaim):
+        def persist_terminal(self, result: Mapping[str, object]) -> dict[str, str]:
+            evidence = super().persist_terminal(result)
+            state["terminal"] = dict(result)
+            return evidence
+
+    def claim_once(*_args: object, **_kwargs: object) -> StatefulClaim:
+        if state["claimed"]:
+            raise fetcher.BSourceAcquisitionError(
+                "NPI_B_SOURCE_ONE_SHOT_ALREADY_CLAIMED"
+            )
+        state["claimed"] = True
+        return StatefulClaim()
+
+    monkeypatch.setattr(fetcher, "claim_one_shot_execution", claim_once)
+    transport = FakeTransport({})
+
+    first = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=transport,
+        publisher=MemoryPublisher(),
+    )
+    first_terminal = state["terminal"]
+    second = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=transport,
+        publisher=MemoryPublisher(),
+    )
+
+    assert isinstance(first_terminal, dict)
+    assert first["status"] == "B_SOURCE_NETWORK_ACQUISITION_FAILED"
+    assert first["network_request_count"] == 1
+    assert second["status"] == "B_SOURCE_NETWORK_ACQUISITION_BLOCKED"
+    assert second["network_request_count"] == 0
+    assert second["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_ALREADY_CLAIMED"
+    assert transport.calls == [spec.url]
+    assert state["terminal"] == first_terminal
+
+
+def test_existing_one_shot_marker_rejects_claim(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class ExistingLeaseParent:
+        def __enter__(self) -> ExistingLeaseParent:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def list_names(self) -> set[str]:
+            return {fetcher._LEASE_DIRNAME}
+
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: ExistingLeaseParent(),
+    )
+    with pytest.raises(
+        fetcher.BSourceAcquisitionError,
+        match="ONE_SHOT_ALREADY_CLAIMED",
+    ):
+        fetcher.claim_one_shot_execution(
+            project_root,
+            "a" * 40,
+            "b" * 40,
+        )
