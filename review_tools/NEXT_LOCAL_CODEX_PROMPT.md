@@ -1,10 +1,10 @@
 # Local Codex handoff - B-source exact-SHA admission review
 
-Repository: `Jovifei/nightly-photo-intelligence-pipeline`  
-Review branch: `chatgpt/n2b1p-final-review-20260930`  
-Original pushed candidate: `5f9fd53b752551fd678bc3ecde0814b656b80dd1`  
-Original candidate tree: `3904fc13884f073645ebac7a5c639639b02c1e7e`  
-Remote implementation commit: `ede711176479568343c20e0c266faf09c0fbde82`  
+Repository: `Jovifei/nightly-photo-intelligence-pipeline`
+Review branch: `chatgpt/n2b1p-final-review-20260930`
+Original pushed candidate: `5f9fd53b752551fd678bc3ecde0814b656b80dd1`
+Original candidate tree: `3904fc13884f073645ebac7a5c639639b02c1e7e`
+Remote implementation commit: `ede711176479568343c20e0c266faf09c0fbde82`
 Remote implementation tree: `ff5af34ec70d815997540d1615e7803169c894d5`
 
 The final handoff commit is the commit containing this document. Resolve the review
@@ -242,4 +242,3 @@ the repaired SHA.
 
 Downloads, Gate-B cache promotion, model/CUDA, photos/EXIF, SQLite/Real20,
 Bundle/Pilot/App, main merge and release remain independently gated.
-
