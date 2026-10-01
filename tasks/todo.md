@@ -2466,10 +2466,21 @@ Remote exact-SHA review found crash windows that could leave an empty permanent 
   failures reproduce on clean base `b964571...` (missing canonical cache and
   current authorization-contract preflight). `verify_handoff.py` is `8 PASS /
   1 FAIL` for the same missing canonical cache. Keep both gates truthful.
-- [ ] Push only this review branch and confirm the remote exact SHA.
-- [ ] Submit the exact pushed candidate and [review handoff](../review_tools/NEXT_LOCAL_CODEX_PROMPT.md)
-  to the existing ChatGPT Project chat for independent review and next-stage
-  planning. Keep network/download, cache promotion, GPU, photo, SQLite and
-  downstream gates closed pending their own authorization.
+- [x] Push the review branch and verify exact remote SHA `de2926044e29710226af3a6cb6b850edea588718`.
+- [x] Obtain remote exact-SHA code review `PASS_WITH_OPEN_GATES`; no code repair
+  was requested and no DONE receipt was issued.
+- [x] Verify the only current execution authority is N2B1P copy-only. The
+  historical cache evidence claims CACHE_HIT, but both fixed local roots
+  (approved quarantine and configured cache) are absent; do not search elsewhere.
+- [x] Receive remote plan commit `43ddfed3e17c881869abf21c6db2225cdf51d8ce`
+  and identify that it omitted the root and review-tools manifests.
+- [ ] Repair manifests in a linear documentation-only local commit; rerun
+  `verify_review_candidate.py` and `verify_handoff.py`, preserving the
+  canonical-cache failure.
+- [ ] Return the manifest repair exact SHA to the same ChatGPT Project chat for
+  independent review. Then ask Jovi whether to restore the existing approved
+  N2B1R quarantine to its fixed location or authorize a separate acquisition
+  task. Do not download or create a cache under the N2B1P copy-only approval.
 
-Current status: `ONE_SHOT_CRASH_RECOVERY_CODE_CANDIDATE_AWAITING_PUSH_AND_REMOTE_EXACT_SHA_REVIEW`; no network request or download performed.
+Current status: `N2B1P_CACHE_GAP_BLOCKED_AWAITING_OWNER_DECISION`; no network
+download, cache mutation, model/GPU run, photo/EXIF read or SQLite write performed.
