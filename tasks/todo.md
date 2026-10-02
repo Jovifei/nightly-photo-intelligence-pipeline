@@ -2482,3 +2482,24 @@ Current status:
 - `verify_handoff.py`: 8 PASS / 1 FAIL, canonical cache missing. `run_quality.py`: 968 passed, 2 failed, 1 skipped, 95 subtests; failures are current handoff cache absence and `current_authorization_contracts` preflight. No full quality PASS is claimed.
 - No network request, model, CUDA, photo/EXIF, SQLite, cache promotion, DONE receipt, merge, or release was performed.
 - Next: exact-SHA remote review after this handoff/manifest update; keep cache and authorization gates closed.
+
+## Remote exact-SHA review findings — 2026-10-02
+
+Reviewed candidate `54a078fdd0c63d9e989547dd45bd39f0ee027787` received `CHANGES_REQUIRED: DURABLE_ONE_SHOT_RECOVERY_BINDING_INCOMPLETE` from the existing Project chat. The remote reviewer identified: restart classification trusts structural reservation fields, accepts a minimal three-field terminal as `COMPLETED`, labels reservation-only restart `CLAIMED`, creates the final lease directory before reservation publication, and does not persist a terminal binding to lease/reservation identity, nonce, HEAD/tree, and content digests. Persistence also needs to enforce result HEAD/tree against the live claim.
+
+### Bounded local repair plan
+
+- [x] Record exact review SHA, tree, parent, findings, and remote repair plan.
+- [x] Add failing regressions for reservation identity drift, minimal/malformed terminal, reservation-only restart, and result HEAD/tree mismatch; all fail as expected on the reviewed baseline.
+- [x] Stage the initial lease and reservation together, then atomically publish the complete lease; retain a fail-closed marker after crash.
+- [x] Publish terminal result with a closed durable binding, and fully validate lease/reservation/terminal identities, nonce, HEAD/tree, and hashes on restart.
+- [x] Keep second invocation at zero HTTP; preserve old control-only receipt rejection; do not widen network or data authority.
+- [x] Add and bind closed reservation/terminal-binding schemas and sync task/Owner contracts without widening execution authority.
+- [x] Run focused fetcher (41), contract (28), task/Owner schema, Ruff, format, mypy, and sensitive-scan checks; preserve the original pre-existing cache/auth failures.
+- [x] Update handoff and lessons with the remote exact-SHA findings and bounded repair plan.
+- [ ] Regenerate root/overlay manifests; run review eligibility, handoff, and full quality on a clean exact candidate; record exact SHA/tree.
+- [ ] Push the linear candidate on the existing review branch and request a new exact-SHA review.
+
+### Stop conditions
+
+Do not create DONE, acquire weights, mutate cache/quarantine, load a model/GPU, access photos/EXIF, write SQLite, merge to `main`, or release. Existing cache and authorization failures remain failures.

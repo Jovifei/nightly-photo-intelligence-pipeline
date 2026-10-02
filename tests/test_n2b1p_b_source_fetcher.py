@@ -696,8 +696,26 @@ def test_same_runtime_second_execution_is_zero_network_and_preserves_first_termi
 
 
 class _MemoryRecordFile:
-    def __init__(self, payload: bytes) -> None:
+    _next_identity = 0
+
+    def __init__(self, payload: bytes = b"", identity: str | None = None) -> None:
         self.payload = payload
+        if identity is None:
+            type(self)._next_identity += 1
+            identity = hashlib.sha256(f"memory-file-{self._next_identity}".encode()).hexdigest()
+        self.identity = SimpleNamespace(digest=identity)
+
+    def write(self, payload: bytes) -> None:
+        self.payload += payload
+
+    def flush(self) -> None:
+        return None
+
+    def close(self) -> None:
+        return None
+
+    def sha256_and_size(self) -> tuple[str, int]:
+        return hashlib.sha256(self.payload).hexdigest(), len(self.payload)
 
     def __enter__(self) -> _MemoryRecordFile:
         return self
@@ -711,9 +729,22 @@ class _MemoryRecordFile:
 
 
 class _MemoryRecordDirectory:
-    def __init__(self, payload_name: str, record: Mapping[str, object]) -> None:
+    def __init__(
+        self,
+        payload_name: str,
+        record: Mapping[str, object],
+        *,
+        directory_identity: str = "f" * 64,
+        file_identity: str = "e" * 64,
+    ) -> None:
         self.payload_name = payload_name
-        self.payload = fetcher._canonical_json_bytes(record)
+        self.identity = SimpleNamespace(digest=directory_identity)
+        self.files = {
+            payload_name: _MemoryRecordFile(
+                fetcher._canonical_json_bytes(record),
+                identity=file_identity,
+            )
+        }
 
     def __enter__(self) -> _MemoryRecordDirectory:
         return self
@@ -722,19 +753,26 @@ class _MemoryRecordDirectory:
         return None
 
     def list_names(self) -> set[str]:
-        return {self.payload_name}
+        return set(self.files)
 
     def open_file(self, name: str) -> _MemoryRecordFile:
-        if name != self.payload_name:
-            raise FileNotFoundError(name)
-        return _MemoryRecordFile(self.payload)
+        try:
+            return self.files[name]
+        except KeyError:
+            raise FileNotFoundError(name) from None
 
 
 class _MemoryLeaseDirectory:
+    _next_identity = 0
+
     def __init__(self, identity: str = "d" * 64) -> None:
         self.identity = SimpleNamespace(digest=identity)
         self.records: dict[str, tuple[str, dict[str, object]]] = {}
+        self.directories: dict[str, _MemoryLeaseDirectory] = {}
+        self.files: dict[str, _MemoryRecordFile] = {}
         self.closed = False
+        self._parent: _MemoryLeaseDirectory | None = None
+        self._name: str | None = None
 
     def __enter__(self) -> _MemoryLeaseDirectory:
         return self
@@ -746,25 +784,85 @@ class _MemoryLeaseDirectory:
         self.closed = True
 
     def list_names(self) -> set[str]:
-        return set(self.records)
+        return set(self.records) | set(self.directories) | set(self.files)
+
+    def create_directory(self, name: str) -> _MemoryLeaseDirectory:
+        if name in self.list_names():
+            raise FileExistsError(name)
+        type(self)._next_identity += 1
+        identity = hashlib.sha256(f"memory-directory-{self._next_identity}".encode()).hexdigest()
+        child = _MemoryLeaseDirectory(identity=identity)
+        child._parent = self
+        child._name = name
+        self.directories[name] = child
+        return child
 
     def open_directory(
         self,
         name: str,
         *,
         writable: bool,
-    ) -> _MemoryRecordDirectory:
+    ) -> _MemoryLeaseDirectory | _MemoryRecordDirectory:
         del writable
+        if name in self.directories:
+            directory = self.directories[name]
+            directory.closed = False
+            return directory
         try:
             payload_name, record = self.records[name]
         except KeyError as exc:
             raise FileNotFoundError(name) from exc
         return _MemoryRecordDirectory(payload_name, record)
 
+    def create_file(self, name: str) -> _MemoryRecordFile:
+        if name in self.list_names():
+            raise FileExistsError(name)
+        file = _MemoryRecordFile()
+        self.files[name] = file
+        return file
+
+    def open_file(self, name: str) -> _MemoryRecordFile:
+        try:
+            return self.files[name]
+        except KeyError as exc:
+            raise FileNotFoundError(name) from exc
+
+    def rename_to(self, destination: _MemoryLeaseDirectory, name: str) -> None:
+        if name in destination.list_names():
+            raise FileExistsError(name)
+        if self._parent is None or self._name is None:
+            raise AssertionError("memory staging directory has no parent")
+        del self._parent.directories[self._name]
+        destination.directories[name] = self
+        self._parent = destination
+        self._name = name
+
+    def snapshot(self) -> dict[str, object]:
+        return {
+            "files": {name: file.payload for name, file in self.files.items()},
+            "directories": {
+                name: directory.snapshot() for name, directory in self.directories.items()
+            },
+            "records": dict(self.records),
+        }
+
 
 class _MemoryEvidenceParent:
     def __init__(self) -> None:
-        self.lease: _MemoryLeaseDirectory | None = None
+        self.root = _MemoryLeaseDirectory(identity="c" * 64)
+
+    @property
+    def lease(self) -> _MemoryLeaseDirectory | None:
+        return self.root.directories.get(fetcher._LEASE_DIRNAME)
+
+    @lease.setter
+    def lease(self, value: _MemoryLeaseDirectory | None) -> None:
+        if value is None:
+            self.root.directories.pop(fetcher._LEASE_DIRNAME, None)
+        else:
+            value._parent = self.root
+            value._name = fetcher._LEASE_DIRNAME
+            self.root.directories[fetcher._LEASE_DIRNAME] = value
 
     def __enter__(self) -> _MemoryEvidenceParent:
         return self
@@ -773,32 +871,70 @@ class _MemoryEvidenceParent:
         return None
 
     def list_names(self) -> set[str]:
-        return {fetcher._LEASE_DIRNAME} if self.lease is not None else set()
+        return self.root.list_names()
 
     def create_directory(self, name: str) -> _MemoryLeaseDirectory:
-        assert name == fetcher._LEASE_DIRNAME
-        if self.lease is not None:
-            raise PromotionPathSafetyError("already exists")
-        self.lease = _MemoryLeaseDirectory()
-        return self.lease
+        return self.root.create_directory(name)
 
     def open_directory(
         self,
         name: str,
         *,
         writable: bool,
-    ) -> _MemoryLeaseDirectory:
-        del writable
-        if name != fetcher._LEASE_DIRNAME or self.lease is None:
-            raise FileNotFoundError(name)
-        self.lease.closed = False
-        return self.lease
+    ) -> _MemoryLeaseDirectory | _MemoryRecordDirectory:
+        return self.root.open_directory(name, writable=writable)
+
+
+class _MemoryStagingTransaction:
+    def __init__(self, root: _MemoryEvidenceParent | _MemoryLeaseDirectory) -> None:
+        self.root = root.root if isinstance(root, _MemoryEvidenceParent) else root
+        if ".staging" in self.root.directories:
+            self.staging_parent = self.root.directories[".staging"]
+        else:
+            self.staging_parent = self.root.create_directory(".staging")
+        type(self.root)._next_identity += 1
+        self.staging_name = f"stage-{type(self.root)._next_identity}"
+        self.staging = self.staging_parent.create_directory(self.staging_name)
+        self._published = False
+
+    @classmethod
+    def create(
+        cls,
+        root: _MemoryEvidenceParent | _MemoryLeaseDirectory,
+    ) -> _MemoryStagingTransaction:
+        return cls(root)
+
+    def create_file(self, name: str) -> _MemoryRecordFile:
+        return self.staging.create_file(name)
+
+    def publish(self, final_name: str) -> None:
+        self.staging.rename_to(self.root, final_name)
+        self._published = True
+
+    def __enter__(self) -> _MemoryStagingTransaction:
+        return self
+
+    def __exit__(self, exc_type: object, *_args: object) -> None:
+        # On a simulated process crash, leave staging behind for recovery tests.
+        if exc_type is None and not self._published and not self.staging.list_names():
+            del self.staging_parent.directories[self.staging_name]
+
+
+def _use_memory_staging(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        fetcher.BoundStagingTransaction,
+        "create",
+        classmethod(lambda _cls, root: _MemoryStagingTransaction.create(root)),
+    )
 
 
 def _reservation_record(
     lease: _MemoryLeaseDirectory,
     *,
     nonce: str = "a" * 32,
+    reservation_directory_identity_sha256: str = "1" * 64,
+    reservation_file_identity_sha256: str = "2" * 64,
+    lease_identity_sha256: str | None = None,
 ) -> dict[str, object]:
     return {
         "schema_version": "1.0",
@@ -806,10 +942,43 @@ def _reservation_record(
         "status": "CLAIMED",
         "reviewed_head": "a" * 40,
         "reviewed_tree": "b" * 40,
-        "lease_identity_sha256": lease.identity.digest,
+        "lease_identity_sha256": lease_identity_sha256 or lease.identity.digest,
+        "reservation_directory_identity_sha256": reservation_directory_identity_sha256,
+        "reservation_file_identity_sha256": reservation_file_identity_sha256,
         "nonce": nonce,
         "retry_authorized": False,
     }
+
+
+def _install_reservation(
+    lease: _MemoryLeaseDirectory,
+    *,
+    nonce: str = "a" * 32,
+) -> dict[str, object]:
+    reservation_directory = lease.create_directory(fetcher._RESERVATION_DIRNAME)
+    reservation_file = reservation_directory.create_file(fetcher._RESERVATION_FILENAME)
+    record = _reservation_record(
+        lease,
+        nonce=nonce,
+        reservation_directory_identity_sha256=reservation_directory.identity.digest,
+        reservation_file_identity_sha256=reservation_file.identity.digest,
+    )
+    reservation_file.write(fetcher._canonical_json_bytes(record))
+    reservation_file.flush()
+    return record
+
+
+def _install_record(
+    lease: _MemoryLeaseDirectory,
+    directory_name: str,
+    file_name: str,
+    record: Mapping[str, object],
+) -> tuple[_MemoryLeaseDirectory, _MemoryRecordFile]:
+    directory = lease.create_directory(directory_name)
+    record_file = directory.create_file(file_name)
+    record_file.write(fetcher._canonical_json_bytes(record))
+    record_file.flush()
+    return directory, record_file
 
 
 def _terminal_record() -> dict[str, object]:
@@ -818,6 +987,61 @@ def _terminal_record() -> dict[str, object]:
         "retry_authorized": False,
         "one_shot_state": "COMPLETED",
     }
+
+
+def _valid_terminal_result(reservation: Mapping[str, object]) -> dict[str, object]:
+    return {
+        "schema_version": "1.0",
+        "evidence_type": "B_SOURCE_NETWORK_ACQUISITION_RESULT_V1",
+        "status": "B_SOURCE_NETWORK_ACQUISITION_FAILED",
+        "failure_code": "TEST_NETWORK_FAILURE",
+        "reviewed_head": reservation["reviewed_head"],
+        "reviewed_tree": reservation["reviewed_tree"],
+        "quarantine_root_ref": fetcher._QUARANTINE_REF,
+        "quarantine_root_identity_sha256": fetcher._QUARANTINE_IDENTITY,
+        "network_request_count": 1,
+        "artifact_results": [],
+        "one_shot_state": "COMPLETED",
+        "terminal": True,
+        "retry_authorized": False,
+        "cache_promotion": "NOT_AUTHORIZED",
+        "model_cuda_photo_exif_sqlite_real20": "NOT_AUTHORIZED",
+        "mandatory_stop": "EXTERNAL_REVIEW_B_SOURCE_ACQUISITION_FAILURE",
+    }
+
+
+def _install_valid_terminal_bundle(
+    lease: _MemoryLeaseDirectory,
+    reservation: Mapping[str, object],
+) -> None:
+    reservation_directory = lease.directories[fetcher._RESERVATION_DIRNAME]
+    reservation_file = reservation_directory.files[fetcher._RESERVATION_FILENAME]
+    terminal_directory = lease.create_directory(fetcher._TERMINAL_DIRNAME)
+    terminal_file = terminal_directory.create_file(fetcher._TERMINAL_FILENAME)
+    result = _valid_terminal_result(reservation)
+    result_bytes = fetcher._canonical_json_bytes(result)
+    terminal_file.write(result_bytes)
+    terminal_file.flush()
+    binding_file = terminal_directory.create_file(fetcher._TERMINAL_BINDING_FILENAME)
+    binding = {
+        "schema_version": "1.0",
+        "evidence_type": "B_SOURCE_NETWORK_ONE_SHOT_TERMINAL_BINDING_V1",
+        "status": "COMPLETED_BINDING",
+        "reviewed_head": reservation["reviewed_head"],
+        "reviewed_tree": reservation["reviewed_tree"],
+        "lease_identity_sha256": lease.identity.digest,
+        "reservation_directory_identity_sha256": reservation_directory.identity.digest,
+        "reservation_file_identity_sha256": reservation_file.identity.digest,
+        "reservation_sha256": hashlib.sha256(reservation_file.payload).hexdigest(),
+        "nonce_sha256": hashlib.sha256(str(reservation["nonce"]).encode("ascii")).hexdigest(),
+        "terminal_directory_identity_sha256": terminal_directory.identity.digest,
+        "terminal_file_identity_sha256": terminal_file.identity.digest,
+        "terminal_sha256": hashlib.sha256(result_bytes).hexdigest(),
+        "binding_file_identity_sha256": binding_file.identity.digest,
+        "retry_authorized": False,
+    }
+    binding_file.write(fetcher._canonical_json_bytes(binding))
+    binding_file.flush()
 
 
 def _install_existing_lease_for_run(
@@ -843,6 +1067,7 @@ def test_crash_after_lease_create_before_reservation_is_incomplete_and_zero_http
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     parent = _MemoryEvidenceParent()
+    _use_memory_staging(monkeypatch)
     monkeypatch.setattr(fetcher.os, "name", "nt")
     monkeypatch.setattr(
         fetcher,
@@ -854,15 +1079,16 @@ def test_crash_after_lease_create_before_reservation_is_incomplete_and_zero_http
         pass
 
     def crash(stage: str) -> None:
-        if stage == "after_lease_create_before_reservation":
+        if stage == "after_lease_staging_created_before_reservation":
             raise SimulatedCrash(stage)
 
     monkeypatch.setattr(fetcher, "_ONE_SHOT_TEST_HOOK", crash)
     with pytest.raises(SimulatedCrash):
         fetcher.claim_one_shot_execution(project_root, "a" * 40, "b" * 40)
 
-    assert parent.lease is not None
-    assert parent.lease.records == {}
+    assert parent.lease is None
+    assert ".staging" in parent.list_names()
+    assert parent.root.directories[".staging"].list_names()
     monkeypatch.setattr(fetcher, "_ONE_SHOT_TEST_HOOK", None)
     transport, publisher = _install_existing_lease_for_run(
         project_root,
@@ -883,11 +1109,12 @@ def test_crash_after_lease_create_before_reservation_is_incomplete_and_zero_http
     assert transport.calls == []
 
 
-def test_crash_after_reservation_before_terminal_is_claimed_and_zero_http(
+def test_crash_after_staged_reservation_before_lease_publish_is_incomplete_zero_http(
     project_root: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     parent = _MemoryEvidenceParent()
+    _use_memory_staging(monkeypatch)
     monkeypatch.setattr(fetcher.os, "name", "nt")
     monkeypatch.setattr(
         fetcher,
@@ -895,17 +1122,56 @@ def test_crash_after_reservation_before_terminal_is_claimed_and_zero_http(
         lambda *_args, **_kwargs: parent,
     )
 
-    def publish_record(
-        root: _MemoryLeaseDirectory,
-        *,
-        final_name: str,
-        payload_name: str,
-        record: Mapping[str, object],
-    ) -> str:
-        root.records[final_name] = (payload_name, dict(record))
-        return hashlib.sha256(fetcher._canonical_json_bytes(record)).hexdigest()
+    class SimulatedCrash(RuntimeError):
+        pass
 
-    monkeypatch.setattr(fetcher, "_atomic_publish_json_record", publish_record)
+    def crash(stage: str) -> None:
+        if stage == "after_reservation_publish_before_lease":
+            raise SimulatedCrash(stage)
+
+    monkeypatch.setattr(fetcher, "_ONE_SHOT_TEST_HOOK", crash)
+    with pytest.raises(SimulatedCrash):
+        fetcher.claim_one_shot_execution(project_root, "a" * 40, "b" * 40)
+
+    assert parent.lease is None
+    assert ".staging" in parent.list_names()
+    staged_parent = parent.root.directories[".staging"]
+    assert len(staged_parent.directories) == 1
+    staged_lease = next(iter(staged_parent.directories.values()))
+    assert fetcher._RESERVATION_DIRNAME in staged_lease.directories
+
+    monkeypatch.setattr(fetcher, "_ONE_SHOT_TEST_HOOK", None)
+    transport, publisher = _install_existing_lease_for_run(
+        project_root,
+        monkeypatch,
+        parent,
+    )
+    result = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=transport,
+        publisher=publisher,
+    )
+
+    assert result["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM"
+    assert result["one_shot_state"] == "INCOMPLETE_CLAIM"
+    assert result["network_request_count"] == 0
+    assert transport.calls == []
+
+
+def test_crash_after_reservation_before_terminal_is_incomplete_and_zero_http(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parent = _MemoryEvidenceParent()
+    _use_memory_staging(monkeypatch)
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: parent,
+    )
 
     class SimulatedCrash(RuntimeError):
         pass
@@ -919,8 +1185,8 @@ def test_crash_after_reservation_before_terminal_is_claimed_and_zero_http(
         fetcher.claim_one_shot_execution(project_root, "a" * 40, "b" * 40)
 
     assert parent.lease is not None
-    assert fetcher._RESERVATION_DIRNAME in parent.lease.records
-    assert fetcher._TERMINAL_DIRNAME not in parent.lease.records
+    assert fetcher._RESERVATION_DIRNAME in parent.lease.directories
+    assert fetcher._TERMINAL_DIRNAME not in parent.lease.directories
     monkeypatch.setattr(fetcher, "_ONE_SHOT_TEST_HOOK", None)
     transport, publisher = _install_existing_lease_for_run(
         project_root,
@@ -935,10 +1201,372 @@ def test_crash_after_reservation_before_terminal_is_claimed_and_zero_http(
         publisher=publisher,
     )
     assert result["status"] == "B_SOURCE_NETWORK_ACQUISITION_BLOCKED"
-    assert result["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_CLAIMED"
-    assert result["one_shot_state"] == "CLAIMED"
+    assert result["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM"
+    assert result["one_shot_state"] == "INCOMPLETE_CLAIM"
     assert result["network_request_count"] == 0
     assert transport.calls == []
+
+
+def test_existing_reservation_with_wrong_lease_identity_is_incomplete_zero_http(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parent = _MemoryEvidenceParent()
+    parent.lease = _MemoryLeaseDirectory(identity="d" * 64)
+    reservation = _reservation_record(parent.lease)
+    reservation["lease_identity_sha256"] = "e" * 64
+    parent.lease.records[fetcher._RESERVATION_DIRNAME] = (
+        fetcher._RESERVATION_FILENAME,
+        reservation,
+    )
+
+    transport, publisher = _install_existing_lease_for_run(
+        project_root,
+        monkeypatch,
+        parent,
+    )
+    result = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=transport,
+        publisher=publisher,
+    )
+
+    assert result["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM"
+    assert result["one_shot_state"] == "INCOMPLETE_CLAIM"
+    assert result["network_request_count"] == 0
+    assert transport.calls == []
+
+
+def test_existing_reservation_file_identity_drift_is_incomplete_zero_http(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parent = _MemoryEvidenceParent()
+    parent.lease = _MemoryLeaseDirectory(identity="d" * 64)
+    _install_reservation(parent.lease)
+    reservation_file = parent.lease.directories[fetcher._RESERVATION_DIRNAME].files[
+        fetcher._RESERVATION_FILENAME
+    ]
+    reservation_file.identity.digest = "f" * 64
+
+    transport, publisher = _install_existing_lease_for_run(
+        project_root,
+        monkeypatch,
+        parent,
+    )
+    result = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=transport,
+        publisher=publisher,
+    )
+
+    assert result["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM"
+    assert result["one_shot_state"] == "INCOMPLETE_CLAIM"
+    assert result["network_request_count"] == 0
+    assert transport.calls == []
+
+
+def test_existing_reservation_directory_identity_drift_is_incomplete_zero_http(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parent = _MemoryEvidenceParent()
+    parent.lease = _MemoryLeaseDirectory(identity="d" * 64)
+    _install_reservation(parent.lease)
+    parent.lease.directories[fetcher._RESERVATION_DIRNAME].identity.digest = "f" * 64
+
+    transport, publisher = _install_existing_lease_for_run(
+        project_root,
+        monkeypatch,
+        parent,
+    )
+    result = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=transport,
+        publisher=publisher,
+    )
+
+    assert result["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM"
+    assert result["one_shot_state"] == "INCOMPLETE_CLAIM"
+    assert result["network_request_count"] == 0
+    assert transport.calls == []
+
+
+@pytest.mark.parametrize("binding_field", ["reviewed_head", "reviewed_tree"])
+def test_existing_reservation_review_binding_drift_is_incomplete_zero_http(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    binding_field: str,
+) -> None:
+    parent = _MemoryEvidenceParent()
+    parent.lease = _MemoryLeaseDirectory(identity="d" * 64)
+    _install_reservation(parent.lease)
+    reservation_file = parent.lease.directories[fetcher._RESERVATION_DIRNAME].files[
+        fetcher._RESERVATION_FILENAME
+    ]
+    reservation = json.loads(reservation_file.payload.decode("utf-8"))
+    reservation[binding_field] = "c" * 40
+    reservation_file.payload = fetcher._canonical_json_bytes(reservation)
+
+    transport, publisher = _install_existing_lease_for_run(
+        project_root,
+        monkeypatch,
+        parent,
+    )
+    result = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=transport,
+        publisher=publisher,
+    )
+
+    assert result["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM"
+    assert result["one_shot_state"] == "INCOMPLETE_CLAIM"
+    assert result["network_request_count"] == 0
+    assert transport.calls == []
+
+
+def test_minimal_terminal_without_durable_claim_binding_is_incomplete_zero_http(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parent = _MemoryEvidenceParent()
+    parent.lease = _MemoryLeaseDirectory()
+    parent.lease.records[fetcher._RESERVATION_DIRNAME] = (
+        fetcher._RESERVATION_FILENAME,
+        _reservation_record(parent.lease),
+    )
+    parent.lease.records[fetcher._TERMINAL_DIRNAME] = (
+        fetcher._TERMINAL_FILENAME,
+        _terminal_record(),
+    )
+
+    transport, publisher = _install_existing_lease_for_run(
+        project_root,
+        monkeypatch,
+        parent,
+    )
+    result = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=transport,
+        publisher=publisher,
+    )
+
+    assert result["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM"
+    assert result["one_shot_state"] == "INCOMPLETE_CLAIM"
+    assert result["network_request_count"] == 0
+    assert transport.calls == []
+
+
+def test_terminal_result_digest_drift_is_incomplete_zero_http(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parent = _MemoryEvidenceParent()
+    parent.lease = _MemoryLeaseDirectory()
+    reservation = _install_reservation(parent.lease)
+    _install_valid_terminal_bundle(parent.lease, reservation)
+    terminal_file = parent.lease.directories[fetcher._TERMINAL_DIRNAME].files[
+        fetcher._TERMINAL_FILENAME
+    ]
+    terminal_file.payload += b"tampered"
+
+    transport, publisher = _install_existing_lease_for_run(
+        project_root,
+        monkeypatch,
+        parent,
+    )
+    result = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=transport,
+        publisher=publisher,
+    )
+
+    assert result["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM"
+    assert result["one_shot_state"] == "INCOMPLETE_CLAIM"
+    assert result["network_request_count"] == 0
+    assert transport.calls == []
+
+
+@pytest.mark.parametrize(
+    "identity_scope",
+    ["terminal_directory", "terminal_file", "binding_file"],
+)
+def test_terminal_object_identity_drift_is_incomplete_zero_http(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    identity_scope: str,
+) -> None:
+    parent = _MemoryEvidenceParent()
+    parent.lease = _MemoryLeaseDirectory()
+    reservation = _install_reservation(parent.lease)
+    _install_valid_terminal_bundle(parent.lease, reservation)
+    terminal_directory = parent.lease.directories[fetcher._TERMINAL_DIRNAME]
+    if identity_scope == "terminal_directory":
+        terminal_directory.identity.digest = "f" * 64
+    elif identity_scope == "binding_file":
+        terminal_directory.files[fetcher._TERMINAL_BINDING_FILENAME].identity.digest = "f" * 64
+    else:
+        terminal_directory.files[fetcher._TERMINAL_FILENAME].identity.digest = "f" * 64
+
+    transport, publisher = _install_existing_lease_for_run(
+        project_root,
+        monkeypatch,
+        parent,
+    )
+    result = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=transport,
+        publisher=publisher,
+    )
+
+    assert result["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM"
+    assert result["one_shot_state"] == "INCOMPLETE_CLAIM"
+    assert result["network_request_count"] == 0
+    assert transport.calls == []
+
+
+@pytest.mark.parametrize(
+    "directory_name,unexpected_name",
+    [
+        (fetcher._RESERVATION_DIRNAME, "extra.json"),
+        (fetcher._TERMINAL_DIRNAME, "extra.json"),
+    ],
+)
+def test_one_shot_record_directory_rejects_extra_files_zero_http(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    directory_name: str,
+    unexpected_name: str,
+) -> None:
+    parent = _MemoryEvidenceParent()
+    parent.lease = _MemoryLeaseDirectory()
+    reservation = _install_reservation(parent.lease)
+    _install_valid_terminal_bundle(parent.lease, reservation)
+    parent.lease.directories[directory_name].create_file(unexpected_name)
+
+    transport, publisher = _install_existing_lease_for_run(
+        project_root,
+        monkeypatch,
+        parent,
+    )
+    result = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=transport,
+        publisher=publisher,
+    )
+
+    assert result["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM"
+    assert result["one_shot_state"] == "INCOMPLETE_CLAIM"
+    assert result["network_request_count"] == 0
+    assert transport.calls == []
+
+
+@pytest.mark.parametrize(
+    "binding_field,bad_value",
+    [
+        ("nonce_sha256", "f" * 64),
+        ("reviewed_head", "c" * 40),
+        ("reviewed_tree", "c" * 40),
+        ("terminal_sha256", "f" * 64),
+        ("terminal_directory_identity_sha256", "f" * 64),
+        ("terminal_file_identity_sha256", "f" * 64),
+        ("binding_file_identity_sha256", "f" * 64),
+    ],
+)
+def test_terminal_binding_field_drift_is_incomplete_zero_http(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    binding_field: str,
+    bad_value: str,
+) -> None:
+    parent = _MemoryEvidenceParent()
+    parent.lease = _MemoryLeaseDirectory()
+    reservation = _install_reservation(parent.lease)
+    _install_valid_terminal_bundle(parent.lease, reservation)
+    binding_file = parent.lease.directories[fetcher._TERMINAL_DIRNAME].files[
+        fetcher._TERMINAL_BINDING_FILENAME
+    ]
+    binding = json.loads(binding_file.payload.decode("utf-8"))
+    binding[binding_field] = bad_value
+    binding_file.payload = fetcher._canonical_json_bytes(binding)
+
+    transport, publisher = _install_existing_lease_for_run(
+        project_root,
+        monkeypatch,
+        parent,
+    )
+    result = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=transport,
+        publisher=publisher,
+    )
+
+    assert result["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM"
+    assert result["one_shot_state"] == "INCOMPLETE_CLAIM"
+    assert result["network_request_count"] == 0
+    assert transport.calls == []
+
+
+def test_persist_terminal_rejects_result_bound_to_another_head(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parent = _MemoryEvidenceParent()
+    parent.lease = _MemoryLeaseDirectory(identity="d" * 64)
+    _install_reservation(parent.lease)
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: parent,
+    )
+    monkeypatch.setattr(fetcher, "_validate_document", lambda *_args, **_kwargs: None)
+
+    reservation_directory = parent.lease.directories[fetcher._RESERVATION_DIRNAME]
+    reservation_file = reservation_directory.files[fetcher._RESERVATION_FILENAME]
+    claim = fetcher.OneShotExecutionClaim(
+        project_root=project_root,
+        reviewed_head="a" * 40,
+        reviewed_tree="b" * 40,
+        evidence_parent_path=Path("fixed-evidence-parent"),
+        lease_identity_sha256="d" * 64,
+        reservation_directory_identity_sha256=reservation_directory.identity.digest,
+        reservation_file_identity_sha256=reservation_file.identity.digest,
+        reservation_sha256=hashlib.sha256(reservation_file.payload).hexdigest(),
+        nonce="a" * 32,
+    )
+
+    with pytest.raises(
+        fetcher.BSourceAcquisitionError,
+        match="TERMINAL_RESULT_BINDING_MISMATCH",
+    ):
+        claim.persist_terminal(
+            {
+                "reviewed_head": "c" * 40,
+                "reviewed_tree": "b" * 40,
+                "terminal": True,
+                "retry_authorized": False,
+                "one_shot_state": "CLAIMED",
+            }
+        )
 
 
 def test_completed_lease_second_run_is_zero_http_and_does_not_overwrite(
@@ -947,17 +1575,9 @@ def test_completed_lease_second_run_is_zero_http_and_does_not_overwrite(
 ) -> None:
     parent = _MemoryEvidenceParent()
     parent.lease = _MemoryLeaseDirectory()
-    reservation = _reservation_record(parent.lease)
-    terminal = _terminal_record()
-    parent.lease.records[fetcher._RESERVATION_DIRNAME] = (
-        fetcher._RESERVATION_FILENAME,
-        reservation,
-    )
-    parent.lease.records[fetcher._TERMINAL_DIRNAME] = (
-        fetcher._TERMINAL_FILENAME,
-        terminal,
-    )
-    before = dict(parent.lease.records)
+    reservation = _install_reservation(parent.lease)
+    _install_valid_terminal_bundle(parent.lease, reservation)
+    before = parent.lease.snapshot()
 
     transport, publisher = _install_existing_lease_for_run(
         project_root,
@@ -976,7 +1596,7 @@ def test_completed_lease_second_run_is_zero_http_and_does_not_overwrite(
     assert result["one_shot_state"] == "COMPLETED"
     assert result["network_request_count"] == 0
     assert transport.calls == []
-    assert parent.lease.records == before
+    assert parent.lease.snapshot() == before
 
 
 def test_terminal_rejects_replaced_lease_identity_and_nonce(
@@ -985,10 +1605,9 @@ def test_terminal_rejects_replaced_lease_identity_and_nonce(
 ) -> None:
     parent = _MemoryEvidenceParent()
     parent.lease = _MemoryLeaseDirectory(identity="e" * 64)
-    parent.lease.records[fetcher._RESERVATION_DIRNAME] = (
-        fetcher._RESERVATION_FILENAME,
-        _reservation_record(parent.lease, nonce="b" * 32),
-    )
+    _install_reservation(parent.lease, nonce="b" * 32)
+    reservation_directory = parent.lease.directories[fetcher._RESERVATION_DIRNAME]
+    reservation_file = reservation_directory.files[fetcher._RESERVATION_FILENAME]
     monkeypatch.setattr(fetcher.os, "name", "nt")
     monkeypatch.setattr(
         fetcher,
@@ -1002,6 +1621,9 @@ def test_terminal_rejects_replaced_lease_identity_and_nonce(
         reviewed_tree="b" * 40,
         evidence_parent_path=Path("fixed-evidence-parent"),
         lease_identity_sha256="d" * 64,
+        reservation_directory_identity_sha256=reservation_directory.identity.digest,
+        reservation_file_identity_sha256=reservation_file.identity.digest,
+        reservation_sha256=hashlib.sha256(reservation_file.payload).hexdigest(),
         nonce="a" * 32,
     )
     with pytest.raises(
@@ -1010,6 +1632,8 @@ def test_terminal_rejects_replaced_lease_identity_and_nonce(
     ):
         claim.persist_terminal(
             {
+                "reviewed_head": "a" * 40,
+                "reviewed_tree": "b" * 40,
                 "terminal": True,
                 "retry_authorized": False,
                 "one_shot_state": "CLAIMED",
@@ -1017,29 +1641,117 @@ def test_terminal_rejects_replaced_lease_identity_and_nonce(
         )
 
 
-def test_crash_before_terminal_after_first_http_blocks_second_http(
+def test_terminal_rejects_reservation_nonce_drift(
     project_root: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     parent = _MemoryEvidenceParent()
+    parent.lease = _MemoryLeaseDirectory(identity="d" * 64)
+    _install_reservation(parent.lease, nonce="b" * 32)
+    reservation_directory = parent.lease.directories[fetcher._RESERVATION_DIRNAME]
+    reservation_file = reservation_directory.files[fetcher._RESERVATION_FILENAME]
     monkeypatch.setattr(fetcher.os, "name", "nt")
     monkeypatch.setattr(
         fetcher,
         "bind_existing_directory",
         lambda *_args, **_kwargs: parent,
     )
+    monkeypatch.setattr(fetcher, "_validate_document", lambda *_args, **_kwargs: None)
+    claim = fetcher.OneShotExecutionClaim(
+        project_root=project_root,
+        reviewed_head="a" * 40,
+        reviewed_tree="b" * 40,
+        evidence_parent_path=Path("fixed-evidence-parent"),
+        lease_identity_sha256="d" * 64,
+        reservation_directory_identity_sha256=reservation_directory.identity.digest,
+        reservation_file_identity_sha256=reservation_file.identity.digest,
+        reservation_sha256=hashlib.sha256(reservation_file.payload).hexdigest(),
+        nonce="a" * 32,
+    )
 
-    def publish_record(
-        root: _MemoryLeaseDirectory,
-        *,
-        final_name: str,
-        payload_name: str,
-        record: Mapping[str, object],
-    ) -> str:
-        root.records[final_name] = (payload_name, dict(record))
-        return hashlib.sha256(fetcher._canonical_json_bytes(record)).hexdigest()
+    with pytest.raises(
+        fetcher.BSourceAcquisitionError,
+        match="RESERVATION_INVALID",
+    ):
+        claim.persist_terminal(
+            {
+                "reviewed_head": "a" * 40,
+                "reviewed_tree": "b" * 40,
+                "terminal": True,
+                "retry_authorized": False,
+                "one_shot_state": "CLAIMED",
+            }
+        )
 
-    monkeypatch.setattr(fetcher, "_atomic_publish_json_record", publish_record)
+
+def test_live_claim_publishes_bound_terminal_and_restart_is_completed_zero_http(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parent = _MemoryEvidenceParent()
+    _use_memory_staging(monkeypatch)
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: parent,
+    )
+    claim = fetcher.claim_one_shot_execution(project_root, "a" * 40, "b" * 40)
+    assert parent.lease is not None
+    reservation = json.loads(
+        parent.lease.directories[fetcher._RESERVATION_DIRNAME]
+        .files[fetcher._RESERVATION_FILENAME]
+        .payload.decode("utf-8")
+    )
+
+    references = claim.persist_terminal(_valid_terminal_result(reservation))
+
+    assert (
+        references["terminal_evidence_sha256"]
+        == hashlib.sha256(
+            parent.lease.directories[fetcher._TERMINAL_DIRNAME]
+            .files[fetcher._TERMINAL_FILENAME]
+            .payload
+        ).hexdigest()
+    )
+    assert set(parent.lease.directories[fetcher._TERMINAL_DIRNAME].files) == {
+        fetcher._TERMINAL_FILENAME,
+        fetcher._TERMINAL_BINDING_FILENAME,
+    }
+    before = parent.lease.snapshot()
+
+    transport, publisher = _install_existing_lease_for_run(
+        project_root,
+        monkeypatch,
+        parent,
+    )
+    result = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=transport,
+        publisher=publisher,
+    )
+
+    assert result["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_COMPLETED"
+    assert result["one_shot_state"] == "COMPLETED"
+    assert result["network_request_count"] == 0
+    assert transport.calls == []
+    assert parent.lease.snapshot() == before
+
+
+def test_crash_before_terminal_after_first_http_blocks_second_http(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parent = _MemoryEvidenceParent()
+    _use_memory_staging(monkeypatch)
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: parent,
+    )
 
     actual_claim = fetcher.claim_one_shot_execution
     spec = _spec(b"abcd")
@@ -1065,9 +1777,12 @@ def test_crash_before_terminal_after_first_http_blocks_second_http(
         )
     assert first_transport.calls == [spec.url]
     assert parent.lease is not None
-    assert fetcher._RESERVATION_DIRNAME in parent.lease.records
-    assert fetcher._TERMINAL_DIRNAME not in parent.lease.records
-    reservation_before = dict(parent.lease.records[fetcher._RESERVATION_DIRNAME][1])
+    assert fetcher._RESERVATION_DIRNAME in parent.lease.directories
+    assert fetcher._TERMINAL_DIRNAME not in parent.lease.directories
+    reservation_file = parent.lease.directories[fetcher._RESERVATION_DIRNAME].files[
+        fetcher._RESERVATION_FILENAME
+    ]
+    reservation_before = reservation_file.payload
 
     monkeypatch.setattr(fetcher, "_ONE_SHOT_TEST_HOOK", None)
     second_transport = FakeTransport({})
@@ -1079,8 +1794,67 @@ def test_crash_before_terminal_after_first_http_blocks_second_http(
         publisher=MemoryPublisher(),
     )
     assert second["status"] == "B_SOURCE_NETWORK_ACQUISITION_BLOCKED"
-    assert second["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_CLAIMED"
-    assert second["one_shot_state"] == "CLAIMED"
+    assert second["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM"
+    assert second["one_shot_state"] == "INCOMPLETE_CLAIM"
     assert second["network_request_count"] == 0
     assert second_transport.calls == []
-    assert parent.lease.records[fetcher._RESERVATION_DIRNAME][1] == reservation_before
+    assert reservation_file.payload == reservation_before
+
+
+def test_crash_during_terminal_staging_blocks_second_http_and_preserves_reservation(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parent = _MemoryEvidenceParent()
+    _use_memory_staging(monkeypatch)
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: parent,
+    )
+    actual_claim = fetcher.claim_one_shot_execution
+    spec = _spec(b"abcd")
+    _admit_for_test(monkeypatch, specs=_exact_three_test_specs(spec))
+    monkeypatch.setattr(fetcher, "claim_one_shot_execution", actual_claim)
+
+    class SimulatedCrash(RuntimeError):
+        pass
+
+    def crash(stage: str) -> None:
+        if stage == "after_terminal_bundle_staged_before_publish":
+            raise SimulatedCrash(stage)
+
+    monkeypatch.setattr(fetcher, "_ONE_SHOT_TEST_HOOK", crash)
+    first_transport = FakeTransport({})
+    with pytest.raises(SimulatedCrash):
+        fetcher.run_b_source_network_acquisition(
+            project_root,
+            Path("review.json"),
+            Path("missing.json"),
+            transport=first_transport,
+            publisher=MemoryPublisher(),
+        )
+    assert first_transport.calls == [spec.url]
+    assert parent.lease is not None
+    assert fetcher._TERMINAL_DIRNAME not in parent.lease.directories
+    reservation_file = parent.lease.directories[fetcher._RESERVATION_DIRNAME].files[
+        fetcher._RESERVATION_FILENAME
+    ]
+    reservation_before = reservation_file.payload
+
+    monkeypatch.setattr(fetcher, "_ONE_SHOT_TEST_HOOK", None)
+    second_transport = FakeTransport({})
+    second = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=second_transport,
+        publisher=MemoryPublisher(),
+    )
+
+    assert second["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM"
+    assert second["one_shot_state"] == "INCOMPLETE_CLAIM"
+    assert second["network_request_count"] == 0
+    assert second_transport.calls == []
+    assert reservation_file.payload == reservation_before

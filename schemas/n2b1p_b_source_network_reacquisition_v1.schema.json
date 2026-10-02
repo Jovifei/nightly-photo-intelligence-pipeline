@@ -575,11 +575,18 @@
         "missing_payload_precondition_schema_ref",
         "transfer_manifest_schema_ref",
         "acquisition_result_schema_ref",
+        "reservation_schema_ref",
+        "terminal_binding_schema_ref",
         "terminal_result_evidence_ref",
         "terminal_result_persistence",
+        "terminal_binding_evidence_ref",
         "one_shot_lease_ref",
         "one_shot_policy",
         "lease_identity_nonce_binding",
+        "claimed_state_scope",
+        "reservation_only_restart_state",
+        "initial_claim_publication",
+        "restart_completion_rule",
         "reservation_evidence_ref",
         "reservation_persistence",
         "crash_states",
@@ -610,11 +617,20 @@
         "acquisition_result_schema_ref": {
           "const": "schemas/n2b1p_b_source_acquisition_result_v1.schema.json"
         },
+        "reservation_schema_ref": {
+          "const": "schemas/n2b1p_b_source_one_shot_reservation_v1.schema.json"
+        },
+        "terminal_binding_schema_ref": {
+          "const": "schemas/n2b1p_b_source_one_shot_terminal_binding_v1.schema.json"
+        },
         "terminal_result_evidence_ref": {
           "const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-one-shot-v1/terminal-v1/terminal.json"
         },
         "terminal_result_persistence": {
           "const": "HANDLE_BOUND_STAGING_ATOMIC_PUBLISH"
+        },
+        "terminal_binding_evidence_ref": {
+          "const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-one-shot-v1/terminal-v1/binding.json"
         },
         "one_shot_lease_ref": {
           "const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-one-shot-v1"
@@ -624,6 +640,18 @@
         },
         "lease_identity_nonce_binding": {
           "const": "REQUIRED"
+        },
+        "claimed_state_scope": {
+          "const": "LIVE_ATTEMPT_ONLY"
+        },
+        "reservation_only_restart_state": {
+          "const": "INCOMPLETE_CLAIM"
+        },
+        "initial_claim_publication": {
+          "const": "HANDLE_BOUND_STAGING_ATOMIC_DIRECTORY_RENAME"
+        },
+        "restart_completion_rule": {
+          "const": "VALID_DURABLE_TERMINAL_BINDING_ONLY"
         },
         "reservation_evidence_ref": {
           "const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-one-shot-v1/reservation-v1/reservation.json"
@@ -658,6 +686,8 @@
         "one_shot_pre_request_claim",
         "retry_after_claim",
         "lease_identity_nonce_revalidation",
+        "reservation_only_restart_state",
+        "restart_completion_rule",
         "incomplete_or_completed_second_run_http"
       ],
       "properties": {
@@ -693,6 +723,12 @@
         },
         "lease_identity_nonce_revalidation": {
           "const": "REQUIRED_BEFORE_TERMINAL"
+        },
+        "reservation_only_restart_state": {
+          "const": "INCOMPLETE_CLAIM"
+        },
+        "restart_completion_rule": {
+          "const": "VALID_DURABLE_TERMINAL_BINDING_ONLY"
         },
         "incomplete_or_completed_second_run_http": {
           "const": "ZERO"

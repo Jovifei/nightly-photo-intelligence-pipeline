@@ -89,3 +89,39 @@ behavior; tests that require a clean tree were rerun after its exact commit.
 No DONE receipt was created. No live network request, payload download, cache
 promotion, model/CUDA execution, photo/EXIF access, SQLite/Real20 action, main
 merge or release was performed or authorized.
+
+## Remote exact-SHA review — 2026-10-02
+
+The existing Project chat reviewed exact HEAD `54a078fdd0c63d9e989547dd45bd39f0ee027787` and returned `CHANGES_REQUIRED: DURABLE_ONE_SHOT_RECOVERY_BINDING_INCOMPLETE`. It confirmed zero-HTTP and the handle-bound atomic-write direction, while identifying incomplete restart validation: reservation identity/nonce/HEAD/tree were not fully rechecked; a minimal three-field terminal was accepted as `COMPLETED`; reservation-only restart was classified `CLAIMED`; the final lease name was created before reservation publication; terminal lacked a durable binding to lease/reservation objects and content digests; and `persist_terminal()` did not enforce result HEAD/tree against its live claim.
+
+The local repair is limited to the existing executor code/test/schema/task/Owner/handoff scope. It stages the entire initial claim before atomic lease publication; classifies every reservation-only or incomplete staging restart as `INCOMPLETE_CLAIM`; requires a schema-valid terminal result and sibling binding that checks the actual lease, reservation, terminal directory/file identities, nonce digest, HEAD/tree and content digests; and rejects result HEAD/tree mismatch before persistence. No execution authority or data scope is expanded.
+
+The next local handoff will bind the final Codex successor SHA/tree, focused/static/full quality results, and remaining cache/auth blockers. Do not create DONE or run the network/download/model/photo/SQLite path.
+
+## Exact-SHA review of the previous local receipt
+
+Remote review of `54a078fdd0c63d9e989547dd45bd39f0ee027787` returned
+`CHANGES_REQUIRED: DURABLE_ONE_SHOT_RECOVERY_BINDING_INCOMPLETE`. Findings: (1) restart classification
+accepted structural reservation/terminal fields without comparing actual lease and file identities,
+nonce, HEAD/tree, and content digests; (2) a minimal three-field terminal could become `COMPLETED`;
+(3) reservation-only restart incorrectly returned `CLAIMED`; (4) the final lease directory was
+created before reservation publication; and (5) the persistence boundary did not reject a result
+whose HEAD/tree differed from its live claim.
+
+The remote plan requires an initial complete lease to be staged and atomically renamed into place;
+reservation-only and any malformed or identity/hash-mismatched recovery state become
+`INCOMPLETE_CLAIM`; terminal result and binding publish atomically together; and only a schema-valid
+terminal whose identity/nonce/HEAD/tree/content binding agrees with the current lease becomes
+`COMPLETED`. The old executor-only exact-SHA admission boundary and zero-HTTP second-call behavior
+remain unchanged.
+
+## Local repair progress
+
+Local TDD reproduced the defects on the reviewed implementation before the repair. The current
+uncommitted successor implements the bounded state/binding repair and adds reservation, terminal
+binding, identity-drift, content-digest, reservation-only restart, result-HEAD mismatch, and staging
+crash regressions. Preliminary local checks: fetcher crash tests 41 passed; contract tests 28 passed;
+115 Draft 2020-12 schemas validated and task/Owner YAML validated; Ruff check/format, mypy (103
+files), sensitive scan, and diff-check pass. Exact successor SHA and full quality results will be
+added after the clean candidate is committed and tested. Known canonical-cache and current
+authorization failures remain open.

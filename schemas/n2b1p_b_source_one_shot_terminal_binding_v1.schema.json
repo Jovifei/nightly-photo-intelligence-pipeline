@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b1p_b_source_one_shot_terminal_binding_v1.schema.json",
+  "title": "B-source one-shot durable terminal binding v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evidence_type",
+    "status",
+    "reviewed_head",
+    "reviewed_tree",
+    "lease_identity_sha256",
+    "reservation_directory_identity_sha256",
+    "reservation_file_identity_sha256",
+    "reservation_sha256",
+    "nonce_sha256",
+    "terminal_directory_identity_sha256",
+    "terminal_file_identity_sha256",
+    "terminal_sha256",
+    "binding_file_identity_sha256",
+    "retry_authorized"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "evidence_type": {"const": "B_SOURCE_NETWORK_ONE_SHOT_TERMINAL_BINDING_V1"},
+    "status": {"const": "COMPLETED_BINDING"},
+    "reviewed_head": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "reviewed_tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "lease_identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "reservation_directory_identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "reservation_file_identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "reservation_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonce_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "terminal_directory_identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "terminal_file_identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "terminal_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "binding_file_identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "retry_authorized": {"const": false}
+  }
+}

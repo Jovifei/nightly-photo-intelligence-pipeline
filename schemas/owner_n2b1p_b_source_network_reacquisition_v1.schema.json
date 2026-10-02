@@ -404,7 +404,14 @@
         "crash_states",
         "legacy_executor_concurrency",
         "lease_identity_nonce_revalidation",
-        "incomplete_or_completed_second_run_http"
+        "incomplete_or_completed_second_run_http",
+        "claimed_state_scope",
+        "reservation_only_restart_state",
+        "initial_claim_publication",
+        "restart_completion_rule",
+        "reservation_schema_ref",
+        "terminal_binding_schema_ref",
+        "terminal_binding_evidence_ref"
       ],
       "properties": {
         "required_receipt_type": {
@@ -470,6 +477,27 @@
         },
         "lease_identity_nonce_revalidation": {
           "const": "REQUIRED_BEFORE_TERMINAL"
+        },
+        "claimed_state_scope": {
+          "const": "LIVE_ATTEMPT_ONLY"
+        },
+        "reservation_only_restart_state": {
+          "const": "INCOMPLETE_CLAIM"
+        },
+        "initial_claim_publication": {
+          "const": "HANDLE_BOUND_STAGING_ATOMIC_DIRECTORY_RENAME"
+        },
+        "restart_completion_rule": {
+          "const": "VALID_DURABLE_TERMINAL_BINDING_ONLY"
+        },
+        "reservation_schema_ref": {
+          "const": "schemas/n2b1p_b_source_one_shot_reservation_v1.schema.json"
+        },
+        "terminal_binding_schema_ref": {
+          "const": "schemas/n2b1p_b_source_one_shot_terminal_binding_v1.schema.json"
+        },
+        "terminal_binding_evidence_ref": {
+          "const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-one-shot-v1/terminal-v1/binding.json"
         },
         "incomplete_or_completed_second_run_http": {
           "const": "ZERO"

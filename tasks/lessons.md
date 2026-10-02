@@ -396,3 +396,8 @@
   ignored `.venv` and create an untracked lockfile. Use the approved external
   interpreter and keep accidental environment artifacts visible until safely
   cleaned; never hide them to claim a clean review tree.
+
+## 2026-10-02 remote status refresh and durable lease review
+
+- Do not infer that ChatGPT is silent from an old heartbeat or checkpoint. Re-read the existing in-app Project conversation and inspect the actual remote branch/ref before deciding whether to wait, resend, or receive. If the page says it is thinking, do not resend the request.
+- A successful local zero-HTTP check does not prove durable recovery integrity. On restart, validate the actual lease, reservation directory/file identities, nonce, HEAD/tree, terminal result schema/content digest, and terminal binding together. A reservation without a fully validated terminal is `INCOMPLETE_CLAIM`; only a validated terminal may be `COMPLETED`.
