@@ -791,9 +791,7 @@ class OneShotExecutionClaim:
                     ) as existing_lease:
                         state = _classify_existing_one_shot_lease(existing_lease)
                 except (FileNotFoundError, NpiError):
-                    raise BSourceAcquisitionError(
-                        "NPI_B_SOURCE_ONE_SHOT_CLAIM_DENIED"
-                    ) from exc
+                    raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_CLAIM_DENIED") from exc
                 raise BSourceAcquisitionError(_one_shot_state_error(state)) from exc
 
             lease_identity_sha256 = lease.identity.digest
@@ -838,9 +836,7 @@ class OneShotExecutionClaim:
                 writable=True,
             ) as evidence_parent:
                 if _LEASE_DIRNAME not in evidence_parent.list_names():
-                    raise BSourceAcquisitionError(
-                        "NPI_B_SOURCE_ONE_SHOT_LEASE_MISSING"
-                    )
+                    raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_LEASE_MISSING")
                 lease = evidence_parent.open_directory(
                     _LEASE_DIRNAME,
                     writable=True,
@@ -855,34 +851,21 @@ class OneShotExecutionClaim:
                         directory_name=_RESERVATION_DIRNAME,
                         payload_name=_RESERVATION_FILENAME,
                     )
-                    if reservation is None or not _reservation_is_structurally_valid(
-                        reservation
-                    ):
-                        raise BSourceAcquisitionError(
-                            "NPI_B_SOURCE_ONE_SHOT_RESERVATION_INVALID"
-                        )
+                    if reservation is None or not _reservation_is_structurally_valid(reservation):
+                        raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_RESERVATION_INVALID")
                     if (
                         reservation.get("reviewed_head") != self.reviewed_head
                         or reservation.get("reviewed_tree") != self.reviewed_tree
-                        or reservation.get("lease_identity_sha256")
-                        != self.lease_identity_sha256
+                        or reservation.get("lease_identity_sha256") != self.lease_identity_sha256
                         or reservation.get("nonce") != self.nonce
                     ):
-                        raise BSourceAcquisitionError(
-                            "NPI_B_SOURCE_ONE_SHOT_RESERVATION_INVALID"
-                        )
+                        raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_RESERVATION_INVALID")
                     state = _classify_existing_one_shot_lease(lease)
                     if state == _ONE_SHOT_STATE_COMPLETED:
-                        raise BSourceAcquisitionError(
-                            "NPI_B_SOURCE_ONE_SHOT_COMPLETED"
-                        )
+                        raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_COMPLETED")
                     if state != _ONE_SHOT_STATE_CLAIMED:
-                        raise BSourceAcquisitionError(
-                            "NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM"
-                        )
-                    _emit_one_shot_test_hook(
-                        "after_reservation_validation_before_terminal"
-                    )
+                        raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM")
+                    _emit_one_shot_test_hook("after_reservation_validation_before_terminal")
                     terminal_sha256 = _atomic_publish_json_record(
                         lease,
                         final_name=_TERMINAL_DIRNAME,
@@ -894,9 +877,7 @@ class OneShotExecutionClaim:
         except BSourceAcquisitionError:
             raise
         except NpiError as exc:
-            raise BSourceAcquisitionError(
-                "NPI_B_SOURCE_TERMINAL_PERSIST_FAILED"
-            ) from exc
+            raise BSourceAcquisitionError("NPI_B_SOURCE_TERMINAL_PERSIST_FAILED") from exc
         return {
             "one_shot_lease_ref": _LEASE_REF,
             "reservation_evidence_ref": _RESERVATION_REF,
