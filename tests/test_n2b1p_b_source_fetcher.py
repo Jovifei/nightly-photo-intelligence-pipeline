@@ -1015,3 +1015,72 @@ def test_terminal_rejects_replaced_lease_identity_and_nonce(
                 "one_shot_state": "CLAIMED",
             }
         )
+
+
+def test_crash_before_terminal_after_first_http_blocks_second_http(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parent = _MemoryEvidenceParent()
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: parent,
+    )
+
+    def publish_record(
+        root: _MemoryLeaseDirectory,
+        *,
+        final_name: str,
+        payload_name: str,
+        record: Mapping[str, object],
+    ) -> str:
+        root.records[final_name] = (payload_name, dict(record))
+        return hashlib.sha256(fetcher._canonical_json_bytes(record)).hexdigest()
+
+    monkeypatch.setattr(fetcher, "_atomic_publish_json_record", publish_record)
+
+    actual_claim = fetcher.claim_one_shot_execution
+    spec = _spec(b"abcd")
+    _admit_for_test(monkeypatch, specs=_exact_three_test_specs(spec))
+    monkeypatch.setattr(fetcher, "claim_one_shot_execution", actual_claim)
+
+    class SimulatedCrash(RuntimeError):
+        pass
+
+    def crash(stage: str) -> None:
+        if stage == "after_reservation_validation_before_terminal":
+            raise SimulatedCrash(stage)
+
+    monkeypatch.setattr(fetcher, "_ONE_SHOT_TEST_HOOK", crash)
+    first_transport = FakeTransport({})
+    with pytest.raises(SimulatedCrash):
+        fetcher.run_b_source_network_acquisition(
+            project_root,
+            Path("review.json"),
+            Path("missing.json"),
+            transport=first_transport,
+            publisher=MemoryPublisher(),
+        )
+    assert first_transport.calls == [spec.url]
+    assert parent.lease is not None
+    assert fetcher._RESERVATION_DIRNAME in parent.lease.records
+    assert fetcher._TERMINAL_DIRNAME not in parent.lease.records
+    reservation_before = dict(parent.lease.records[fetcher._RESERVATION_DIRNAME][1])
+
+    monkeypatch.setattr(fetcher, "_ONE_SHOT_TEST_HOOK", None)
+    second_transport = FakeTransport({})
+    second = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=second_transport,
+        publisher=MemoryPublisher(),
+    )
+    assert second["status"] == "B_SOURCE_NETWORK_ACQUISITION_BLOCKED"
+    assert second["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_CLAIMED"
+    assert second["one_shot_state"] == "CLAIMED"
+    assert second["network_request_count"] == 0
+    assert second_transport.calls == []
+    assert parent.lease.records[fetcher._RESERVATION_DIRNAME][1] == reservation_before
