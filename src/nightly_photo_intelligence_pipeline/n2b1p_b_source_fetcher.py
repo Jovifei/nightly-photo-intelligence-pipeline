@@ -808,8 +808,8 @@ class OneShotExecutionClaim:
                 "nonce": nonce,
                 "retry_authorized": False,
             }
-            _emit_one_shot_test_hook("after_lease_create_before_reservation")
             try:
+                _emit_one_shot_test_hook("after_lease_create_before_reservation")
                 _atomic_publish_json_record(
                     lease,
                     final_name=_RESERVATION_DIRNAME,
@@ -912,6 +912,8 @@ def claim_one_shot_execution(
 ) -> OneShotExecutionClaim:
     """Claim the immutable one-shot lease before transport construction."""
     return OneShotExecutionClaim.claim(project_root, reviewed_head, reviewed_tree)
+
+
 def _finish_claimed_result(
     claim: OneShotExecutionClaim,
     result: dict[str, object],

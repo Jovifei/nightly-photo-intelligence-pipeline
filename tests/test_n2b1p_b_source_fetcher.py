@@ -119,9 +119,14 @@ class MemoryOneShotClaim:
                 "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/"
                 "b-source-network-acquisition-one-shot-v1"
             ),
+            "reservation_evidence_ref": (
+                "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/"
+                "b-source-network-acquisition-one-shot-v1/"
+                "reservation-v1/reservation.json"
+            ),
             "terminal_evidence_ref": (
                 "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/"
-                "b-source-network-acquisition-one-shot-v1/terminal.json"
+                "b-source-network-acquisition-one-shot-v1/terminal-v1/terminal.json"
             ),
             "terminal_evidence_sha256": hashlib.sha256(payload).hexdigest(),
         }
@@ -387,6 +392,7 @@ def test_network_failure_is_terminal_and_not_retryable(
     assert result["status"] == "B_SOURCE_NETWORK_ACQUISITION_FAILED"
     assert result["retry_authorized"] is False
     assert result["network_request_count"] == 1
+    assert result["one_shot_state"] == "COMPLETED"
     assert transport.calls == [spec.url]
     assert result["mandatory_stop"] == ("EXTERNAL_REVIEW_B_SOURCE_ACQUISITION_FAILURE")
 
@@ -611,7 +617,7 @@ def test_cli_reports_terminal_evidence_persisted_by_executor(
         ),
         "terminal_evidence_ref": (
             "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/"
-            "b-source-network-acquisition-one-shot-v1/terminal.json"
+            "b-source-network-acquisition-one-shot-v1/terminal-v1/terminal.json"
         ),
         "terminal_evidence_sha256": "c" * 64,
     }
@@ -689,32 +695,323 @@ def test_same_runtime_second_execution_is_zero_network_and_preserves_first_termi
     assert state["terminal"] == first_terminal
 
 
-def test_existing_one_shot_marker_rejects_claim(
+class _MemoryRecordFile:
+    def __init__(self, payload: bytes) -> None:
+        self.payload = payload
+
+    def __enter__(self) -> _MemoryRecordFile:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+    def read_all(self, *, max_bytes: int) -> bytes:
+        assert len(self.payload) <= max_bytes
+        return self.payload
+
+
+class _MemoryRecordDirectory:
+    def __init__(self, payload_name: str, record: Mapping[str, object]) -> None:
+        self.payload_name = payload_name
+        self.payload = fetcher._canonical_json_bytes(record)
+
+    def __enter__(self) -> _MemoryRecordDirectory:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+    def list_names(self) -> set[str]:
+        return {self.payload_name}
+
+    def open_file(self, name: str) -> _MemoryRecordFile:
+        if name != self.payload_name:
+            raise FileNotFoundError(name)
+        return _MemoryRecordFile(self.payload)
+
+
+class _MemoryLeaseDirectory:
+    def __init__(self, identity: str = "d" * 64) -> None:
+        self.identity = SimpleNamespace(digest=identity)
+        self.records: dict[str, tuple[str, dict[str, object]]] = {}
+        self.closed = False
+
+    def __enter__(self) -> _MemoryLeaseDirectory:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        self.close()
+
+    def close(self) -> None:
+        self.closed = True
+
+    def list_names(self) -> set[str]:
+        return set(self.records)
+
+    def open_directory(
+        self,
+        name: str,
+        *,
+        writable: bool,
+    ) -> _MemoryRecordDirectory:
+        del writable
+        try:
+            payload_name, record = self.records[name]
+        except KeyError as exc:
+            raise FileNotFoundError(name) from exc
+        return _MemoryRecordDirectory(payload_name, record)
+
+
+class _MemoryEvidenceParent:
+    def __init__(self) -> None:
+        self.lease: _MemoryLeaseDirectory | None = None
+
+    def __enter__(self) -> _MemoryEvidenceParent:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+    def list_names(self) -> set[str]:
+        return {fetcher._LEASE_DIRNAME} if self.lease is not None else set()
+
+    def create_directory(self, name: str) -> _MemoryLeaseDirectory:
+        assert name == fetcher._LEASE_DIRNAME
+        if self.lease is not None:
+            raise PromotionPathSafetyError("already exists")
+        self.lease = _MemoryLeaseDirectory()
+        return self.lease
+
+    def open_directory(
+        self,
+        name: str,
+        *,
+        writable: bool,
+    ) -> _MemoryLeaseDirectory:
+        del writable
+        if name != fetcher._LEASE_DIRNAME or self.lease is None:
+            raise FileNotFoundError(name)
+        self.lease.closed = False
+        return self.lease
+
+
+def _reservation_record(
+    lease: _MemoryLeaseDirectory,
+    *,
+    nonce: str = "a" * 32,
+) -> dict[str, object]:
+    return {
+        "schema_version": "1.0",
+        "evidence_type": "B_SOURCE_NETWORK_ONE_SHOT_RESERVATION_V1",
+        "status": "CLAIMED",
+        "reviewed_head": "a" * 40,
+        "reviewed_tree": "b" * 40,
+        "lease_identity_sha256": lease.identity.digest,
+        "nonce": nonce,
+        "retry_authorized": False,
+    }
+
+
+def _terminal_record() -> dict[str, object]:
+    return {
+        "terminal": True,
+        "retry_authorized": False,
+        "one_shot_state": "COMPLETED",
+    }
+
+
+def _install_existing_lease_for_run(
     project_root: Path,
     monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    class ExistingLeaseParent:
-        def __enter__(self) -> ExistingLeaseParent:
-            return self
-
-        def __exit__(self, *_args: object) -> None:
-            return None
-
-        def list_names(self) -> set[str]:
-            return {fetcher._LEASE_DIRNAME}
-
+    parent: _MemoryEvidenceParent,
+) -> tuple[fetcher.DownloadTransport, fetcher.QuarantinePublisher]:
+    actual_claim = fetcher.claim_one_shot_execution
+    spec = _spec(b"abcd")
+    _admit_for_test(monkeypatch, specs=_exact_three_test_specs(spec))
+    monkeypatch.setattr(fetcher, "claim_one_shot_execution", actual_claim)
     monkeypatch.setattr(fetcher.os, "name", "nt")
     monkeypatch.setattr(
         fetcher,
         "bind_existing_directory",
-        lambda *_args, **_kwargs: ExistingLeaseParent(),
+        lambda *_args, **_kwargs: parent,
+    )
+    return FakeTransport({}), MemoryPublisher()
+
+
+def test_crash_after_lease_create_before_reservation_is_incomplete_and_zero_http(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parent = _MemoryEvidenceParent()
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: parent,
+    )
+
+    class SimulatedCrash(RuntimeError):
+        pass
+
+    def crash(stage: str) -> None:
+        if stage == "after_lease_create_before_reservation":
+            raise SimulatedCrash(stage)
+
+    monkeypatch.setattr(fetcher, "_ONE_SHOT_TEST_HOOK", crash)
+    with pytest.raises(SimulatedCrash):
+        fetcher.claim_one_shot_execution(project_root, "a" * 40, "b" * 40)
+
+    assert parent.lease is not None
+    assert parent.lease.records == {}
+    monkeypatch.setattr(fetcher, "_ONE_SHOT_TEST_HOOK", None)
+    transport, publisher = _install_existing_lease_for_run(
+        project_root,
+        monkeypatch,
+        parent,
+    )
+    result = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=transport,
+        publisher=publisher,
+    )
+    assert result["status"] == "B_SOURCE_NETWORK_ACQUISITION_BLOCKED"
+    assert result["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM"
+    assert result["one_shot_state"] == "INCOMPLETE_CLAIM"
+    assert result["network_request_count"] == 0
+    assert transport.calls == []
+
+
+def test_crash_after_reservation_before_terminal_is_claimed_and_zero_http(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parent = _MemoryEvidenceParent()
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: parent,
+    )
+
+    def publish_record(
+        root: _MemoryLeaseDirectory,
+        *,
+        final_name: str,
+        payload_name: str,
+        record: Mapping[str, object],
+    ) -> str:
+        root.records[final_name] = (payload_name, dict(record))
+        return hashlib.sha256(fetcher._canonical_json_bytes(record)).hexdigest()
+
+    monkeypatch.setattr(fetcher, "_atomic_publish_json_record", publish_record)
+
+    class SimulatedCrash(RuntimeError):
+        pass
+
+    def crash(stage: str) -> None:
+        if stage == "after_reservation_publish_before_transport":
+            raise SimulatedCrash(stage)
+
+    monkeypatch.setattr(fetcher, "_ONE_SHOT_TEST_HOOK", crash)
+    with pytest.raises(SimulatedCrash):
+        fetcher.claim_one_shot_execution(project_root, "a" * 40, "b" * 40)
+
+    assert parent.lease is not None
+    assert fetcher._RESERVATION_DIRNAME in parent.lease.records
+    assert fetcher._TERMINAL_DIRNAME not in parent.lease.records
+    monkeypatch.setattr(fetcher, "_ONE_SHOT_TEST_HOOK", None)
+    transport, publisher = _install_existing_lease_for_run(
+        project_root,
+        monkeypatch,
+        parent,
+    )
+    result = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=transport,
+        publisher=publisher,
+    )
+    assert result["status"] == "B_SOURCE_NETWORK_ACQUISITION_BLOCKED"
+    assert result["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_CLAIMED"
+    assert result["one_shot_state"] == "CLAIMED"
+    assert result["network_request_count"] == 0
+    assert transport.calls == []
+
+
+def test_completed_lease_second_run_is_zero_http_and_does_not_overwrite(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parent = _MemoryEvidenceParent()
+    parent.lease = _MemoryLeaseDirectory()
+    reservation = _reservation_record(parent.lease)
+    terminal = _terminal_record()
+    parent.lease.records[fetcher._RESERVATION_DIRNAME] = (
+        fetcher._RESERVATION_FILENAME,
+        reservation,
+    )
+    parent.lease.records[fetcher._TERMINAL_DIRNAME] = (
+        fetcher._TERMINAL_FILENAME,
+        terminal,
+    )
+    before = dict(parent.lease.records)
+
+    transport, publisher = _install_existing_lease_for_run(
+        project_root,
+        monkeypatch,
+        parent,
+    )
+    result = fetcher.run_b_source_network_acquisition(
+        project_root,
+        Path("review.json"),
+        Path("missing.json"),
+        transport=transport,
+        publisher=publisher,
+    )
+    assert result["status"] == "B_SOURCE_NETWORK_ACQUISITION_BLOCKED"
+    assert result["failure_code"] == "NPI_B_SOURCE_ONE_SHOT_COMPLETED"
+    assert result["one_shot_state"] == "COMPLETED"
+    assert result["network_request_count"] == 0
+    assert transport.calls == []
+    assert parent.lease.records == before
+
+
+def test_terminal_rejects_replaced_lease_identity_and_nonce(
+    project_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parent = _MemoryEvidenceParent()
+    parent.lease = _MemoryLeaseDirectory(identity="e" * 64)
+    parent.lease.records[fetcher._RESERVATION_DIRNAME] = (
+        fetcher._RESERVATION_FILENAME,
+        _reservation_record(parent.lease, nonce="b" * 32),
+    )
+    monkeypatch.setattr(fetcher.os, "name", "nt")
+    monkeypatch.setattr(
+        fetcher,
+        "bind_existing_directory",
+        lambda *_args, **_kwargs: parent,
+    )
+    monkeypatch.setattr(fetcher, "_validate_document", lambda *_args, **_kwargs: None)
+    claim = fetcher.OneShotExecutionClaim(
+        project_root=project_root,
+        reviewed_head="a" * 40,
+        reviewed_tree="b" * 40,
+        evidence_parent_path=Path("fixed-evidence-parent"),
+        lease_identity_sha256="d" * 64,
+        nonce="a" * 32,
     )
     with pytest.raises(
         fetcher.BSourceAcquisitionError,
-        match="ONE_SHOT_ALREADY_CLAIMED",
+        match="LEASE_IDENTITY_MISMATCH",
     ):
-        fetcher.claim_one_shot_execution(
-            project_root,
-            "a" * 40,
-            "b" * 40,
+        claim.persist_terminal(
+            {
+                "terminal": True,
+                "retry_authorized": False,
+                "one_shot_state": "CLAIMED",
+            }
         )
