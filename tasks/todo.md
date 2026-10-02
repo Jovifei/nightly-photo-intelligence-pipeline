@@ -2449,3 +2449,27 @@ Current status:
   schema bindings for lease, retry denial and terminal persistence.
 - [ ] Local Codex must validate this exact successor before any DONE receipt or
   live B-source request.
+
+### Remote lease crash-state hardening — 2026-10-02
+
+- [x] Preserve the exact predecessor `b96457115477128254e7f3aab33a2f19efe6784b`
+  and implement only the reviewed one-shot crash-state remediation.
+- [x] Bind each claim to the handle-observed lease identity digest plus a random
+  nonce; terminal publication reopens the fixed lease and requires exact
+  identity, nonce, reviewed HEAD and reviewed tree matches.
+- [x] Publish reservation and terminal as handle-bound staging directories with
+  atomic rename. Partial staging never becomes a valid reservation or terminal.
+- [x] Classify durable lease state explicitly as `INCOMPLETE_CLAIM`,
+  `CLAIMED`, or `COMPLETED`; every pre-existing state blocks transport
+  construction and therefore consumes zero new HTTP requests.
+- [x] Add crash regressions for lease-created-before-reservation, reservation
+  published-before-terminal, crash during terminal persistence after one HTTP,
+  completed-state second invocation, and lease identity/nonce substitution.
+- [x] Keep the closed allowed-change-category set unchanged; all touched paths
+  remain within executor/tests/schema/task/Owner/manifest/todo/governance classes.
+- [x] Do not add a cross-version shared lock: admission already requires the
+  executor-only receipt scope plus exact current HEAD/tree, the control-only
+  receipt negative test remains, and no DONE receipt was ever issued for the
+  unreviewed legacy executor.
+- [ ] Local Codex must run the full focused/static/quality matrix on this exact
+  successor before any DONE receipt or real B-source request.
