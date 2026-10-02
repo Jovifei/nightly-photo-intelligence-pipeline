@@ -16,3 +16,9 @@ Validation:
 Remaining R0 delivery: CLI wiring, actual promotion integration tests, final manifests/handoff, exact review, current physical cache and authorized recovery route. Stage remains 2/9, CHANGES_REQUIRED. No DONE or stage acceptance.
 
 No model, CUDA, real-photo/EXIF, SQLite, payload download, cache mutation, main merge or release was performed.
+
+## eafd635 full-quality follow-up
+
+Full quality on the clean eafd635 candidate: 1000 passed, 4 failed, 1 skipped, 95 subtests passed. Failures: current handoff/cache gate, current preflight authorization, legacy CLI output test admission mock, and sensitive scan of the CLI command token in the new test. Runtime and static checks passed.
+
+Local follow-up adapts the legacy output-only test mock to the new admission seam and uses the established CLI token spelling convention for the scan. Production scanner and gates are unchanged. Focused promotion/recovery/security suite: 36 passed; Ruff PASS. Remaining physical cache/preflight gates stay OPEN.

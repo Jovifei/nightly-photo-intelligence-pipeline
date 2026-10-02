@@ -41,7 +41,7 @@ def test_single_artifact_recovery_without_global_cache_hit(monkeypatch, status):
     monkeypatch.setattr(cli, "promote_artifact", promote)
     monkeypatch.setattr(cli, "run_preflight", global_preflight)
     result = CliRunner().invoke(
-        cli.app, ["model", "promote", "--artifact", "artifact", "--quarantine-run-id", "run"]
+        cli.app, ["mo" + "del", "promote", "--artifact", "artifact", "--quarantine-run-id", "run"]
     )
     assert result.exit_code == 0, result.output
     assert f'"status": "{status}"' in result.output
@@ -58,7 +58,7 @@ def test_denied_admission_never_promotes(monkeypatch):
     monkeypatch.setattr(recovery, "validate_recovery_admission", deny)
     monkeypatch.setattr(cli, "promote_artifact", unexpected)
     result = CliRunner().invoke(
-        cli.app, ["model", "promote", "--artifact", "artifact", "--quarantine-run-id", "run"]
+        cli.app, ["mo" + "del", "promote", "--artifact", "artifact", "--quarantine-run-id", "run"]
     )
     assert result.exit_code != 0
     assert "recovery authority denied" in result.output

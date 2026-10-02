@@ -237,6 +237,13 @@ def test_cli_promotion_prints_no_cache_path(monkeypatch: pytest.MonkeyPatch) -> 
         manifest_path=Path("E" + ":" + chr(92) + "private" + chr(92) + "cache_manifest.json"),
         manifest_sha256="a" * 64,
     )
+    from nightly_photo_intelligence_pipeline import n2b1p_recovery_admission
+
+    monkeypatch.setattr(
+        n2b1p_recovery_admission,
+        "validate_recovery_admission",
+        lambda *_args, **_kwargs: None,
+    )
     monkeypatch.setattr(cli_module, "run_preflight", lambda: [])
     monkeypatch.setattr(cli_module, "load_authorized_promotion", lambda _: artifact)
     monkeypatch.setattr(cli_module, "promote_artifact", lambda *_args, **_kwargs: result)
