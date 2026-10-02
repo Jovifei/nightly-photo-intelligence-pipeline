@@ -2497,8 +2497,16 @@ Reviewed candidate `54a078fdd0c63d9e989547dd45bd39f0ee027787` received `CHANGES_
 - [x] Add and bind closed reservation/terminal-binding schemas and sync task/Owner contracts without widening execution authority.
 - [x] Run focused fetcher (41), contract (28), task/Owner schema, Ruff, format, mypy, and sensitive-scan checks; preserve the original pre-existing cache/auth failures.
 - [x] Update handoff and lessons with the remote exact-SHA findings and bounded repair plan.
-- [ ] Regenerate root/overlay manifests; run review eligibility, handoff, and full quality on a clean exact candidate; record exact SHA/tree.
+- [x] Run focused/static/schema, review eligibility, handoff, and full quality on the clean implementation candidate `53edba38ee3915c68315e5d1d7c692409c9eae2c`; record exact SHA/tree and remaining failures.
+- [ ] Regenerate root/overlay manifests after final handoff/todo update, then rerun exact candidate checks.
 - [ ] Push the linear candidate on the existing review branch and request a new exact-SHA review.
+
+### Local repair result
+
+- Implementation: `53edba38ee3915c68315e5d1d7c692409c9eae2c`, tree `0fe152755ae384c39cc02b930e3c4435e4ff4b8c`, parent `54a078fdd0c63d9e989547dd45bd39f0ee027787`.
+- Focused suite: 136 passed; Ruff/format, mypy 103, schema validation 115 + task/Owner 2, review eligibility, and sensitive scan passed.
+- `verify_handoff`: 8 PASS / 1 FAIL (canonical cache absent). Full quality: 992 passed, 2 failed, 1 skipped, 95 subtests; failures are canonical cache and current authorization preflight. No full quality PASS is claimed.
+- Remote exact-SHA review remains pending after the local successor push. No download, cache action, model/GPU, photo/EXIF, SQLite, DONE receipt, merge, or release occurred.
 
 ### Stop conditions
 

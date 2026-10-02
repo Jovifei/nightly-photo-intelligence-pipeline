@@ -115,13 +115,39 @@ terminal whose identity/nonce/HEAD/tree/content binding agrees with the current 
 `COMPLETED`. The old executor-only exact-SHA admission boundary and zero-HTTP second-call behavior
 remain unchanged.
 
-## Local repair progress
+## Local repair result — 2026-10-02
 
-Local TDD reproduced the defects on the reviewed implementation before the repair. The current
-uncommitted successor implements the bounded state/binding repair and adds reservation, terminal
-binding, identity-drift, content-digest, reservation-only restart, result-HEAD mismatch, and staging
-crash regressions. Preliminary local checks: fetcher crash tests 41 passed; contract tests 28 passed;
-115 Draft 2020-12 schemas validated and task/Owner YAML validated; Ruff check/format, mypy (103
-files), sensitive scan, and diff-check pass. Exact successor SHA and full quality results will be
-added after the clean candidate is committed and tested. Known canonical-cache and current
-authorization failures remain open.
+The repair is committed in the linear successor `53edba38ee3915c68315e5d1d7c692409c9eae2c`, tree
+`0fe152755ae384c39cc02b930e3c4435e4ff4b8c`, parent
+`54a078fdd0c63d9e989547dd45bd39f0ee027787`. It stages the full lease before atomic publication,
+keeps incomplete staging as a fail-closed marker, validates the reservation's actual lease/directory/
+file identities and hash, and persists an atomic `terminal.json` + `binding.json` bundle. Restart
+returns `COMPLETED` only when strict result/binding schemas, actual object identities, nonce digest,
+HEAD/tree, and content digests all agree. Reservation-only restart is `INCOMPLETE_CLAIM`; result
+HEAD/tree mismatch is rejected inside `persist_terminal()`.
+
+Regression coverage includes the original defects plus lease/reservation/terminal/binding identity
+drift, nonce and HEAD/tree drift, minimal/missing terminal binding, terminal-content hash drift,
+extra record files, claim staging crashes, terminal staging crashes, reservation-only restart, and
+valid completed restart with zero HTTP and no overwrite. The old control-only receipt negative test
+and executor-only exact-SHA admission boundary remain unchanged.
+
+Local checks on the clean implementation commit:
+
+```text
+focused fetcher/network/review/route-B/contracts: 136 passed
+tests/test_n2b1p_b_source_fetcher.py: 41 passed
+tests/test_contracts.py: 28 passed
+all 115 Draft 2020-12 schemas and both task/Owner YAML records: PASS
+Ruff check / format (179 files): PASS
+mypy (103 files): PASS
+review eligibility: PASS
+sensitive scan: 0 violations
+verify_handoff: 8 PASS / 1 FAIL (canonical cache FileNotFoundError)
+tools/run_quality.py: 992 passed, 2 failed, 1 skipped, 95 subtests; exit 1
+```
+
+The two full-quality failures remain the canonical-cache handoff and
+`current_authorization_contracts` preflight. No DONE receipt, network request, download, cache or
+quarantine mutation, model/CUDA, photo/EXIF, SQLite, merge, or release occurred. The candidate is
+ready for another exact-SHA review; the cache and authorization gates remain closed.
