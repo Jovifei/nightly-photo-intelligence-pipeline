@@ -2473,3 +2473,12 @@ Current status:
   unreviewed legacy executor.
 - [ ] Local Codex must run the full focused/static/quality matrix on this exact
   successor before any DONE receipt or real B-source request.
+
+## Local receive — lease crash-state handoff 2026-10-02
+
+- Remote handoff received at `06c464a2069b761b2bd7f7866cac5c972c1eec6d`, tree `0c1cf6aa763cc318cf24f185b63e048b656190e0`.
+- Applied Ruff's formatting-only correction to `src/nightly_photo_intelligence_pipeline/n2b1p_b_source_fetcher.py`; regenerated `MANIFEST.sha256` from the staged index. Local implementation commit: `1cf07466082db54a8212c727285618191b760000`, tree `5555c8fcb2c1012d1a7f10a0e802c80059e0af5d`, parent `06c464a2069b761b2bd7f7866cac5c972c1eec6d`.
+- Focused fetcher/network/review/route-B/contracts suite: 112 passed, exit 0. Ruff check/format, mypy (103 files), review eligibility, and sensitive scan passed.
+- `verify_handoff.py`: 8 PASS / 1 FAIL, canonical cache missing. `run_quality.py`: 968 passed, 2 failed, 1 skipped, 95 subtests; failures are current handoff cache absence and `current_authorization_contracts` preflight. No full quality PASS is claimed.
+- No network request, model, CUDA, photo/EXIF, SQLite, cache promotion, DONE receipt, merge, or release was performed.
+- Next: exact-SHA remote review after this handoff/manifest update; keep cache and authorization gates closed.
