@@ -578,7 +578,12 @@
         "terminal_result_evidence_ref",
         "terminal_result_persistence",
         "one_shot_lease_ref",
-        "one_shot_policy"
+        "one_shot_policy",
+        "lease_identity_nonce_binding",
+        "reservation_evidence_ref",
+        "reservation_persistence",
+        "crash_states",
+        "legacy_executor_concurrency"
       ],
       "properties": {
         "module_ref": {
@@ -606,16 +611,35 @@
           "const": "schemas/n2b1p_b_source_acquisition_result_v1.schema.json"
         },
         "terminal_result_evidence_ref": {
-          "const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-one-shot-v1/terminal.json"
+          "const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-one-shot-v1/terminal-v1/terminal.json"
         },
         "terminal_result_persistence": {
-          "const": "LEASE_BOUND_EXCLUSIVE_CREATE"
+          "const": "HANDLE_BOUND_STAGING_ATOMIC_PUBLISH"
         },
         "one_shot_lease_ref": {
           "const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-one-shot-v1"
         },
         "one_shot_policy": {
           "const": "PRE_REQUEST_EXCLUSIVE_PERSISTENT_LEASE"
+        },
+        "lease_identity_nonce_binding": {
+          "const": "REQUIRED"
+        },
+        "reservation_evidence_ref": {
+          "const": "E_CLAUDE_ALLOW_DOWNLOAD/npi-c2c-evidence-20260930/b-source-network-acquisition-one-shot-v1/reservation-v1/reservation.json"
+        },
+        "reservation_persistence": {
+          "const": "HANDLE_BOUND_STAGING_ATOMIC_PUBLISH"
+        },
+        "crash_states": {
+          "const": [
+            "CLAIMED",
+            "INCOMPLETE_CLAIM",
+            "COMPLETED"
+          ]
+        },
+        "legacy_executor_concurrency": {
+          "const": "EXCLUDED_BY_EXACT_HEAD_TREE_AND_EXECUTOR_SCOPE_RECEIPT"
         }
       }
     },
@@ -632,7 +656,9 @@
         "cache_promotion",
         "model_cuda_photo_exif_sqlite_real20",
         "one_shot_pre_request_claim",
-        "retry_after_claim"
+        "retry_after_claim",
+        "lease_identity_nonce_revalidation",
+        "incomplete_or_completed_second_run_http"
       ],
       "properties": {
         "required_receipt_type": {
@@ -664,6 +690,12 @@
         },
         "retry_after_claim": {
           "const": "DENY"
+        },
+        "lease_identity_nonce_revalidation": {
+          "const": "REQUIRED_BEFORE_TERMINAL"
+        },
+        "incomplete_or_completed_second_run_http": {
+          "const": "ZERO"
         }
       }
     }

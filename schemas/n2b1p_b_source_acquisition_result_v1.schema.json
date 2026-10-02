@@ -15,6 +15,7 @@
     "quarantine_root_identity_sha256",
     "network_request_count",
     "artifact_results",
+    "one_shot_state",
     "terminal",
     "retry_authorized",
     "cache_promotion",
@@ -159,6 +160,14 @@
       "enum": [
         "EXTERNAL_REVIEW_B_SOURCE_ACQUISITION_FAILURE",
         "EXTERNAL_REVIEW_B_SOURCE_BYTES_READY"
+      ]
+    },
+    "one_shot_state": {
+      "enum": [
+        "UNCLAIMED",
+        "CLAIMED",
+        "INCOMPLETE_CLAIM",
+        "COMPLETED"
       ]
     }
   }

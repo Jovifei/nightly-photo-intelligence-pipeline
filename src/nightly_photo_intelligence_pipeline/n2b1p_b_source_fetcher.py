@@ -11,6 +11,7 @@ import hashlib
 import http.client
 import json
 import os
+import secrets
 import ssl
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -47,10 +48,18 @@ _TRANSFER_SCHEMA = "n2b1p_b_source_transfer_manifest_v1.schema.json"
 _RESULT_SCHEMA = "n2b1p_b_source_acquisition_result_v1.schema.json"
 _LEGACY_RESULT_FILENAME = "b-source-network-acquisition-result-v1.json"
 _LEASE_DIRNAME = "b-source-network-acquisition-one-shot-v1"
+_RESERVATION_DIRNAME = "reservation-v1"
 _RESERVATION_FILENAME = "reservation.json"
+_TERMINAL_DIRNAME = "terminal-v1"
 _TERMINAL_FILENAME = "terminal.json"
 _LEASE_REF = f"E_CLAUDE_ALLOW_DOWNLOAD/{_EVIDENCE_PARENT}/{_LEASE_DIRNAME}"
-_RESULT_REF = f"{_LEASE_REF}/{_TERMINAL_FILENAME}"
+_RESERVATION_REF = f"{_LEASE_REF}/{_RESERVATION_DIRNAME}/{_RESERVATION_FILENAME}"
+_RESULT_REF = f"{_LEASE_REF}/{_TERMINAL_DIRNAME}/{_TERMINAL_FILENAME}"
+_ONE_SHOT_STATE_UNCLAIMED = "UNCLAIMED"
+_ONE_SHOT_STATE_CLAIMED = "CLAIMED"
+_ONE_SHOT_STATE_INCOMPLETE = "INCOMPLETE_CLAIM"
+_ONE_SHOT_STATE_COMPLETED = "COMPLETED"
+_ONE_SHOT_TEST_HOOK: Callable[[str], None] | None = None
 _QUARANTINE_LEAF = "npi-n2b1p-b-source-quarantine-20260930-e9110783"
 _ROUTE_B_CACHE_LEAF = "npi-n2b1p-cache-v2-20260929"
 _HISTORICAL_CACHE_LEAF = "npi-model-cache"
@@ -565,6 +574,7 @@ def _terminal_result(
     quarantine_identity: str,
     network_request_count: int,
     artifact_results: list[dict[str, object]],
+    one_shot_state: str = _ONE_SHOT_STATE_UNCLAIMED,
 ) -> dict[str, object]:
     success = status == "B_SOURCE_BYTES_READY_AWAITING_EXTERNAL_REVIEW"
     result: dict[str, object] = {
@@ -578,6 +588,7 @@ def _terminal_result(
         "quarantine_root_identity_sha256": quarantine_identity,
         "network_request_count": network_request_count,
         "artifact_results": artifact_results,
+        "one_shot_state": one_shot_state,
         "terminal": True,
         "retry_authorized": False,
         "cache_promotion": "NOT_AUTHORIZED",
@@ -621,14 +632,133 @@ def _failure_code(exc: Exception, fallback: str) -> str:
     return fallback
 
 
+def _emit_one_shot_test_hook(stage: str) -> None:
+    hook = _ONE_SHOT_TEST_HOOK
+    if hook is not None:
+        hook(stage)
+
+
+def _atomic_publish_json_record(
+    root: BoundDirectory,
+    *,
+    final_name: str,
+    payload_name: str,
+    record: Mapping[str, object],
+) -> str:
+    payload = _canonical_json_bytes(record)
+    payload_sha256 = hashlib.sha256(payload).hexdigest()
+    with BoundStagingTransaction.create(root) as transaction:
+        with transaction.create_file(payload_name) as target:
+            target.write(payload)
+            target.flush()
+        with transaction.staging.open_file(payload_name) as staged:
+            staged_bytes = staged.read_all(max_bytes=128 * 1024)
+        if staged_bytes != payload:
+            raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_STAGED_REREAD_MISMATCH")
+        transaction.publish(final_name)
+    return payload_sha256
+
+
+def _read_published_json_record(
+    lease: BoundDirectory,
+    *,
+    directory_name: str,
+    payload_name: str,
+) -> dict[str, object] | None:
+    try:
+        record_dir = lease.open_directory(directory_name, writable=False)
+    except FileNotFoundError:
+        return None
+    with record_dir:
+        if record_dir.list_names() != {payload_name}:
+            raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_RECORD_INVALID")
+        with record_dir.open_file(payload_name) as record_file:
+            raw = record_file.read_all(max_bytes=128 * 1024)
+    try:
+        value = json.loads(raw.decode("utf-8"))
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_RECORD_INVALID") from exc
+    if not isinstance(value, dict):
+        raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_RECORD_INVALID")
+    return cast(dict[str, object], value)
+
+
+def _reservation_is_structurally_valid(record: Mapping[str, object]) -> bool:
+    nonce = record.get("nonce")
+    lease_identity = record.get("lease_identity_sha256")
+    return (
+        record.get("schema_version") == "1.0"
+        and record.get("evidence_type") == "B_SOURCE_NETWORK_ONE_SHOT_RESERVATION_V1"
+        and record.get("status") == _ONE_SHOT_STATE_CLAIMED
+        and isinstance(record.get("reviewed_head"), str)
+        and isinstance(record.get("reviewed_tree"), str)
+        and isinstance(nonce, str)
+        and len(nonce) == 32
+        and all(character in "0123456789abcdef" for character in nonce)
+        and isinstance(lease_identity, str)
+        and len(lease_identity) == 64
+        and record.get("retry_authorized") is False
+    )
+
+
+def _classify_existing_one_shot_lease(lease: BoundDirectory) -> str:
+    try:
+        reservation = _read_published_json_record(
+            lease,
+            directory_name=_RESERVATION_DIRNAME,
+            payload_name=_RESERVATION_FILENAME,
+        )
+    except BSourceAcquisitionError:
+        return _ONE_SHOT_STATE_INCOMPLETE
+    if reservation is None or not _reservation_is_structurally_valid(reservation):
+        return _ONE_SHOT_STATE_INCOMPLETE
+    try:
+        terminal = _read_published_json_record(
+            lease,
+            directory_name=_TERMINAL_DIRNAME,
+            payload_name=_TERMINAL_FILENAME,
+        )
+    except BSourceAcquisitionError:
+        return _ONE_SHOT_STATE_INCOMPLETE
+    if terminal is None:
+        return _ONE_SHOT_STATE_CLAIMED
+    if (
+        terminal.get("terminal") is True
+        and terminal.get("retry_authorized") is False
+        and terminal.get("one_shot_state") == _ONE_SHOT_STATE_COMPLETED
+    ):
+        return _ONE_SHOT_STATE_COMPLETED
+    return _ONE_SHOT_STATE_INCOMPLETE
+
+
+def _one_shot_state_error(state: str) -> str:
+    if state == _ONE_SHOT_STATE_COMPLETED:
+        return "NPI_B_SOURCE_ONE_SHOT_COMPLETED"
+    if state == _ONE_SHOT_STATE_CLAIMED:
+        return "NPI_B_SOURCE_ONE_SHOT_CLAIMED"
+    return "NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM"
+
+
+def _one_shot_state_from_error(code: str) -> str:
+    if code == "NPI_B_SOURCE_ONE_SHOT_COMPLETED":
+        return _ONE_SHOT_STATE_COMPLETED
+    if code == "NPI_B_SOURCE_ONE_SHOT_CLAIMED":
+        return _ONE_SHOT_STATE_CLAIMED
+    if code == "NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM":
+        return _ONE_SHOT_STATE_INCOMPLETE
+    return _ONE_SHOT_STATE_UNCLAIMED
+
+
 @dataclass(frozen=True)
 class OneShotExecutionClaim:
-    """Permanent handle-bound lease for one reviewed acquisition attempt."""
+    """Immutable lease identity and nonce for one reviewed acquisition attempt."""
 
     project_root: Path
     reviewed_head: str
     reviewed_tree: str
     evidence_parent_path: Path
+    lease_identity_sha256: str
+    nonce: str
 
     @classmethod
     def claim(
@@ -640,79 +770,138 @@ class OneShotExecutionClaim:
         if os.name != "nt":
             raise BSourceAcquisitionError("NPI_B_SOURCE_WINDOWS_PATH_REQUIRED")
         evidence_parent_path = _fixed_download_path(_EVIDENCE_PARENT)
-        reservation = _canonical_json_bytes(
-            {
-                "schema_version": "1.0",
-                "evidence_type": "B_SOURCE_NETWORK_ONE_SHOT_RESERVATION_V1",
-                "status": "CLAIMED",
-                "reviewed_head": reviewed_head,
-                "reviewed_tree": reviewed_tree,
-                "retry_authorized": False,
-            }
-        )
         with bind_existing_directory(evidence_parent_path, writable=True) as evidence_parent:
             names = evidence_parent.list_names()
-            if _LEASE_DIRNAME in names or _LEGACY_RESULT_FILENAME in names:
-                raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_ALREADY_CLAIMED")
+            if _LEGACY_RESULT_FILENAME in names:
+                raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_COMPLETED")
+            if _LEASE_DIRNAME in names:
+                with evidence_parent.open_directory(
+                    _LEASE_DIRNAME,
+                    writable=False,
+                ) as existing_lease:
+                    state = _classify_existing_one_shot_lease(existing_lease)
+                raise BSourceAcquisitionError(_one_shot_state_error(state))
             try:
                 lease = evidence_parent.create_directory(_LEASE_DIRNAME)
             except NpiError as exc:
-                raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_CLAIM_DENIED") from exc
+                try:
+                    with evidence_parent.open_directory(
+                        _LEASE_DIRNAME,
+                        writable=False,
+                    ) as existing_lease:
+                        state = _classify_existing_one_shot_lease(existing_lease)
+                except (FileNotFoundError, NpiError):
+                    raise BSourceAcquisitionError(
+                        "NPI_B_SOURCE_ONE_SHOT_CLAIM_DENIED"
+                    ) from exc
+                raise BSourceAcquisitionError(_one_shot_state_error(state)) from exc
+
+            lease_identity_sha256 = lease.identity.digest
+            nonce = secrets.token_hex(16)
+            reservation: dict[str, object] = {
+                "schema_version": "1.0",
+                "evidence_type": "B_SOURCE_NETWORK_ONE_SHOT_RESERVATION_V1",
+                "status": _ONE_SHOT_STATE_CLAIMED,
+                "reviewed_head": reviewed_head,
+                "reviewed_tree": reviewed_tree,
+                "lease_identity_sha256": lease_identity_sha256,
+                "nonce": nonce,
+                "retry_authorized": False,
+            }
+            _emit_one_shot_test_hook("after_lease_create_before_reservation")
             try:
-                with lease.create_file(_RESERVATION_FILENAME) as target:
-                    target.write(reservation)
-                    target.flush()
+                _atomic_publish_json_record(
+                    lease,
+                    final_name=_RESERVATION_DIRNAME,
+                    payload_name=_RESERVATION_FILENAME,
+                    record=reservation,
+                )
             finally:
                 lease.close()
+            _emit_one_shot_test_hook("after_reservation_publish_before_transport")
         return cls(
             project_root=project_root,
             reviewed_head=reviewed_head,
             reviewed_tree=reviewed_tree,
             evidence_parent_path=evidence_parent_path,
+            lease_identity_sha256=lease_identity_sha256,
+            nonce=nonce,
         )
 
     def persist_terminal(self, result: Mapping[str, object]) -> dict[str, str]:
-        _validate_document(self.project_root, _RESULT_SCHEMA, result)
-        payload = _canonical_json_bytes(result)
+        completed = dict(result)
+        completed["one_shot_state"] = _ONE_SHOT_STATE_COMPLETED
+        _validate_document(self.project_root, _RESULT_SCHEMA, completed)
         try:
             with bind_existing_directory(
                 self.evidence_parent_path,
                 writable=True,
             ) as evidence_parent:
                 if _LEASE_DIRNAME not in evidence_parent.list_names():
-                    raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_LEASE_MISSING")
-                with evidence_parent.open_directory(
+                    raise BSourceAcquisitionError(
+                        "NPI_B_SOURCE_ONE_SHOT_LEASE_MISSING"
+                    )
+                lease = evidence_parent.open_directory(
                     _LEASE_DIRNAME,
                     writable=True,
-                ) as lease:
-                    with lease.open_file(_RESERVATION_FILENAME) as reservation_file:
-                        reservation_bytes = reservation_file.read_all(max_bytes=64 * 1024)
-                    try:
-                        reservation = json.loads(reservation_bytes.decode("utf-8"))
-                    except (UnicodeError, json.JSONDecodeError) as exc:
+                )
+                try:
+                    if lease.identity.digest != self.lease_identity_sha256:
+                        raise BSourceAcquisitionError(
+                            "NPI_B_SOURCE_ONE_SHOT_LEASE_IDENTITY_MISMATCH"
+                        )
+                    reservation = _read_published_json_record(
+                        lease,
+                        directory_name=_RESERVATION_DIRNAME,
+                        payload_name=_RESERVATION_FILENAME,
+                    )
+                    if reservation is None or not _reservation_is_structurally_valid(
+                        reservation
+                    ):
                         raise BSourceAcquisitionError(
                             "NPI_B_SOURCE_ONE_SHOT_RESERVATION_INVALID"
-                        ) from exc
+                        )
                     if (
-                        not isinstance(reservation, dict)
-                        or reservation.get("reviewed_head") != self.reviewed_head
+                        reservation.get("reviewed_head") != self.reviewed_head
                         or reservation.get("reviewed_tree") != self.reviewed_tree
-                        or reservation.get("retry_authorized") is not False
+                        or reservation.get("lease_identity_sha256")
+                        != self.lease_identity_sha256
+                        or reservation.get("nonce") != self.nonce
                     ):
-                        raise BSourceAcquisitionError("NPI_B_SOURCE_ONE_SHOT_RESERVATION_INVALID")
-                    if _TERMINAL_FILENAME in lease.list_names():
-                        raise BSourceAcquisitionError("NPI_B_SOURCE_TERMINAL_ALREADY_EXISTS")
-                    with lease.create_file(_TERMINAL_FILENAME) as target:
-                        target.write(payload)
-                        target.flush()
+                        raise BSourceAcquisitionError(
+                            "NPI_B_SOURCE_ONE_SHOT_RESERVATION_INVALID"
+                        )
+                    state = _classify_existing_one_shot_lease(lease)
+                    if state == _ONE_SHOT_STATE_COMPLETED:
+                        raise BSourceAcquisitionError(
+                            "NPI_B_SOURCE_ONE_SHOT_COMPLETED"
+                        )
+                    if state != _ONE_SHOT_STATE_CLAIMED:
+                        raise BSourceAcquisitionError(
+                            "NPI_B_SOURCE_ONE_SHOT_INCOMPLETE_CLAIM"
+                        )
+                    _emit_one_shot_test_hook(
+                        "after_reservation_validation_before_terminal"
+                    )
+                    terminal_sha256 = _atomic_publish_json_record(
+                        lease,
+                        final_name=_TERMINAL_DIRNAME,
+                        payload_name=_TERMINAL_FILENAME,
+                        record=completed,
+                    )
+                finally:
+                    lease.close()
         except BSourceAcquisitionError:
             raise
         except NpiError as exc:
-            raise BSourceAcquisitionError("NPI_B_SOURCE_TERMINAL_PERSIST_FAILED") from exc
+            raise BSourceAcquisitionError(
+                "NPI_B_SOURCE_TERMINAL_PERSIST_FAILED"
+            ) from exc
         return {
             "one_shot_lease_ref": _LEASE_REF,
+            "reservation_evidence_ref": _RESERVATION_REF,
             "terminal_evidence_ref": _RESULT_REF,
-            "terminal_evidence_sha256": hashlib.sha256(payload).hexdigest(),
+            "terminal_evidence_sha256": terminal_sha256,
         }
 
 
@@ -721,15 +910,14 @@ def claim_one_shot_execution(
     reviewed_head: str,
     reviewed_tree: str,
 ) -> OneShotExecutionClaim:
-    """Claim the permanent one-shot marker before transport construction."""
+    """Claim the immutable one-shot lease before transport construction."""
     return OneShotExecutionClaim.claim(project_root, reviewed_head, reviewed_tree)
-
-
 def _finish_claimed_result(
     claim: OneShotExecutionClaim,
     result: dict[str, object],
 ) -> dict[str, object]:
-    return {**result, **claim.persist_terminal(result)}
+    completed = {**result, "one_shot_state": _ONE_SHOT_STATE_COMPLETED}
+    return {**completed, **claim.persist_terminal(completed)}
 
 
 def run_b_source_network_acquisition(
@@ -812,15 +1000,20 @@ def run_b_source_network_acquisition(
         OSError,
         ValueError,
     ) as exc:
+        failure_code = _failure_code(
+            exc,
+            "NPI_B_SOURCE_ONE_SHOT_CLAIM_FAILED",
+        )
         return _terminal_result(
             project_root,
             status="B_SOURCE_NETWORK_ACQUISITION_BLOCKED",
-            failure_code=_failure_code(exc, "NPI_B_SOURCE_ONE_SHOT_CLAIM_FAILED"),
+            failure_code=failure_code,
             reviewed_head=reviewed_head,
             reviewed_tree=reviewed_tree,
             quarantine_identity=quarantine_identity,
             network_request_count=0,
             artifact_results=[],
+            one_shot_state=_one_shot_state_from_error(failure_code),
         )
 
     active_transport = transport or StdlibHttpsTransport()
@@ -864,6 +1057,7 @@ def run_b_source_network_acquisition(
                     quarantine_identity=quarantine_identity,
                     network_request_count=request_counter[0],
                     artifact_results=artifact_results,
+                    one_shot_state=_ONE_SHOT_STATE_CLAIMED,
                 ),
             )
         finally:
@@ -880,6 +1074,7 @@ def run_b_source_network_acquisition(
             quarantine_identity=quarantine_identity,
             network_request_count=request_counter[0],
             artifact_results=artifact_results,
+            one_shot_state=_ONE_SHOT_STATE_CLAIMED,
         ),
     )
 
