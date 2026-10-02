@@ -1,0 +1,26 @@
+diff --git a/src/nightly_photo_intelligence_pipeline/cli.py b/src/nightly_photo_intelligence_pipeline/cli.py
+index 570ba14..0000000 100644
+--- a/src/nightly_photo_intelligence_pipeline/cli.py
++++ b/src/nightly_photo_intelligence_pipeline/cli.py
+@@ -486,10 +486,22 @@ def model_promote(
+ ) -> None:
+     """Copy one approved quarantine payload into the local content-addressed cache."""
+-    preflight_results = run_preflight()
+-    if any(result.status == FAIL for result in preflight_results):
+-        raise PreflightUnsatisfiedError("N2B1P preflight failed")
++    # Recovery admission is deliberately narrower than steady-state preflight:
++    # a single artifact promotion cannot require all three artifacts to already
++    # be CACHE_HIT. The per-artifact primitive validates its own postcondition;
++    # stage closure keeps the existing three-artifact CACHE_HIT gate.
++    from .n2b1p_recovery_admission import build_recovery_admission
++
++    admission = build_recovery_admission(
++        artifact_id=artifact,
++        quarantine_run_id=quarantine_run_id,
++    )
++    admission.validate()
+     selected = load_authorized_promotion(artifact)
+     result = promote_artifact(selected, quarantine_run_id=quarantine_run_id)
++    # Do not call stage-wide preflight here. It remains a final handoff/stage
++    # closure check, not a prerequisite for the first recovery action.
+     typer.echo(
