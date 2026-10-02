@@ -1,24 +1,64 @@
-"""Candidate CLI integration coverage for R0 recovery admission.
+from types import SimpleNamespace
 
-Tests are intended to run in the local Codex validation environment after
-applying review_tools/R0_CLI_WIRING.patch.
-"""
-
+import pytest
 from typer.testing import CliRunner
 
-from nightly_photo_intelligence_pipeline.cli import app
+from nightly_photo_intelligence_pipeline import cli
+from nightly_photo_intelligence_pipeline import n2b1p_recovery_admission as recovery
+from nightly_photo_intelligence_pipeline.domain.errors import RuntimePolicyError
 
 
-runner = CliRunner()
+@pytest.mark.parametrize("status", ["PROMOTED", "CACHE_HIT"])
+def test_single_artifact_recovery_without_global_cache_hit(monkeypatch, status):
+    calls = []
+
+    def admission(value, *, project_root):
+        calls.append("admission")
+        assert value.artifact_id == "artifact"
+        assert value.quarantine_run_id == "run"
+
+    def selected(artifact):
+        calls.append("selection")
+        return artifact
+
+    def promote(value, *, quarantine_run_id):
+        calls.append("promotion")
+        assert value == "artifact"
+        assert quarantine_run_id == "run"
+        return SimpleNamespace(
+            artifact_id=value,
+            cache_key="a" * 64,
+            byte_count=1,
+            local_sha256="a" * 64,
+            status=status,
+        )
+
+    def global_preflight():
+        pytest.fail("single recovery invoked all-artifact steady-state gate")
+
+    monkeypatch.setattr(recovery, "validate_recovery_admission", admission)
+    monkeypatch.setattr(cli, "load_authorized_promotion", selected)
+    monkeypatch.setattr(cli, "promote_artifact", promote)
+    monkeypatch.setattr(cli, "run_preflight", global_preflight)
+    result = CliRunner().invoke(
+        cli.app, ["model", "promote", "--artifact", "artifact", "--quarantine-run-id", "run"]
+    )
+    assert result.exit_code == 0, result.output
+    assert f'"status": "{status}"' in result.output
+    assert calls == ["admission", "selection", "promotion"]
 
 
-def test_promote_recovery_candidate_keeps_single_artifact_scope() -> None:
-    """The CLI patch must not require global CACHE_HIT before one artifact."""
-    # NOT RUN remotely: requires the local Codex fixture/control-plane runtime.
-    # This test file records the required acceptance shape only.
-    assert runner is not None
+def test_denied_admission_never_promotes(monkeypatch):
+    def deny(*args, **kwargs):
+        raise RuntimePolicyError("recovery authority denied")
 
+    def unexpected(*args, **kwargs):
+        pytest.fail("denied recovery reached promotion")
 
-def test_promote_recovery_candidate_keeps_stage_closure_separate() -> None:
-    """Three-artifact CACHE_HIT remains a stage closure assertion."""
-    assert app is not None
+    monkeypatch.setattr(recovery, "validate_recovery_admission", deny)
+    monkeypatch.setattr(cli, "promote_artifact", unexpected)
+    result = CliRunner().invoke(
+        cli.app, ["model", "promote", "--artifact", "artifact", "--quarantine-run-id", "run"]
+    )
+    assert result.exit_code != 0
+    assert "recovery authority denied" in result.output

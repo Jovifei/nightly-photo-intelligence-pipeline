@@ -489,9 +489,16 @@ def model_promote(
     ),
 ) -> None:
     """Copy one approved quarantine payload into the local content-addressed cache."""
-    preflight_results = run_preflight()
-    if any(result.status == FAIL for result in preflight_results):
-        raise PreflightUnsatisfiedError("N2B1P preflight failed")
+    from .n2b1p_recovery_admission import RecoveryAdmission, validate_recovery_admission
+
+    validate_recovery_admission(
+        RecoveryAdmission(
+            artifact_id=artifact,
+            quarantine_run_id=quarantine_run_id,
+            capability="N2B1P_LOCAL_RESEARCH_CACHE_PROMOTION",
+        ),
+        project_root=find_project_root(),
+    )
     selected = load_authorized_promotion(artifact)
     result = promote_artifact(selected, quarantine_run_id=quarantine_run_id)
     typer.echo(
