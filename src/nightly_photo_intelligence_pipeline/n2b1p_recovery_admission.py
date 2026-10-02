@@ -1,8 +1,8 @@
 """Bounded N2B1P recovery admission primitives.
 
-This module intentionally separates recovery-action admission from the
-steady-state CACHE_HIT verification performed by preflight/handoff.
-It does not mutate cache state and does not replace the steady-state gate.
+Recovery admission is intentionally separate from steady-state CACHE_HIT
+verification. It validates the same control-plane bindings used by the
+promotion primitive before allowing an individual promotion attempt.
 """
 
 from __future__ import annotations
@@ -10,43 +10,41 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from .local_research_promotion import load_authorized_promotion
+from .n2b1p_integrity import load_n2b1p_runtime_configuration
+
 
 @dataclass(frozen=True)
 class RecoveryAdmission:
-    """Evidence required before a recovery promotion action may start."""
-
-    capability: str
     artifact_id: str
     quarantine_run_id: str
-    runtime_configuration_digest: str
-    cache_root_identity: str
+    capability: str
 
 
 def validate_recovery_admission(
     admission: RecoveryAdmission,
     *,
-    expected_capability: str,
-    expected_runtime_configuration_digest: str,
-    expected_cache_root_identity: str,
+    project_root: Path,
 ) -> None:
-    """Fail closed before recovery promotion.
+    """Validate one recovery action without requiring all artifacts CACHE_HIT.
 
-    This validation deliberately does not check CACHE_HIT. CACHE_HIT is a
-    postcondition enforced by the existing steady-state verification path.
+    The final three-artifact CACHE_HIT requirement remains a stage-close
+    condition owned by preflight/handoff. This function only admits the
+    individual promotion action.
     """
-
-    if admission.capability != expected_capability:
+    if admission.capability != "N2B1P_LOCAL_RESEARCH_CACHE_PROMOTION":
         raise ValueError("N2B1P recovery capability mismatch")
-    if admission.runtime_configuration_digest != expected_runtime_configuration_digest:
-        raise ValueError("N2B1P recovery runtime binding mismatch")
-    if admission.cache_root_identity != expected_cache_root_identity:
-        raise ValueError("N2B1P recovery cache identity mismatch")
     if not admission.artifact_id or not admission.quarantine_run_id:
         raise ValueError("N2B1P recovery artifact binding missing")
 
+    runtime = load_n2b1p_runtime_configuration(project_root)
+    selected = load_authorized_promotion(admission.artifact_id, project_root=project_root)
 
-def ensure_existing_root(path: Path) -> None:
-    """Reject missing roots without creating remediation side effects."""
+    if not selected.artifact_id == admission.artifact_id:
+        raise ValueError("N2B1P recovery artifact identity mismatch")
+    if selected.runtime_configuration_digest != runtime.configuration_digest:
+        raise ValueError("N2B1P recovery runtime binding mismatch")
 
-    if not path.exists():
-        raise FileNotFoundError("N2B1P recovery root missing")
+    # Do not replace handle-bound validation with Path.exists(). The actual
+    # cache-root identity is checked by promote_artifact through
+    # windows_bound_promotion.bind_existing_directory.
