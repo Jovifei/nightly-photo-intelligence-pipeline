@@ -22,3 +22,11 @@ No model, CUDA, real-photo/EXIF, SQLite, payload download, cache mutation, main 
 Full quality on the clean eafd635 candidate: 1000 passed, 4 failed, 1 skipped, 95 subtests passed. Failures: current handoff/cache gate, current preflight authorization, legacy CLI output test admission mock, and sensitive scan of the CLI command token in the new test. Runtime and static checks passed.
 
 Local follow-up adapts the legacy output-only test mock to the new admission seam and uses the established CLI token spelling convention for the scan. Production scanner and gates are unchanged. Focused promotion/recovery/security suite: 36 passed; Ruff PASS. Remaining physical cache/preflight gates stay OPEN.
+
+## Final R0 code quality at 8bffaac
+
+1002 passed, 2 failed, 1 skipped, 95 subtests passed. Remaining failures: current handoff verifier and current preflight authorization/cache gate. Schema, sensitive scan, full Ruff, format and mypy PASS. No physical recovery or stage completion.
+
+## R1 code-only candidate f93942c
+
+Cleanup capability: 4 tests PASS, module mypy PASS. Three lint findings repaired locally; focused Ruff now PASS. Runtime v3 schema/admission/native proof/helper integration not yet delivered. Capability nonce and pre-reservation binding require review; no R1 acceptance or resource execution.

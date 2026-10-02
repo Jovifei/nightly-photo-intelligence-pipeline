@@ -55,9 +55,15 @@ def validate_cleanup_capability(
             raise Real20Error("REAL20_CLEANUP_CAPABILITY_DIGEST_INVALID")
     if value["capability_version"] != "npi-real20-cleanup-capability-v1":
         raise Real20Error("REAL20_CLEANUP_CAPABILITY_VERSION_INVALID")
-    if expected_probe_object_sha256 is not None and value["probe_object_sha256"] != expected_probe_object_sha256:
+    if (
+        expected_probe_object_sha256 is not None
+        and value["probe_object_sha256"] != expected_probe_object_sha256
+    ):
         raise Real20Error("REAL20_CLEANUP_CAPABILITY_OBJECT_MISMATCH")
-    if expected_cleanup_identity_sha256 is not None and value["cleanup_identity_sha256"] != expected_cleanup_identity_sha256:
+    if (
+        expected_cleanup_identity_sha256 is not None
+        and value["cleanup_identity_sha256"] != expected_cleanup_identity_sha256
+    ):
         raise Real20Error("REAL20_CLEANUP_CAPABILITY_IDENTITY_MISMATCH")
     try:
         expiry = datetime.fromisoformat(value["expires_at_utc"].replace("Z", "+00:00"))

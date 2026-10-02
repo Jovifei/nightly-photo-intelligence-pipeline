@@ -9,7 +9,6 @@ from nightly_photo_intelligence_pipeline.real20.cleanup_capability import (
     validate_cleanup_capability,
 )
 
-
 NOW = datetime(2026, 10, 2, 12, 0, tzinfo=UTC)
 
 
