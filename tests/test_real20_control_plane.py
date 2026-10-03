@@ -170,6 +170,33 @@ def _patch_plan(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> control_plan
     return plan
 
 
+def test_live_attestation_reads_only_bound_ledger_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from nightly_photo_intelligence_pipeline.real20 import admission
+
+    events: list[str] = []
+
+    class Ledger:
+        identity = SimpleNamespace(digest="f" * 64)
+
+        def _verify(self) -> None:
+            events.append("verify")
+
+        def security_policy_digest(self) -> str:
+            events.append("policy")
+            return "c" * 64
+
+    monkeypatch.setattr(admission, "current_process_identity_sha256", lambda: "a" * 64)
+
+    assert admission._live_ledger_attestation(Ledger()) == {
+        "runner_identity_sha256": "a" * 64,
+        "ledger_policy_sha256": "c" * 64,
+        "ledger_object_sha256": "f" * 64,
+    }
+    assert events == ["verify", "policy"]
+
+
 def test_trusted_plan_uses_only_fixed_runtime_children(monkeypatch: pytest.MonkeyPatch) -> None:
     runtime = Path("F:" + chr(92) + "npi_runtime")
     config = SimpleNamespace(
