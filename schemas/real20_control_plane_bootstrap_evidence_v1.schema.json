@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/real20_control_plane_bootstrap_evidence_v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "runtime_configuration_digest",
+    "ledger_object_sha256",
+    "probe_root_object_sha256",
+    "ledger_policy_sha256",
+    "probe_policy_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "npi-real20-control-plane-bootstrap-v1"},
+    "status": {"const": "BOOTSTRAP_BOUND"},
+    "runtime_configuration_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "ledger_object_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "probe_root_object_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "ledger_policy_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "probe_policy_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
