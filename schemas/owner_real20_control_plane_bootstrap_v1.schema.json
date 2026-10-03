@@ -36,7 +36,8 @@
       "type": "boolean"
     },
     "runtime_configuration_digest": {
-      "const": "462e999671c2073ef8d02cbeaccd561cbc1f4734c4f312baee079a8134040bfd"
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
     },
     "allowed_operations": {
       "const": [
