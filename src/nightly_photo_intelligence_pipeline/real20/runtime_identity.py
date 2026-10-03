@@ -8,11 +8,18 @@ from datetime import UTC, datetime
 from typing import Any, cast
 
 from ..engineering.common import canonical, sha256
+from .cleanup_capability import CleanupCapability, validate_cleanup_capability
 from .contracts import Real20Error
 
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
-_IDENTITY_FIELDS = {"schema_version", "runtime_observation", "ledger_acl_probe"}
-_PROBE_FIELDS = {
+_IDENTITY_V2_FIELDS = {"schema_version", "runtime_observation", "ledger_acl_probe"}
+_IDENTITY_V3_FIELDS = {
+    "schema_version",
+    "runtime_observation",
+    "ledger_acl_probe",
+    "cleanup_capability",
+}
+_PROBE_V1_FIELDS = {
     "contract_version",
     "status",
     "inheritance_status",
@@ -26,6 +33,7 @@ _PROBE_FIELDS = {
     "created_at_utc",
     "expires_at_utc",
 }
+_PROBE_V2_FIELDS = _PROBE_V1_FIELDS | {"probe_nonce_sha256"}
 
 
 @dataclass(frozen=True)
@@ -35,6 +43,7 @@ class RuntimeIdentity:
     control: dict[str, Any]
     observation: dict[str, Any]
     ledger_acl_probe: dict[str, Any] | None
+    cleanup_capability: CleanupCapability | None
     control_digest: str
     observation_digest: str
 
@@ -44,6 +53,11 @@ def _require(condition: bool, code: str) -> None:
         raise Real20Error(code)
 
 
+def _aware_utc(value: datetime, code: str) -> datetime:
+    _require(value.tzinfo is not None and value.utcoffset() is not None, code)
+    return value.astimezone(UTC)
+
+
 def _parse_utc(value: object, code: str) -> datetime:
     if not isinstance(value, str):
         raise Real20Error(code)
@@ -51,7 +65,7 @@ def _parse_utc(value: object, code: str) -> datetime:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError as exc:
         raise Real20Error(code) from exc
-    _require(parsed.tzinfo is not None, code)
+    _require(parsed.tzinfo is not None and parsed.utcoffset() is not None, code)
     return parsed.astimezone(UTC)
 
 
@@ -67,14 +81,22 @@ def validate_ledger_acl_probe(
     current_ledger_policy_sha256: str | None = None,
     current_ledger_object_sha256: str | None = None,
     require_live_binding: bool = False,
+    require_nonce_binding: bool = False,
 ) -> dict[str, Any]:
     """Validate the finalized, redacted proof used for new admission."""
 
+    current = _aware_utc(now, "REAL20_LEDGER_PROBE_TIME_INVALID")
     _require(isinstance(value, dict), "REAL20_LEDGER_PROBE_OBJECT_REQUIRED")
     proof = cast(dict[str, Any], value)
-    _require(set(proof) == _PROBE_FIELDS, "REAL20_LEDGER_PROBE_FIELDS_INVALID")
+    expected_fields = _PROBE_V2_FIELDS if require_nonce_binding else _PROBE_V1_FIELDS
+    _require(set(proof) == expected_fields, "REAL20_LEDGER_PROBE_FIELDS_INVALID")
     _require(
-        proof["contract_version"] == "npi-real20-ledger-acl-probe-v1",
+        proof["contract_version"]
+        == (
+            "npi-real20-ledger-acl-probe-v2"
+            if require_nonce_binding
+            else "npi-real20-ledger-acl-probe-v1"
+        ),
         "REAL20_LEDGER_PROBE_CONTRACT_INVALID",
     )
     _require(
@@ -89,14 +111,17 @@ def validate_ledger_acl_probe(
         proof["cleanup_status"] == "CLEANUP_PASS",
         "REAL20_LEDGER_PROBE_CLEANUP_NOT_VERIFIED",
     )
-    for key in (
+    digest_fields = [
         "runner_identity_sha256",
         "cleanup_identity_sha256",
         "ledger_policy_sha256",
         "probe_policy_sha256",
         "probe_object_sha256",
         "ledger_object_sha256",
-    ):
+    ]
+    if require_nonce_binding:
+        digest_fields.append("probe_nonce_sha256")
+    for key in digest_fields:
         _digest(proof[key])
     _require(
         proof["runner_identity_sha256"] != proof["cleanup_identity_sha256"],
@@ -107,8 +132,8 @@ def validate_ledger_acl_probe(
         "REAL20_LEDGER_PROBE_POLICY_MISMATCH",
     )
     if require_live_binding and any(
-        value is None
-        for value in (
+        item is None
+        for item in (
             current_runner_identity_sha256,
             current_ledger_policy_sha256,
             current_ledger_object_sha256,
@@ -132,36 +157,11 @@ def validate_ledger_acl_probe(
         )
     created = _parse_utc(proof["created_at_utc"], "REAL20_LEDGER_PROBE_TIME_INVALID")
     expires = _parse_utc(proof["expires_at_utc"], "REAL20_LEDGER_PROBE_TIME_INVALID")
-    current = now.astimezone(UTC)
     _require(created < expires and created <= current < expires, "REAL20_LEDGER_PROBE_STALE")
     return proof
 
 
-def validate_runtime_identity(
-    value: object,
-    *,
-    now: datetime,
-    require_v2: bool = True,
-    current_runner_identity_sha256: str | None = None,
-    current_ledger_policy_sha256: str | None = None,
-    current_ledger_object_sha256: str | None = None,
-    require_live_binding: bool = False,
-) -> RuntimeIdentity:
-    """Validate v2 identity; legacy v1 is accepted only by low-level tests."""
-
-    _require(isinstance(value, dict), "REAL20_RUNTIME_IDENTITY_OBJECT_REQUIRED")
-    control = cast(dict[str, Any], value)
-    if control.get("schema_version") != "2.0":
-        if require_v2:
-            raise Real20Error("REAL20_RUNTIME_IDENTITY_SCHEMA_INVALID")
-        return RuntimeIdentity(
-            control=control,
-            observation=control,
-            ledger_acl_probe=None,
-            control_digest=sha256(canonical(control)),
-            observation_digest=sha256(canonical(control)),
-        )
-    _require(set(control) == _IDENTITY_FIELDS, "REAL20_RUNTIME_IDENTITY_FIELDS_INVALID")
+def _observation(control: dict[str, Any]) -> dict[str, Any]:
     observation = control["runtime_observation"]
     _require(isinstance(observation, dict), "REAL20_RUNTIME_OBSERVATION_INVALID")
     _require(
@@ -169,18 +169,86 @@ def validate_runtime_identity(
         and all(isinstance(observation[key], dict) for key in observation),
         "REAL20_RUNTIME_OBSERVATION_FIELDS_INVALID",
     )
-    proof = validate_ledger_acl_probe(
-        control["ledger_acl_probe"],
-        now=now,
-        current_runner_identity_sha256=current_runner_identity_sha256,
-        current_ledger_policy_sha256=current_ledger_policy_sha256,
-        current_ledger_object_sha256=current_ledger_object_sha256,
-        require_live_binding=require_live_binding,
-    )
+    return cast(dict[str, Any], observation)
+
+
+def validate_runtime_identity(
+    value: object,
+    *,
+    now: datetime,
+    require_v2: bool = True,
+    require_v3: bool = False,
+    current_runner_identity_sha256: str | None = None,
+    current_ledger_policy_sha256: str | None = None,
+    current_ledger_object_sha256: str | None = None,
+    require_live_binding: bool = False,
+) -> RuntimeIdentity:
+    """Validate v2/v3 identity; production admission may require v3 explicitly."""
+
+    current = _aware_utc(now, "REAL20_RUNTIME_IDENTITY_TIME_INVALID")
+    _require(isinstance(value, dict), "REAL20_RUNTIME_IDENTITY_OBJECT_REQUIRED")
+    control = cast(dict[str, Any], value)
+    version = control.get("schema_version")
+
+    if version == "3.0":
+        _require(set(control) == _IDENTITY_V3_FIELDS, "REAL20_RUNTIME_IDENTITY_FIELDS_INVALID")
+        observation = _observation(control)
+        proof = validate_ledger_acl_probe(
+            control["ledger_acl_probe"],
+            now=current,
+            current_runner_identity_sha256=current_runner_identity_sha256,
+            current_ledger_policy_sha256=current_ledger_policy_sha256,
+            current_ledger_object_sha256=current_ledger_object_sha256,
+            require_live_binding=require_live_binding,
+            require_nonce_binding=True,
+        )
+        cleanup = validate_cleanup_capability(
+            control["cleanup_capability"],
+            now=current,
+            expected_probe_nonce_sha256=proof["probe_nonce_sha256"],
+            expected_probe_object_sha256=proof["probe_object_sha256"],
+            expected_cleanup_identity_sha256=proof["cleanup_identity_sha256"],
+        )
+        return RuntimeIdentity(
+            control=control,
+            observation=observation,
+            ledger_acl_probe=proof,
+            cleanup_capability=cleanup,
+            control_digest=sha256(canonical(control)),
+            observation_digest=sha256(canonical(observation)),
+        )
+
+    if version == "2.0":
+        if require_v3:
+            raise Real20Error("REAL20_RUNTIME_IDENTITY_V3_REQUIRED")
+        _require(set(control) == _IDENTITY_V2_FIELDS, "REAL20_RUNTIME_IDENTITY_FIELDS_INVALID")
+        observation = _observation(control)
+        proof = validate_ledger_acl_probe(
+            control["ledger_acl_probe"],
+            now=current,
+            current_runner_identity_sha256=current_runner_identity_sha256,
+            current_ledger_policy_sha256=current_ledger_policy_sha256,
+            current_ledger_object_sha256=current_ledger_object_sha256,
+            require_live_binding=require_live_binding,
+        )
+        return RuntimeIdentity(
+            control=control,
+            observation=observation,
+            ledger_acl_probe=proof,
+            cleanup_capability=None,
+            control_digest=sha256(canonical(control)),
+            observation_digest=sha256(canonical(observation)),
+        )
+
+    if require_v3:
+        raise Real20Error("REAL20_RUNTIME_IDENTITY_V3_REQUIRED")
+    if require_v2:
+        raise Real20Error("REAL20_RUNTIME_IDENTITY_SCHEMA_INVALID")
     return RuntimeIdentity(
         control=control,
-        observation=cast(dict[str, Any], observation),
-        ledger_acl_probe=proof,
+        observation=control,
+        ledger_acl_probe=None,
+        cleanup_capability=None,
         control_digest=sha256(canonical(control)),
-        observation_digest=sha256(canonical(observation)),
+        observation_digest=sha256(canonical(control)),
     )
