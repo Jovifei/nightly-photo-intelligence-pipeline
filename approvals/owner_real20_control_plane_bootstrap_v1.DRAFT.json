@@ -5,6 +5,9 @@
   "scope": "R1_REAL20_CONTROL_PLANE_ONLY",
   "execution_authorized": false,
   "runtime_configuration_digest": "462e999671c2073ef8d02cbeaccd561cbc1f4734c4f312baee079a8134040bfd",
+  "candidate_commit": "PENDING_CODE_REVIEW",
+  "candidate_tree": "PENDING_CODE_REVIEW",
+  "source_manifest_sha256": "PENDING_CODE_REVIEW",
   "allowed_operations": [
     "BOOTSTRAP_FIXED_LEDGER_AND_PROBE_ROOTS",
     "RUN_SYNTHETIC_LEDGER_INHERITANCE_PROBE",
