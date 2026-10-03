@@ -76,6 +76,8 @@ _SECURITY_INFORMATION = 0x00000007
 _TOKEN_QUERY = 0x0008
 _TOKEN_DUPLICATE = 0x0002
 _ERROR_NO_TOKEN = 1008
+_ERROR_INSUFFICIENT_BUFFER = 122
+_TOKEN_USER = 1
 
 
 def _failure(code: str) -> NpiError:
@@ -179,6 +181,14 @@ class _GenericMapping(ctypes.Structure):
     ]
 
 
+class _SidAndAttributes(ctypes.Structure):
+    _fields_ = [("Sid", ctypes.c_void_p), ("Attributes", ctypes.c_ulong)]
+
+
+class _TokenUser(ctypes.Structure):
+    _fields_ = [("User", _SidAndAttributes)]
+
+
 @dataclass(frozen=True)
 class BoundObjectIdentity:
     """Handle-observed identity, without exposing the caller path."""
@@ -268,6 +278,21 @@ class _WindowsNative:
             ctypes.POINTER(ctypes.c_void_p),
         ]
         self._advapi32.DuplicateToken.restype = ctypes.c_int
+        self._advapi32.GetTokenInformation.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_int,
+            ctypes.c_void_p,
+            ctypes.c_ulong,
+            ctypes.POINTER(ctypes.c_ulong),
+        ]
+        self._advapi32.GetTokenInformation.restype = ctypes.c_int
+        self._advapi32.ConvertSidToStringSidW.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_void_p),
+        ]
+        self._advapi32.ConvertSidToStringSidW.restype = ctypes.c_int
+        self._advapi32.GetSecurityDescriptorLength.argtypes = [ctypes.c_void_p]
+        self._advapi32.GetSecurityDescriptorLength.restype = ctypes.c_ulong
         self._advapi32.AccessCheck.argtypes = [
             ctypes.c_void_p,
             ctypes.c_void_p,
@@ -430,6 +455,83 @@ class _WindowsNative:
                 self.close(int(token.value))
             if descriptor.value:
                 self._kernel32.LocalFree(descriptor)
+
+    def security_policy_digest(self, handle: int) -> str:
+        """Hash the live owner/group/DACL descriptor for an already-bound object."""
+        descriptor = ctypes.c_void_p()
+        error = int(
+            self._advapi32.GetSecurityInfo(
+                ctypes.c_void_p(handle),
+                _SE_FILE_OBJECT,
+                _SECURITY_INFORMATION,
+                None,
+                None,
+                None,
+                None,
+                ctypes.byref(descriptor),
+            )
+        )
+        if error or not descriptor.value:
+            raise _failure("NPI_PROMOTION_SECURITY_DESCRIPTOR_UNAVAILABLE")
+        try:
+            length = int(self._advapi32.GetSecurityDescriptorLength(descriptor))
+            if length <= 0:
+                raise _failure("NPI_PROMOTION_SECURITY_DESCRIPTOR_UNAVAILABLE")
+            payload = ctypes.string_at(descriptor, length)
+            return hashlib.sha256(payload).hexdigest()
+        finally:
+            self._kernel32.LocalFree(descriptor)
+
+    def current_identity_digest(self) -> str:
+        """Return a stable fingerprint for the effective Windows token user SID."""
+        token = ctypes.c_void_p()
+        ctypes.set_last_error(0)
+        opened = self._advapi32.OpenThreadToken(
+            self._kernel32.GetCurrentThread(), _TOKEN_QUERY, 1, ctypes.byref(token)
+        )
+        if not opened:
+            error = int(ctypes.get_last_error())
+            if error != _ERROR_NO_TOKEN:
+                raise _failure("NPI_PROMOTION_TOKEN_IDENTITY_UNAVAILABLE")
+            if not self._advapi32.OpenProcessToken(
+                self._kernel32.GetCurrentProcess(), _TOKEN_QUERY, ctypes.byref(token)
+            ):
+                raise _failure("NPI_PROMOTION_TOKEN_IDENTITY_UNAVAILABLE")
+        if token.value is None:
+            raise _failure("NPI_PROMOTION_TOKEN_IDENTITY_UNAVAILABLE")
+        try:
+            required = ctypes.c_ulong()
+            ctypes.set_last_error(0)
+            self._advapi32.GetTokenInformation(
+                token, _TOKEN_USER, None, 0, ctypes.byref(required)
+            )
+            if int(ctypes.get_last_error()) != _ERROR_INSUFFICIENT_BUFFER or required.value == 0:
+                raise _failure("NPI_PROMOTION_TOKEN_IDENTITY_UNAVAILABLE")
+            buffer = ctypes.create_string_buffer(required.value)
+            if not self._advapi32.GetTokenInformation(
+                token,
+                _TOKEN_USER,
+                buffer,
+                required.value,
+                ctypes.byref(required),
+            ):
+                raise _failure("NPI_PROMOTION_TOKEN_IDENTITY_UNAVAILABLE")
+            token_user = ctypes.cast(buffer, ctypes.POINTER(_TokenUser)).contents
+            sid_text = ctypes.c_void_p()
+            if not token_user.User.Sid or not self._advapi32.ConvertSidToStringSidW(
+                token_user.User.Sid, ctypes.byref(sid_text)
+            ):
+                raise _failure("NPI_PROMOTION_TOKEN_IDENTITY_UNAVAILABLE")
+            try:
+                if not sid_text.value:
+                    raise _failure("NPI_PROMOTION_TOKEN_IDENTITY_UNAVAILABLE")
+                sid = ctypes.wstring_at(sid_text.value).casefold()
+                return hashlib.sha256(("windows-sid:" + sid).encode("utf-8")).hexdigest()
+            finally:
+                if sid_text.value:
+                    self._kernel32.LocalFree(sid_text)
+        finally:
+            self.close(int(token.value))
 
     def _last_error(self) -> int:
         return int(ctypes.get_last_error())
@@ -886,6 +988,26 @@ class BoundDirectory(AbstractContextManager["BoundDirectory"]):
         self._verify()
         return self._native.access_check(self._handle, desired_access)
 
+    def security_policy_digest(self) -> str:
+        self._verify()
+        return self._native.security_policy_digest(self._handle)
+
+    def open_file_for_cleanup(self, name: str) -> BoundFile:
+        """Open one direct child for deletion through this already-bound directory."""
+        self._verify()
+        if not self._writable or self._append_only:
+            raise _failure("NPI_PROMOTION_APPEND_ONLY_MUTATION_DENIED")
+        handle = self._native.open_relative(
+            self._handle,
+            name,
+            directory=False,
+            create=False,
+            writable=True,
+            append_only=False,
+            read_control=True,
+        )
+        return self._child_file(handle, True)
+
     def parent_access_check(self, desired_access: int) -> NativeAccessCheck:
         self._verify()
         if self._parent is not None:
@@ -1024,6 +1146,43 @@ class BoundFile(AbstractContextManager["BoundFile"]):
 
     def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
         self.close()
+
+
+def current_process_identity_sha256() -> str:
+    """Fingerprint the effective Windows token without exposing the SID."""
+    return _WindowsNative().current_identity_digest()
+
+
+def adopt_preopened_directory(
+    handle: int,
+    *,
+    expected_identity_sha256: str,
+    writable: bool,
+    security_check: bool = True,
+) -> BoundDirectory:
+    """Adopt one inherited directory handle without any path-based reopening."""
+    _require_windows()
+    if not isinstance(handle, int) or handle <= 0:
+        raise _failure("NPI_PROMOTION_INHERITED_HANDLE_INVALID")
+    native = _WindowsNative()
+    try:
+        description = native.describe(handle)
+        if description.attributes & _FILE_ATTRIBUTE_REPARSE_POINT or description.reparse_tag:
+            raise _failure("NPI_PROMOTION_REPARSE_POINT_REJECTED")
+        if description.identity.digest != expected_identity_sha256:
+            raise _failure("NPI_PROMOTION_BOUND_ROOT_IDENTITY_CHANGED")
+        return BoundDirectory(
+            native,
+            handle,
+            None,
+            description.identity,
+            writable,
+            _append_only=False,
+            _security_check=security_check,
+        )
+    except BaseException:
+        native.close(handle)
+        raise
 
 
 def bind_existing_directory(
