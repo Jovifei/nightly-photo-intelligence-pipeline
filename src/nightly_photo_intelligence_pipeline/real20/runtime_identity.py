@@ -312,7 +312,10 @@ def assemble_runtime_identity_v3(
         "probe_object_sha256",
         "cleanup_identity_sha256",
     ):
-        _require(cleanup.get(field) == proof_map.get(field), "REAL20_CLEANUP_PROOF_BINDING_MISMATCH")
+        _require(
+            cleanup.get(field) == proof_map.get(field),
+            "REAL20_CLEANUP_PROOF_BINDING_MISMATCH",
+        )
     cleaned_at = _parse_utc(cleanup["cleaned_at_utc"], "REAL20_CLEANUP_PROOF_TIME_INVALID")
     created_at = _parse_utc(proof_map.get("created_at_utc"), "REAL20_LEDGER_PROBE_TIME_INVALID")
     expires_at = _parse_utc(proof_map.get("expires_at_utc"), "REAL20_LEDGER_PROBE_TIME_INVALID")
