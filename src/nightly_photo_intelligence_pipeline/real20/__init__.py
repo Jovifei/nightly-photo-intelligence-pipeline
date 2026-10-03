@@ -8,7 +8,6 @@ from .ledger_probe import (
     load_probe_configuration,
     probe_status,
     require_probe_configuration,
-    run_inherited_cleanup_from_environment,
     run_ledger_probe,
 )
 from .runtime_identity import RuntimeIdentity, validate_ledger_acl_probe, validate_runtime_identity
@@ -22,7 +21,6 @@ __all__ = [
     "probe_status",
     "require_probe_configuration",
     "run_ledger_probe",
-    "run_inherited_cleanup_from_environment",
     "RuntimeIdentity",
     "validate_ledger_acl_probe",
     "validate_runtime_identity",
