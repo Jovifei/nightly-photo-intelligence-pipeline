@@ -737,3 +737,47 @@ def test_bootstrap_and_probe_schemas_are_strict(project_root: Path) -> None:
             probe_schema, format_checker=FormatChecker()
         ).iter_errors(probe_result)
     ) == []
+
+
+def test_cleanup_helper_environment_uses_only_inherited_handle_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+    capability = {
+        "capability_version": "npi-real20-cleanup-capability-v1",
+        "probe_nonce_sha256": "e" * 64,
+        "probe_object_sha256": "d" * 64,
+        "cleanup_identity_sha256": cleanup_helper.cleanup_helper_identity_sha256(),
+        "expires_at_utc": "2026-10-03T13:00:00+00:00",
+    }
+    monkeypatch.setenv("NPI_REAL20_CLEANUP_HANDLE", "123")
+    monkeypatch.setenv(
+        "NPI_REAL20_CLEANUP_CAPABILITY_JSON",
+        __import__("json").dumps(capability),
+    )
+    monkeypatch.setenv("NPI_REAL20_PROBE_NONCE_SHA256", "e" * 64)
+
+    def consume(
+        handle: int,
+        value: object,
+        *,
+        expected_probe_nonce_sha256: str,
+        now: datetime,
+    ) -> dict[str, str]:
+        captured.update(
+            {
+                "handle": handle,
+                "value": value,
+                "nonce": expected_probe_nonce_sha256,
+                "now": now,
+            }
+        )
+        return {"cleanup_status": "CLEANUP_PASS"}
+
+    monkeypatch.setattr(cleanup_helper, "cleanup_inherited_probe_handle", consume)
+    result = cleanup_helper.cleanup_from_environment(now=NOW)
+
+    assert result == {"cleanup_status": "CLEANUP_PASS"}
+    assert captured["handle"] == 123
+    assert captured["value"] == capability
+    assert captured["nonce"] == "e" * 64
