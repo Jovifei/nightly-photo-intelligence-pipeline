@@ -305,14 +305,13 @@ def _probe_fakes(
         capability: object,
         *,
         expected_probe_nonce_sha256: str,
-        now: datetime,
     ) -> dict[str, str]:
         claim = next(iter(probe.children.values()))
         return cleanup_helper.cleanup_preopened_probe(
             claim,
             capability,
             expected_probe_nonce_sha256=expected_probe_nonce_sha256,
-            now=now,
+            now=NOW,
         )
 
     monkeypatch.setattr(ledger_probe, "_run_cleanup_helper_process", cleanup)
@@ -363,7 +362,7 @@ def test_cleanup_failure_preserves_noneligible_probe_result(
     _ledger, probe = _probe_fakes(monkeypatch, tmp_path)
     monkeypatch.setattr(
         ledger_probe,
-        "cleanup_inherited_probe_handle",
+        "_run_cleanup_helper_process",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(
             Real20Error("REAL20_SYNTHETIC_CLEANUP_FAILURE")
         ),
