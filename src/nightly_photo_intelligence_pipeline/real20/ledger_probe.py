@@ -239,7 +239,7 @@ def run_ledger_probe(
             with bind_existing_directory(
                 plan.probe_root, writable=True, security_check=True
             ) as mutable_probe_root:
-                cleanup_handle = mutable_probe_root.open_directory(probe_name, writable=True)
+                cleanup_handle = mutable_probe_root.open_directory_for_cleanup(probe_name)
                 inherited_handle, _ = cleanup_handle.release_for_inheritance()
                 cleanup_proof = _run_cleanup_helper_process(
                     inherited_handle,
