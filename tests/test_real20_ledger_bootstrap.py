@@ -1,119 +1,150 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
 
+import pytest
 from typer.testing import CliRunner
 
 from nightly_photo_intelligence_pipeline.cli import app
-from nightly_photo_intelligence_pipeline.real20.ledger_bootstrap import (
-    check_ledger_bootstrap,
+from nightly_photo_intelligence_pipeline.real20 import ledger_bootstrap
+from nightly_photo_intelligence_pipeline.real20.control_plane import (
+    BOOTSTRAP_EVIDENCE_LEAF,
+    LEDGER_LEAF,
+    PROBE_ROOT_LEAF,
+    Real20ControlPlanePlan,
 )
 
 
-def _project(tmp_path: Path, runtime: Path) -> Path:
-    project = tmp_path / "project"
-    (project / "approvals").mkdir(parents=True)
-    (project / "PROJECT_STATE.json").write_text(
-        json.dumps({"phase_status": {"N2B2": "LOCKED"}}), encoding="utf-8"
+class _File:
+    def __init__(self, parent: "_Directory", name: str) -> None:
+        self.parent = parent
+        self.name = name
+
+    def __enter__(self) -> "_File":
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+    def read_all(self, *, max_bytes: int) -> bytes:
+        return self.parent.files[self.name][:max_bytes]
+
+
+class _Directory:
+    def __init__(self, digest: str, *, policy: str = "c" * 64) -> None:
+        self.identity = SimpleNamespace(digest=digest)
+        self.policy = policy
+        self.children: dict[str, _Directory] = {}
+        self.files: dict[str, bytes] = {}
+
+    def __enter__(self) -> "_Directory":
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+    def _verify(self) -> None:
+        return None
+
+    def security_policy_digest(self) -> str:
+        return self.policy
+
+    def open_directory(self, name: str, *, writable: bool | None = None) -> "_Directory":
+        del writable
+        if name not in self.children:
+            raise FileNotFoundError(name)
+        return self.children[name]
+
+    def open_file(self, name: str) -> _File:
+        if name not in self.files:
+            raise FileNotFoundError(name)
+        return _File(self, name)
+
+
+def _plan(tmp_path: Path) -> Real20ControlPlanePlan:
+    runtime = tmp_path / "runtime"
+    return Real20ControlPlanePlan(
+        runtime_parent=runtime,
+        work_root=runtime / "work",
+        cache_root=tmp_path / "cache",
+        configuration_digest="f" * 64,
+        ledger_root=runtime / LEDGER_LEAF,
+        probe_root=runtime / PROBE_ROOT_LEAF,
+        bootstrap_evidence=runtime / BOOTSTRAP_EVIDENCE_LEAF,
     )
-    (project / "approvals" / "n2b1p_runtime_configuration.json").write_text(
-        json.dumps({"runtime_parent": str(runtime), "cache_root": str(tmp_path / "cache")}),
-        encoding="utf-8",
-    )
-    return project
 
 
-def test_missing_real20_ledger_reports_owner_preprovision_required(tmp_path: Path) -> None:
-    project = _project(tmp_path, tmp_path / "runtime")
-    (tmp_path / "runtime").mkdir()
+def test_missing_fixed_objects_reports_owner_bootstrap_required(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = _plan(tmp_path)
+    parent = _Directory("1" * 64)
+    monkeypatch.setattr(ledger_bootstrap, "load_control_plane_plan", lambda _root: plan)
+    monkeypatch.setattr(ledger_bootstrap, "bind_existing_directory", lambda *_a, **_k: parent)
 
-    result = check_ledger_bootstrap(project)
+    result = ledger_bootstrap.check_ledger_bootstrap(tmp_path)
 
     assert result == {
-        "status": "OWNER_PREPROVISION_REQUIRED",
-        "error_code": "REAL20_LEDGER_ROOT_MISSING",
+        "status": "OWNER_BOOTSTRAP_REQUIRED",
+        "error_code": "REAL20_CONTROL_PLANE_OBJECT_MISSING",
     }
-    assert not (tmp_path / "runtime" / "real20-execution-ledger").exists()
 
 
-def test_differently_named_ledger_is_never_reused(tmp_path: Path) -> None:
-    project = _project(tmp_path, tmp_path / "runtime")
-    runtime = tmp_path / "runtime"
-    runtime.mkdir()
-    (runtime / "n2b2-controlled-execution-ledger").mkdir()
+def test_exact_bootstrap_evidence_is_required_for_readiness(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = _plan(tmp_path)
+    parent = _Directory("1" * 64)
+    ledger = _Directory("2" * 64)
+    probe = _Directory("3" * 64)
+    parent.children[LEDGER_LEAF] = ledger
+    parent.children[PROBE_ROOT_LEAF] = probe
+    monkeypatch.setattr(ledger_bootstrap, "load_control_plane_plan", lambda _root: plan)
+    monkeypatch.setattr(ledger_bootstrap, "bind_existing_directory", lambda *_a, **_k: parent)
 
-    result = check_ledger_bootstrap(project)
-
-    assert result["status"] == "OWNER_PREPROVISION_REQUIRED"
-    assert result["error_code"] == "REAL20_LEDGER_ROOT_MISSING"
-
-
-def test_existing_ledger_without_probe_envelope_is_not_ready(tmp_path: Path, monkeypatch) -> None:
-    project = _project(tmp_path, tmp_path / "runtime")
-    runtime = tmp_path / "runtime"
-    runtime.mkdir()
-    ledger = runtime / "real20-execution-ledger"
-    ledger.mkdir()
-
-    monkeypatch.setattr(
-        "nightly_photo_intelligence_pipeline.real20.ledger_bootstrap._verify_ledger_policy",
-        lambda _ledger: None,
-    )
-
-    result = check_ledger_bootstrap(project)
+    result = ledger_bootstrap.check_ledger_bootstrap(tmp_path)
 
     assert result == {
-        "status": "PROBE_CONFIGURATION_NOT_AVAILABLE",
-        "error_code": "REAL20_LEDGER_PROBE_NOT_AVAILABLE",
+        "status": "NOT_READY",
+        "error_code": "REAL20_BOOTSTRAP_EVIDENCE_MISSING",
     }
 
 
-def test_cli_missing_probe_fails_closed_with_redacted_json(tmp_path: Path, monkeypatch) -> None:
-    project = _project(tmp_path, tmp_path / "runtime")
-    runtime = tmp_path / "runtime"
-    runtime.mkdir()
-    (runtime / "real20-execution-ledger").mkdir()
-
-    monkeypatch.setattr(
-        "nightly_photo_intelligence_pipeline.real20.ledger_bootstrap._verify_ledger_policy",
-        lambda _ledger: None,
+def test_bootstrap_evidence_object_binding_mismatch_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = _plan(tmp_path)
+    parent = _Directory("1" * 64)
+    ledger = _Directory("2" * 64)
+    probe = _Directory("3" * 64)
+    parent.children[LEDGER_LEAF] = ledger
+    parent.children[PROBE_ROOT_LEAF] = probe
+    parent.files[BOOTSTRAP_EVIDENCE_LEAF] = (
+        b'{"schema_version":"npi-real20-control-plane-bootstrap-v1",'
+        b'"status":"BOOTSTRAP_BOUND",'
+        b'"runtime_configuration_digest":"' + b"f" * 64 + b'",'
+        b'"ledger_object_sha256":"' + b"9" * 64 + b'",'
+        b'"probe_root_object_sha256":"' + b"3" * 64 + b'",'
+        b'"ledger_policy_sha256":"' + b"c" * 64 + b'",'
+        b'"probe_policy_sha256":"' + b"c" * 64 + b'"}'
     )
+    monkeypatch.setattr(ledger_bootstrap, "load_control_plane_plan", lambda _root: plan)
+    monkeypatch.setattr(ledger_bootstrap, "bind_existing_directory", lambda *_a, **_k: parent)
 
-    result = CliRunner().invoke(
-        app,
-        ["real20", "ledger-bootstrap-check", "--project-root", str(project)],
-    )
+    result = ledger_bootstrap.check_ledger_bootstrap(tmp_path)
 
-    assert result.exit_code == 1
-    assert json.loads(result.stdout) == {
-        "status": "PROBE_CONFIGURATION_NOT_AVAILABLE",
-        "error_code": "REAL20_LEDGER_PROBE_NOT_AVAILABLE",
-    }
-    assert str(runtime) not in result.stdout
-
-
-def test_existing_ledger_with_unknown_policy_fails_closed(tmp_path: Path, monkeypatch) -> None:
-    project = _project(tmp_path, tmp_path / "runtime")
-    runtime = tmp_path / "runtime"
-    runtime.mkdir()
-    (runtime / "real20-execution-ledger").mkdir()
-
-    def fail_policy(_ledger: Path) -> None:
-        raise OSError("unknown security descriptor")
-
-    monkeypatch.setattr(
-        "nightly_photo_intelligence_pipeline.real20.ledger_bootstrap._verify_ledger_policy",
-        fail_policy,
-    )
-
-    assert check_ledger_bootstrap(project) == {
-        "status": "OBJECT_OR_POLICY_MISMATCH",
-        "error_code": "REAL20_LEDGER_POLICY_INVALID",
+    assert result == {
+        "status": "NOT_READY",
+        "error_code": "REAL20_BOOTSTRAP_EVIDENCE_MISMATCH",
     }
 
 
-def test_cli_has_no_arbitrary_ledger_path_option(tmp_path: Path) -> None:
+@pytest.mark.parametrize("option", ["--ledger-path", "--probe-path", "--cleanup-path"])
+def test_cli_has_no_arbitrary_control_plane_path_options(
+    tmp_path: Path, option: str
+) -> None:
     result = CliRunner().invoke(
         app,
         [
@@ -121,8 +152,8 @@ def test_cli_has_no_arbitrary_ledger_path_option(tmp_path: Path) -> None:
             "ledger-bootstrap-check",
             "--project-root",
             str(tmp_path),
-            "--ledger-path",
-            str(tmp_path / "other-ledger"),
+            option,
+            str(tmp_path / "other"),
         ],
     )
 
@@ -130,15 +161,24 @@ def test_cli_has_no_arbitrary_ledger_path_option(tmp_path: Path) -> None:
     assert "no such option" in result.output.lower()
 
 
-def test_cli_resolves_relative_project_root(monkeypatch, tmp_path: Path) -> None:
-    project = _project(tmp_path, tmp_path / "runtime")
-    (tmp_path / "runtime").mkdir()
-    monkeypatch.chdir(project)
+def test_cli_bootstrap_check_redacts_runtime_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from nightly_photo_intelligence_pipeline import real20
 
+    monkeypatch.setattr(
+        real20,
+        "check_ledger_bootstrap",
+        lambda _root: {
+            "status": "NOT_READY",
+            "error_code": "REAL20_BOOTSTRAP_EVIDENCE_MISSING",
+        },
+    )
     result = CliRunner().invoke(
         app,
-        ["real20", "ledger-bootstrap-check", "--project-root", "."],
+        ["real20", "ledger-bootstrap-check", "--project-root", str(tmp_path)],
     )
 
     assert result.exit_code == 1
-    assert '"error_code": "REAL20_LEDGER_ROOT_MISSING"' in result.stdout
+    assert "REAL20_BOOTSTRAP_EVIDENCE_MISSING" in result.output
+    assert str(tmp_path) not in result.output
