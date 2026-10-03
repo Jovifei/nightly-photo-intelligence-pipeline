@@ -578,8 +578,11 @@ class _WindowsNative:
         append_only: bool = False,
         read_control: bool = False,
         allow_subdirectories: bool = False,
+        delete_only: bool = False,
     ) -> int:
         if append_only and not writable:
+            raise _failure("NPI_PROMOTION_ACCESS_PROFILE_INVALID")
+        if delete_only and (directory or create or append_only):
             raise _failure("NPI_PROMOTION_ACCESS_PROFILE_INVALID")
         safe_name = _safe_component(name)
         text = ctypes.create_unicode_buffer(safe_name)
@@ -604,14 +607,20 @@ class _WindowsNative:
             self._ntdll.NtCreateFile(
                 ctypes.byref(handle),
                 (
-                    _directory_access(
-                        writable,
-                        append_only=append_only,
-                        read_control=read_control,
-                        allow_subdirectories=allow_subdirectories,
+                    (_FILE_READ_ATTRIBUTES | _SYNCHRONIZE | _DELETE | (_READ_CONTROL if read_control else 0))
+                    if delete_only
+                    else (
+                        _directory_access(
+                            writable,
+                            append_only=append_only,
+                            read_control=read_control,
+                            allow_subdirectories=allow_subdirectories,
+                        )
+                        if directory
+                        else _file_access(
+                            writable, append_only=append_only, read_control=read_control
+                        )
                     )
-                    if directory
-                    else _file_access(writable, append_only=append_only, read_control=read_control)
                 ),
                 ctypes.byref(attributes),
                 ctypes.byref(status),
@@ -1016,11 +1025,12 @@ class BoundDirectory(AbstractContextManager["BoundDirectory"]):
             name,
             directory=False,
             create=False,
-            writable=True,
+            writable=False,
             append_only=False,
             read_control=True,
+            delete_only=True,
         )
-        return self._child_file(handle, True)
+        return self._child_file(handle, False)
 
     def parent_access_check(self, desired_access: int) -> NativeAccessCheck:
         self._verify()
