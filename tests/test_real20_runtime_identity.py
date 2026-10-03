@@ -285,6 +285,73 @@ def test_invalid_v3_cleanup_binding_fails_before_reservation(
     assert calls == []
 
 
+@pytest.mark.parametrize(
+    "fault,error",
+    [
+        ("nonce", "REAL20_CLEANUP_CAPABILITY_NONCE_MISMATCH"),
+        ("object", "REAL20_CLEANUP_CAPABILITY_OBJECT_MISMATCH"),
+        ("helper", "REAL20_CLEANUP_CAPABILITY_IDENTITY_MISMATCH"),
+        ("cleanup_expired", "REAL20_CLEANUP_CAPABILITY_EXPIRED"),
+        ("probe_stale", "REAL20_LEDGER_PROBE_STALE"),
+    ],
+)
+def test_invalid_v3_control_blocks_reservation_backend_and_image(
+    monkeypatch: pytest.MonkeyPatch, fault: str, error: str
+) -> None:
+    invalid = _identity_v3()
+    if fault == "nonce":
+        invalid["cleanup_capability"]["probe_nonce_sha256"] = "9" * 64  # type: ignore[index]
+    elif fault == "object":
+        invalid["cleanup_capability"]["probe_object_sha256"] = "9" * 64  # type: ignore[index]
+    elif fault == "helper":
+        invalid["cleanup_capability"]["cleanup_identity_sha256"] = "9" * 64  # type: ignore[index]
+    elif fault == "cleanup_expired":
+        invalid["cleanup_capability"]["expires_at_utc"] = "2026-09-27T11:59:59Z"  # type: ignore[index]
+    elif fault == "probe_stale":
+        invalid["ledger_acl_probe"]["expires_at_utc"] = "2026-09-27T11:59:59Z"  # type: ignore[index]
+    else:  # pragma: no cover - parametrization is closed
+        raise AssertionError(fault)
+
+    calls: list[str] = []
+    monkeypatch.setattr(
+        runner,
+        "load_manifest",
+        lambda _path: SimpleNamespace(sha256="a" * 64, source_fingerprint="source", assets=()),
+    )
+    monkeypatch.setattr(runner, "candidate_identity", lambda _root: {})
+    monkeypatch.setattr(
+        runner,
+        "_read_control",
+        lambda path: invalid if str(path).endswith("runtime.json") else {},
+    )
+    monkeypatch.setattr(runner, "_reservation", lambda *_args, **_kwargs: calls.append("reserve"))
+    monkeypatch.setattr(
+        runner,
+        "_read_image",
+        lambda *_args, **_kwargs: calls.append("image") or (b"", 1, 1),
+    )
+
+    def backend_factory():
+        calls.append("backend")
+        raise AssertionError("backend construction must be unreachable")
+
+    with pytest.raises(Real20Error, match=error):
+        runner._run_real20(
+            project_root=Path("project"),
+            source_root=Path("source"),
+            manifest_path=Path("manifest"),
+            credential_path=Path("lease"),
+            anchor_path=Path("anchor"),
+            runtime_identity_path=Path("runtime.json"),
+            model_identity_path=Path("model_identity"),
+            ledger_root=Path("ledger"),
+            output_root=Path("output"),
+            backend_factory=backend_factory,
+            now=NOW,
+        )
+    assert calls == []
+
+
 @pytest.mark.parametrize("command", ["ledger-probe", "ledger-probe-clean"])
 def test_probe_commands_fail_closed_without_owner_configuration(
     tmp_path: Path, command: str
