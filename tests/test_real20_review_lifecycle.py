@@ -460,3 +460,5 @@ def test_admit_uses_configured_path_in_plan_and_validates_bound_object(
         )
     with pytest.raises(Real20Error, match="LEDGER_PATH_REQUIRED"):
         admission.admit(**{**kwargs, "ledger_root": passed_handle})
+    with pytest.raises(Real20Error, match="LIVE_ATTESTATION_UNAVAILABLE"):
+        admission.admit(**{**kwargs, "ledger_attestation_probe": None})
