@@ -1,78 +1,150 @@
-# Real20 ledger inheritance preflight — design
+# Real20 ledger inheritance preflight — current design
 
-状态：Jovi 于 2026-09-27 选择“隔离探针目录＋独立清理身份”。本设计定义第一个 code-only 安全加固子项目；它不是 Owner 执行凭证，也不授权读取照片。
+状态：R1 code-only architecture，2026-10-03。本文取代 2026-09-27 版本中“第二个 Windows cleanup account / 独立清理账户”的要求。当前设计使用 **cleanup capability + restricted pre-opened-handle helper**；不要求第二个 Windows 账户。
 
-## 目标
+本文不授权 bootstrap/native probe/helper machine execution，不授权 Real20 reservation，不授权照片/EXIF、模型/CUDA、SQLite 或 production N2B2 解锁。
 
-在任何真实 Real20 reservation 之前，证明新建 ledger claim 及其允许的 append-only 文件会获得所需的 Windows 有效权限。缺少、过期、不匹配或无法清理的探针都必须在消耗一次性凭证之前 fail closed。
+## 1. 目标
 
-## 当前证据
+在任何真实 Real20 reservation 之前，用隔离 synthetic sibling resource 证明：
 
-- 候选基线：`71bcd85361da55097a258ff6c6b03c89797ea312`，tree `1bf81584fa12a912648187d798e1e9dc4c480293`。
-- 当前 handoff verifier 为 `8 PASS / 0 FAIL`；这是 code-only 证据，不是 Real20 许可。
-- `admission.protect_consumption()` 检查配置 ledger 根和它的父目录；`runner._run_real20()` 中真实 claim 由 `_reservation()` 创建，claim 权限检查发生在 reservation 之后。
-- 当前原生测试观察到新 claim 初始具有 `WRITE_DAC`，然后手动设置 per-claim ACL；这不能证明新 claim 会从父目录继承正确策略。
-- `PROJECT_STATE.authorization.active_execution` 仍仅为 N2B1P cache promotion，`phase_status.N2B2=LOCKED`。九个固定 Real20 Owner 控制文件均不存在，Real20 为 `NOT_RUN`。
+- production ledger 根对象身份稳定；
+- synthetic probe 根与 ledger 根使用一致的 security-policy digest；
+- 新建 synthetic claim/file 在实际 runner token 下获得预期 append-only allow/deny 矩阵；
+- synthetic probe 能通过一个**仅持有预打开 handle**的受限 helper 精确清理；
+- probe nonce、probe object、helper identity、live ledger object/policy/runner identity 全部进入 runtime identity v3；
+- 任一 proof 缺失、过期、漂移或 cleanup failure 都在 `_reservation()`、backend construction 与 image open 前 fail closed。
 
-## 选定架构
+## 2. 信任根与固定路径
 
-1. Owner 在已配置 runtime parent 下预置专用、Git 外的合成 ACL 探针目录。它与真实执行 ledger、output、cache 和照片源分离；位置从可信 runtime 配置推导，不接受任意 CLI 路径。探针根与 ledger 根的 DACL policy digest 必须一致。
-2. Owner 预置独立清理身份，其删除/ACL 权限仅限探针目录。Git 中不存密码或 token；runner 不修改 ACL，也不 impersonate 清理身份。
-3. `npi real20 ledger-probe` 在实际 runner identity 下运行：绑定 probe 与配置 ledger 的句柄、核对对象身份和 DACL policy digest，并只在 probe 下创建唯一 synthetic claim 与允许的 reservation/terminal 文件名。该命令不读取照片、不创建真实 ledger reservation，也不需要 Real20 lease。
-4. 对 parent、fresh claim、fresh files 检查有效权限。claim directory 必须拒绝 `DELETE_CHILD`、`DELETE`、`WRITE_DAC`、`WRITE_OWNER`；ledger files 必须拒绝 `FILE_WRITE_DATA`、`DELETE`、`WRITE_DAC`、`WRITE_OWNER`，同时允许 `FILE_APPEND_DATA`。未知 `AccessCheck` 结果失败关闭。
-5. `npi real20 ledger-probe-clean` 由独立清理身份运行，只接收 probe nonce 与对象 identity，删除对应的 synthetic probe 并返回清理证明；它不能访问真实 ledger、source、output 或 cache。失败时不做宽泛递归清理或 ACL 修复。
-6. Owner 将探测与清理证明嵌入现有固定受保护控制 `real20_runtime_identity.json` 的 `ledger_acl_probe` 字段。该字段包含 ledger/probe DACL policy digest、runner/cleanup identity fingerprints、probe result 和 UTC freshness window；现有 runtime-identity SHA 绑定继续把它带入 credential/anchor。Real20 的 pre-reservation gate 校验该证明与实时 ledger DACL/identity；不匹配就不能调用 `_reservation()`。DACL 或运行身份改变后必须重新探测并重新准备 candidate-bound controls。
+唯一 runtime 路径信任根仍是：
 
-探针只证明隔离合成 sibling resource 上的继承策略，不在真实 ledger 中创建 claim。探针与 ledger 的策略摘要、文件系统对象身份和 runner token 必须绑定一致。真实 ledger 的根目录和父目录有效权限检查继续保留；append-only handles、terminal records、commit markers 和 mutation-denial assertions 均不得删除或放宽。
+`approvals/n2b1p_runtime_configuration.json`
 
-## Runtime identity v2 的两个语义域
+代码必须通过 strict `load_n2b1p_runtime_configuration()` 读取，不能向该 schema 偷塞 Real20 专用字段。
 
-现有 `real20_runtime_identity.json` 将实时模型/GPU 观察值作为整个对象：credential/anchor 绑定其 canonical SHA-256，runner 又要求 `runtime_probe()` 的 canonical SHA-256 与同一个摘要相等。直接在这个对象上增添 `ledger_acl_probe` 会令实时观察值永远无法相等，因此新执行只接受以下 v2 顶层结构：
+Real20 control-plane 只允许从其 `runtime_parent` 推导以下固定 leaf：
 
-- `schema_version`：精确字符串 `2.0`；
-- `runtime_observation`：保留现有 `runtime_probe()` 输出的 `models`、`worker`、`vision`、`qwen` 映射及其字段语义，不添加 ACL 元数据；
-- `ledger_acl_probe`：本设计第 6 点规定的 Owner 绑定探针及独立清理证明，包含版本、策略与对象摘要、runner/cleanup 身份、结果及 UTC freshness window。
+- `real20-execution-ledger`
+- `real20-ledger-acl-probe`
+- `real20-control-plane-bootstrap.json`
 
-正式 Schema 必须严格定义这三个顶层成员和每个子对象，拒绝额外字段。credential/anchor 继续绑定**整个 v2 控制对象**的 canonical SHA-256，包含 `ledger_acl_probe`；实时 `runtime_probe()` 只与 `runtime_observation` 子对象的 canonical SHA-256 比较。`ledger_acl_probe` 由 admission 独立检查。v1 可用于解释历史证据，但不能满足新的 Real20 admission；未知版本、额外字段、缺失子对象或类型错误都失败关闭。不得把 ACL 字段塞进实时 GPU/模型探针，也不得降级整体凭证绑定。
+CLI/API 不接受 caller 提供 ledger/probe/cleanup filesystem path。
 
-执行顺序是：严格读取并验证完整 v2 与 credential/anchor → 从 live attestation 获取并匹配 runner identity、ledger policy digest 和 ledger object identity，再验证 `ledger_acl_probe` 的版本、结果、身份、策略、对象和 freshness → 验证实时 `runtime_observation` → 在已绑定**真实 ledger** 句柄上，仅以非变更方式重检 ledger 根和父目录的有效权限、runner identity、对象/策略绑定及其他 admission 门 → `_reservation()`。缺少 live attestation 也必须失败关闭；不得退回结构字段自洽即通过。不得在真实 ledger 创建、重放或清理 synthetic probe，也不得修复或修改 ACL。上述四层任一失败时，`_reservation()` 调用次数必须为零。静态控制检查应先于可能较重的运行时探针；准确位置可由实现保持上述先后约束。
+cache/work/root overlap、reparse 或异常已有对象全部 fail closed。
 
-`ledger-probe` 只生成 Git 外、脱敏的候选证明；`ledger-probe-clean` 由独立清理身份生成清理证明。继承观察可以独立记录为 `PROBE_PASS`，但只有清理证明存在且有效，整份证明才能成为 `ADMISSION_ELIGIBLE`；清理失败时保留真实的观察结果，同时拒绝准入。两份证明完成且被 Owner 审核后，才组装并封存 v2 `real20_runtime_identity.json`，之后再创建绑定其整体摘要的 credential/anchor。探针命令不得原地改写已封存或已绑定凭证的控制文件；否则整体摘要变化会使凭证失效。
+## 3. Bootstrap
 
-`ledger_acl_probe` 必须分别记录 `probe_object_sha256`（隔离 synthetic sibling）和 `ledger_object_sha256`（真实 ledger 对象上下文）；两者不能混用。回归测试必须至少证明：仅改变 `ledger_acl_probe` 时整体控制摘要改变而 `runtime_observation` 摘要不变；改变 `runtime_observation` 时两种摘要均改变；实时探针只比较观察子对象；修改已绑定 proof 使 credential/anchor 失效；缺失/过期/清理失败/身份、策略或真实 ledger 对象不匹配时都在 reservation 前拒绝。
+未来经独立 Owner machine authority 后，`ledger-bootstrap` 只能：
 
-## 数据流与失败语义
+1. bind 已批准 `runtime_parent`；
+2. 创建固定 ledger/probe roots；
+3. 不改 ACL；
+4. 记录 handle-observed ledger/probe object identity；
+5. 记录两个根的 read-only security-policy digest；
+6. 写固定、Git-external、非 Owner receipt 的 bootstrap evidence；
+7. 对 exact evidence + exact object identity 支持幂等复核。
+
+如果 crash 留下 partial state，或已有对象却缺少/不匹配 bootstrap evidence，禁止自动接管、删除、重建或修 ACL。
+
+## 4. Synthetic inheritance probe
+
+`ledger-probe` 仅在固定 probe root 下创建一个随机 nonce 对应的 synthetic claim。
+
+它必须：
+
+- 生成至少 128-bit 随机 nonce，proof 绑定 `probe_nonce_sha256`；
+- production ledger 只做 read-only identity/policy/effective-rights 验证，绝不创建 probe claim；
+- synthetic claim 必须拒绝 DELETE_CHILD / DELETE / WRITE_DAC / WRITE_OWNER；
+- synthetic reservation/terminal files 必须拒绝 FILE_WRITE_DATA / DELETE / WRITE_DAC / WRITE_OWNER，同时允许 FILE_APPEND_DATA；
+- unknown AccessCheck = failure；
+- probe root policy digest 必须与 production ledger root policy digest 相同；
+- 分别记录 `probe_object_sha256` 与 `ledger_object_sha256`。
+
+probe 创建完成后 runner-side append-only handles 必须关闭，再进入 cleanup handle 交接。
+
+## 5. Restricted cleanup helper
+
+清理能力由两个东西共同定义：
+
+1. `cleanup_capability`
+2. 一个已经打开并绑定到**精确 synthetic probe object**的 handle
+
+helper 本身：
+
+- 没有 filesystem path 参数；
+- 不允许按路径重新打开对象；
+- 不允许递归清理；
+- 不允许 sibling traversal；
+- 不访问 source/cache/output/production ledger；
+- 不改 ACL；
+- 只允许删除 nonce 对应的 `reservation.json` 与 `terminal-v1-<nonce_sha256>.json`；
+- 文件清空后只删除当前已绑定 probe directory；
+- live object identity 必须与 cleanup capability 的 `probe_object_sha256` 相同。
+
+`cleanup_identity_sha256` 是 restricted helper/capability contract 的 fingerprint，不是第二个 Windows 用户账户的 SID 要求。
+
+父 orchestration 先打开精确 cleanup handle，再通过 handle transfer/adoption API 将它交给 helper；adoption 会重新验证 object identity 与 reparse 状态，并清除 inheritable 标志。
+
+## 6. Runtime identity v3
+
+新的 Real20 execution admission 只接受 runtime identity v3：
 
 ```text
-固定 Owner controls + candidate identity
-  → `ledger-probe` 在实际 runner token 下创建 synthetic claim/files
-  → 检查新对象的有效权限并生成 nonce-bound probe 结果
-  → `ledger-probe-clean` 由独立 cleanup identity 清理并返回证明
-  → Owner 将 probe/cleanup 证明嵌入 runtime identity
-  → pre-reservation gate 重检 ledger DACL/identity、worker/native operators、source/data/phase gates
-  → one-shot reservation
-  → 仅在 Owner controls 全部有效后进入 Real20 worker
+schema_version = 3.0
+runtime_observation
+ledger_acl_probe v2
+cleanup_capability
 ```
 
-探针创建、AccessCheck、DACL 比较、identity、freshness 或清理任一失败，均须在真实 reservation 前停止。探针不消耗真实凭证。`ledger_acl_probe` 是现有 Owner-protected runtime identity 的组成部分，不是 lease，也不能单独授权照片读取。一旦真实 reservation 建立，既有一次性语义不变：后续失败仍消耗许可并尝试写入 terminal record；源完整性成功/失败后都要复核。
+`ledger_acl_probe v2` 新增 `probe_nonce_sha256`。
 
-## 范围与不变量
+完整 runtime identity canonical SHA-256 继续绑定 credential/anchor；live model/GPU probe 只与 `runtime_observation` 子对象比较。
 
-- 本子项目不枚举/读取照片，不读 EXIF，不加载/推理模型，不运行 CUDA operator，不写 SQLite，不做 App/Bundle 工作，不修改源数据，也不创建/消费真实 lease/anchor。
-- 不改正式 ledger、照片源或系统 ACL。原生测试只使用 Owner 预置的 synthetic probe policy。
-- 保持生产 `N2B2=LOCKED`；不改 `PROJECT_STATE.json`、历史 approvals、H3 evidence、tags 或 `main`。
-- 保持 bound-handle、只读源、20 项 / 19 次唯一推理、既有模型、v1.2 facts、EXIF 白名单和失败消耗规则。
-- R2 工作单中缺失的 source-root 路径、冻结 manifest 文件路径和空 output 路径仍是独立 Owner 输入；本设计不推测它们。
+cleanup capability 必须精确匹配同一 proof 的 probe nonce、probe object 和 cleanup helper identity。
 
-## 实现验收条件
+v2 只保留历史/低层 evidence compatibility，不能满足 public Real20 admission。
 
-1. RED 测试证明缺失、过期、不匹配或失败的 ACL probe 会在 `_reservation()`、backend 构造和任一 source-image open 之前被拒绝。
-2. Windows 原生测试在继承的 synthetic policy 下创建全新的 claim 与文件，并验证所需 allow/deny 矩阵；不得在 claim 创建后补设 per-claim ACL。
-3. 测试只通过独立 cleanup identity 清理专用 probe，验证无残留。身份或安全清理路径不可用时，原生继承证明必须标为 `NOT_AVAILABLE`，不能用 skip 或 mock ACL 结果替代。
-4. 正向默认 CLI 测试使用 synthetic 图片与 fake model backend 覆盖真实 admission/reservation/ledger 调用链；负向测试证明 ACL gate 拒绝时既没有 reservation，也没有打开图片。
-5. 保留现有 append-only profile、N2B1P bound-handle、源完整性、one-shot ledger 测试及所有阶段/数据门。
-6. 最终候选须独立审查；从 Git index 重建根 MANIFEST；在精确最终 SHA 上完成受支持的 Python 3.12 全量质量矩阵、handoff 和 preflight。
+## 7. Live attestation
 
-## 尚缺的 Owner runtime setup
+public admission 的 module-owned live attestor 对已经绑定的 production ledger handle 做 read-only 检查，并返回：
 
-当前控制材料未提供 probe 目录或 cleanup identity。Owner 必须预置 probe/cleanup identities，并将脱敏 identity、policy digest、清理结果和 freshness window 写入现有受保护 runtime identity；完成之前不得把 native inheritance 证明记为 PASS。agent 不会创建系统用户、安装 service/scheduled task，或扩大 ACL 来取得该身份。
+- current runner token identity fingerprint；
+- live ledger security-policy digest；
+- live ledger object identity。
+
+它不读照片、不运行模型、不创建 reservation、不改 ACL。
+
+这些 live 值必须与 runtime identity v3 proof 精确匹配，然后才允许继续其他 admission checks。public `run_real20()` 不暴露 caller-controlled attestor override。
+
+## 8. Pre-reservation ordering
+
+必须保持：
+
+```text
+strict fixed controls
+-> bound production ledger
+-> live attestation
+-> runtime identity v3 + cleanup-capability binding
+-> ledger mutation-denial checks
+-> existing data/review/quality/source/cache gates
+-> runtime_observation check
+-> final revalidation on same ledger object
+-> _reservation()
+```
+
+以下任一异常时：`_reservation()` call count = 0、backend construction count = 0、source-image open count = 0。
+
+异常包括 missing/stale proof、cleanup failed、nonce/object/helper mismatch、runner/policy/ledger-object mismatch、live attestation unavailable、credential/control drift。
+
+## 9. 资源与权限边界
+
+本 code-only 阶段明确不做：Windows runtime bootstrap execution、native probe、cleanup helper real-handle execution、ACL change/repair、credential/anchor issuance、Real20 reservation、model/CUDA、real photo/EXIF、SQLite、cache mutation、main merge/tag/release。
+
+仓库中仅提供 `DRAFT_NOT_AUTHORIZED` Owner authority 模板。只有未来单独 materialize 的 approved authority 才能进入 machine execution。
+
+## 10. 通过条件
+
+代码层必须完成 fixed-path trust derivation、bootstrap exact-object evidence、nonce-bound synthetic probe、pre-opened-handle-only helper、runtime identity v3、live attestation、strict schemas、synthetic positive/negative tests、Windows-native primitive tests、reservation/backend/image zero-call regressions、manifest/handoff 完整。
+
+机器层仍由后续 Owner gate 单独验收；code PASS 不等于 resource PASS、Real20 PASS 或 N2B2 unlock。
