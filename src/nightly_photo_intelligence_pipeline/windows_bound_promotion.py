@@ -578,11 +578,11 @@ class _WindowsNative:
         append_only: bool = False,
         read_control: bool = False,
         allow_subdirectories: bool = False,
-        delete_only: bool = False,
+        cleanup_only: bool = False,
     ) -> int:
         if append_only and not writable:
             raise _failure("NPI_PROMOTION_ACCESS_PROFILE_INVALID")
-        if delete_only and (directory or create or append_only):
+        if cleanup_only and (create or append_only):
             raise _failure("NPI_PROMOTION_ACCESS_PROFILE_INVALID")
         safe_name = _safe_component(name)
         text = ctypes.create_unicode_buffer(safe_name)
@@ -607,8 +607,20 @@ class _WindowsNative:
             self._ntdll.NtCreateFile(
                 ctypes.byref(handle),
                 (
-                    (_FILE_READ_ATTRIBUTES | _SYNCHRONIZE | _DELETE | (_READ_CONTROL if read_control else 0))
-                    if delete_only
+                    (
+                        _FILE_LIST_DIRECTORY
+                        | _FILE_READ_ATTRIBUTES
+                        | _SYNCHRONIZE
+                        | _FILE_DELETE_CHILD
+                        | _DELETE
+                        | (_READ_CONTROL if read_control else 0)
+                        if directory
+                        else _FILE_READ_ATTRIBUTES
+                        | _SYNCHRONIZE
+                        | _DELETE
+                        | (_READ_CONTROL if read_control else 0)
+                    )
+                    if cleanup_only
                     else (
                         _directory_access(
                             writable,
@@ -1015,6 +1027,23 @@ class BoundDirectory(AbstractContextManager["BoundDirectory"]):
         self._verify()
         return self._native.security_policy_digest(self._handle)
 
+    def open_directory_for_cleanup(self, name: str) -> BoundDirectory:
+        """Open one direct child with cleanup-only directory rights."""
+        self._verify()
+        if not self._writable or self._append_only:
+            raise _failure("NPI_PROMOTION_APPEND_ONLY_MUTATION_DENIED")
+        handle = self._native.open_relative(
+            self._handle,
+            name,
+            directory=True,
+            create=False,
+            writable=False,
+            append_only=False,
+            read_control=True,
+            cleanup_only=True,
+        )
+        return self._child_directory(handle, True, security_check=True)
+
     def open_file_for_cleanup(self, name: str) -> BoundFile:
         """Open one direct child for deletion through this already-bound directory."""
         self._verify()
@@ -1028,7 +1057,7 @@ class BoundDirectory(AbstractContextManager["BoundDirectory"]):
             writable=False,
             append_only=False,
             read_control=True,
-            delete_only=True,
+            cleanup_only=True,
         )
         return self._child_file(handle, False)
 
