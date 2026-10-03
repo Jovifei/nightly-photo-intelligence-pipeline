@@ -13,7 +13,10 @@ from nightly_photo_intelligence_pipeline.cli import app
 from nightly_photo_intelligence_pipeline.engineering.common import canonical, sha256
 from nightly_photo_intelligence_pipeline.json_strict import load_json_strict
 from nightly_photo_intelligence_pipeline.real20 import Real20Error, runner
-from nightly_photo_intelligence_pipeline.real20.runtime_identity import validate_runtime_identity
+from nightly_photo_intelligence_pipeline.real20.runtime_identity import (
+    assemble_runtime_identity_v3,
+    validate_runtime_identity,
+)
 
 NOW = datetime(2026, 9, 27, 12, 0, tzinfo=UTC)
 
@@ -100,6 +103,49 @@ def test_changing_probe_changes_control_digest_but_not_live_digest() -> None:
 
     assert first.observation_digest == second.observation_digest
     assert first.control_digest != second.control_digest
+
+
+def _probe_result_v3() -> dict[str, object]:
+    return {
+        "schema_version": "npi-real20-ledger-probe-result-v2",
+        "status": "ADMISSION_ELIGIBLE",
+        "ledger_acl_probe": _proof_v3(),
+        "cleanup_capability": _cleanup_capability(),
+        "cleanup_proof": {
+            "schema_version": "npi-real20-cleanup-proof-v1",
+            "cleanup_status": "CLEANUP_PASS",
+            "probe_nonce_sha256": "e" * 64,
+            "probe_object_sha256": "d" * 64,
+            "cleanup_identity_sha256": "b" * 64,
+            "cleaned_at_utc": "2026-09-27T11:30:00Z",
+        },
+    }
+
+
+def test_assembler_builds_runtime_identity_v3_from_bound_cleanup_proof() -> None:
+    result = assemble_runtime_identity_v3(_observation(), _probe_result_v3(), now=NOW)
+
+    assert result.control["schema_version"] == "3.0"
+    assert result.cleanup_capability is not None
+    assert result.ledger_acl_probe is not None
+    assert result.cleanup_capability.probe_nonce_sha256 == result.ledger_acl_probe[
+        "probe_nonce_sha256"
+    ]
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("probe_nonce_sha256", "9" * 64),
+        ("probe_object_sha256", "9" * 64),
+        ("cleanup_identity_sha256", "9" * 64),
+    ],
+)
+def test_assembler_rejects_cleanup_proof_binding_drift(field: str, value: str) -> None:
+    result = _probe_result_v3()
+    result["cleanup_proof"][field] = value  # type: ignore[index]
+    with pytest.raises(Real20Error, match="CLEANUP_PROOF_BINDING_MISMATCH"):
+        assemble_runtime_identity_v3(_observation(), result, now=NOW)
 
 
 def test_v3_binds_cleanup_capability_to_probe() -> None:
