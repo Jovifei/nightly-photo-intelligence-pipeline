@@ -19,7 +19,11 @@ from ..ingest.g1_contract import path_fingerprint
 from ..ingest.read_only_capability import (
     verify_source_read_only_capability,
 )
-from ..windows_bound_promotion import BoundDirectory, bind_existing_directory
+from ..windows_bound_promotion import (
+    BoundDirectory,
+    bind_existing_directory,
+    current_process_identity_sha256,
+)
 from .contracts import Real20Error, load_manifest, validate_data_receipt
 from .identity import candidate_identity
 from .runtime_identity import validate_runtime_identity
@@ -30,10 +34,19 @@ _LEDGER_MUTATION_RIGHTS = (0x40, 0x10000, 0x40000, 0x80000)
 _LEDGER_PARENT_MUTATION_RIGHTS = (0x40, 0x40000, 0x80000)
 
 
-def _live_ledger_attestation(_ledger: BoundDirectory) -> Mapping[str, str]:
-    """Owner/R2 native attestor seam; unavailable until native setup is authorized."""
-
-    raise Real20Error("REAL20_LEDGER_PROBE_LIVE_ATTESTATION_UNAVAILABLE")
+def _live_ledger_attestation(ledger: BoundDirectory) -> Mapping[str, str]:
+    """Read-only attestation of the already-bound production ledger handle."""
+    try:
+        ledger._verify()
+        return {
+            "runner_identity_sha256": current_process_identity_sha256(),
+            "ledger_policy_sha256": ledger.security_policy_digest(),
+            "ledger_object_sha256": ledger.identity.digest,
+        }
+    except Real20Error:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise Real20Error("REAL20_LEDGER_PROBE_LIVE_ATTESTATION_UNAVAILABLE") from exc
 
 
 def control_bytes(path: Path) -> bytes:
