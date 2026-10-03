@@ -10,7 +10,12 @@ from .ledger_probe import (
     require_probe_configuration,
     run_ledger_probe,
 )
-from .runtime_identity import RuntimeIdentity, validate_ledger_acl_probe, validate_runtime_identity
+from .runtime_identity import (
+    RuntimeIdentity,
+    assemble_runtime_identity_v3,
+    validate_ledger_acl_probe,
+    validate_runtime_identity,
+)
 
 __all__ = [
     "EXIF_ALLOWLIST",
@@ -22,6 +27,7 @@ __all__ = [
     "require_probe_configuration",
     "run_ledger_probe",
     "RuntimeIdentity",
+    "assemble_runtime_identity_v3",
     "validate_ledger_acl_probe",
     "validate_runtime_identity",
     "prepare_real20",
