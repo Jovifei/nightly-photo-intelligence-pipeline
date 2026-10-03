@@ -7,9 +7,11 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from jsonschema import Draft202012Validator, FormatChecker
 from typer.testing import CliRunner
 
 from nightly_photo_intelligence_pipeline.cli import app
+from nightly_photo_intelligence_pipeline.json_strict import load_json_strict
 from nightly_photo_intelligence_pipeline.real20 import cleanup_helper, control_plane
 from nightly_photo_intelligence_pipeline.real20 import ledger_bootstrap, ledger_probe
 from nightly_photo_intelligence_pipeline.real20.contracts import Real20Error
@@ -403,3 +405,80 @@ def test_control_plane_cli_rejects_arbitrary_object_paths(tmp_path: Path, comman
     )
     assert result.exit_code != 0
     assert "no such option" in result.output.lower()
+
+
+def test_owner_authority_draft_is_schema_valid_but_not_authorized(project_root: Path) -> None:
+    schema = load_json_strict(
+        project_root / "schemas/owner_real20_control_plane_bootstrap_v1.schema.json"
+    )
+    value = load_json_strict(
+        project_root / "approvals/owner_real20_control_plane_bootstrap_v1.DRAFT.json"
+    )
+    assert list(
+        Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(value)
+    ) == []
+    assert value["status"] == "DRAFT_NOT_AUTHORIZED"
+    assert value["execution_authorized"] is False
+
+
+def test_bootstrap_and_probe_schemas_are_strict(project_root: Path) -> None:
+    bootstrap_schema = load_json_strict(
+        project_root / "schemas/real20_control_plane_bootstrap_evidence_v1.schema.json"
+    )
+    bootstrap = {
+        "schema_version": "npi-real20-control-plane-bootstrap-v1",
+        "status": "BOOTSTRAP_BOUND",
+        "runtime_configuration_digest": "a" * 64,
+        "ledger_object_sha256": "b" * 64,
+        "probe_root_object_sha256": "c" * 64,
+        "ledger_policy_sha256": "d" * 64,
+        "probe_policy_sha256": "d" * 64,
+    }
+    assert list(
+        Draft202012Validator(
+            bootstrap_schema, format_checker=FormatChecker()
+        ).iter_errors(bootstrap)
+    ) == []
+
+    probe_schema = load_json_strict(
+        project_root / "schemas/real20_ledger_probe_result_v2.schema.json"
+    )
+    probe_result = {
+        "schema_version": "npi-real20-ledger-probe-result-v2",
+        "status": "ADMISSION_ELIGIBLE",
+        "ledger_acl_probe": {
+            "contract_version": "npi-real20-ledger-acl-probe-v2",
+            "status": "ADMISSION_ELIGIBLE",
+            "inheritance_status": "PROBE_PASS",
+            "cleanup_status": "CLEANUP_PASS",
+            "probe_nonce_sha256": "e" * 64,
+            "runner_identity_sha256": "a" * 64,
+            "cleanup_identity_sha256": "b" * 64,
+            "ledger_policy_sha256": "c" * 64,
+            "probe_policy_sha256": "c" * 64,
+            "probe_object_sha256": "d" * 64,
+            "ledger_object_sha256": "f" * 64,
+            "created_at_utc": "2026-10-03T12:00:00Z",
+            "expires_at_utc": "2026-10-03T12:20:00Z",
+        },
+        "cleanup_capability": {
+            "capability_version": "npi-real20-cleanup-capability-v1",
+            "probe_nonce_sha256": "e" * 64,
+            "probe_object_sha256": "d" * 64,
+            "cleanup_identity_sha256": "b" * 64,
+            "expires_at_utc": "2026-10-03T12:20:00Z",
+        },
+        "cleanup_proof": {
+            "schema_version": "npi-real20-cleanup-proof-v1",
+            "cleanup_status": "CLEANUP_PASS",
+            "probe_nonce_sha256": "e" * 64,
+            "probe_object_sha256": "d" * 64,
+            "cleanup_identity_sha256": "b" * 64,
+            "cleaned_at_utc": "2026-10-03T12:00:01Z",
+        },
+    }
+    assert list(
+        Draft202012Validator(
+            probe_schema, format_checker=FormatChecker()
+        ).iter_errors(probe_result)
+    ) == []
