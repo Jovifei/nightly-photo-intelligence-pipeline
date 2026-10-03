@@ -159,6 +159,12 @@ def _run_cleanup_helper_process(
     }
     if set(proof) != expected_fields or proof.get("cleanup_status") != "CLEANUP_PASS":
         raise Real20Error("REAL20_LEDGER_PROBE_CLEANUP_NOT_VERIFIED")
+    if (
+        proof.get("probe_nonce_sha256") != expected_probe_nonce_sha256
+        or proof.get("probe_object_sha256") != capability["probe_object_sha256"]
+        or proof.get("cleanup_identity_sha256") != capability["cleanup_identity_sha256"]
+    ):
+        raise Real20Error("REAL20_LEDGER_PROBE_CLEANUP_NOT_VERIFIED")
     return {str(key): str(value) for key, value in proof.items()}
 
 def run_ledger_probe(
