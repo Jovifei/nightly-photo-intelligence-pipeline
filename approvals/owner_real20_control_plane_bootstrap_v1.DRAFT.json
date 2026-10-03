@@ -1,0 +1,14 @@
+{
+  "schema_version": "npi-real20-control-plane-authority-v1",
+  "status": "DRAFT_NOT_AUTHORIZED",
+  "owner_id": "Jovi",
+  "scope": "R1_REAL20_CONTROL_PLANE_ONLY",
+  "execution_authorized": false,
+  "runtime_configuration_digest": "462e999671c2073ef8d02cbeaccd561cbc1f4734c4f312baee079a8134040bfd",
+  "allowed_operations": [
+    "BOOTSTRAP_FIXED_LEDGER_AND_PROBE_ROOTS",
+    "RUN_SYNTHETIC_LEDGER_INHERITANCE_PROBE",
+    "CLEAN_SYNTHETIC_PROBE_BY_PREOPENED_HANDLE"
+  ],
+  "production_n2b2": "LOCKED"
+}
