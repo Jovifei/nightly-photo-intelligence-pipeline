@@ -104,7 +104,6 @@ def _probe_payload(kind: str, nonce_sha256: str) -> bytes:
     )
 
 
-
 def _run_cleanup_helper_process(
     inherited_handle: int,
     capability: dict[str, str],
@@ -166,6 +165,7 @@ def _run_cleanup_helper_process(
     ):
         raise Real20Error("REAL20_LEDGER_PROBE_CLEANUP_NOT_VERIFIED")
     return {str(key): str(value) for key, value in proof.items()}
+
 
 def run_ledger_probe(
     project_root: Path,
