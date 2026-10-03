@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 import secrets
+import subprocess
+import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -12,9 +14,10 @@ from ..engineering.common import canonical, sha256, strict_json
 from ..windows_bound_promotion import (
     BoundDirectory,
     bind_existing_directory,
+    close_preopened_handle,
     current_process_identity_sha256,
 )
-from .cleanup_helper import cleanup_helper_identity_sha256, cleanup_inherited_probe_handle
+from .cleanup_helper import cleanup_helper_identity_sha256
 from .contracts import Real20Error
 from .control_plane import (
     LEDGER_LEAF,
@@ -101,6 +104,63 @@ def _probe_payload(kind: str, nonce_sha256: str) -> bytes:
     )
 
 
+
+def _run_cleanup_helper_process(
+    inherited_handle: int,
+    capability: dict[str, str],
+    *,
+    expected_probe_nonce_sha256: str,
+) -> dict[str, str]:
+    """Launch the restricted helper with exactly one inherited object handle."""
+    if sys.platform != "win32":
+        raise Real20Error("REAL20_LEDGER_PROBE_NATIVE_UNAVAILABLE")
+    startup_type = getattr(subprocess, "STARTUPINFO", None)
+    if startup_type is None:
+        raise Real20Error("REAL20_LEDGER_PROBE_NATIVE_UNAVAILABLE")
+    startupinfo = startup_type()
+    startupinfo.lpAttributeList = {"handle_list": [inherited_handle]}
+    env = os.environ.copy()
+    env["NPI_REAL20_CLEANUP_HANDLE"] = str(inherited_handle)
+    env["NPI_REAL20_CLEANUP_CAPABILITY_JSON"] = canonical(capability).decode("utf-8").strip()
+    env["NPI_REAL20_PROBE_NONCE_SHA256"] = expected_probe_nonce_sha256
+    try:
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "nightly_photo_intelligence_pipeline",
+                "real20",
+                "ledger-probe-clean",
+            ],
+            env=env,
+            startupinfo=startupinfo,
+            close_fds=True,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    finally:
+        close_preopened_handle(inherited_handle)
+    if completed.returncode != 0:
+        raise Real20Error("REAL20_LEDGER_PROBE_CLEANUP_NOT_VERIFIED")
+    try:
+        proof = strict_json(completed.stdout.encode("utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        raise Real20Error("REAL20_LEDGER_PROBE_CLEANUP_NOT_VERIFIED") from exc
+    if not isinstance(proof, dict):
+        raise Real20Error("REAL20_LEDGER_PROBE_CLEANUP_NOT_VERIFIED")
+    expected_fields = {
+        "schema_version",
+        "cleanup_status",
+        "probe_nonce_sha256",
+        "probe_object_sha256",
+        "cleanup_identity_sha256",
+        "cleaned_at_utc",
+    }
+    if set(proof) != expected_fields or proof.get("cleanup_status") != "CLEANUP_PASS":
+        raise Real20Error("REAL20_LEDGER_PROBE_CLEANUP_NOT_VERIFIED")
+    return {str(key): str(value) for key, value in proof.items()}
+
 def run_ledger_probe(
     project_root: Path,
     *,
@@ -180,12 +240,11 @@ def run_ledger_probe(
                 plan.probe_root, writable=True, security_check=True
             ) as mutable_probe_root:
                 cleanup_handle = mutable_probe_root.open_directory(probe_name, writable=True)
-                inherited_handle, _inherited_identity = cleanup_handle.release_for_inheritance()
-                cleanup_proof = cleanup_inherited_probe_handle(
+                inherited_handle, _ = cleanup_handle.release_for_inheritance()
+                cleanup_proof = _run_cleanup_helper_process(
                     inherited_handle,
                     capability,
                     expected_probe_nonce_sha256=nonce_sha256,
-                    now=current,
                 )
         except Real20Error as exc:
             cleanup_error = exc
@@ -236,31 +295,3 @@ def run_ledger_probe(
     except Exception as exc:  # noqa: BLE001
         raise Real20Error("REAL20_LEDGER_PROBE_NATIVE_UNAVAILABLE") from exc
 
-
-def run_inherited_cleanup_from_environment(
-    project_root: Path,
-    *,
-    now: datetime | None = None,
-) -> dict[str, str]:
-    """Restricted helper entry: inherited handle + capability only, never a path."""
-    current = now or datetime.now(UTC)
-    plan = load_control_plane_plan(project_root)
-    require_control_plane_execution_authority(project_root, plan)
-    raw_handle = os.environ.get("NPI_REAL20_CLEANUP_HANDLE")
-    raw_capability = os.environ.get("NPI_REAL20_CLEANUP_CAPABILITY_JSON")
-    nonce_sha256 = os.environ.get("NPI_REAL20_PROBE_NONCE_SHA256")
-    if raw_handle is None or raw_capability is None or nonce_sha256 is None:
-        raise Real20Error("REAL20_CLEANUP_HELPER_INHERITED_HANDLE_REQUIRED")
-    try:
-        handle = int(raw_handle, 10)
-        capability = strict_json(raw_capability.encode("utf-8"))
-    except Exception as exc:  # noqa: BLE001
-        raise Real20Error("REAL20_CLEANUP_HELPER_INPUT_INVALID") from exc
-    from .cleanup_helper import cleanup_inherited_probe_handle
-
-    return cleanup_inherited_probe_handle(
-        handle,
-        capability,
-        expected_probe_nonce_sha256=nonce_sha256,
-        now=current,
-    )
