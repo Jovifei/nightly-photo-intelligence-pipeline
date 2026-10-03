@@ -96,3 +96,24 @@ def cleanup_inherited_probe_handle(
             expected_probe_nonce_sha256=expected_probe_nonce_sha256,
             now=now,
         )
+
+
+def cleanup_from_environment(*, now: datetime | None = None) -> dict[str, str]:
+    """Helper-process entry: inherited handle and capability only; no filesystem path."""
+    raw_handle = os.environ.get("NPI_REAL20_CLEANUP_HANDLE")
+    raw_capability = os.environ.get("NPI_REAL20_CLEANUP_CAPABILITY_JSON")
+    nonce_sha256 = os.environ.get("NPI_REAL20_PROBE_NONCE_SHA256")
+    if raw_handle is None or raw_capability is None or nonce_sha256 is None:
+        raise Real20Error("REAL20_CLEANUP_HELPER_INHERITED_HANDLE_REQUIRED")
+    try:
+        handle = int(raw_handle, 10)
+        capability = strict_json(raw_capability.encode("utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        raise Real20Error("REAL20_CLEANUP_HELPER_INPUT_INVALID") from exc
+    current = now or datetime.now(UTC)
+    return cleanup_inherited_probe_handle(
+        handle,
+        capability,
+        expected_probe_nonce_sha256=nonce_sha256,
+        now=current,
+    )
