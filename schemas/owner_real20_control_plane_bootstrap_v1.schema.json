@@ -10,15 +10,31 @@
     "scope",
     "execution_authorized",
     "runtime_configuration_digest",
+    "candidate_commit",
+    "candidate_tree",
+    "source_manifest_sha256",
     "allowed_operations",
     "production_n2b2"
   ],
   "properties": {
-    "schema_version": {"const": "npi-real20-control-plane-authority-v1"},
-    "status": {"enum": ["DRAFT_NOT_AUTHORIZED", "APPROVED"]},
-    "owner_id": {"const": "Jovi"},
-    "scope": {"const": "R1_REAL20_CONTROL_PLANE_ONLY"},
-    "execution_authorized": {"type": "boolean"},
+    "schema_version": {
+      "const": "npi-real20-control-plane-authority-v1"
+    },
+    "status": {
+      "enum": [
+        "DRAFT_NOT_AUTHORIZED",
+        "APPROVED"
+      ]
+    },
+    "owner_id": {
+      "const": "Jovi"
+    },
+    "scope": {
+      "const": "R1_REAL20_CONTROL_PLANE_ONLY"
+    },
+    "execution_authorized": {
+      "type": "boolean"
+    },
     "runtime_configuration_digest": {
       "const": "462e999671c2073ef8d02cbeaccd561cbc1f4734c4f312baee079a8134040bfd"
     },
@@ -29,16 +45,96 @@
         "CLEAN_SYNTHETIC_PROBE_BY_PREOPENED_HANDLE"
       ]
     },
-    "production_n2b2": {"const": "LOCKED"}
+    "production_n2b2": {
+      "const": "LOCKED"
+    },
+    "candidate_commit": {
+      "oneOf": [
+        {
+          "const": "PENDING_CODE_REVIEW"
+        },
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        }
+      ]
+    },
+    "candidate_tree": {
+      "oneOf": [
+        {
+          "const": "PENDING_CODE_REVIEW"
+        },
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        }
+      ]
+    },
+    "source_manifest_sha256": {
+      "oneOf": [
+        {
+          "const": "PENDING_CODE_REVIEW"
+        },
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      ]
+    }
   },
   "allOf": [
     {
-      "if": {"properties": {"status": {"const": "APPROVED"}}},
-      "then": {"properties": {"execution_authorized": {"const": true}}}
+      "if": {
+        "properties": {
+          "status": {
+            "const": "APPROVED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "execution_authorized": {
+            "const": true
+          },
+          "candidate_commit": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$"
+          },
+          "candidate_tree": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$"
+          },
+          "source_manifest_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
     },
     {
-      "if": {"properties": {"status": {"const": "DRAFT_NOT_AUTHORIZED"}}},
-      "then": {"properties": {"execution_authorized": {"const": false}}}
+      "if": {
+        "properties": {
+          "status": {
+            "const": "DRAFT_NOT_AUTHORIZED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "execution_authorized": {
+            "const": false
+          },
+          "candidate_commit": {
+            "const": "PENDING_CODE_REVIEW"
+          },
+          "candidate_tree": {
+            "const": "PENDING_CODE_REVIEW"
+          },
+          "source_manifest_sha256": {
+            "const": "PENDING_CODE_REVIEW"
+          }
+        }
+      }
     }
   ]
 }
