@@ -395,7 +395,10 @@ def _run_real20(
 ) -> dict[str, Any]:
     """Run one exact, credential-bound, read-only Real20 evaluation."""
 
-    current = (now or datetime.now(UTC)).astimezone(UTC)
+    clock = now or datetime.now(UTC)
+    if clock.tzinfo is None or clock.utcoffset() is None:
+        raise Real20Error("REAL20_RUNTIME_IDENTITY_TIME_INVALID")
+    current = clock.astimezone(UTC)
     from .admission import control_bytes
 
     manifest = load_manifest(manifest_path)
