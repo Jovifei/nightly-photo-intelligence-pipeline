@@ -3,17 +3,26 @@
 from typing import Any
 
 from .contracts import EXIF_ALLOWLIST, Real20Error
-from .ledger_bootstrap import check_ledger_bootstrap
-from .ledger_probe import load_probe_configuration, probe_status, require_probe_configuration
+from .ledger_bootstrap import bootstrap_control_plane, check_ledger_bootstrap
+from .ledger_probe import (
+    load_probe_configuration,
+    probe_status,
+    require_probe_configuration,
+    run_inherited_cleanup_from_environment,
+    run_ledger_probe,
+)
 from .runtime_identity import RuntimeIdentity, validate_ledger_acl_probe, validate_runtime_identity
 
 __all__ = [
     "EXIF_ALLOWLIST",
     "Real20Error",
+    "bootstrap_control_plane",
     "check_ledger_bootstrap",
     "load_probe_configuration",
     "probe_status",
     "require_probe_configuration",
+    "run_ledger_probe",
+    "run_inherited_cleanup_from_environment",
     "RuntimeIdentity",
     "validate_ledger_acl_probe",
     "validate_runtime_identity",
