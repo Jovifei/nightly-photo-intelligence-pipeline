@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/real20_ledger_probe_result_v2.schema.json",
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "cleanupProof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "cleanup_status",
+        "probe_nonce_sha256",
+        "probe_object_sha256",
+        "cleanup_identity_sha256",
+        "cleaned_at_utc"
+      ],
+      "properties": {
+        "schema_version": {"const": "npi-real20-cleanup-proof-v1"},
+        "cleanup_status": {"const": "CLEANUP_PASS"},
+        "probe_nonce_sha256": {"$ref": "#/$defs/sha256"},
+        "probe_object_sha256": {"$ref": "#/$defs/sha256"},
+        "cleanup_identity_sha256": {"$ref": "#/$defs/sha256"},
+        "cleaned_at_utc": {"type": "string", "format": "date-time"}
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "ledger_acl_probe",
+        "cleanup_capability",
+        "cleanup_proof"
+      ],
+      "properties": {
+        "schema_version": {"const": "npi-real20-ledger-probe-result-v2"},
+        "status": {"const": "ADMISSION_ELIGIBLE"},
+        "ledger_acl_probe": {"type": "object"},
+        "cleanup_capability": {"type": "object"},
+        "cleanup_proof": {"$ref": "#/$defs/cleanupProof"}
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "inheritance_status",
+        "cleanup_status",
+        "error_code",
+        "probe_nonce_sha256",
+        "probe_object_sha256",
+        "ledger_object_sha256",
+        "runner_identity_sha256",
+        "cleanup_identity_sha256",
+        "ledger_policy_sha256",
+        "probe_policy_sha256"
+      ],
+      "properties": {
+        "schema_version": {"const": "npi-real20-ledger-probe-result-v2"},
+        "status": {"const": "NOT_ADMISSION_ELIGIBLE"},
+        "inheritance_status": {"const": "PROBE_PASS"},
+        "cleanup_status": {"const": "CLEANUP_FAILED"},
+        "error_code": {"type": "string", "minLength": 1},
+        "probe_nonce_sha256": {"$ref": "#/$defs/sha256"},
+        "probe_object_sha256": {"$ref": "#/$defs/sha256"},
+        "ledger_object_sha256": {"$ref": "#/$defs/sha256"},
+        "runner_identity_sha256": {"$ref": "#/$defs/sha256"},
+        "cleanup_identity_sha256": {"$ref": "#/$defs/sha256"},
+        "ledger_policy_sha256": {"$ref": "#/$defs/sha256"},
+        "probe_policy_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  ]
+}
