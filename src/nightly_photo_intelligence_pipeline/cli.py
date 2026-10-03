@@ -1704,14 +1704,13 @@ def real20_ledger_probe(
 
 
 @real20_app.command("ledger-probe-clean")
-def real20_ledger_probe_clean(
-    project_root: Path = typer.Option(..., "--project-root"),
-) -> None:
+def real20_ledger_probe_clean() -> None:
     """Restricted inherited-handle cleanup helper; accepts no filesystem path."""
-    from .real20 import Real20Error, run_inherited_cleanup_from_environment
+    from .real20.cleanup_helper import cleanup_from_environment
+    from .real20.contracts import Real20Error
 
     try:
-        result = run_inherited_cleanup_from_environment(project_root)
+        result = cleanup_from_environment()
     except Real20Error as exc:
         typer.echo(json_strict_dump({"status": "NOT_AVAILABLE", "error_code": exc.code}))
         raise typer.Exit(code=1) from None
