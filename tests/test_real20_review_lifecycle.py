@@ -378,7 +378,7 @@ def test_admit_uses_configured_path_in_plan_and_validates_bound_object(
         **{label + "_sha256": hash_bytes(canonical(value)) for label, value in documents.items()},
     }
     runtime_identity = {
-        "schema_version": "2.0",
+        "schema_version": "3.0",
         "runtime_observation": {
             "models": {"pose": "test"},
             "worker": {"python": "3.12"},
@@ -386,10 +386,11 @@ def test_admit_uses_configured_path_in_plan_and_validates_bound_object(
             "qwen": {"model_id": "test"},
         },
         "ledger_acl_probe": {
-            "contract_version": "npi-real20-ledger-acl-probe-v1",
+            "contract_version": "npi-real20-ledger-acl-probe-v2",
             "status": "ADMISSION_ELIGIBLE",
             "inheritance_status": "PROBE_PASS",
             "cleanup_status": "CLEANUP_PASS",
+            "probe_nonce_sha256": "e" * 64,
             "runner_identity_sha256": "a" * 64,
             "cleanup_identity_sha256": "b" * 64,
             "ledger_policy_sha256": "c" * 64,
@@ -398,6 +399,13 @@ def test_admit_uses_configured_path_in_plan_and_validates_bound_object(
             "ledger_object_sha256": "f" * 64,
             "created_at_utc": (now - timedelta(minutes=5)).isoformat(),
             "expires_at_utc": (now + timedelta(hours=1)).isoformat(),
+        },
+        "cleanup_capability": {
+            "capability_version": "npi-real20-cleanup-capability-v1",
+            "probe_nonce_sha256": "e" * 64,
+            "probe_object_sha256": "d" * 64,
+            "cleanup_identity_sha256": "b" * 64,
+            "expires_at_utc": (now + timedelta(minutes=30)).isoformat(),
         },
     }
     content = {
