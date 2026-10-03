@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/owner_real20_control_plane_bootstrap_v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "owner_id",
+    "scope",
+    "execution_authorized",
+    "runtime_configuration_digest",
+    "allowed_operations",
+    "production_n2b2"
+  ],
+  "properties": {
+    "schema_version": {"const": "npi-real20-control-plane-authority-v1"},
+    "status": {"enum": ["DRAFT_NOT_AUTHORIZED", "APPROVED"]},
+    "owner_id": {"const": "Jovi"},
+    "scope": {"const": "R1_REAL20_CONTROL_PLANE_ONLY"},
+    "execution_authorized": {"type": "boolean"},
+    "runtime_configuration_digest": {
+      "const": "462e999671c2073ef8d02cbeaccd561cbc1f4734c4f312baee079a8134040bfd"
+    },
+    "allowed_operations": {
+      "const": [
+        "BOOTSTRAP_FIXED_LEDGER_AND_PROBE_ROOTS",
+        "RUN_SYNTHETIC_LEDGER_INHERITANCE_PROBE",
+        "CLEAN_SYNTHETIC_PROBE_BY_PREOPENED_HANDLE"
+      ]
+    },
+    "production_n2b2": {"const": "LOCKED"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "APPROVED"}}},
+      "then": {"properties": {"execution_authorized": {"const": true}}}
+    },
+    {
+      "if": {"properties": {"status": {"const": "DRAFT_NOT_AUTHORIZED"}}},
+      "then": {"properties": {"execution_authorized": {"const": false}}}
+    }
+  ]
+}
