@@ -83,7 +83,7 @@ class FakeDirectory:
             raise AssertionError("closed fake handle")
 
     def close(self) -> None:
-        self.closed = False
+        return None
 
     def list_names(self) -> set[str]:
         return set(self.files) | set(self.children)
