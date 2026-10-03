@@ -269,6 +269,58 @@ def test_external_authority_accepts_exact_candidate_binding(
     )
 
 
+def test_external_authority_rejects_runtime_configuration_digest_drift(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from nightly_photo_intelligence_pipeline.real20 import admission
+
+    plan = _plan(tmp_path)
+    identity = {
+        "candidate_commit": "1" * 40,
+        "candidate_tree": "2" * 40,
+        "source_manifest_sha256": "3" * 64,
+    }
+    authority = {
+        "schema_version": "npi-real20-control-plane-authority-v1",
+        "status": "APPROVED",
+        "owner_id": "Jovi",
+        "scope": "R1_REAL20_CONTROL_PLANE_ONLY",
+        "execution_authorized": True,
+        "runtime_configuration_digest": "9" * 64,
+        **identity,
+        "allowed_operations": [
+            "BOOTSTRAP_FIXED_LEDGER_AND_PROBE_ROOTS",
+            "RUN_SYNTHETIC_LEDGER_INHERITANCE_PROBE",
+            "CLEAN_SYNTHETIC_PROBE_BY_PREOPENED_HANDLE",
+        ],
+        "production_n2b2": "LOCKED",
+    }
+    monkeypatch.setattr(
+        admission,
+        "control_bytes",
+        lambda _path: __import__("json").dumps(authority).encode("utf-8"),
+    )
+    monkeypatch.setattr(control_plane, "candidate_identity", lambda _root: identity)
+
+    with pytest.raises(Real20Error, match="AUTHORITY_INVALID"):
+        control_plane.require_control_plane_execution_authority(tmp_path, plan)
+
+
+def test_trusted_plan_rejects_overlap(monkeypatch: pytest.MonkeyPatch) -> None:
+    runtime = Path("F:" + chr(92) + "npi_runtime")
+    config = SimpleNamespace(
+        runtime_parent=runtime,
+        work_root=runtime / "work",
+        cache_root=Path("E:" + chr(92) + "cache"),
+        configuration_digest="a" * 64,
+    )
+    monkeypatch.setattr(control_plane, "load_n2b1p_runtime_configuration", lambda _root: config)
+    monkeypatch.setattr(control_plane, "paths_overlap", lambda *_args: True)
+
+    with pytest.raises(Real20Error, match="PATH_OVERLAP"):
+        control_plane.load_control_plane_plan(Path("project"))
+
+
 def test_repository_draft_does_not_authorize_machine_execution(tmp_path: Path) -> None:
     plan = _plan(tmp_path)
     project = tmp_path / "project"
