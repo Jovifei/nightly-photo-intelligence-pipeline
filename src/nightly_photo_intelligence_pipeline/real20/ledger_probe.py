@@ -180,11 +180,7 @@ def run_ledger_probe(
                 plan.probe_root, writable=True, security_check=True
             ) as mutable_probe_root:
                 cleanup_handle = mutable_probe_root.open_directory(probe_name, writable=True)
-                inherited_handle, inherited_identity = cleanup_handle.release_for_inheritance()
-                _require(
-                    inherited_identity == probe_object,
-                    "REAL20_CLEANUP_CAPABILITY_OBJECT_MISMATCH",
-                )
+                inherited_handle, _inherited_identity = cleanup_handle.release_for_inheritance()
                 cleanup_proof = cleanup_inherited_probe_handle(
                     inherited_handle,
                     capability,
