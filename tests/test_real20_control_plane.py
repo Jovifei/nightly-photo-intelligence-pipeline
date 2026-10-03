@@ -230,6 +230,45 @@ def test_external_authority_must_bind_exact_candidate(
         control_plane.require_control_plane_execution_authority(tmp_path, plan)
 
 
+def test_external_authority_accepts_exact_candidate_binding(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from nightly_photo_intelligence_pipeline.real20 import admission
+
+    plan = _plan(tmp_path)
+    identity = {
+        "candidate_commit": "1" * 40,
+        "candidate_tree": "2" * 40,
+        "source_manifest_sha256": "3" * 64,
+    }
+    authority = {
+        "schema_version": "npi-real20-control-plane-authority-v1",
+        "status": "APPROVED",
+        "owner_id": "Jovi",
+        "scope": "R1_REAL20_CONTROL_PLANE_ONLY",
+        "execution_authorized": True,
+        "runtime_configuration_digest": plan.configuration_digest,
+        **identity,
+        "allowed_operations": [
+            "BOOTSTRAP_FIXED_LEDGER_AND_PROBE_ROOTS",
+            "RUN_SYNTHETIC_LEDGER_INHERITANCE_PROBE",
+            "CLEAN_SYNTHETIC_PROBE_BY_PREOPENED_HANDLE",
+        ],
+        "production_n2b2": "LOCKED",
+    }
+    monkeypatch.setattr(
+        admission,
+        "control_bytes",
+        lambda _path: __import__("json").dumps(authority).encode("utf-8"),
+    )
+    monkeypatch.setattr(control_plane, "candidate_identity", lambda _root: identity)
+
+    assert (
+        control_plane.require_control_plane_execution_authority(tmp_path, plan)
+        == authority
+    )
+
+
 def test_repository_draft_does_not_authorize_machine_execution(tmp_path: Path) -> None:
     plan = _plan(tmp_path)
     project = tmp_path / "project"
