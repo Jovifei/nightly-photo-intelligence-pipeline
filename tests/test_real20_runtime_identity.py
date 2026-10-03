@@ -352,15 +352,26 @@ def test_invalid_v3_control_blocks_reservation_backend_and_image(
     assert calls == []
 
 
-@pytest.mark.parametrize("command", ["ledger-probe", "ledger-probe-clean"])
-def test_probe_commands_fail_closed_without_owner_configuration(
-    tmp_path: Path, command: str
-) -> None:
+def test_probe_command_fails_closed_without_owner_configuration(tmp_path: Path) -> None:
     result = CliRunner().invoke(
         app,
-        ["real20", command, "--project-root", str(tmp_path)],
+        ["real20", "ledger-probe", "--project-root", str(tmp_path)],
     )
 
     assert result.exit_code == 1
     assert '"status": "NOT_AVAILABLE"' in result.stdout
     assert not list(tmp_path.iterdir())
+
+
+def test_cleanup_helper_command_requires_inherited_handle(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in (
+        "NPI_REAL20_CLEANUP_HANDLE",
+        "NPI_REAL20_CLEANUP_CAPABILITY_JSON",
+        "NPI_REAL20_PROBE_NONCE_SHA256",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+    result = CliRunner().invoke(app, ["real20", "ledger-probe-clean"])
+
+    assert result.exit_code == 1
+    assert "REAL20_CLEANUP_HELPER_INHERITED_HANDLE_REQUIRED" in result.stdout
