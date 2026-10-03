@@ -33,7 +33,7 @@ Reject arbitrary caller paths, overlaps, reparse objects and runtime-configurati
 
 ## P2 — Bootstrap
 
-After a separately materialized Owner authority, code may bind runtime parent, create only the two fixed directories, record object identities and read-only policy digests, write fixed bootstrap evidence, accept exact evidence-bound idempotent state, and reject partial/unbound/conflicting existing state.
+After a separately materialized Git-external Owner authority bound to the exact reviewed commit/tree/source-manifest and runtime-config digest, code may bind runtime parent, create only the two fixed directories, record object identities and read-only policy digests, write fixed bootstrap evidence, accept exact evidence-bound idempotent state, and reject partial/unbound/conflicting existing state.
 
 No ACL write or repair is permitted.
 
@@ -45,7 +45,7 @@ Never create a production-ledger probe claim.
 
 ## P4 — Cleanup helper
 
-Parent orchestration opens the exact synthetic probe using the fixed probe root, then transfers only the handle.
+Parent orchestration opens the exact synthetic probe using the fixed probe root with cleanup-only rights, then launches a restricted child helper using Windows `handle_list` so the helper inherits only that object handle.
 
 Helper accepts inherited/pre-opened handle, cleanup capability, expected nonce and current time. Helper does not accept a filesystem path.
 
