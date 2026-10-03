@@ -84,7 +84,7 @@ helper 本身：
 
 `cleanup_identity_sha256` 是 restricted helper/capability contract 的 fingerprint，不是第二个 Windows 用户账户的 SID 要求。
 
-父 orchestration 先打开精确 cleanup handle，再通过 handle transfer/adoption API 将它交给 helper；adoption 会重新验证 object identity 与 reparse 状态，并清除 inheritable 标志。
+父 orchestration 先打开只有 cleanup 所需 rights 的精确目录 handle，再将该 handle 标记为 inheritable；Windows helper 子进程通过 `STARTUPINFOEX handle_list` 只继承这个对象 handle。helper adoption 会重新验证 object identity 与 reparse 状态并清除 inheritable 标志；父进程在 helper 结束后关闭自己的 raw handle。
 
 ## 6. Runtime identity v3
 
@@ -141,7 +141,7 @@ strict fixed controls
 
 本 code-only 阶段明确不做：Windows runtime bootstrap execution、native probe、cleanup helper real-handle execution、ACL change/repair、credential/anchor issuance、Real20 reservation、model/CUDA、real photo/EXIF、SQLite、cache mutation、main merge/tag/release。
 
-仓库中仅提供 `DRAFT_NOT_AUTHORIZED` Owner authority 模板。只有未来单独 materialize 的 approved authority 才能进入 machine execution。
+仓库中仅提供 `DRAFT_NOT_AUTHORIZED` Owner authority 模板。未来 approved authority 必须作为 `<runtime_parent>/owner-approvals/real20_control_plane_authority.json` 的 Git-external fixed control materialize，并绑定 exact reviewed candidate commit/tree/source-manifest 与 runtime-configuration digest；它不能作为 Git 内文件制造 candidate 自引用。只有该外部 authority 通过 bound-control 读取并精确匹配后，machine execution 才可进入。
 
 ## 10. 通过条件
 
