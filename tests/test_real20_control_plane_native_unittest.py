@@ -42,7 +42,7 @@ class TestReal20PreopenedCleanupHandle(unittest.TestCase):
             (claim / f"terminal-v1-{nonce}.json").write_bytes(b"terminal")
 
             with bind_existing_directory(root, writable=True, security_check=True) as parent:
-                opened = parent.open_directory("probe", writable=True)
+                opened = parent.open_directory_for_cleanup("probe")
                 object_digest = opened.identity.digest
                 inherited_handle, released_digest = opened.release_for_inheritance()
                 self.assertEqual(released_digest, object_digest)
