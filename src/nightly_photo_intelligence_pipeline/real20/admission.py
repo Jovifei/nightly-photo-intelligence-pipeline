@@ -157,6 +157,7 @@ def admit(
             runtime_identity,
             now=datetime.now(UTC),
             require_v2=True,
+            require_v3=True,
             current_runner_identity_sha256=live_attestation.get("runner_identity_sha256"),
             current_ledger_policy_sha256=live_attestation.get("ledger_policy_sha256"),
             current_ledger_object_sha256=live_attestation.get("ledger_object_sha256"),
