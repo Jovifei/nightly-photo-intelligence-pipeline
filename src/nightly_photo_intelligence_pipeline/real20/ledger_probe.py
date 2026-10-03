@@ -189,7 +189,7 @@ def run_ledger_probe(
                 )
         except Real20Error as exc:
             cleanup_error = exc
-        except Exception as exc:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             cleanup_error = Real20Error("REAL20_LEDGER_PROBE_CLEANUP_NOT_VERIFIED")
 
         if cleanup_error is not None:
