@@ -115,6 +115,9 @@ class FakeDirectory:
         del writable
         return self.children[name]
 
+    def open_directory_for_cleanup(self, name: str) -> "FakeDirectory":
+        return self.open_directory(name, writable=True)
+
     def create_file(self, name: str) -> FakeFile:
         if name in self.files:
             raise FileExistsError(name)
