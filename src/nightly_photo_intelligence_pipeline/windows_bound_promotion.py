@@ -78,6 +78,7 @@ _TOKEN_DUPLICATE = 0x0002
 _ERROR_NO_TOKEN = 1008
 _ERROR_INSUFFICIENT_BUFFER = 122
 _TOKEN_USER = 1
+_HANDLE_FLAG_INHERIT = 0x00000001
 
 
 def _failure(code: str) -> NpiError:
@@ -242,6 +243,12 @@ class _WindowsNative:
         self._kernel32.CreateFileW.restype = ctypes.c_void_p
         self._kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
         self._kernel32.CloseHandle.restype = ctypes.c_int
+        self._kernel32.SetHandleInformation.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_ulong,
+            ctypes.c_ulong,
+        ]
+        self._kernel32.SetHandleInformation.restype = ctypes.c_int
         self._kernel32.GetCurrentProcess.argtypes = []
         self._kernel32.GetCurrentProcess.restype = ctypes.c_void_p
         self._kernel32.GetCurrentThread.argtypes = []
@@ -383,6 +390,13 @@ class _WindowsNative:
     def close(self, handle: int) -> None:
         if handle and handle != _INVALID_HANDLE_VALUE:
             self._kernel32.CloseHandle(ctypes.c_void_p(handle))
+
+    def set_inheritable(self, handle: int, enabled: bool) -> None:
+        flags = _HANDLE_FLAG_INHERIT if enabled else 0
+        if not self._kernel32.SetHandleInformation(
+            ctypes.c_void_p(handle), _HANDLE_FLAG_INHERIT, flags
+        ):
+            raise _failure("NPI_PROMOTION_INHERITED_HANDLE_INVALID")
 
     def access_check(self, handle: int, desired_access: int) -> NativeAccessCheck:
         descriptor = ctypes.c_void_p()
@@ -1056,6 +1070,19 @@ class BoundDirectory(AbstractContextManager["BoundDirectory"]):
             raise _failure("NPI_PROMOTION_RACE_DETECTED")
         self._native.mark_delete(self._handle)
 
+    def release_for_inheritance(self) -> tuple[int, str]:
+        """Transfer this exact handle to a restricted helper without reopening a path."""
+        self._verify()
+        self._native.set_inheritable(self._handle, True)
+        handle = self._handle
+        identity = self._identity.digest
+        self._handle = 0
+        self._closed = True
+        for ancestor in reversed(self._retained_ancestors):
+            self._native.close(ancestor)
+        self._retained_ancestors.clear()
+        return handle, identity
+
     def close(self) -> None:
         if self._closed:
             return
@@ -1171,6 +1198,7 @@ def adopt_preopened_directory(
             raise _failure("NPI_PROMOTION_REPARSE_POINT_REJECTED")
         if description.identity.digest != expected_identity_sha256:
             raise _failure("NPI_PROMOTION_BOUND_ROOT_IDENTITY_CHANGED")
+        native.set_inheritable(handle, False)
         return BoundDirectory(
             native,
             handle,
