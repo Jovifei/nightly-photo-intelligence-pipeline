@@ -252,3 +252,78 @@ def validate_runtime_identity(
         control_digest=sha256(canonical(control)),
         observation_digest=sha256(canonical(control)),
     )
+
+
+def assemble_runtime_identity_v3(
+    runtime_observation: object,
+    probe_result: object,
+    *,
+    now: datetime,
+) -> RuntimeIdentity:
+    """Assemble v3 only from a successful, cleanup-bound synthetic probe result."""
+    current = _aware_utc(now, "REAL20_RUNTIME_IDENTITY_TIME_INVALID")
+    _require(
+        isinstance(runtime_observation, dict),
+        "REAL20_RUNTIME_OBSERVATION_INVALID",
+    )
+    _require(isinstance(probe_result, dict), "REAL20_LEDGER_PROBE_RESULT_INVALID")
+    result = cast(dict[str, Any], probe_result)
+    _require(
+        set(result)
+        == {
+            "schema_version",
+            "status",
+            "ledger_acl_probe",
+            "cleanup_capability",
+            "cleanup_proof",
+        },
+        "REAL20_LEDGER_PROBE_RESULT_INVALID",
+    )
+    _require(
+        result["schema_version"] == "npi-real20-ledger-probe-result-v2"
+        and result["status"] == "ADMISSION_ELIGIBLE",
+        "REAL20_LEDGER_PROBE_NOT_ADMISSION_ELIGIBLE",
+    )
+    cleanup_proof = result["cleanup_proof"]
+    _require(isinstance(cleanup_proof, dict), "REAL20_CLEANUP_PROOF_INVALID")
+    cleanup = cast(dict[str, Any], cleanup_proof)
+    _require(
+        set(cleanup)
+        == {
+            "schema_version",
+            "cleanup_status",
+            "probe_nonce_sha256",
+            "probe_object_sha256",
+            "cleanup_identity_sha256",
+            "cleaned_at_utc",
+        },
+        "REAL20_CLEANUP_PROOF_INVALID",
+    )
+    _require(
+        cleanup["schema_version"] == "npi-real20-cleanup-proof-v1"
+        and cleanup["cleanup_status"] == "CLEANUP_PASS",
+        "REAL20_CLEANUP_PROOF_INVALID",
+    )
+    proof = result["ledger_acl_probe"]
+    _require(isinstance(proof, dict), "REAL20_LEDGER_PROBE_OBJECT_REQUIRED")
+    proof_map = cast(dict[str, Any], proof)
+    for field in (
+        "probe_nonce_sha256",
+        "probe_object_sha256",
+        "cleanup_identity_sha256",
+    ):
+        _require(cleanup.get(field) == proof_map.get(field), "REAL20_CLEANUP_PROOF_BINDING_MISMATCH")
+    cleaned_at = _parse_utc(cleanup["cleaned_at_utc"], "REAL20_CLEANUP_PROOF_TIME_INVALID")
+    created_at = _parse_utc(proof_map.get("created_at_utc"), "REAL20_LEDGER_PROBE_TIME_INVALID")
+    expires_at = _parse_utc(proof_map.get("expires_at_utc"), "REAL20_LEDGER_PROBE_TIME_INVALID")
+    _require(
+        created_at <= cleaned_at <= current < expires_at,
+        "REAL20_CLEANUP_PROOF_TIME_INVALID",
+    )
+    control = {
+        "schema_version": "3.0",
+        "runtime_observation": runtime_observation,
+        "ledger_acl_probe": proof,
+        "cleanup_capability": result["cleanup_capability"],
+    }
+    return validate_runtime_identity(control, now=current, require_v3=True)
