@@ -31,6 +31,37 @@ class TestReal20PreopenedCleanupHandle(unittest.TestCase):
             self.assertEqual(len(first), 64)
             self.assertEqual(len(current_process_identity_sha256()), 64)
 
+    def test_inherited_handle_identity_mismatch_is_rejected(self) -> None:
+        nonce = "e" * 64
+        with tempfile.TemporaryDirectory(prefix="npi-real20-helper-mismatch-") as temp:
+            root = Path(temp) / "probe-root"
+            claim = root / "probe"
+            root.mkdir()
+            claim.mkdir()
+            (claim / "reservation.json").write_bytes(b"reservation")
+            (claim / f"terminal-v1-{nonce}.json").write_bytes(b"terminal")
+
+            with bind_existing_directory(root, writable=True, security_check=True) as parent:
+                opened = parent.open_directory_for_cleanup("probe")
+                inherited_handle, _ = opened.release_for_inheritance()
+
+            capability = {
+                "capability_version": "npi-real20-cleanup-capability-v1",
+                "probe_nonce_sha256": nonce,
+                "probe_object_sha256": "9" * 64,
+                "cleanup_identity_sha256": cleanup_helper_identity_sha256(),
+                "expires_at_utc": "2099-01-01T00:00:00Z",
+            }
+            with self.assertRaises(Exception):
+                cleanup_inherited_probe_handle(
+                    inherited_handle,
+                    capability,
+                    expected_probe_nonce_sha256=nonce,
+                    now=datetime.now(UTC),
+                )
+            self.assertTrue(claim.exists())
+
+
     def test_released_handle_is_adopted_and_cleans_exact_probe_only(self) -> None:
         nonce = "e" * 64
         with tempfile.TemporaryDirectory(prefix="npi-real20-helper-") as temp:
