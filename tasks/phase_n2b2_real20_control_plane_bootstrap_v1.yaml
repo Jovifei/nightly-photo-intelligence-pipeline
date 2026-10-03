@@ -1,0 +1,42 @@
+contract_version: "1.0"
+phase:
+  id: "N2B2"
+  title: "Real20 trusted control-plane bootstrap and native inheritance qualification"
+  status: "DRAFT_NOT_AUTHORIZED"
+capability: "R1_REAL20_CONTROL_PLANE_BOOTSTRAP_V1"
+contract_type: "REAL20_CONTROL_PLANE_CODE_AND_FUTURE_MACHINE_GATE"
+status: "DRAFT_NOT_AUTHORIZED"
+owner_decision: "PENDING_OWNER_RESOURCE_APPROVAL"
+code_scope:
+  - "trusted fixed-path bootstrap under approved runtime_parent"
+  - "synthetic ledger inheritance probe"
+  - "restricted cleanup through pre-opened handle only"
+  - "runtime identity v3 proof materialization"
+  - "live read-only ledger attestation"
+runtime_boundary:
+  configuration_ref: "approvals/n2b1p_runtime_configuration.json"
+  configuration_digest: "462e999671c2073ef8d02cbeaccd561cbc1f4734c4f312baee079a8134040bfd"
+  ledger_leaf: "real20-execution-ledger"
+  probe_leaf: "real20-ledger-acl-probe"
+owner_authority_draft: "approvals/owner_real20_control_plane_bootstrap_v1.DRAFT.json"
+future_authority_path: "approvals/owner_real20_control_plane_bootstrap_v1.json"
+machine_execution_authority: "NOT_AUTHORIZED"
+prohibited_actions:
+  - "arbitrary_runtime_or_probe_path"
+  - "system_acl_change_or_repair"
+  - "second_windows_account_requirement"
+  - "real_photo_or_exif_read"
+  - "model_or_cuda_execution"
+  - "sqlite_write"
+  - "cache_mutation"
+  - "real20_reservation_or_credential_consumption"
+  - "production_n2b2_unlock"
+  - "main_merge_tag_or_release"
+exit_gate:
+  code_review: "REQUIRED"
+  supported_python312_quality: "REQUIRED"
+  native_windows_probe: "SEPARATE_OWNER_RESOURCE_GATE"
+  production_n2b2: "LOCKED"
+mandatory_stop:
+  value: true
+  next_action: "AWAIT_SEPARATE_OWNER_RESOURCE_AUTHORITY_BEFORE_MACHINE_EXECUTION"
