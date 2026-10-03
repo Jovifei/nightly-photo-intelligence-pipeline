@@ -7,8 +7,6 @@ plus capability data. It has no path-opening or traversal API.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
-
 from ..engineering.common import canonical, sha256
 from ..windows_bound_promotion import BoundDirectory, adopt_preopened_directory
 from .cleanup_capability import validate_cleanup_capability
