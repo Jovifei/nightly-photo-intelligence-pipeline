@@ -14,7 +14,7 @@ from ..windows_bound_promotion import (
     bind_existing_directory,
     current_process_identity_sha256,
 )
-from .cleanup_helper import cleanup_helper_identity_sha256, cleanup_preopened_probe
+from .cleanup_helper import cleanup_helper_identity_sha256, cleanup_inherited_probe_handle
 from .contracts import Real20Error
 from .control_plane import (
     LEDGER_LEAF,
@@ -179,13 +179,18 @@ def run_ledger_probe(
             with bind_existing_directory(
                 plan.probe_root, writable=True, security_check=True
             ) as mutable_probe_root:
-                with mutable_probe_root.open_directory(probe_name, writable=True) as cleanup_handle:
-                    cleanup_proof = cleanup_preopened_probe(
-                        cleanup_handle,
-                        capability,
-                        expected_probe_nonce_sha256=nonce_sha256,
-                        now=current,
-                    )
+                cleanup_handle = mutable_probe_root.open_directory(probe_name, writable=True)
+                inherited_handle, inherited_identity = cleanup_handle.release_for_inheritance()
+                _require(
+                    inherited_identity == probe_object,
+                    "REAL20_CLEANUP_CAPABILITY_OBJECT_MISMATCH",
+                )
+                cleanup_proof = cleanup_inherited_probe_handle(
+                    inherited_handle,
+                    capability,
+                    expected_probe_nonce_sha256=nonce_sha256,
+                    now=current,
+                )
         except Real20Error as exc:
             cleanup_error = exc
         except Exception as exc:  # noqa: BLE001
