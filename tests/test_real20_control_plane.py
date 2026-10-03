@@ -185,6 +185,48 @@ def test_trusted_plan_uses_only_fixed_runtime_children(monkeypatch: pytest.Monke
     assert plan.bootstrap_evidence.name == control_plane.BOOTSTRAP_EVIDENCE_LEAF
 
 
+def test_external_authority_must_bind_exact_candidate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from nightly_photo_intelligence_pipeline.real20 import admission
+
+    plan = _plan(tmp_path)
+    authority = {
+        "schema_version": "npi-real20-control-plane-authority-v1",
+        "status": "APPROVED",
+        "owner_id": "Jovi",
+        "scope": "R1_REAL20_CONTROL_PLANE_ONLY",
+        "execution_authorized": True,
+        "runtime_configuration_digest": plan.configuration_digest,
+        "candidate_commit": "1" * 40,
+        "candidate_tree": "2" * 40,
+        "source_manifest_sha256": "3" * 64,
+        "allowed_operations": [
+            "BOOTSTRAP_FIXED_LEDGER_AND_PROBE_ROOTS",
+            "RUN_SYNTHETIC_LEDGER_INHERITANCE_PROBE",
+            "CLEAN_SYNTHETIC_PROBE_BY_PREOPENED_HANDLE",
+        ],
+        "production_n2b2": "LOCKED",
+    }
+    monkeypatch.setattr(
+        admission,
+        "control_bytes",
+        lambda _path: __import__("json").dumps(authority).encode("utf-8"),
+    )
+    monkeypatch.setattr(
+        control_plane,
+        "candidate_identity",
+        lambda _root: {
+            "candidate_commit": "1" * 40,
+            "candidate_tree": "2" * 40,
+            "source_manifest_sha256": "4" * 64,
+        },
+    )
+
+    with pytest.raises(Real20Error, match="AUTHORITY_INVALID"):
+        control_plane.require_control_plane_execution_authority(tmp_path, plan)
+
+
 def test_repository_draft_does_not_authorize_machine_execution(tmp_path: Path) -> None:
     plan = _plan(tmp_path)
     project = tmp_path / "project"
@@ -270,7 +312,7 @@ def _probe_fakes(
             now=now,
         )
 
-    monkeypatch.setattr(ledger_probe, "cleanup_inherited_probe_handle", cleanup)
+    monkeypatch.setattr(ledger_probe, "_run_cleanup_helper_process", cleanup)
     return ledger, probe
 
 
@@ -376,6 +418,57 @@ def test_cleanup_helper_rejects_sibling_content() -> None:
             expected_probe_nonce_sha256=nonce,
             now=NOW,
         )
+
+
+def test_cleanup_helper_process_inherits_only_bound_handle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+    closed: list[int] = []
+
+    class Startup:
+        lpAttributeList: dict[str, list[int]]
+
+    def run(command: list[str], **kwargs: Any) -> Any:
+        captured["command"] = command
+        captured["kwargs"] = kwargs
+        proof = {
+            "schema_version": "npi-real20-cleanup-proof-v1",
+            "cleanup_status": "CLEANUP_PASS",
+            "probe_nonce_sha256": "e" * 64,
+            "probe_object_sha256": "d" * 64,
+            "cleanup_identity_sha256": cleanup_helper.cleanup_helper_identity_sha256(),
+            "cleaned_at_utc": "2026-10-03T12:00:01+00:00",
+        }
+        return SimpleNamespace(
+            returncode=0,
+            stdout=__import__("json").dumps(proof),
+            stderr="",
+        )
+
+    monkeypatch.setattr(ledger_probe.sys, "platform", "win32")
+    monkeypatch.setattr(ledger_probe.subprocess, "STARTUPINFO", Startup, raising=False)
+    monkeypatch.setattr(ledger_probe.subprocess, "run", run)
+    monkeypatch.setattr(ledger_probe, "close_preopened_handle", closed.append)
+
+    capability = {
+        "capability_version": "npi-real20-cleanup-capability-v1",
+        "probe_nonce_sha256": "e" * 64,
+        "probe_object_sha256": "d" * 64,
+        "cleanup_identity_sha256": cleanup_helper.cleanup_helper_identity_sha256(),
+        "expires_at_utc": "2026-10-03T13:00:00+00:00",
+    }
+    proof = ledger_probe._run_cleanup_helper_process(
+        123,
+        capability,
+        expected_probe_nonce_sha256="e" * 64,
+    )
+
+    assert proof["cleanup_status"] == "CLEANUP_PASS"
+    assert captured["kwargs"]["startupinfo"].lpAttributeList == {"handle_list": [123]}
+    assert captured["kwargs"]["close_fds"] is True
+    assert "--project-root" not in captured["command"]
+    assert closed == [123]
 
 
 def test_cleanup_helper_api_has_no_path_parameter() -> None:
