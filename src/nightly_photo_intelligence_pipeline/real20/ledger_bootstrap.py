@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from ..engineering.common import canonical, sha256, strict_json
 from ..windows_bound_promotion import BoundDirectory, bind_existing_directory
@@ -61,9 +61,10 @@ def _validate_bootstrap_evidence(
     probe: BoundDirectory,
 ) -> dict[str, str]:
     _require(isinstance(value, dict), "REAL20_BOOTSTRAP_EVIDENCE_INVALID")
-    _require(set(value) == _BOOTSTRAP_FIELDS, "REAL20_BOOTSTRAP_EVIDENCE_INVALID")
+    evidence = cast(dict[str, Any], value)
+    _require(set(evidence) == _BOOTSTRAP_FIELDS, "REAL20_BOOTSTRAP_EVIDENCE_INVALID")
     expected = _evidence_payload(plan, ledger, probe)
-    _require(value == expected, "REAL20_BOOTSTRAP_EVIDENCE_MISMATCH")
+    _require(evidence == expected, "REAL20_BOOTSTRAP_EVIDENCE_MISMATCH")
     return expected
 
 
