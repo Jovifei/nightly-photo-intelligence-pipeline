@@ -473,6 +473,48 @@ def test_cleanup_helper_process_inherits_only_bound_handle(
     assert closed == [123]
 
 
+def test_cleanup_helper_process_rejects_unbound_success_proof(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Startup:
+        lpAttributeList: dict[str, list[int]]
+
+    def run(_command: list[str], **_kwargs: Any) -> Any:
+        return SimpleNamespace(
+            returncode=0,
+            stdout=__import__("json").dumps(
+                {
+                    "schema_version": "npi-real20-cleanup-proof-v1",
+                    "cleanup_status": "CLEANUP_PASS",
+                    "probe_nonce_sha256": "9" * 64,
+                    "probe_object_sha256": "d" * 64,
+                    "cleanup_identity_sha256": cleanup_helper.cleanup_helper_identity_sha256(),
+                    "cleaned_at_utc": "2026-10-03T12:00:01+00:00",
+                }
+            ),
+            stderr="",
+        )
+
+    monkeypatch.setattr(ledger_probe.sys, "platform", "win32")
+    monkeypatch.setattr(ledger_probe.subprocess, "STARTUPINFO", Startup, raising=False)
+    monkeypatch.setattr(ledger_probe.subprocess, "run", run)
+    monkeypatch.setattr(ledger_probe, "close_preopened_handle", lambda _handle: None)
+    capability = {
+        "capability_version": "npi-real20-cleanup-capability-v1",
+        "probe_nonce_sha256": "e" * 64,
+        "probe_object_sha256": "d" * 64,
+        "cleanup_identity_sha256": cleanup_helper.cleanup_helper_identity_sha256(),
+        "expires_at_utc": "2026-10-03T13:00:00+00:00",
+    }
+
+    with pytest.raises(Real20Error, match="CLEANUP_NOT_VERIFIED"):
+        ledger_probe._run_cleanup_helper_process(
+            123,
+            capability,
+            expected_probe_nonce_sha256="e" * 64,
+        )
+
+
 def test_cleanup_helper_api_has_no_path_parameter() -> None:
     parameters = inspect.signature(cleanup_helper.cleanup_inherited_probe_handle).parameters
     assert "path" not in parameters
