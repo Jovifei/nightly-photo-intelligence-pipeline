@@ -1190,6 +1190,14 @@ def current_process_identity_sha256() -> str:
     return _WindowsNative().current_identity_digest()
 
 
+def close_preopened_handle(handle: int) -> None:
+    """Close one raw handle previously released for restricted inheritance."""
+    _require_windows()
+    if not isinstance(handle, int) or handle <= 0:
+        raise _failure("NPI_PROMOTION_INHERITED_HANDLE_INVALID")
+    _WindowsNative().close(handle)
+
+
 def adopt_preopened_directory(
     handle: int,
     *,
