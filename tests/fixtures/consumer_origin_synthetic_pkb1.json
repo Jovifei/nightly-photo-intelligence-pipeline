@@ -1,0 +1,29 @@
+{
+  "contract_version": "1.0",
+  "bundle_id": "bundle_fixture_p22_001",
+  "source": {
+    "origin": "PIPELINE",
+    "producer_id": "approved_pipeline_fixture",
+    "release_id": "release_fixture_p22_001"
+  },
+  "integrity": {
+    "algorithm": "SHA-256",
+    "payload_sha256": "9bd85c8b1be3e3544d9a74b4140e59fc57f85e6b97a343d7c6fba2018048bb69"
+  },
+  "references": [
+    {
+      "reference_id": "reference_fixture_p22_001",
+      "photography": {
+        "scene": "Synthetic indoor portrait setting",
+        "background_story": "Use the quiet wall rhythm to keep attention on the subject.",
+        "lighting": "Soft side light with controlled contrast.",
+        "composition": "Place the subject on a third and preserve negative space.",
+        "subject_intent": "Keep the body relaxed and turn slightly toward the light.",
+        "emotion": "Calm and attentive.",
+        "pose_template": "Textual intent: relax the shoulders and keep the gaze just beyond the lens.",
+        "camera_position": "Use a slightly lower camera position at a gentle side angle.",
+        "director_prompt": "Confirm the background is uncluttered, then frame the subject with comfortable breathing room."
+      }
+    }
+  ]
+}
