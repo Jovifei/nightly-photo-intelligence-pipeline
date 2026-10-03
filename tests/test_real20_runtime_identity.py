@@ -6,10 +6,12 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from jsonschema import Draft202012Validator, FormatChecker
 from typer.testing import CliRunner
 
 from nightly_photo_intelligence_pipeline.cli import app
 from nightly_photo_intelligence_pipeline.engineering.common import canonical, sha256
+from nightly_photo_intelligence_pipeline.json_strict import load_json_strict
 from nightly_photo_intelligence_pipeline.real20 import Real20Error, runner
 from nightly_photo_intelligence_pipeline.real20.runtime_identity import validate_runtime_identity
 
@@ -33,16 +35,50 @@ def _proof(*, status: str = "ADMISSION_ELIGIBLE") -> dict[str, object]:
     }
 
 
+def _proof_v3(*, status: str = "ADMISSION_ELIGIBLE") -> dict[str, object]:
+    value = _proof(status=status)
+    value["contract_version"] = "npi-real20-ledger-acl-probe-v2"
+    value["probe_nonce_sha256"] = "e" * 64
+    return value
+
+
+def _cleanup_capability() -> dict[str, object]:
+    return {
+        "capability_version": "npi-real20-cleanup-capability-v1",
+        "probe_nonce_sha256": "e" * 64,
+        "probe_object_sha256": "d" * 64,
+        "cleanup_identity_sha256": "b" * 64,
+        "expires_at_utc": "2026-09-27T12:30:00Z",
+    }
+
+
+def _observation() -> dict[str, object]:
+    return {
+        "models": {"pose": "test"},
+        "worker": {"python": "3.12"},
+        "vision": {"device": "cpu"},
+        "qwen": {"model_id": "test"},
+    }
+
+
 def _identity(*, proof: dict[str, object] | None = None) -> dict[str, object]:
     return {
         "schema_version": "2.0",
-        "runtime_observation": {
-            "models": {"pose": "test"},
-            "worker": {"python": "3.12"},
-            "vision": {"device": "cpu"},
-            "qwen": {"model_id": "test"},
-        },
+        "runtime_observation": _observation(),
         "ledger_acl_probe": proof or _proof(),
+    }
+
+
+def _identity_v3(
+    *,
+    proof: dict[str, object] | None = None,
+    capability: dict[str, object] | None = None,
+) -> dict[str, object]:
+    return {
+        "schema_version": "3.0",
+        "runtime_observation": _observation(),
+        "ledger_acl_probe": proof or _proof_v3(),
+        "cleanup_capability": capability or _cleanup_capability(),
     }
 
 
@@ -66,6 +102,29 @@ def test_changing_probe_changes_control_digest_but_not_live_digest() -> None:
     assert first.control_digest != second.control_digest
 
 
+def test_v3_binds_cleanup_capability_to_probe() -> None:
+    value = _identity_v3()
+    result = validate_runtime_identity(value, now=NOW, require_v3=True)
+
+    assert result.control_digest == sha256(canonical(value))
+    assert result.observation_digest == sha256(canonical(value["runtime_observation"]))
+    assert result.cleanup_capability is not None
+    assert result.cleanup_capability.probe_nonce_sha256 == "e" * 64
+
+
+def test_v3_schema_accepts_bound_identity(project_root: Path) -> None:
+    schema = load_json_strict(project_root / "schemas/n2b2_real20_runtime_identity_v3.schema.json")
+    errors = list(
+        Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(_identity_v3())
+    )
+    assert errors == []
+
+
+def test_v2_is_rejected_when_v3_is_required() -> None:
+    with pytest.raises(Real20Error, match="REAL20_RUNTIME_IDENTITY_V3_REQUIRED"):
+        validate_runtime_identity(_identity(), now=NOW, require_v3=True)
+
+
 def test_v1_is_rejected_for_new_admission() -> None:
     with pytest.raises(Real20Error, match="REAL20_RUNTIME_IDENTITY_SCHEMA_INVALID"):
         validate_runtime_identity({"models": {"pose": "old"}}, now=NOW)
@@ -84,7 +143,7 @@ def test_expired_probe_fails_closed() -> None:
 
 
 @pytest.mark.parametrize(
-    "attestation, message",
+    "attestation,message",
     [
         ({"current_runner_identity_sha256": "e" * 64}, "RUNNER_IDENTITY_MISMATCH"),
         ({"current_ledger_policy_sha256": "e" * 64}, "LIVE_POLICY_MISMATCH"),
@@ -119,16 +178,36 @@ def test_invalid_ledger_object_digest_fails_even_when_live_value_matches() -> No
         )
 
 
+@pytest.mark.parametrize(
+    "field,value,error",
+    [
+        ("probe_nonce_sha256", "9" * 64, "NONCE_MISMATCH"),
+        ("probe_object_sha256", "9" * 64, "OBJECT_MISMATCH"),
+        ("cleanup_identity_sha256", "9" * 64, "IDENTITY_MISMATCH"),
+    ],
+)
+def test_v3_cleanup_binding_drift_fails_closed(field: str, value: str, error: str) -> None:
+    capability = _cleanup_capability()
+    capability[field] = value
+    with pytest.raises(Real20Error, match=error):
+        validate_runtime_identity(_identity_v3(capability=capability), now=NOW, require_v3=True)
+
+
+def test_runtime_identity_rejects_naive_now() -> None:
+    with pytest.raises(Real20Error, match="REAL20_RUNTIME_IDENTITY_TIME_INVALID"):
+        validate_runtime_identity(_identity_v3(), now=datetime(2026, 9, 27, 12, 0))
+
+
 def test_unknown_runtime_observation_field_fails_closed() -> None:
     value = _identity()
-    value["runtime_observation"]["unknown"] = {}
+    value["runtime_observation"]["unknown"] = {}  # type: ignore[index]
     with pytest.raises(Real20Error, match="REAL20_RUNTIME_OBSERVATION_FIELDS_INVALID"):
         validate_runtime_identity(value, now=NOW)
 
 
 def test_missing_runtime_observation_domain_fails_closed() -> None:
     value = _identity()
-    del value["runtime_observation"]["qwen"]
+    del value["runtime_observation"]["qwen"]  # type: ignore[index]
     with pytest.raises(Real20Error, match="REAL20_RUNTIME_OBSERVATION_FIELDS_INVALID"):
         validate_runtime_identity(value, now=NOW)
 
@@ -166,6 +245,42 @@ def test_invalid_probe_fails_before_reservation(monkeypatch: pytest.MonkeyPatch)
             model_identity_path=Path("model_identity"),
             ledger_root=Path("ledger"),
             output_root=Path("output"),
+            now=NOW,
+        )
+    assert calls == []
+
+
+def test_invalid_v3_cleanup_binding_fails_before_reservation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+    invalid = _identity_v3()
+    invalid["cleanup_capability"]["probe_nonce_sha256"] = "9" * 64  # type: ignore[index]
+    monkeypatch.setattr(
+        runner,
+        "load_manifest",
+        lambda _path: SimpleNamespace(sha256="a" * 64, source_fingerprint="source", assets=()),
+    )
+    monkeypatch.setattr(runner, "candidate_identity", lambda _root: {})
+    monkeypatch.setattr(
+        runner,
+        "_read_control",
+        lambda path: invalid if str(path).endswith("runtime.json") else {},
+    )
+    monkeypatch.setattr(runner, "_reservation", lambda *_args, **_kwargs: calls.append("reserve"))
+
+    with pytest.raises(Real20Error, match="REAL20_CLEANUP_CAPABILITY_NONCE_MISMATCH"):
+        runner._run_real20(
+            project_root=Path("project"),
+            source_root=Path("source"),
+            manifest_path=Path("manifest"),
+            credential_path=Path("lease"),
+            anchor_path=Path("anchor"),
+            runtime_identity_path=Path("runtime.json"),
+            model_identity_path=Path("model_identity"),
+            ledger_root=Path("ledger"),
+            output_root=Path("output"),
+            now=NOW,
         )
     assert calls == []
 
