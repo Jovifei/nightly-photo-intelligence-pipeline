@@ -1,46 +1,93 @@
-# Real20 ledger inheritance proof — code-only execution plan
+# Real20 trusted bootstrap / probe / helper — code plan and acceptance
 
-Status: design-review candidate, 2026-09-27. The Owner's acceptance of the updated `docs/44_real20_ledger_inheritance_preflight_design.md` is the entry gate for source changes. This plan does not authorize R2, Real20, photo/EXIF reads, model execution, Owner ACL changes, Bundle/App work, or production `N2B2` promotion.
+Status: active code-only R1 implementation contract, 2026-10-03.
 
-## P0 — Bind the exact candidate and baseline
+This plan supersedes the older pre-provision + separate-cleanup-account implementation route. The selected route is:
 
-- Code-stage base: `ca706a67fff61980700c9275353efea62ae8cc81`. Implementation commit: `3abb18d282d4e7f8983c52a70142dbdcd8098bfa`. Review HEAD: `7f497ac9dfc836d3b38f1f06e19fb03141c59f78`, whose direct parent is `3abb18d...`; the two-commit chain is intentional and registered by the topology guards. Work only on `codex/real20-ledger-proof-20260927` in its isolated checkout. Preserve the other chat's checkout and dirty primary `AGENTS.md`.
-- `python tools/verify_handoff.py` currently reports 6 PASS / 2 FAIL for the docs-only parent: successor topology and root index manifest are stale. Preserve that result as baseline RED. The final candidate must repair both without weakening historic cases or rewriting published commits.
-- Review `MASTER_EXECUTION_CONTRACT.md`, `PROJECT_STATE.json`, `docs/44`, relevant `tasks/lessons.md`, Real20 code/tests and the selected Python 3.12 interpreter. No dependency or model installation.
+```text
+strict N2B1P runtime configuration
+-> fixed-path bootstrap
+-> synthetic inheritance probe
+-> pre-open exact cleanup handle
+-> restricted helper
+-> cleanup proof
+-> runtime identity v3
+-> live admission attestation
+```
 
-## P1 — Red tests for semantic binding and admission
+No second Windows account is required.
 
-Add focused tests in `tests/test_real20_runner.py`, `tests/test_real20_admission.py`, and a dedicated ledger-probe test module. First run them against the parent and capture the expected failure.
+## P0 — Immutable boundaries
 
-- `runtime_observation` equal to the live runtime result passes its digest comparison while the full v2 control contains `ledger_acl_probe`.
-- Changing only `ledger_acl_probe` changes the full-control digest but not the observation digest; changing observation changes both.
-- v1, unknown v2 fields, missing proof, stale proof, failed cleanup, runner/cleanup identity conflict, policy/object mismatch and credential-bound proof tampering all fail before `_reservation()`, backend construction or image open. Spy on the actual reservation boundary; call count must be zero.
-- An Owner-bound finalized control cannot be changed by `ledger-probe` or `ledger-probe-clean` after credential/anchor issuance.
+Keep unchanged: current R0 cache/source resource gates, `PROJECT_STATE.json` production N2B2 lock, source read-only policy, one-shot reservation semantics, 20 entries / 19 unique inference limit, credential/anchor binding, and all model/photo/EXIF/SQLite restrictions.
 
-## P2 — Minimal v2 control and runner checks
+Do not weaken handoff/preflight to make a code-only candidate green.
 
-- Add a strict, versioned v2 parser/schema for `real20_runtime_identity.json`: top-level `schema_version`, `runtime_observation`, `ledger_acl_probe`; require exactly `models`, `worker`, `vision`, `qwen` observation domains and preserve their nested semantics. Historic v1 may be read as evidence but cannot enter new Real20 admission.
-- In `src/nightly_photo_intelligence_pipeline/real20/runner.py`, keep the existing whole-control canonical digest for credential/anchor binding and compare `runtime_probe()` only with the nested observation digest. Validate proof structure and live ledger identity/policy before `_reservation()`; retain the post-claim guard and one-shot consumption behavior.
-- Admission receives a module-owned live-attestation seam and requires exact runner identity, ledger policy and real-ledger object matches; absent or mismatched attestation fails before reservation, backend construction and image open. The public `run_real20()` API cannot supply an attestor override. The proof keeps separate `probe_object_sha256` (synthetic sibling) and `ledger_object_sha256` (real ledger context).
-- Keep `real20/admission.py` fail closed and do not introduce a caller-controlled bypass. Error codes must distinguish missing/invalid/stale proof without exposing private path/SID material.
+## P1 — Trusted plan
 
-## P3 — Synthetic probe generation and separate cleanup
+Use only strict `load_n2b1p_runtime_configuration()`.
 
-- Add narrowly scoped `npi real20 ledger-probe` and `ledger-probe-clean` commands to `cli.py`, backed by a Real20-specific module and existing bound-handle primitives in `windows_bound_promotion.py`.
-- Derive the Git-external synthetic probe sibling from trusted configuration. Reject reparse points and overlap with source, cache, output and the actual ledger. A probe under the actual runner identity creates a fresh claim and allowed file names without post-creation ACL repair, records handle-bound identities, effective-rights matrix and DACL policy digest, and writes only redacted, nonce-bound proof.
-- Only a separately configured cleanup identity may remove the precise synthetic probe object. The inheritance observation may remain `PROBE_PASS`, but failed or unverified cleanup makes the combined proof `NOT_ADMISSION_ELIGIBLE`. Before reservation, admission compares the proof's runner identity, ledger policy digest and ledger object identity to a live injected attestation; absent or mismatched attestation fails closed. No system user/service, Owner ACL, production ledger or source photo is changed. Without the Owner-preprovisioned policy and cleanup identity, native inheritance qualification is `NOT_AVAILABLE`.
+Fixed children are `real20-execution-ledger`, `real20-ledger-acl-probe`, and `real20-control-plane-bootstrap.json`.
 
-## P4 — Focused and full verification
+Reject arbitrary caller paths, overlaps, reparse objects and runtime-configuration digest drift. The existing N2B1P runtime schema remains unchanged.
 
-- Red→green: run the new tests, then existing `tests/test_real20_runner.py`, `tests/test_real20_admission.py`, `tests/test_real20_native_ledger_unittest.py`, `tests/test_real20_review_lifecycle.py` and `tests/test_handoff.py`. Keep synthetic, native and Owner-runtime proof separate.
-- Run the supported Python 3.12 full pytest suite, Ruff check/format, mypy, `tools/run_quality.py`, `tools/sensitive_file_scan.py`, CLI preflight and `git diff --check`. Record command, interpreter, cwd, exit code and failing region. No model/photo actions.
+## P2 — Bootstrap
 
-## P5 — One direct successor, GitHub, independent review
+After a separately materialized Owner authority, code may bind runtime parent, create only the two fixed directories, record object identities and read-only policy digests, write fixed bootstrap evidence, accept exact evidence-bound idempotent state, and reject partial/unbound/conflicting existing state.
 
-- Extend exactly the topology guards in `tools/verify_handoff.py`, `src/nightly_photo_intelligence_pipeline/preflight.py` and `tests/test_git.py` for the implementation child and the documented closeout child; retain every existing SHA and no-merge rule. The final review HEAD is two commits after the code-stage base.
-- Stage only scoped files; rebuild root `MANIFEST.sha256` from Git-index blobs with `tools/print_index_manifest.py`, stage it, then create one ordinary child commit. Re-run handoff/preflight and the affected quality gates on the clean exact SHA. A RED gate blocks push.
-- If authorized by the Owner's current instruction and every gate is green, ordinary-push only this review branch and read back remote SHA; do not move `main`, merge, tag or release. Give the exact SHA and recorded outputs to the bound remote ChatGPT chat for independent code review. A review `DONE` is code-only and leaves R2 `NOT_RUN`, Real20 unperformed and production `N2B2=LOCKED`.
+No ACL write or repair is permitted.
 
-## Stop rules
+## P3 — Probe producer
 
-Unclear or failed authorization, unknown `AccessCheck`, unable-to-clean probe, real-photo/system side effect, malformed control, path overlap, test failure, sensitive scan finding, manifest/topology failure or remote review `CHANGES_REQUIRED` stops advancement. Preserve evidence and correct only within the approved code-only branch; do not retry a real one-shot credential or modify Owner ACLs.
+Under actual runner identity: bind production ledger append-only/security-check handle; bind synthetic probe root append-only/security-check handle; require root policy digest equality; verify production-ledger mutation denial; generate nonce; create synthetic claim only under probe root; validate directory/file rights; write bounded synthetic reservation/terminal markers; close runner-side claim handles.
+
+Never create a production-ledger probe claim.
+
+## P4 — Cleanup helper
+
+Parent orchestration opens the exact synthetic probe using the fixed probe root, then transfers only the handle.
+
+Helper accepts inherited/pre-opened handle, cleanup capability, expected nonce and current time. Helper does not accept a filesystem path.
+
+It verifies object/nonce/helper identity and expiry, deletes only the two expected synthetic files, requires an otherwise empty directory, then deletes only that bound directory. No recursion, sibling traversal or ACL mutation.
+
+## P5 — Runtime identity v3 and live attestation
+
+Runtime identity v3 includes `runtime_observation`, nonce-bound `ledger_acl_probe`, and `cleanup_capability`. Public admission requires v3.
+
+Live attestation is computed from the already-bound production-ledger handle using current token identity digest, security-policy digest and handle object identity digest. Any mismatch fails before reservation.
+
+## P6 — CLI
+
+Supported code surfaces:
+
+- `real20 ledger-bootstrap-check`: read-only;
+- `real20 ledger-bootstrap`: fixed bootstrap, future Owner authority required;
+- `real20 ledger-probe`: fixed synthetic probe + pre-opened helper orchestration, future Owner authority required;
+- `real20 ledger-probe-clean`: restricted inherited-handle helper entry, no path option.
+
+All outputs are redacted structured status/evidence.
+
+## P7 — Tests
+
+Synthetic tests cover fixed path derivation, no arbitrary path option, draft authority does not execute, exact idempotent bootstrap, partial/conflicting bootstrap rejection, policy mismatch, unknown AccessCheck, nonce binding, cleanup failure => NOT_ADMISSION_ELIGIBLE, helper exact-child deletion only, sibling content rejection, helper API contains no path, invalid v3 control => reservation/backend/image counts all zero, and live attestation missing => fail closed.
+
+Windows-native tests cover security-policy digest stability, token identity fingerprint availability, release/adopt inherited handle, and exact cleanup with no path reopen. Native tests do not themselves prove Owner runtime qualification.
+
+## P8 — Contracts and review
+
+Repository artifacts include strict bootstrap authority schema, strict bootstrap evidence schema, strict probe-result schema, runtime identity v3 schema, draft task, `DRAFT_NOT_AUTHORIZED` Owner authority, docs 44/45, handoff and manifests.
+
+The draft authority is never a receipt and never unlocks production state.
+
+## P9 — Local validation after remote handoff
+
+Local Codex runs supported Python 3.12 focused control-plane tests, Real20 suite, Windows-native tests where applicable, Ruff, format, mypy, schema, sensitive scan, full pytest / `tools/run_quality.py`, `verify_handoff`, `verify_review_candidate`, and `git diff --check`.
+
+Any native resource action remains separately Owner-gated.
+
+## Exit
+
+Remote code exit requires exact branch/head/tree, complete manifests, code self-review and NOT_RUN disclosure for native actions.
+
+Local quality PASS still does not authorize bootstrap/native probe/Real20. Machine execution requires the separate approved authority and later exact evidence/review.
