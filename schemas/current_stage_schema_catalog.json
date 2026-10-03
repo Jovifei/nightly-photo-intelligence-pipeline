@@ -2,48 +2,189 @@
   "schema_set": "npi-current-stage-v1.15-n2b2-engineering-remediation",
   "draft": "https://json-schema.org/draft/2020-12/schema",
   "schemas": [
-    {"file": "task_contract_v1_1.schema.json", "purpose": "completed phase and authorized data-gate contracts"},
-    {"file": "task_index_v1_1.schema.json", "purpose": "current task index and approval-chain references"},
-    {"file": "approval_record_v1_1.schema.json", "purpose": "G1 remediation Owner approval"},
-    {"file": "phase_completion_approval_v1_0.schema.json", "purpose": "immutable N1 completion approval"},
-    {"file": "project_state_v1_1.schema.json", "purpose": "historical N1/G1 project state schema"},
-    {"file": "project_state_v1_2.schema.json", "purpose": "N2A capability-gated current project state"},
-    {"file": "phase_completion_approval_g1_v1_0.schema.json", "purpose": "immutable Owner G1 completion approval"},
-    {"file": "task_contract_n2a_v1_0.schema.json", "purpose": "authorized N2A model-free task contract"},
-    {"file": "n2a_pose_segmentation.schema.json", "purpose": "model-free N2A typed contracts"},
-    {"file": "model_artifact_approval.schema.json", "purpose": "non-authorizing N2B0/N2B0.5 artifact qualification draft"},
-    {"file": "phase_completion_approval_n2b0_v1_0.schema.json", "purpose": "immutable Owner N2B0 completion approval"},
-    {"file": "task_contract_n2b0_5_v1_0.schema.json", "purpose": "authorized N2B0.5 rights and provenance closure contract"},
-    {"file": "n2b1_quarantine_approval_v1_0.schema.json", "purpose": "future artifact-bound Owner approval; no active download authority"},
-    {"file": "model_artifact_qualification_snapshot_v1.schema.json", "purpose": "closed future artifact qualification snapshot for the composed no-I/O gate"},
-    {"file": "project_state_v1_3.schema.json", "purpose": "closed future N2B1 capability-gated state"},
-    {"file": "phase_completion_approval_n2b0_5_v1_0.schema.json", "purpose": "immutable Owner N2B0.5 completion approval"},
-    {"file": "task_contract_n2b0_6_v1_0.schema.json", "purpose": "authorized metadata-only N2B0.6 research contract"},
-    {"file": "n2b0_6_candidate_record_v2.schema.json", "purpose": "closed metadata-only alternative candidate bundle evidence record"},
-    {"file": "project_state_v1_4.schema.json", "purpose": "historical N2B0.6 state"},
-    {"file": "phase_completion_approval_n2b0_6_v1_0.schema.json", "purpose": "immutable Owner N2B0.6 completion approval"},
-    {"file": "owner_bounded_continuous_authorization_v1_0.schema.json", "purpose": "bounded conditional Owner continuation authorization"},
-    {"file": "task_contract_n2b0_7_v1_0.schema.json", "purpose": "authorized metadata-only RTX 4070 SUPER artifact qualification"},
-    {"file": "n2b0_7_artifact_qualification_v1.schema.json", "purpose": "closed official-metadata record for the blocked RTX 4070 SUPER artifact decision"},
-    {"file": "project_state_v1_5.schema.json", "purpose": "historical N2B0.7 fail-closed state"},
-    {"file": "phase_completion_approval_n2b0_7_v1_0.schema.json", "purpose": "immutable Owner N2B0.7 completion approval"},
-    {"file": "owner_local_research_execution_v1_0.schema.json", "purpose": "bounded Owner local-research continuation authorization"},
-    {"file": "task_contract_n2b1r_v1_0.schema.json", "purpose": "historical N2B1R isolated model-acquisition contract"},
-    {"file": "n2b1r_artifact_register_v1.schema.json", "purpose": "approved local-research acquisition register"},
-    {"file": "n2b1r_acquisition_evidence_v1.schema.json", "purpose": "completed redacted local-research acquisition evidence"},
-    {"file": "project_state_v1_6.schema.json", "purpose": "historical N2B1R state; inference and real-photo stages remain locked"},
-    {"file": "owner_n2b1p_cache_promotion_v1_0.schema.json", "purpose": "Owner N2B1P promotion-only authorization"},
-    {"file": "task_contract_n2b1p_v1_0.schema.json", "purpose": "current N2B1P local-research cache-promotion contract"},
-    {"file": "n2b1p_cache_promotion_evidence_v1.schema.json", "purpose": "redacted N2B1P cache-promotion completion evidence"},
-    {"file": "n2b1p_runtime_configuration_v1_0.schema.json", "purpose": "validated N2B1P runtime and cache-root configuration"},
-    {"file": "project_state_v1_7.schema.json", "purpose": "current N2B1P state; model execution and real-photo stages remain locked"},
-    {"file": "owner_n2b2_ollama_runtime_identity_revalidation_v1.schema.json", "purpose": "one-shot Owner authorization for the exact Ollama runtime identity transition"},
-    {"file": "n2b2_runtime_identity_transition_v1.schema.json", "purpose": "redacted external identity transition evidence"},
-    {"file": "n2b2_runtime_execution_lease_v1.schema.json", "purpose": "fresh source-bound synthetic runtime execution lease"},
-    {"file": "npi_owner_execution_lease_anchor_v1.schema.json", "purpose": "fixed external Owner trust anchor for the controlled synthetic execution lease"},
-    {"file": "n2b2_runtime_revalidation_evidence_v1.schema.json", "purpose": "versioned runtime identity and command evidence"},
-    {"file": "n2b2_vision_fact_contract_v1_2.schema.json", "purpose": "versioned bbox-union empty-area proxy facts; historical v1.1 remains unchanged"},
-    {"file": "n2b2_real20_runtime_identity_v2.schema.json", "purpose": "historical Real20 runtime observation and Owner-bound ledger inheritance proof"},
-    {"file": "n2b2_real20_runtime_identity_v3.schema.json", "purpose": "Real20 runtime observation, nonce-bound ledger proof, and cleanup capability control"}
+    {
+      "file": "task_contract_v1_1.schema.json",
+      "purpose": "completed phase and authorized data-gate contracts"
+    },
+    {
+      "file": "task_index_v1_1.schema.json",
+      "purpose": "current task index and approval-chain references"
+    },
+    {
+      "file": "approval_record_v1_1.schema.json",
+      "purpose": "G1 remediation Owner approval"
+    },
+    {
+      "file": "phase_completion_approval_v1_0.schema.json",
+      "purpose": "immutable N1 completion approval"
+    },
+    {
+      "file": "project_state_v1_1.schema.json",
+      "purpose": "historical N1/G1 project state schema"
+    },
+    {
+      "file": "project_state_v1_2.schema.json",
+      "purpose": "N2A capability-gated current project state"
+    },
+    {
+      "file": "phase_completion_approval_g1_v1_0.schema.json",
+      "purpose": "immutable Owner G1 completion approval"
+    },
+    {
+      "file": "task_contract_n2a_v1_0.schema.json",
+      "purpose": "authorized N2A model-free task contract"
+    },
+    {
+      "file": "n2a_pose_segmentation.schema.json",
+      "purpose": "model-free N2A typed contracts"
+    },
+    {
+      "file": "model_artifact_approval.schema.json",
+      "purpose": "non-authorizing N2B0/N2B0.5 artifact qualification draft"
+    },
+    {
+      "file": "phase_completion_approval_n2b0_v1_0.schema.json",
+      "purpose": "immutable Owner N2B0 completion approval"
+    },
+    {
+      "file": "task_contract_n2b0_5_v1_0.schema.json",
+      "purpose": "authorized N2B0.5 rights and provenance closure contract"
+    },
+    {
+      "file": "n2b1_quarantine_approval_v1_0.schema.json",
+      "purpose": "future artifact-bound Owner approval; no active download authority"
+    },
+    {
+      "file": "model_artifact_qualification_snapshot_v1.schema.json",
+      "purpose": "closed future artifact qualification snapshot for the composed no-I/O gate"
+    },
+    {
+      "file": "project_state_v1_3.schema.json",
+      "purpose": "closed future N2B1 capability-gated state"
+    },
+    {
+      "file": "phase_completion_approval_n2b0_5_v1_0.schema.json",
+      "purpose": "immutable Owner N2B0.5 completion approval"
+    },
+    {
+      "file": "task_contract_n2b0_6_v1_0.schema.json",
+      "purpose": "authorized metadata-only N2B0.6 research contract"
+    },
+    {
+      "file": "n2b0_6_candidate_record_v2.schema.json",
+      "purpose": "closed metadata-only alternative candidate bundle evidence record"
+    },
+    {
+      "file": "project_state_v1_4.schema.json",
+      "purpose": "historical N2B0.6 state"
+    },
+    {
+      "file": "phase_completion_approval_n2b0_6_v1_0.schema.json",
+      "purpose": "immutable Owner N2B0.6 completion approval"
+    },
+    {
+      "file": "owner_bounded_continuous_authorization_v1_0.schema.json",
+      "purpose": "bounded conditional Owner continuation authorization"
+    },
+    {
+      "file": "task_contract_n2b0_7_v1_0.schema.json",
+      "purpose": "authorized metadata-only RTX 4070 SUPER artifact qualification"
+    },
+    {
+      "file": "n2b0_7_artifact_qualification_v1.schema.json",
+      "purpose": "closed official-metadata record for the blocked RTX 4070 SUPER artifact decision"
+    },
+    {
+      "file": "project_state_v1_5.schema.json",
+      "purpose": "historical N2B0.7 fail-closed state"
+    },
+    {
+      "file": "phase_completion_approval_n2b0_7_v1_0.schema.json",
+      "purpose": "immutable Owner N2B0.7 completion approval"
+    },
+    {
+      "file": "owner_local_research_execution_v1_0.schema.json",
+      "purpose": "bounded Owner local-research continuation authorization"
+    },
+    {
+      "file": "task_contract_n2b1r_v1_0.schema.json",
+      "purpose": "historical N2B1R isolated model-acquisition contract"
+    },
+    {
+      "file": "n2b1r_artifact_register_v1.schema.json",
+      "purpose": "approved local-research acquisition register"
+    },
+    {
+      "file": "n2b1r_acquisition_evidence_v1.schema.json",
+      "purpose": "completed redacted local-research acquisition evidence"
+    },
+    {
+      "file": "project_state_v1_6.schema.json",
+      "purpose": "historical N2B1R state; inference and real-photo stages remain locked"
+    },
+    {
+      "file": "owner_n2b1p_cache_promotion_v1_0.schema.json",
+      "purpose": "Owner N2B1P promotion-only authorization"
+    },
+    {
+      "file": "task_contract_n2b1p_v1_0.schema.json",
+      "purpose": "current N2B1P local-research cache-promotion contract"
+    },
+    {
+      "file": "n2b1p_cache_promotion_evidence_v1.schema.json",
+      "purpose": "redacted N2B1P cache-promotion completion evidence"
+    },
+    {
+      "file": "n2b1p_runtime_configuration_v1_0.schema.json",
+      "purpose": "validated N2B1P runtime and cache-root configuration"
+    },
+    {
+      "file": "project_state_v1_7.schema.json",
+      "purpose": "current N2B1P state; model execution and real-photo stages remain locked"
+    },
+    {
+      "file": "owner_n2b2_ollama_runtime_identity_revalidation_v1.schema.json",
+      "purpose": "one-shot Owner authorization for the exact Ollama runtime identity transition"
+    },
+    {
+      "file": "n2b2_runtime_identity_transition_v1.schema.json",
+      "purpose": "redacted external identity transition evidence"
+    },
+    {
+      "file": "n2b2_runtime_execution_lease_v1.schema.json",
+      "purpose": "fresh source-bound synthetic runtime execution lease"
+    },
+    {
+      "file": "npi_owner_execution_lease_anchor_v1.schema.json",
+      "purpose": "fixed external Owner trust anchor for the controlled synthetic execution lease"
+    },
+    {
+      "file": "n2b2_runtime_revalidation_evidence_v1.schema.json",
+      "purpose": "versioned runtime identity and command evidence"
+    },
+    {
+      "file": "n2b2_vision_fact_contract_v1_2.schema.json",
+      "purpose": "versioned bbox-union empty-area proxy facts; historical v1.1 remains unchanged"
+    },
+    {
+      "file": "n2b2_real20_runtime_identity_v2.schema.json",
+      "purpose": "historical Real20 runtime observation and Owner-bound ledger inheritance proof"
+    },
+    {
+      "file": "n2b2_real20_runtime_identity_v3.schema.json",
+      "purpose": "Real20 runtime observation, nonce-bound ledger proof, and cleanup capability control"
+    },
+    {
+      "file": "owner_real20_control_plane_bootstrap_v1.schema.json",
+      "purpose": "draft-or-approved Owner authority for fixed-path Real20 control-plane machine execution"
+    },
+    {
+      "file": "real20_control_plane_bootstrap_evidence_v1.schema.json",
+      "purpose": "redacted fixed-path bootstrap object and policy binding evidence"
+    },
+    {
+      "file": "real20_ledger_probe_result_v2.schema.json",
+      "purpose": "nonce-bound synthetic inheritance probe and cleanup result"
+    }
   ]
 }
