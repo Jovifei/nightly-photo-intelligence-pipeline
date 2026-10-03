@@ -1662,25 +1662,44 @@ def real20_prepare(
 def real20_ledger_bootstrap_check(
     project_root: Path = typer.Option(..., "--project-root"),
 ) -> None:
-    """Check the fixed ledger bootstrap boundary without mutating it."""
+    """Check fixed Real20 ledger/probe bootstrap objects without mutating them."""
     from .real20 import check_ledger_bootstrap
 
     result = check_ledger_bootstrap(project_root)
     typer.echo(json_strict_dump(result))
-    if result["status"] != "READY_EXISTING_LEDGER":
+    if result["status"] != "READY_EXISTING_CONTROL_PLANE":
         raise typer.Exit(code=1)
+
+
+@real20_app.command("ledger-bootstrap")
+def real20_ledger_bootstrap(
+    project_root: Path = typer.Option(..., "--project-root"),
+) -> None:
+    """Bootstrap only fixed trusted control-plane objects under separate authority."""
+    from .real20 import Real20Error, bootstrap_control_plane
+
+    try:
+        result = bootstrap_control_plane(project_root)
+    except Real20Error as exc:
+        typer.echo(json_strict_dump({"status": "NOT_AUTHORIZED", "error_code": exc.code}))
+        raise typer.Exit(code=1) from None
+    typer.echo(json_strict_dump(result))
 
 
 @real20_app.command("ledger-probe")
 def real20_ledger_probe(
     project_root: Path = typer.Option(..., "--project-root"),
 ) -> None:
-    """Report isolated probe readiness without touching the real ledger."""
-    from .real20 import probe_status
+    """Run one fixed-scope synthetic inheritance probe; never touches real photos."""
+    from .real20 import Real20Error, run_ledger_probe
 
-    result = probe_status(project_root)
+    try:
+        result = run_ledger_probe(project_root)
+    except Real20Error as exc:
+        typer.echo(json_strict_dump({"status": "NOT_AVAILABLE", "error_code": exc.code}))
+        raise typer.Exit(code=1) from None
     typer.echo(json_strict_dump(result))
-    if result["status"] != "READY":
+    if result["status"] != "ADMISSION_ELIGIBLE":
         raise typer.Exit(code=1)
 
 
@@ -1688,13 +1707,15 @@ def real20_ledger_probe(
 def real20_ledger_probe_clean(
     project_root: Path = typer.Option(..., "--project-root"),
 ) -> None:
-    """Report cleanup readiness; never broad-cleans or repairs ACLs."""
-    from .real20 import probe_status
+    """Restricted inherited-handle cleanup helper; accepts no filesystem path."""
+    from .real20 import Real20Error, run_inherited_cleanup_from_environment
 
-    result = probe_status(project_root)
+    try:
+        result = run_inherited_cleanup_from_environment(project_root)
+    except Real20Error as exc:
+        typer.echo(json_strict_dump({"status": "NOT_AVAILABLE", "error_code": exc.code}))
+        raise typer.Exit(code=1) from None
     typer.echo(json_strict_dump(result))
-    if result["status"] != "READY":
-        raise typer.Exit(code=1)
 
 
 @real20_app.command("run")
