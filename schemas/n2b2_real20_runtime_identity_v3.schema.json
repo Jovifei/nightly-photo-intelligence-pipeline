@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/n2b2_real20_runtime_identity_v3.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "runtime_observation", "ledger_acl_probe", "cleanup_capability"],
+  "properties": {
+    "schema_version": {"const": "3.0"},
+    "runtime_observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["models", "worker", "vision", "qwen"],
+      "properties": {
+        "models": {"type": "object", "additionalProperties": true},
+        "worker": {"type": "object", "additionalProperties": true},
+        "vision": {"type": "object", "additionalProperties": true},
+        "qwen": {"type": "object", "additionalProperties": true}
+      }
+    },
+    "ledger_acl_probe": {"$ref": "#/$defs/ledgerAclProbeV2"},
+    "cleanup_capability": {"$ref": "#/$defs/cleanupCapabilityV1"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "ledgerAclProbeV2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "status",
+        "inheritance_status",
+        "cleanup_status",
+        "probe_nonce_sha256",
+        "runner_identity_sha256",
+        "cleanup_identity_sha256",
+        "ledger_policy_sha256",
+        "probe_policy_sha256",
+        "probe_object_sha256",
+        "ledger_object_sha256",
+        "created_at_utc",
+        "expires_at_utc"
+      ],
+      "properties": {
+        "contract_version": {"const": "npi-real20-ledger-acl-probe-v2"},
+        "status": {"const": "ADMISSION_ELIGIBLE"},
+        "inheritance_status": {"const": "PROBE_PASS"},
+        "cleanup_status": {"const": "CLEANUP_PASS"},
+        "probe_nonce_sha256": {"$ref": "#/$defs/sha256"},
+        "runner_identity_sha256": {"$ref": "#/$defs/sha256"},
+        "cleanup_identity_sha256": {"$ref": "#/$defs/sha256"},
+        "ledger_policy_sha256": {"$ref": "#/$defs/sha256"},
+        "probe_policy_sha256": {"$ref": "#/$defs/sha256"},
+        "probe_object_sha256": {"$ref": "#/$defs/sha256"},
+        "ledger_object_sha256": {"$ref": "#/$defs/sha256"},
+        "created_at_utc": {"type": "string", "format": "date-time"},
+        "expires_at_utc": {"type": "string", "format": "date-time"}
+      }
+    },
+    "cleanupCapabilityV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability_version",
+        "probe_nonce_sha256",
+        "probe_object_sha256",
+        "cleanup_identity_sha256",
+        "expires_at_utc"
+      ],
+      "properties": {
+        "capability_version": {"const": "npi-real20-cleanup-capability-v1"},
+        "probe_nonce_sha256": {"$ref": "#/$defs/sha256"},
+        "probe_object_sha256": {"$ref": "#/$defs/sha256"},
+        "cleanup_identity_sha256": {"$ref": "#/$defs/sha256"},
+        "expires_at_utc": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}
