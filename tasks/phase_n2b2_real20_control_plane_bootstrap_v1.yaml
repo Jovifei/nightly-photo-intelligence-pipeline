@@ -19,7 +19,8 @@ runtime_boundary:
   ledger_leaf: "real20-execution-ledger"
   probe_leaf: "real20-ledger-acl-probe"
 owner_authority_draft: "approvals/owner_real20_control_plane_bootstrap_v1.DRAFT.json"
-future_authority_path: "approvals/owner_real20_control_plane_bootstrap_v1.json"
+future_authority_path: "<runtime_parent>/owner-approvals/real20_control_plane_authority.json"
+authority_binding: "EXACT_REVIEWED_CANDIDATE_COMMIT_TREE_SOURCE_MANIFEST"
 machine_execution_authority: "NOT_AUTHORIZED"
 prohibited_actions:
   - "arbitrary_runtime_or_probe_path"
