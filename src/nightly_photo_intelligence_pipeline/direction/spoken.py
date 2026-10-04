@@ -232,6 +232,24 @@ def spoken_direction_request(*, case_id: str, pose_cues: list[str]) -> str:
     )
 
 
+INTERNAL_FIELD_NAMES: tuple[str, ...] = (
+    "person_count",
+    "pose_score",
+    "pose_confidence",
+    "segmentation",
+    "关键点分数",
+)
+
+
+def internal_field_name(text: str) -> str | None:
+    """Return the first internal field name found in product text."""
+
+    for word in INTERNAL_FIELD_NAMES:
+        if word in text:
+            return word
+    return None
+
+
 def validate_spoken(payload: dict[str, Any], *, case_id: str) -> str | None:
     """Return an error string, or None when the payload is usable product text."""
 
@@ -248,11 +266,9 @@ def validate_spoken(payload: dict[str, Any], *, case_id: str) -> str | None:
         return "spoken_direction too short or not Chinese"
     if len(simpler.strip()) < 8:
         return "simpler_alternative empty"
-    banned = ("person_count", "pose_score", "pose_confidence", "segmentation", "关键点分数")
-    blob = spoken + simpler
-    for word in banned:
-        if word in blob:
-            return f"product text contains internal field {word}"
+    found = internal_field_name(spoken + simpler)
+    if found is not None:
+        return f"product text contains internal field {found}"
     if "光" not in spoken:
         return "spoken_direction does not say where the light is"
     if not any(word in spoken for word in ("成立", "因为", "所以", "之所以")):

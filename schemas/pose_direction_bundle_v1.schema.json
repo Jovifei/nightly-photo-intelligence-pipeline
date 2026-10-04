@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.npi.local/pose_direction_bundle_v1.schema.json",
+  "title": "Pose direction bundle v1",
+  "description": "Producer output: one spoken photographer-to-model pose direction and one stick-figure diagram per item. Not Photo Intelligence Bundle v1, not PKB1, and not a T14 golden vector. authority is false.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "authority",
+    "producer_note",
+    "items"
+  ],
+  "properties": {
+    "schema_id": {
+      "const": "pose-direction-bundle"
+    },
+    "schema_version": {
+      "const": "1"
+    },
+    "authority": {
+      "const": false
+    },
+    "producer_note": {
+      "const": "Authority is false. This file is a producer output the phone app can read later. It is not a T14 golden vector, not PKB1, and not a production unlock. The phone app tap screen is still unbuilt. It is not Photo Intelligence Bundle v1."
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/item"
+      }
+    }
+  },
+  "$defs": {
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "spoken_direction",
+        "stick_figure"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^img-[0-9]{2}-[0-9a-f]{8}$"
+        },
+        "spoken_direction": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "stick_figure": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "svg"
+              ],
+              "properties": {
+                "svg": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "svg_file"
+              ],
+              "properties": {
+                "svg_file": {
+                  "type": "string",
+                  "pattern": "^img-[0-9]{2}-[0-9a-f]{8}\\.svg$"
+                }
+              }
+            }
+          ]
+        },
+        "why_it_works": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "composition": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 600
+            },
+            "light": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 600
+            },
+            "gaze": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 600
+            },
+            "clothing": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 600
+            }
+          }
+        }
+      }
+    }
+  }
+}
